@@ -1,11 +1,11 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
 	"bitbucket.org/phlyingpenguin/godeepintir/config"
 	"bitbucket.org/phlyingpenguin/godeepintir/plugins"
+	"flag"
+	"fmt"
 )
 import irc "github.com/fluffle/goirc/client"
 
@@ -20,7 +20,7 @@ func main() {
 	var cfile = flag.String("config", "config.json", "Config file to load. (Defaults to config.json)")
 	flag.Parse() // parses the logging flags.
 
-	config := config.Readconfig(*cfile)
+	config := config.Readconfig(Version, *cfile)
 	fmt.Println(config)
 
 	c := irc.SimpleClient(config.Nick)
@@ -43,7 +43,7 @@ func main() {
 
 	b := bot.NewBot(config, c)
 	// b.AddHandler(plugins.NewTestPlugin(b))
-	b.AddHandler(plugins.NewTalkerPlugin(b))
+	b.AddHandler("Talker", plugins.NewTalkerPlugin(b))
 
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
 		b.Msg_recieved(conn, line)

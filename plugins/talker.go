@@ -37,3 +37,7 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 func (p *TalkerPlugin) LoadData() {
 	// no data to load yet?
 }
+
+func (p *TalkerPlugin) Help(channel string, parts []string) {
+	p.Bot.SendMessage(channel, "Hi, this is talker. I like to talk about FredFelps!")
+}

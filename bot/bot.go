@@ -3,12 +3,13 @@ package bot
 import irc "github.com/fluffle/goirc/client"
 import "labix.org/v2/mgo"
 import "bitbucket.org/phlyingpenguin/godeepintir/config"
+import "strings"
 
 // Bot type provides storage for bot-wide information, configs, and database connections
 type Bot struct {
 	// Each plugin must be registered in our plugins handler. To come: a map so that this
 	// will allow plugins to respond to specific kinds of events
-	Plugins []Handler
+	Plugins map[string]Handler
 
 	// Users holds information about all of our friends
 	Users []User
@@ -21,6 +22,8 @@ type Bot struct {
 	// Mongo connection and db allow botwide access to the database
 	DbSession *mgo.Session
 	Db        *mgo.Database
+
+	Version string
 }
 
 // User type stores user history. This is a vehicle that will follow the user for the active 
@@ -43,9 +46,8 @@ type Message struct {
 	Channel, Body string
 }
 
-// NewBot creates a Bot for a given connection and set of handlers. The handlers must not
-// require the bot as input for their creation (so use AddHandler instead to add handlers)
-func NewBot(config *config.Config, c *irc.Conn, p ...Handler) *Bot {
+// NewBot creates a Bot for a given connection and set of handlers.
+func NewBot(config *config.Config, c *irc.Conn) *Bot {
 	session, err := mgo.Dial(config.DbServer)
 	if err != nil {
 		panic(err)
@@ -55,15 +57,16 @@ func NewBot(config *config.Config, c *irc.Conn, p ...Handler) *Bot {
 
 	return &Bot{
 		Config:    config,
-		Plugins:   p,
+		Plugins:   make(map[string]Handler),
 		Users:     make([]User, 10),
 		Conn:      c,
 		DbSession: session,
 		Db:        db,
+		Version:   config.Version,
 	}
 }
 
 // Adds a constructed handler to the bots handlers list
-func (b *Bot) AddHandler(h Handler) {
-	b.Plugins = append(b.Plugins, h)
+func (b *Bot) AddHandler(name string, h Handler) {
+	b.Plugins[strings.ToLower(name)] = h
 }

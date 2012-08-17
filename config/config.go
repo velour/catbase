@@ -13,10 +13,11 @@ type Config struct {
 	MainChannel        string
 	Plugins            []string
 	Nick, Server, Pass string
+	Version            string
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
-func Readconfig(cfile string) *Config {
+func Readconfig(version, cfile string) *Config {
 	fmt.Printf("Using %s as config file.\n", cfile)
 	file, e := ioutil.ReadFile(cfile)
 	if e != nil {
@@ -28,5 +29,6 @@ func Readconfig(cfile string) *Config {
 	if err != nil {
 		panic(err)
 	}
+	c.Version = version
 	return &c
 }

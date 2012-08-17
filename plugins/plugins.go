@@ -7,6 +7,7 @@ import "bitbucket.org/phlyingpenguin/godeepintir/bot"
 type Plugin interface {
 	Message(message bot.Message) bool
 	LoadData()
+	Help()
 }
 
 // ---- Below are some example plugins
@@ -25,12 +26,16 @@ type TestPlugin struct {
 	Responds []string
 	Name     string
 	Feces    string
+	helpmsg  []string
 }
 
 func (p *TestPlugin) LoadData() {
 	config := GetPluginConfig("TestPlugin")
 	p.Name = config.Name
 	p.Feces = config.Values["Feces"].(string)
+	p.helpmsg = []string{
+		"TestPlugin just shows off how shit works.",
+	}
 }
 
 func (p *TestPlugin) Message(message bot.Message) bool {
@@ -42,6 +47,12 @@ func (p *TestPlugin) Message(message bot.Message) bool {
 	fmt.Println("My plugin name is:", p.Name, " My feces are:", p.Feces)
 	p.Bot.SendMessage(channel, body)
 	return true
+}
+
+func (p *TestPlugin) Help(message bot.Message) {
+	for _, msg := range p.helpmsg {
+		p.Bot.SendMessage(message.Channel, msg)
+	}
 }
 
 type PluginConfig struct {
