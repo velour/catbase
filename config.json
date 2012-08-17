@@ -1,0 +1,62 @@
+{
+	"Dbname": "deepintir",
+	"Dbserver": "127.0.0.1",
+	"Channels": ["#AlePaleTest"],
+	"Plugins": [],
+	"Server": "127.0.0.1:6666",
+	"Nick": "AlePaleTest",
+	"Pass": "AlePaleTest:test",
+
+	"comment": "Follows is the old bot",
+
+	"bot": {
+		"dbname":	"deepintir",
+		"inchan": 	"out",
+		"outchan": 	"in",
+		"logchan": 	"logs",
+		"nick": "|AlePale|",
+		"channel": "#flagonslayers",
+		"command_char": "!",
+		"plugins": {
+			"help": "Help",
+			"talker": "Talker",
+			"remember": "Remember",
+			"beers": "Beers",
+			"first": "First",
+			"sudo": "Sudo"
+		},
+		"_plugins": {
+			"tama": "Tama"
+		},
+		"datastore": "datastore.dat"
+	},
+	"Talker": {
+		"names": ["fredfelps", "felps"],
+		"slogan": "GOD HATES %NICK%"
+	},
+	"Remember": {
+		"quotefile": "quotes.txt",
+		"loglength": 50,
+		"quotechance": 0.10,
+		"quotetimer": 1800
+	},
+	"Beers": {
+		"responses": [
+			"Stay thirsty, my friend!",
+			"HIC!",
+			"ZIGGY! ZAGGY!"
+		],
+		"countfile": "beers.txt",
+		"drinktriggers": [
+			"drink",
+			"imbibe"
+		],
+		"puketriggers": [
+			"puke",
+			"yack"
+		]
+	},
+	"Sudo": {
+		"chance": 0.01
+	}
+}
