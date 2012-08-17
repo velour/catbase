@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"godeepintir/config"
 	"godeepintir/bot"
+	"godeepintir/config"
 	"godeepintir/plugins"
 )
 import irc "github.com/fluffle/goirc/client"
@@ -30,7 +30,7 @@ func main() {
 	// Add handlers to do things here!
 	// e.g. join a channel on connect.
 	c.AddHandler("connected",
-		func(conn *irc.Conn, line *irc.Line) { 
+		func(conn *irc.Conn, line *irc.Line) {
 			for _, channel := range config.Channels {
 				conn.Join(channel)
 			}
@@ -41,7 +41,7 @@ func main() {
 	c.AddHandler("disconnected",
 		func(conn *irc.Conn, line *irc.Line) { quit <- true })
 
-	b := bot.NewBot(c)
+	b := bot.NewBot(config, c)
 	b.AddHandler(plugins.NewTestPlugin(b))
 
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {

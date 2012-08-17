@@ -22,8 +22,8 @@ func (b *Bot) checkuser(nick string) *User {
 	if user == nil {
 		fmt.Println("Making a new user")
 		user = &User{
-			Name: nick,
-			Alts: make([]string, 1),
+			Name:       nick,
+			Alts:       make([]string, 1),
 			MessageLog: make([]string, 50),
 		}
 		b.Users = append(b.Users, *user)
