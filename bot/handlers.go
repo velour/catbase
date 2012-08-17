@@ -48,9 +48,9 @@ func (b *Bot) Msg_recieved(conn *irc.Conn, line *irc.Line) {
 	if len(parts) > 0 && parts[0] == "help" {
 		if len(parts) == 1 {
 			// just print out a list of help topics
-			topics := "Help topics: About"
+			topics := "Help topics: about"
 			for name, _ := range b.Plugins {
-				topics = fmt.Sprintf("%s, %s ", topics, name)
+				topics = fmt.Sprintf("%s, %s", topics, name)
 			}
 			b.SendMessage(channel, topics)
 		} else {
