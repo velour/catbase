@@ -2,7 +2,7 @@ package bot
 
 import irc "github.com/fluffle/goirc/client"
 import "labix.org/v2/mgo"
-import "godeepintir/config"
+import "bitbucket.org/phlyingpenguin/godeepintir/config"
 
 // Bot type provides storage for bot-wide information, configs, and database connections
 type Bot struct {

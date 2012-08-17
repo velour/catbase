@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"godeepintir/bot"
-	"godeepintir/config"
-	"godeepintir/plugins"
+	"bitbucket.org/phlyingpenguin/godeepintir/bot"
+	"bitbucket.org/phlyingpenguin/godeepintir/config"
+	"bitbucket.org/phlyingpenguin/godeepintir/plugins"
 )
 import irc "github.com/fluffle/goirc/client"
 

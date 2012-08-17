@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"godeepintir/bot"
+	"bitbucket.org/phlyingpenguin/godeepintir/bot"
 	"strings"
 )
 
