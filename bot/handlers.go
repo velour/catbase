@@ -2,12 +2,13 @@ package bot
 
 import (
 	"fmt"
+	"strings"
 )
 import irc "github.com/fluffle/goirc/client"
 
 // Interface used for compatibility with the Plugin interface
 type Handler interface {
-	Message(user *User, channel, message string) bool
+	Message(message Message) bool
 }
 
 // Checks to see if our user exists and if any changes have occured to it
@@ -44,14 +45,26 @@ func (b *Bot) Msg_recieved(conn *irc.Conn, line *irc.Line) {
 
 	fmt.Printf("In %s, %s said: '%s'\n", channel, line.Nick, message)
 	for _, p := range b.Plugins {
-		if p.Message(user, channel, message) {
+		msg := Message{
+			User:    user,
+			Channel: channel,
+			Body:    message,
+		}
+		if p.Message(msg) {
 			break
 		}
 	}
 }
 
 // Take an input string and mutate it based on $vars in the string
-func (b *Bot) filter(input string) string {
+func (b *Bot) Filter(message Message, input string) string {
+	if strings.Contains(input, "$NICK") {
+		nick := strings.ToUpper(message.User.Name)
+		input = strings.Replace(input, "$NICK", nick, -1)
+	} else if strings.Contains(input, "$nick") {
+		nick := message.User.Name
+		input = strings.Replace(input, "$nick", nick, -1)
+	}
 	return input
 }
 

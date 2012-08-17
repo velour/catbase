@@ -5,7 +5,7 @@ import "godeepintir/bot"
 
 // Plugin interface defines the methods needed to accept a plugin
 type Plugin interface {
-	Message(user *bot.User, channel, message string) bool
+	Message(message bot.Message) bool
 	LoadData()
 }
 
@@ -33,10 +33,14 @@ func (p *TestPlugin) LoadData() {
 	p.Feces = config.Values["Feces"].(string)
 }
 
-func (p *TestPlugin) Message(user *bot.User, channel, message string) bool {
-	fmt.Println(user, message)
+func (p *TestPlugin) Message(message bot.Message) bool {
+	user := message.User
+	channel := message.Channel
+	body := message.Body
+
+	fmt.Println(user, body)
 	fmt.Println("My plugin name is:", p.Name, " My feces are:", p.Feces)
-	p.Bot.SendMessage(channel, message)
+	p.Bot.SendMessage(channel, body)
 	return true
 }
 

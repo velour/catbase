@@ -2,6 +2,7 @@
 	"Dbname": "deepintir",
 	"Dbserver": "127.0.0.1",
 	"Channels": ["#AlePaleTest"],
+	"MainChannel": "#AlePaleTest",
 	"Plugins": [],
 	"Server": "127.0.0.1:6666",
 	"Nick": "AlePaleTest",

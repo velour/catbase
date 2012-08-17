@@ -42,7 +42,8 @@ func main() {
 		func(conn *irc.Conn, line *irc.Line) { quit <- true })
 
 	b := bot.NewBot(config, c)
-	b.AddHandler(plugins.NewTestPlugin(b))
+	// b.AddHandler(plugins.NewTestPlugin(b))
+	b.AddHandler(plugins.NewTalkerPlugin(b))
 
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
 		b.Msg_recieved(conn, line)

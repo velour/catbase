@@ -10,6 +10,7 @@ type Config struct {
 	DbName             string
 	DbServer           string
 	Channels           []string
+	MainChannel        string
 	Plugins            []string
 	Nick, Server, Pass string
 }
