@@ -36,7 +36,7 @@ func (b *Bot) checkuser(nick string) *User {
 
 // Checks to see if the user is asking for help, returns true if so and handles the situation.
 func (b *Bot) checkHelp(channel string, parts []string) {
-	if len(parts) > 1 {
+	if len(parts) == 1 {
 		// just print out a list of help topics
 		topics := "Help topics: about"
 		for name, _ := range b.Plugins {

@@ -3,6 +3,8 @@ package plugins
 import (
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
 	"fmt"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 	"strconv"
 	"strings"
 	"time"
@@ -11,21 +13,45 @@ import (
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 
 type BeersPlugin struct {
-	Bot *bot.Bot
+	Bot  *bot.Bot
+	Coll *mgo.Collection
 }
 
 // NewBeersPlugin creates a new BeersPlugin with the Plugin interface
 func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
-	return &BeersPlugin{
+	p := BeersPlugin{
 		Bot: bot,
+	}
+	p.LoadData()
+	return &p
+}
+
+type userBeers struct {
+	Nick      string
+	Beercount int
+	Lastdrunk time.Time
+	Momentum  float64
+	New       bool
+}
+
+func (u *userBeers) Save(coll *mgo.Collection) {
+	_, err := coll.Upsert(bson.M{"nick": u.Nick}, u)
+	if err != nil {
+		panic(err)
 	}
 }
 
-type UserBeers struct {
-	Nick      string
-	berrcount int
-	lastdrunk time.Time
-	momentum  float64
+func getUserBeers(coll *mgo.Collection, nick string) *userBeers {
+	ub := userBeers{New: true}
+	err := coll.Find(bson.M{"nick": nick}).One(&ub)
+	if err != nil {
+		panic(err)
+	}
+	if ub.New == true {
+		ub.New = false
+		ub.Save(coll)
+	}
+	return &ub
 }
 
 // Message responds to the bot hook on recieving messages.
@@ -51,10 +77,11 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			if err != nil {
 				// if it's not a number, maybe it's a nick!
 				if p.doIKnow(parts[2]) {
-					p.reportCount(parts[2], false)
+					p.reportCount(parts[2], channel, false)
 				} else {
 					msg := fmt.Sprintf("Sorry, I don't know %s.", parts[2])
 					p.Bot.SendMessage(channel, msg)
+					return true
 				}
 			}
 
@@ -64,26 +91,36 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 				p.Bot.SendMessage(channel, msg)
 			}
 			if parts[1] == "+=" {
-				p.setBeers(user, p.getBeers(user)+count)
+				p.setBeers(user, p.getBeers(nick)+count)
+				p.reportCount(nick, channel, true)
 			} else if parts[1] == "=" {
 				if count == 0 {
-					p.puke(user)
+					p.puke(user, channel)
 				} else {
 					p.setBeers(user, count)
-					p.reportCount(nick, true)
+					p.reportCount(nick, channel, true)
 				}
 			} else {
 				p.Bot.SendMessage(channel, "I don't know your math.")
 			}
+		} else if len(parts) == 1 {
+			p.reportCount(nick, channel, true)
 		}
 
 		// no matter what, if we're in here, then we've responded
 		return true
+	} else if parts[0] == "beers++" {
+		p.addBeers(user)
+		p.reportCount(nick, channel, true)
+		return true
+	} else if parts[0] == "puke" {
+		p.puke(user, channel)
+		return true
 	}
 
 	if message.Command && parts[0] == "imbibe" {
-		p.setBeers(user, p.getBeers(user)+1)
-		p.reportCount(nick, true)
+		p.addBeers(user)
+		p.reportCount(nick, channel, true)
 		return true
 	}
 
@@ -94,7 +131,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.
 func (p *BeersPlugin) LoadData() {
-	// This bot has no data to load
+	p.Coll = p.Bot.Db.C("beers")
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
@@ -103,24 +140,41 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 }
 
 func (p *BeersPlugin) setBeers(user *bot.User, amount int) {
+	ub := getUserBeers(p.Coll, user.Name)
+	ub.Beercount = amount
+	ub.Save(p.Coll)
 }
 
 func (p *BeersPlugin) addBeers(user *bot.User) {
+	p.setBeers(user, p.getBeers(user.Name)+1)
 }
 
-func (p *BeersPlugin) getBeers(user *bot.User) int {
-	return 0
+func (p *BeersPlugin) getBeers(nick string) int {
+	ub := getUserBeers(p.Coll, nick)
+
+	return ub.Beercount
 }
 
-func (p *BeersPlugin) hasBeers(user *bot.User) {
+func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
+	beers := p.getBeers(nick)
+	msg := fmt.Sprintf("%s has had %d beers so far.", nick, beers)
+	if himself {
+		msg = fmt.Sprintf("You've had %d beers so far, %s.", beers, nick)
+	}
+	p.Bot.SendMessage(channel, msg)
+	fmt.Println("I should have reported a beer count!")
 }
 
-func (p *BeersPlugin) reportCount(user string, himself bool) {
+func (p *BeersPlugin) puke(user *bot.User, channel string) {
+	p.setBeers(user, 0)
+	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user.Name)
+	p.Bot.SendMessage(channel, msg)
 }
 
-func (p *BeersPlugin) puke(user *bot.User) {
-}
-
-func (p *BeersPlugin) doIKnow(user string) bool {
-	return false
+func (p *BeersPlugin) doIKnow(nick string) bool {
+	count, err := p.Coll.Find(bson.M{"nick": nick}).Count()
+	if err != nil {
+		panic(err)
+	}
+	return count > 0
 }
