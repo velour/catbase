@@ -91,6 +91,9 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 	user := b.checkuser(line.Nick)
 
 	channel := line.Args[0]
+	if channel == conn.Me.Nick {
+		channel = line.Nick
+	}
 	message := line.Args[1]
 	iscmd := false
 	iscmd, message = b.isCmd(message)

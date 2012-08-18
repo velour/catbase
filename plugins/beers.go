@@ -137,7 +137,10 @@ func (p *BeersPlugin) LoadData() {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *BeersPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Sorry, Beers does not do a goddamn thing.")
+	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
+		"commands. I'll keep a count of how many beers you've had and then if you want " +
+		"to reset, just !puke it all up!"
+	p.Bot.SendMessage(channel, msg)
 }
 
 func (p *BeersPlugin) setBeers(user *bot.User, amount int) {
