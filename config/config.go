@@ -14,6 +14,7 @@ type Config struct {
 	Plugins            []string
 	Nick, Server, Pass string
 	Version            string
+	CommandChar        string
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

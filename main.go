@@ -43,12 +43,12 @@ func main() {
 
 	b := bot.NewBot(config, c)
 	// b.AddHandler(plugins.NewTestPlugin(b))
+	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
-	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
-		b.Msg_recieved(conn, line)
+		b.MsgRecieved(conn, line)
 	})
 
 	// Tell client to connect
