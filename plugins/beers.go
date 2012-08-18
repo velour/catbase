@@ -76,13 +76,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			count, err := strconv.Atoi(parts[2])
 			if err != nil {
 				// if it's not a number, maybe it's a nick!
-				if p.doIKnow(parts[2]) {
-					p.reportCount(parts[2], channel, false)
-				} else {
-					msg := fmt.Sprintf("Sorry, I don't know %s.", parts[2])
-					p.Bot.SendMessage(channel, msg)
-					return true
-				}
+				p.Bot.SendMessage(channel, "Sorry, that didn't make any sense.")
 			}
 
 			if count < 0 {
@@ -102,6 +96,13 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 				}
 			} else {
 				p.Bot.SendMessage(channel, "I don't know your math.")
+			}
+		} else if len(parts) == 2 {
+			if p.doIKnow(parts[1]) {
+				p.reportCount(parts[1], channel, false)
+			} else {
+				msg := fmt.Sprintf("Sorry, I don't know %s.", parts[1])
+				p.Bot.SendMessage(channel, msg)
 			}
 		} else if len(parts) == 1 {
 			p.reportCount(nick, channel, true)
@@ -159,7 +160,11 @@ func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
 	beers := p.getBeers(nick)
 	msg := fmt.Sprintf("%s has had %d beers so far.", nick, beers)
 	if himself {
-		msg = fmt.Sprintf("You've had %d beers so far, %s.", beers, nick)
+		if beers == 0 {
+			msg = fmt.Sprintf("You really need to get drinkin, %s!", nick)
+		} else {
+			msg = fmt.Sprintf("You've had %d beers so far, %s.", beers, nick)
+		}
 	}
 	p.Bot.SendMessage(channel, msg)
 	fmt.Println("I should have reported a beer count!")
