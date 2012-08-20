@@ -8,6 +8,8 @@
 	"Nick": "AlePaleTest",
 	"Pass": "AlePaleTest:test",
 	"CommandChar": "!",
+	"QuoteChance": 0.10,
+	"LogLength": 50,
 
 	"comment": "Follows is the old bot",
 

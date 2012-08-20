@@ -15,6 +15,8 @@ type Config struct {
 	Nick, Server, Pass string
 	Version            string
 	CommandChar        string
+	QuoteChance        float64
+	LogLength          int
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

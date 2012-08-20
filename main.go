@@ -46,6 +46,7 @@ func main() {
 	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
+	b.AddHandler("remember", plugins.NewRememberPlugin(b))
 
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
 		b.MsgRecieved(conn, line)
