@@ -88,16 +88,23 @@ func (b *Bot) isCmd(message string) (bool, string) {
 // Handles incomming PRIVMSG requests
 func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 	// Check for the user
+
 	user := b.checkuser(line.Nick)
 
 	channel := line.Args[0]
 	if channel == conn.Me.Nick {
 		channel = line.Nick
 	}
+
+	isaction := line.Cmd == "ACTION"
+
 	message := line.Args[1]
 	iscmd := false
-	iscmd, message = b.isCmd(message)
-	parts := strings.Fields(strings.ToLower(message))
+	filteredMessage := message
+	if !isaction {
+		iscmd, filteredMessage = b.isCmd(message)
+	}
+	parts := strings.Fields(strings.ToLower(filteredMessage))
 
 	if iscmd {
 		fmt.Println("Hey, I got a command!")
@@ -105,19 +112,21 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 
 	user.MessageLog = append(user.MessageLog, message)
 
-	if strings.HasPrefix(message, "help") {
+	if strings.HasPrefix(filteredMessage, "help") && iscmd{
 		b.checkHelp(channel, parts)
 		return
 	}
 
-	fmt.Printf("In %s, %s said: '%s'\n", channel, line.Nick, message)
+	msg := Message{
+		User:    user,
+		Channel: channel,
+		Body:    filteredMessage,
+		Raw:	message,
+		Command: iscmd,
+		Action: isaction,
+	}
+	fmt.Printf("%#v\n", msg)
 	for _, p := range b.Plugins {
-		msg := Message{
-			User:    user,
-			Channel: channel,
-			Body:    message,
-			Command: iscmd,
-		}
 		if p.Message(msg) {
 			break
 		}

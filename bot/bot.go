@@ -44,7 +44,9 @@ type User struct {
 type Message struct {
 	User          *User
 	Channel, Body string
+	Raw string
 	Command       bool
+	Action	bool
 }
 
 // NewBot creates a Bot for a given connection and set of handlers.

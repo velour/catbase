@@ -16,6 +16,7 @@ type Config struct {
 	Version            string
 	CommandChar        string
 	QuoteChance        float64
+	QuoteTime          int
 	LogLength          int
 }
 

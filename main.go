@@ -48,6 +48,10 @@ func main() {
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))
 
+	c.AddHandler("ACTION", func(conn *irc.Conn, line *irc.Line) {
+		b.MsgRecieved(conn, line)
+	})
+
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
 		b.MsgRecieved(conn, line)
 	})

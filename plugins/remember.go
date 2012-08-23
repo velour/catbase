@@ -46,37 +46,56 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 	if message.Body == "quote" && message.Command {
 		q := p.randQuote()
 		p.Bot.SendMessage(message.Channel, q)
+
+		// is it evil not to remember that the user said quote?
 		return true
 	}
 
 	parts := strings.Fields(message.Body)
-	if len(parts) < 3 || parts[0] != "remember" {
-		p.Log[message.Channel] = append(p.Log[message.Channel], message)
-		return false
-	} else {
+	if message.Command && len(parts) >= 3 && parts[0] == "remember" {
 		// we have a remember!
 		// look through the logs and find parts[1] as a user, if not, fuck this hoser
 		nick := parts[1]
 		snip := strings.Join(parts[2:], " ")
-		for _, entry := range p.Log[message.Channel] {
+
+		if nick == message.User.Name {
+			msg := fmt.Sprintf("Don't try to quote yourself, %s.", nick)
+			p.Bot.SendMessage(message.Channel, msg)
+			return true
+		}
+
+		for i := len(p.Log[message.Channel])-1; i >= 0; i-- {
+			entry := p.Log[message.Channel][i]
 			// find the entry we want
+			fmt.Printf("Comparing '%s' to '%s'\n", entry.Raw, snip)
 			if entry.User.Name == nick && strings.Contains(entry.Body, snip) {
 				// insert new remember entry
+				var msg string
+
+				// check if it's an action
+				if entry.Action {
+					msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Raw)
+				} else {
+					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Raw)
+				}
 				u := userRemember{
 					Nick:    entry.User.Name,
-					Message: fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body),
+					Message: msg,
 					Date:    time.Now(),
 				}
 				p.Coll.Insert(u)
-				msg := fmt.Sprintf("Okay, %s, remembering '<%s> %s'.",
-					message.User.Name, entry.User.Name, entry.Body)
+
+				// sorry, not creative with names so we're reusing msg
+				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
+					message.User.Name, msg)
 				p.Bot.SendMessage(message.Channel, msg)
+				p.Log[message.Channel] = append(p.Log[message.Channel], message)
 				return true
 			}
 		}
 		p.Bot.SendMessage(message.Channel, "Sorry, I don't know that phrase.")
-		return true
 	}
+	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 	return false
 }
 
@@ -85,9 +104,6 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 // date.
 func (p *RememberPlugin) LoadData() {
 	p.Coll = p.Bot.Db.C("remember")
-	if p.Coll == nil {
-		panic("FUCK ME")
-	}
 	rand.Seed(time.Now().Unix())
 }
 
@@ -113,9 +129,6 @@ func (p *RememberPlugin) record(nick, msg string) {
 // to have this function execute a quote for a particular channel
 func (p *RememberPlugin) randQuote() string {
 	var quotes []userRemember
-	if p.Coll == nil {
-		panic("FUCK ME HARD")
-	}
 	iter := p.Coll.Find(bson.M{}).Iter()
 	err := iter.All(&quotes)
 	if err != nil {
@@ -124,16 +137,22 @@ func (p *RememberPlugin) randQuote() string {
 
 	// rand quote idx
 	nquotes := len(quotes)
+	if nquotes == 0 {
+		return "Sorry, I don't know any quotes."
+	}
 	quote := quotes[rand.Intn(nquotes)]
 	return quote.Message
 }
 
 func (p *RememberPlugin) quoteTimer(channel string) {
 	for {
-		time.Sleep(30 * time.Minute)
+		// this pisses me off: You can't multiply int * time.Duration so it
+		// has to look ugly as shit.
+		time.Sleep(time.Duration(p.Bot.Config.QuoteTime) * time.Minute)
 		chance := 1.0 / p.Bot.Config.QuoteChance
 		if rand.Intn(int(chance)) == 0 {
 			msg := p.randQuote()
+			fmt.Println("Delivering quote.")
 			p.Bot.SendMessage(channel, msg)
 		}
 	}
