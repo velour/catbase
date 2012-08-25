@@ -3,7 +3,9 @@ package plugins
 import (
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 )
 
 type TalkerPlugin struct {
@@ -36,7 +38,7 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 }
 
 func (p *TalkerPlugin) LoadData() {
-	// no data to load yet?
+	rand.Seed(time.Now().Unix())
 }
 
 func (p *TalkerPlugin) Help(channel string, parts []string) {
@@ -46,7 +48,11 @@ func (p *TalkerPlugin) Help(channel string, parts []string) {
 // Empty event handler because this plugin does not do anything on event recv
 func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
 	if kind == "JOIN" && message.User.Name != p.Bot.Config.Nick {
-		msg := fmt.Sprintf("Joins upset the hivemind's OCD, %s.", message.User.Name)
+		sayings := []string{
+			"Real men use screen, flyngpngn.",
+			"Joins upset the hivemind's OCD, %s.",
+		}
+		msg := fmt.Sprintf(sayings[rand.Intn(len(sayings))], message.User.Name)
 		p.Bot.SendMessage(message.Channel, msg)
 		return true
 	}
