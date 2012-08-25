@@ -9,6 +9,7 @@ import irc "github.com/fluffle/goirc/client"
 // Interface used for compatibility with the Plugin interface
 type Handler interface {
 	Message(message Message) bool
+	Event(kind string, message Message) bool
 	Help(channel string, parts []string)
 }
 
@@ -85,10 +86,9 @@ func (b *Bot) isCmd(message string) (bool, string) {
 	return iscmd, message
 }
 
-// Handles incomming PRIVMSG requests
-func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
+// Builds our internal message type out of a Conn & Line from irc
+func (b *Bot)buildMessage(conn *irc.Conn, line *irc.Line)  Message {
 	// Check for the user
-
 	user := b.checkuser(line.Nick)
 
 	channel := line.Args[0]
@@ -98,20 +98,17 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 
 	isaction := line.Cmd == "ACTION"
 
-	message := line.Args[1]
+	var message string
+	if len(line.Args) > 1 {
+		message = line.Args[1]
+	}
 	iscmd := false
 	filteredMessage := message
 	if !isaction {
 		iscmd, filteredMessage = b.isCmd(message)
 	}
-	parts := strings.Fields(strings.ToLower(filteredMessage))
 
 	user.MessageLog = append(user.MessageLog, message)
-
-	if strings.HasPrefix(filteredMessage, "help") && iscmd{
-		b.checkHelp(channel, parts)
-		return
-	}
 
 	msg := Message{
 		User:    user,
@@ -121,6 +118,19 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 		Command: iscmd,
 		Action: isaction,
 	}
+	return msg
+}
+
+// Handles incomming PRIVMSG requests
+func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
+	msg := b.buildMessage(conn, line)
+
+	if strings.HasPrefix(msg.Body, "help") && msg.Command{
+		parts := strings.Fields(strings.ToLower(msg.Body))
+		b.checkHelp(msg.Channel, parts)
+		return
+	}
+
 	for _, p := range b.Plugins {
 		if p.Message(msg) {
 			break
@@ -150,4 +160,13 @@ func (b *Bot) Help(channel string, parts []string) {
 		"can find my source code on the internet here: "+
 		"http://bitbucket.org/phlyingpenguin/godeepintir", b.Version)
 	b.SendMessage(channel, msg)
+}
+
+func (b *Bot) UserJoined(conn *irc.Conn, line *irc.Line) {
+	msg := b.buildMessage(conn, line)
+	for _, p := range b.Plugins {
+		if p.Event(line.Cmd, msg) {
+			break
+		}
+	}
 }

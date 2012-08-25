@@ -129,6 +129,11 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 	return false
 }
 
+// Empty event handler because this plugin does not do anything on event recv
+func (p *BeersPlugin) Event(kind string, message bot.Message)  bool {
+	return false
+}
+
 // LoadData imports any configuration data into the plugin. This is not strictly necessary other
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.

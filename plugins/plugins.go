@@ -6,6 +6,7 @@ import "bitbucket.org/phlyingpenguin/godeepintir/bot"
 // Plugin interface defines the methods needed to accept a plugin
 type Plugin interface {
 	Message(message bot.Message) bool
+	Event(kind string, message bot.Message) bool
 	LoadData()
 	Help()
 }
@@ -55,6 +56,11 @@ func (p *TestPlugin) Help(message bot.Message) {
 	}
 }
 
+// Empty event handler because this plugin does not do anything on event recv
+func (p *TestPlugin) Event(kind string, message bot.Message)  bool {
+	return false
+}
+
 type PluginConfig struct {
 	Name   string
 	Values map[string]interface{}
@@ -83,3 +89,9 @@ func (fp FalsePlugin) Message(user, message string) bool {
 func (fp FalsePlugin) LoadData() {
 
 }
+
+// Empty event handler because this plugin does not do anything on event recv
+func (p *FalsePlugin) Event(kind string, message bot.Message)  bool {
+	return false
+}
+

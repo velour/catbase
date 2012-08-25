@@ -34,3 +34,8 @@ func (p *SkeletonPlugin) LoadData() {
 func (p *SkeletonPlugin) Help(channel string, parts []string) {
 	p.Bot.SendMessage(channel, "Sorry, Skeleton does not do a goddamn thing.")
 }
+
+// Empty event handler because this plugin does not do anything on event recv
+func (p *SkeletonPlugin) Event(kind string, message bot.Message)  bool {
+	return false
+}

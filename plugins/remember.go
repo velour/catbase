@@ -157,3 +157,8 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 		}
 	}
 }
+
+// Empty event handler because this plugin does not do anything on event recv
+func (p *RememberPlugin) Event(kind string, message bot.Message)  bool {
+	return false
+}

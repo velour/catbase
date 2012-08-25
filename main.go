@@ -52,6 +52,10 @@ func main() {
 		b.MsgRecieved(conn, line)
 	})
 
+	c.AddHandler("JOIN", func(conn *irc.Conn, line *irc.Line) {
+		b.UserJoined(conn, line)
+	})
+
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
 		b.MsgRecieved(conn, line)
 	})
