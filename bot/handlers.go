@@ -19,7 +19,6 @@ func (b *Bot) checkuser(nick string) *User {
 	var user *User = nil
 	for _, usr := range b.Users {
 		if usr.Name == nick {
-			fmt.Println("Matched ", nick)
 			user = &usr
 			break
 		}

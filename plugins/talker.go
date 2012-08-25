@@ -26,6 +26,13 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 		return false
 	}
 
+	if len(message.User.Name) != 9 {
+		msg := fmt.Sprintf("Hey %s, we really like to have 9 character nicks because we're crazy OCD and stuff.",
+			message.User.Name)
+		p.Bot.SendMessage(message.Channel, msg)
+		return true
+	}
+
 	lowermessage := strings.ToLower(body)
 
 	if strings.Contains(lowermessage, "felps") || strings.Contains(lowermessage, "fredfelps") {
@@ -49,7 +56,7 @@ func (p *TalkerPlugin) Help(channel string, parts []string) {
 func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
 	if kind == "JOIN" && message.User.Name != p.Bot.Config.Nick {
 		sayings := []string{
-			"Real men use screen, flyngpngn.",
+			"Real men use screen, %s.",
 			"Joins upset the hivemind's OCD, %s.",
 		}
 		msg := fmt.Sprintf(sayings[rand.Intn(len(sayings))], message.User.Name)
