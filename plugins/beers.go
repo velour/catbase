@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"math/rand"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
@@ -86,13 +87,13 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			}
 			if parts[1] == "+=" {
 				p.setBeers(user, p.getBeers(nick)+count)
-				p.reportCount(nick, channel, true)
+				p.randomReply(channel)
 			} else if parts[1] == "=" {
 				if count == 0 {
 					p.puke(user, channel)
 				} else {
 					p.setBeers(user, count)
-					p.reportCount(nick, channel, true)
+					p.randomReply(channel)
 				}
 			} else {
 				p.Bot.SendMessage(channel, "I don't know your math.")
@@ -112,7 +113,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		return true
 	} else if parts[0] == "beers++" {
 		p.addBeers(user)
-		p.reportCount(nick, channel, true)
+		p.randomReply(channel)
 		return true
 	} else if parts[0] == "puke" {
 		p.puke(user, channel)
@@ -121,7 +122,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 
 	if message.Command && parts[0] == "imbibe" {
 		p.addBeers(user)
-		p.reportCount(nick, channel, true)
+		p.randomReply(channel)
 		return true
 	}
 
@@ -133,6 +134,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 // date.
 func (p *BeersPlugin) LoadData() {
 	p.Coll = p.Bot.Db.C("beers")
+	rand.Seed(time.Now().Unix())
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
@@ -186,4 +188,10 @@ func (p *BeersPlugin) doIKnow(nick string) bool {
 		panic(err)
 	}
 	return count > 0
+}
+
+// Sends random affirmation to the channel. This could be better (with a datastore for sayings)
+func (p *BeersPlugin) randomReply(channel string) {
+	replies := []string{"ZIGGY! ZAGGY!", "HIC!", "Stay thirsty, my friend!"}
+	p.Bot.SendMessage(channel, replies[rand.Intn(len(replies))])
 }
