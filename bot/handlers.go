@@ -18,7 +18,9 @@ func (b *Bot) checkuser(nick string) *User {
 	var user *User = nil
 	for _, usr := range b.Users {
 		if usr.Name == nick {
+			fmt.Println("Matched ", nick)
 			user = &usr
+			break
 		}
 	}
 	if user == nil {
@@ -106,10 +108,6 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 	}
 	parts := strings.Fields(strings.ToLower(filteredMessage))
 
-	if iscmd {
-		fmt.Println("Hey, I got a command!")
-	}
-
 	user.MessageLog = append(user.MessageLog, message)
 
 	if strings.HasPrefix(filteredMessage, "help") && iscmd{
@@ -125,7 +123,7 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 		Command: iscmd,
 		Action: isaction,
 	}
-	fmt.Printf("%#v\n", msg)
+	fmt.Printf("%#v said %#v\n", user, msg)
 	for _, p := range b.Plugins {
 		if p.Message(msg) {
 			break

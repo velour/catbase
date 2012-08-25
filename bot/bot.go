@@ -61,7 +61,7 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 	return &Bot{
 		Config:    config,
 		Plugins:   make(map[string]Handler),
-		Users:     make([]User, 10),
+		Users:     make([]User, 1),
 		Conn:      c,
 		DbSession: session,
 		Db:        db,

@@ -43,12 +43,12 @@ func (u *userBeers) Save(coll *mgo.Collection) {
 
 func getUserBeers(coll *mgo.Collection, nick string) *userBeers {
 	ub := userBeers{New: true}
-	err := coll.Find(bson.M{"nick": nick}).One(&ub)
-	if err != nil {
-		panic(err)
-	}
+	coll.Find(bson.M{"nick": nick}).One(&ub)
 	if ub.New == true {
 		ub.New = false
+		ub.Nick = nick
+		ub.Beercount = 0
+		ub.Momentum = 0
 		ub.Save(coll)
 	}
 	return &ub
@@ -146,6 +146,7 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 func (p *BeersPlugin) setBeers(user *bot.User, amount int) {
 	ub := getUserBeers(p.Coll, user.Name)
 	ub.Beercount = amount
+	ub.Lastdrunk = time.Now()
 	ub.Save(p.Coll)
 }
 
