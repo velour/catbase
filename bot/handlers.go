@@ -87,7 +87,7 @@ func (b *Bot) isCmd(message string) (bool, string) {
 }
 
 // Builds our internal message type out of a Conn & Line from irc
-func (b *Bot)buildMessage(conn *irc.Conn, line *irc.Line)  Message {
+func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
 	// Check for the user
 	user := b.checkuser(line.Nick)
 
@@ -114,9 +114,9 @@ func (b *Bot)buildMessage(conn *irc.Conn, line *irc.Line)  Message {
 		User:    user,
 		Channel: channel,
 		Body:    filteredMessage,
-		Raw:	message,
+		Raw:     message,
 		Command: iscmd,
-		Action: isaction,
+		Action:  isaction,
 	}
 	return msg
 }
@@ -125,7 +125,7 @@ func (b *Bot)buildMessage(conn *irc.Conn, line *irc.Line)  Message {
 func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 	msg := b.buildMessage(conn, line)
 
-	if strings.HasPrefix(msg.Body, "help") && msg.Command{
+	if strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
 		return

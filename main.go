@@ -21,7 +21,6 @@ func main() {
 	flag.Parse() // parses the logging flags.
 
 	config := config.Readconfig(Version, *cfile)
-	fmt.Println(config)
 
 	c := irc.SimpleClient(config.Nick)
 	// Optionally, enable SSL
@@ -33,6 +32,7 @@ func main() {
 		func(conn *irc.Conn, line *irc.Line) {
 			for _, channel := range config.Channels {
 				conn.Join(channel)
+				fmt.Printf("Now talking in %s.\n", channel)
 			}
 		})
 	// And a signal on disconnect

@@ -34,5 +34,8 @@ func Readconfig(version, cfile string) *Config {
 		panic(err)
 	}
 	c.Version = version
+
+	fmt.Printf("godeepintir version %s running.\n")
+
 	return &c
 }

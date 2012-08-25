@@ -57,7 +57,7 @@ func (p *TestPlugin) Help(message bot.Message) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *TestPlugin) Event(kind string, message bot.Message)  bool {
+func (p *TestPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
 
@@ -91,7 +91,6 @@ func (fp FalsePlugin) LoadData() {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *FalsePlugin) Event(kind string, message bot.Message)  bool {
+func (p *FalsePlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
-

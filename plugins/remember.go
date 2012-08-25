@@ -64,7 +64,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 			return true
 		}
 
-		for i := len(p.Log[message.Channel])-1; i >= 0; i-- {
+		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.Log[message.Channel][i]
 			// find the entry we want
 			fmt.Printf("Comparing '%s' to '%s'\n", entry.Raw, snip)
@@ -159,6 +159,6 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *RememberPlugin) Event(kind string, message bot.Message)  bool {
+func (p *RememberPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }

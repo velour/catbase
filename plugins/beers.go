@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
-	"math/rand"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
@@ -130,7 +130,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *BeersPlugin) Event(kind string, message bot.Message)  bool {
+func (p *BeersPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
 
