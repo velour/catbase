@@ -24,7 +24,6 @@ func (b *Bot) checkuser(nick string) *User {
 		}
 	}
 	if user == nil {
-		fmt.Println("Making a new user")
 		user = &User{
 			Name:       nick,
 			Alts:       make([]string, 1),
@@ -68,7 +67,6 @@ func (b *Bot) isCmd(message string) (bool, string) {
 	iscmd := false
 
 	if strings.HasPrefix(message, cmdc) && len(cmdc) > 0 {
-		fmt.Println("Got a commandchar prefix")
 		iscmd = true
 		message = message[len(cmdc):]
 	} else if strings.HasPrefix(message, botnick) {
@@ -123,7 +121,6 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 		Command: iscmd,
 		Action: isaction,
 	}
-	fmt.Printf("%#v said %#v\n", user, msg)
 	for _, p := range b.Plugins {
 		if p.Message(msg) {
 			break
