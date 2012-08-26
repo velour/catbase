@@ -70,6 +70,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 	nick := user.Name
 
 	// respond to the beers type of queries
+	parts[0] = strings.ToLower(parts[0]) // support iPhone/Android saying "Beers"
 	if parts[0] == "beers" {
 		if len(parts) == 3 {
 
