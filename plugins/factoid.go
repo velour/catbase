@@ -53,6 +53,7 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 		full = fmt.Sprintf("%s %s %s", trigger, operator, fact)
 	}
 
+	trigger = strings.ToLower(trigger)
 	newfact := factoid{
 		Id:        0,
 		Trigger:   trigger,
@@ -90,6 +91,14 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 
 	// This plugin has no business with normal messages
 	if !message.Command {
+		// look for any triggers in the db matching this message
+		if len(message.Body) > 4 {
+			if ok, fact := p.findTrigger(body); ok {
+				fact = p.Bot.Filter(message, fact)
+				p.Bot.SendMessage(message.Channel, fact)
+				return true
+			}
+		}
 		return false
 	}
 
@@ -102,7 +111,6 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		}
 
 		trigger := strings.TrimSpace(parts[0])
-		trigger = strings.ToLower(trigger)
 		fact := strings.TrimSpace(parts[1])
 		action := strings.TrimSpace(action)
 
