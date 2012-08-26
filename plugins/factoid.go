@@ -38,7 +38,7 @@ func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
 }
 
 func (p *FactoidPlugin) findAction(message string) string {
-	r, err := regexp.Compile("<.*?>| is | are ")
+	r, err := regexp.Compile("<.+?>| is | are ")
 	if err != nil {
 		panic(err)
 	}
@@ -86,15 +86,16 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, string) {
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *FactoidPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
+	body := strings.TrimSpace(message.Body)
 
 	// This plugin has no business with normal messages
 	if !message.Command {
 		return false
 	}
 
-	action := p.findAction(message.Body)
+	action := p.findAction(body)
 	if action != "" {
-		parts := strings.SplitN(message.Body, action, 2)
+		parts := strings.SplitN(body, action, 2)
 		// This could fail if is were the last word or it weren't in the sentence (like no spaces)
 		if len(parts) != 2 {
 			return false
@@ -105,6 +106,11 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		fact := strings.TrimSpace(parts[1])
 		action := strings.TrimSpace(action)
 
+		if len(trigger) == 0 || len(fact) == 0 || len(action) == 0 {
+			p.Bot.SendMessage(message.Channel, "I don't want to learn that.")
+			return false
+		}
+
 		strippedaction := strings.Replace(strings.Replace(action, "<", "", 1), ">", "", 1)
 
 		p.learnFact(message, trigger, strippedaction, fact)
@@ -114,7 +120,7 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 	}
 
 	// look for any triggers in the db matching this message
-	if ok, fact := p.findTrigger(message.Body); ok {
+	if ok, fact := p.findTrigger(body); ok {
 		fact = p.Bot.Filter(message, fact)
 		p.Bot.SendMessage(message.Channel, fact)
 		return true
