@@ -2,7 +2,10 @@ package bot
 
 import (
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
+	"time"
 )
 import irc "github.com/fluffle/goirc/client"
 
@@ -140,13 +143,33 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 
 // Take an input string and mutate it based on $vars in the string
 func (b *Bot) Filter(message Message, input string) string {
+	rand.Seed(time.Now().Unix())
+
 	if strings.Contains(input, "$NICK") {
 		nick := strings.ToUpper(message.User.Name)
 		input = strings.Replace(input, "$NICK", nick, -1)
-	} else if strings.Contains(input, "$nick") {
+	}
+
+	if strings.Contains(input, "$nick") {
 		nick := message.User.Name
 		input = strings.Replace(input, "$nick", nick, -1)
 	}
+
+	if strings.Contains(input, "$someone") {
+		someone := b.Users[rand.Intn(len(b.Users))].Name
+		input = strings.Replace(input, "$someone", someone, -1)
+	}
+
+	for strings.Contains(input, "$digit") {
+		num := strconv.Itoa(rand.Intn(9))
+		input = strings.Replace(input, "$digit", num, 1)
+	}
+
+	for strings.Contains(input, "$nonzero") {
+		num := strconv.Itoa(rand.Intn(8) + 1)
+		input = strings.Replace(input, "$nonzero", num, 1)
+	}
+
 	return input
 }
 
