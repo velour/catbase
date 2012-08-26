@@ -97,13 +97,20 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, *factoid) {
 }
 
 func (p *FactoidPlugin) trigger(message bot.Message) bool {
-	if len(message.Body) > 4 {
+	if len(message.Body) > 4 || message.Command {
 		if ok, fact := p.findTrigger(message.Body); ok {
 			msg := p.Bot.Filter(message, fact.FullText)
-			if fact.Operator == "action" {
-				p.Bot.SendAction(message.Channel, msg)
-			} else {
-				p.Bot.SendMessage(message.Channel, msg)
+			for i, m := 0, strings.Split(msg, "$and"); i < len(m) && i < 4; i++ {
+				msg := strings.TrimSpace(m[i])
+				if len(msg) == 0 {
+					continue
+				}
+
+				if fact.Operator == "action" {
+					p.Bot.SendAction(message.Channel, msg)
+				} else {
+					p.Bot.SendMessage(message.Channel, msg)
+				}
 			}
 			return true
 		}
@@ -139,7 +146,12 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 
 		if len(trigger) == 0 || len(fact) == 0 || len(action) == 0 {
 			p.Bot.SendMessage(message.Channel, "I don't want to learn that.")
-			return false
+			return true
+		}
+
+		if len(strings.Split(fact, "$and")) > 4 {
+			p.Bot.SendMessage(message.Channel, "You can't use more than 4 $and operators.")
+			return true
 		}
 
 		strippedaction := strings.Replace(strings.Replace(action, "<", "", 1), ">", "", 1)
