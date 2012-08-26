@@ -43,10 +43,11 @@ func main() {
 
 	b := bot.NewBot(config, c)
 	// b.AddHandler(plugins.NewTestPlugin(b))
-	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))
+	b.AddHandler("factoid", plugins.NewFactoidPlugin(b))
+	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 
 	c.AddHandler("ACTION", func(conn *irc.Conn, line *irc.Line) {
 		b.MsgRecieved(conn, line)
