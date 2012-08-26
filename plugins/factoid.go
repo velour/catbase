@@ -135,7 +135,8 @@ func (p *FactoidPlugin) LoadData() {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *FactoidPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Sorry, Factoid does not do a goddamn thing.")
+	p.Bot.SendMessage(channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
+	p.Bot.SendMessage(channel, "I can also figure out some variables including: $nonzero, $digit, $nick, and $someone.")
 }
 
 // Empty event handler because this plugin does not do anything on event recv
