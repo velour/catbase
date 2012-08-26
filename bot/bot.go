@@ -76,3 +76,13 @@ func (b *Bot) AddHandler(name string, h Handler) {
 	b.Plugins[strings.ToLower(name)] = h
 	b.PluginOrdering = append(b.PluginOrdering, name)
 }
+
+// Sends message to channel
+func (b *Bot) SendMessage(channel, message string) {
+	b.Conn.Privmsg(channel, message)
+}
+
+// Sends action to channel
+func (b *Bot) SendAction(channel, message string) {
+	b.Conn.Action(channel, message)
+}

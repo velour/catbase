@@ -173,11 +173,6 @@ func (b *Bot) Filter(message Message, input string) string {
 	return input
 }
 
-// Sends message to channel
-func (b *Bot) SendMessage(channel, message string) {
-	b.Conn.Privmsg(channel, message)
-}
-
 func (b *Bot) Help(channel string, parts []string) {
 	msg := fmt.Sprintf("Hi, I'm based on godeepintir version %s. I'm written in Go, and you "+
 		"can find my source code on the internet here: "+

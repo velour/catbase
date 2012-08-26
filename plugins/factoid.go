@@ -23,8 +23,9 @@ type factoid struct {
 }
 
 type FactoidPlugin struct {
-	Bot  *bot.Bot
-	Coll *mgo.Collection
+	Bot      *bot.Bot
+	Coll     *mgo.Collection
+	NotFound []string
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
@@ -32,6 +33,14 @@ func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
 	p := &FactoidPlugin{
 		Bot:  bot,
 		Coll: nil,
+		NotFound: []string{
+			"I don't know.",
+			"NONONONO",
+			"((",
+			"*pukes*",
+			"NOPE! NOPE! NOPE!",
+			"One time, I learned how to jump rope.",
+		},
 	}
 	p.LoadData()
 	return p
@@ -46,14 +55,19 @@ func (p *FactoidPlugin) findAction(message string) string {
 	return action
 }
 
-func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact string) {
+func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact string) bool {
 	// if it's an action, we only want the fact part of it in the fulltext
 	full := fact
 	if operator != "action" && operator != "reply" {
 		full = fmt.Sprintf("%s %s %s", trigger, operator, fact)
 	}
-
 	trigger = strings.ToLower(trigger)
+
+	q := p.Coll.Find(bson.M{"trigger": trigger, "fulltext": full})
+	if n, _ := q.Count(); n != 0 {
+		return false
+	}
+
 	newfact := factoid{
 		Id:        0,
 		Trigger:   trigger,
@@ -62,10 +76,10 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 		CreatedBy: message.User.Name,
 	}
 	p.Coll.Insert(newfact)
-
+	return true
 }
 
-func (p *FactoidPlugin) findTrigger(message string) (bool, string) {
+func (p *FactoidPlugin) findTrigger(message string) (bool, *factoid) {
 	var results []factoid
 	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
 	err := iter.All(&results)
@@ -75,11 +89,27 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, string) {
 
 	nfacts := len(results)
 	if nfacts == 0 {
-		return false, ""
+		return false, nil
 	}
 
 	fact := results[rand.Intn(nfacts)]
-	return true, fact.FullText
+	return true, &fact
+}
+
+func (p *FactoidPlugin) trigger(message bot.Message) bool {
+	if len(message.Body) > 4 {
+		if ok, fact := p.findTrigger(message.Body); ok {
+			msg := p.Bot.Filter(message, fact.FullText)
+			if fact.Operator == "action" {
+				p.Bot.SendAction(message.Channel, msg)
+			} else {
+				p.Bot.SendMessage(message.Channel, msg)
+			}
+			return true
+		}
+	}
+
+	return false
 }
 
 // Message responds to the bot hook on recieving messages.
@@ -92,14 +122,7 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 	// This plugin has no business with normal messages
 	if !message.Command {
 		// look for any triggers in the db matching this message
-		if len(message.Body) > 4 {
-			if ok, fact := p.findTrigger(body); ok {
-				fact = p.Bot.Filter(message, fact)
-				p.Bot.SendMessage(message.Channel, fact)
-				return true
-			}
-		}
-		return false
+		return p.trigger(message)
 	}
 
 	action := p.findAction(body)
@@ -121,20 +144,21 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 
 		strippedaction := strings.Replace(strings.Replace(action, "<", "", 1), ">", "", 1)
 
-		p.learnFact(message, trigger, strippedaction, fact)
-		p.Bot.SendMessage(message.Channel, fmt.Sprintf("Okay, %s.", message.User.Name))
+		if p.learnFact(message, trigger, strippedaction, fact) {
+			p.Bot.SendMessage(message.Channel, fmt.Sprintf("Okay, %s.", message.User.Name))
+		} else {
+			p.Bot.SendMessage(message.Channel, "I already know that.")
+		}
 
 		return true
 	}
 
 	// look for any triggers in the db matching this message
-	if ok, fact := p.findTrigger(body); ok {
-		fact = p.Bot.Filter(message, fact)
-		p.Bot.SendMessage(message.Channel, fact)
+	if p.trigger(message) {
 		return true
 	}
 
-	p.Bot.SendMessage(message.Channel, "I don't know.")
+	p.Bot.SendMessage(message.Channel, p.NotFound[rand.Intn(len(p.NotFound))])
 	return true
 }
 
