@@ -11,6 +11,7 @@
 	"QuoteChance": 0.10,
 	"QuoteTime": 30,
 	"LogLength": 50,
+	"Admins": ["flyngpngn"],
 
 	"comment": "Follows is the old bot",
 

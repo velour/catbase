@@ -43,6 +43,7 @@ func main() {
 
 	b := bot.NewBot(config, c)
 	// b.AddHandler(plugins.NewTestPlugin(b))
+	b.AddHandler("admin", plugins.NewAdminPlugin(b))
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))

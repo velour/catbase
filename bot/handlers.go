@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	// "labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
+	"regexp"
 )
 import irc "github.com/fluffle/goirc/client"
 
@@ -27,10 +30,17 @@ func (b *Bot) checkuser(nick string) *User {
 		}
 	}
 	if user == nil {
+		isadmin := false
+		for _, u := range b.Config.Admins {
+			if nick == u {
+				isadmin = true
+			}
+		}
 		user = &User{
 			Name:       nick,
 			Alts:       make([]string, 1),
 			MessageLog: make([]string, 50),
+			Admin:      isadmin,
 		}
 		b.Users = append(b.Users, *user)
 	}
@@ -150,6 +160,8 @@ func (b *Bot) Filter(message Message, input string) string {
 		input = strings.Replace(input, "$NICK", nick, -1)
 	}
 
+	// Let's be bucket compatible for this var
+	strings.Replace(input, "$who", "$nick", -1)
 	if strings.Contains(input, "$nick") {
 		nick := message.User.Name
 		input = strings.Replace(input, "$nick", nick, -1)
@@ -168,6 +180,27 @@ func (b *Bot) Filter(message Message, input string) string {
 	for strings.Contains(input, "$nonzero") {
 		num := strconv.Itoa(rand.Intn(8) + 1)
 		input = strings.Replace(input, "$nonzero", num, 1)
+	}
+
+	r, err := regexp.Compile("\\$[A-z]+")
+	if err != nil {
+		panic(err)
+	}
+
+	varname := r.FindString(input)
+	blacklist := make(map[string]bool)
+	blacklist["$and"] = true
+	for len(varname) > 0 && !blacklist[varname] {
+		fmt.Printf("Trying to match '%s'\n", varname)
+		var result []Variable
+		b.varColl.Find(bson.M{"variable": varname}).All(&result)
+		if len(result) == 0 {
+			blacklist[varname] = true
+			continue
+		}
+		variable := result[rand.Intn(len(result))]
+		input = strings.Replace(input, varname, variable.Value, 1)
+		varname = r.FindString(input)
 	}
 
 	return input

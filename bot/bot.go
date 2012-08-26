@@ -24,6 +24,8 @@ type Bot struct {
 	DbSession *mgo.Session
 	Db        *mgo.Database
 
+	varColl *mgo.Collection
+
 	Version string
 }
 
@@ -40,6 +42,8 @@ type User struct {
 
 	// Last N messages sent to the user
 	MessageLog []string
+
+	Admin bool
 }
 
 type Message struct {
@@ -48,6 +52,10 @@ type Message struct {
 	Raw           string
 	Command       bool
 	Action        bool
+}
+
+type Variable struct {
+	Variable, Value string
 }
 
 // NewBot creates a Bot for a given connection and set of handlers.
@@ -67,6 +75,7 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 		Conn:           c,
 		DbSession:      session,
 		Db:             db,
+		varColl:        db.C("variables"),
 		Version:        config.Version,
 	}
 }

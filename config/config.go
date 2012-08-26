@@ -18,6 +18,7 @@ type Config struct {
 	QuoteChance        float64
 	QuoteTime          int
 	LogLength          int
+	Admins             []string
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
