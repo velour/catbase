@@ -130,7 +130,8 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 		return
 	}
 
-	for _, p := range b.Plugins {
+	for _, name := range b.PluginOrdering {
+		p := b.Plugins[name]
 		if p.Message(msg) {
 			break
 		}
@@ -163,7 +164,8 @@ func (b *Bot) Help(channel string, parts []string) {
 
 func (b *Bot) UserJoined(conn *irc.Conn, line *irc.Line) {
 	msg := b.buildMessage(conn, line)
-	for _, p := range b.Plugins {
+	for _, name := range b.PluginOrdering {
+		p := b.Plugins[name]
 		if p.Event(line.Cmd, msg) {
 			break
 		}

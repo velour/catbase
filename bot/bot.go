@@ -9,7 +9,8 @@ import "strings"
 type Bot struct {
 	// Each plugin must be registered in our plugins handler. To come: a map so that this
 	// will allow plugins to respond to specific kinds of events
-	Plugins map[string]Handler
+	Plugins        map[string]Handler
+	PluginOrdering []string
 
 	// Users holds information about all of our friends
 	Users []User
@@ -59,17 +60,19 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 	db := session.DB(config.DbName)
 
 	return &Bot{
-		Config:    config,
-		Plugins:   make(map[string]Handler),
-		Users:     make([]User, 1),
-		Conn:      c,
-		DbSession: session,
-		Db:        db,
-		Version:   config.Version,
+		Config:         config,
+		Plugins:        make(map[string]Handler),
+		PluginOrdering: make([]string, 0),
+		Users:          make([]User, 0),
+		Conn:           c,
+		DbSession:      session,
+		Db:             db,
+		Version:        config.Version,
 	}
 }
 
 // Adds a constructed handler to the bots handlers list
 func (b *Bot) AddHandler(name string, h Handler) {
 	b.Plugins[strings.ToLower(name)] = h
+	b.PluginOrdering = append(b.PluginOrdering, name)
 }
