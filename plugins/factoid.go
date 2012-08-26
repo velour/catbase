@@ -66,7 +66,7 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 
 func (p *FactoidPlugin) findTrigger(message string) (bool, string) {
 	var results []factoid
-	iter := p.Coll.Find(bson.M{"trigger": message}).Iter()
+	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
 	err := iter.All(&results)
 	if err != nil {
 		panic(err)
@@ -101,6 +101,7 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		}
 
 		trigger := strings.TrimSpace(parts[0])
+		trigger = strings.ToLower(trigger)
 		fact := strings.TrimSpace(parts[1])
 		action := strings.TrimSpace(action)
 
