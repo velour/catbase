@@ -165,7 +165,7 @@ func (b *Bot) Filter(message Message, input string) string {
 	}
 
 	// Let's be bucket compatible for this var
-	strings.Replace(input, "$who", "$nick", -1)
+	input = strings.Replace(input, "$who", "$nick", -1)
 	if strings.Contains(input, "$nick") {
 		nick := message.User.Name
 		input = strings.Replace(input, "$nick", nick, -1)
