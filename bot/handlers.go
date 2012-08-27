@@ -52,7 +52,7 @@ func (b *Bot) checkuser(nick string) *User {
 func (b *Bot) checkHelp(channel string, parts []string) {
 	if len(parts) == 1 {
 		// just print out a list of help topics
-		topics := "Help topics: about"
+		topics := "Help topics: about variables"
 		for name, _ := range b.Plugins {
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
@@ -61,6 +61,10 @@ func (b *Bot) checkHelp(channel string, parts []string) {
 		// trigger the proper plugin's help response
 		if parts[1] == "about" {
 			b.Help(channel, parts)
+			return
+		}
+		if parts[1] == "variables" {
+			b.listVars(channel, parts)
 			return
 		}
 		plugin := b.Plugins[parts[1]]
@@ -204,6 +208,19 @@ func (b *Bot) Filter(message Message, input string) string {
 	}
 
 	return input
+}
+
+func (b *Bot) listVars(channel string, parts []string) {
+	var result []string
+	err := b.varColl.Find(bson.M{}).Distinct("variable", &result)
+	if err != nil {
+		panic(err)
+	}
+	msg := "I know: $who, $someone, $digit, $nonzero"
+	for _, variable := range result {
+		msg = fmt.Sprintf("%s, %s", msg, variable)
+	}
+	b.SendMessage(channel, msg)
 }
 
 func (b *Bot) Help(channel string, parts []string) {

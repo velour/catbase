@@ -31,6 +31,7 @@ func NewAdminPlugin(bot *bot.Bot) *AdminPlugin {
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *AdminPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
+
 	if !message.User.Admin {
 		return false
 	}
