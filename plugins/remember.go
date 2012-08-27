@@ -74,9 +74,18 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
 
+				
+				var funcres bson.M
+				err := p.Bot.Db.Run(bson.M{"eval": "return counter(\"factoid\");"}, &funcres)
+				if err != nil {
+					panic(err)
+				}
+				id := int(funcres["retval"].(float64))
+
 				fact := Factoid{
+					Id: id,
 					Trigger:      trigger,
-					Operator:     "<reply>",
+					Operator:     "reply",
 					FullText:     msg,
 					Action:       msg,
 					CreatedBy:    user.Name,
