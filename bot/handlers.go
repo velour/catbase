@@ -195,7 +195,6 @@ func (b *Bot) Filter(message Message, input string) string {
 	blacklist := make(map[string]bool)
 	blacklist["$and"] = true
 	for len(varname) > 0 && !blacklist[varname] {
-		fmt.Printf("Trying to match '%s'\n", varname)
 		var result []Variable
 		b.varColl.Find(bson.M{"variable": varname}).All(&result)
 		if len(result) == 0 {

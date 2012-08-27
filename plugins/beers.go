@@ -179,7 +179,6 @@ func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
 		}
 	}
 	p.Bot.SendMessage(channel, msg)
-	fmt.Println("I should have reported a beer count!")
 }
 
 func (p *BeersPlugin) puke(user *bot.User, channel string) {
