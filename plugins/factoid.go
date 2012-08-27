@@ -14,18 +14,24 @@ import (
 // This is a factoid plugin to serve as an example and quick copy/paste for new plugins.
 
 // factoid stores info about our factoid for lookup and later interaction
-type factoid struct {
-	Id        int
-	Trigger   string
-	Operator  string
-	FullText  string
-	CreatedBy string
+type Factoid struct {
+	_id          bson.ObjectId `bson:"_id"`
+	Id           int
+	Trigger      string
+	Operator     string
+	FullText     string
+	Action       string
+	CreatedBy    string
+	DateCreated  time.Time
+	LastAccessed time.Time
+	AccessCount  int
 }
 
 type FactoidPlugin struct {
 	Bot      *bot.Bot
 	Coll     *mgo.Collection
 	NotFound []string
+	LastFact Factoid
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
@@ -43,6 +49,9 @@ func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
 		},
 	}
 	p.LoadData()
+	for _, channel := range bot.Config.Channels {
+		go p.factTimer(channel)
+	}
 	return p
 }
 
@@ -68,19 +77,28 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 		return false
 	}
 
-	newfact := factoid{
-		Id:        0,
+	var funcres bson.M
+	err := p.Bot.Db.Run(bson.M{"eval": "return counter(\"factoid\");"}, &funcres)
+	if err != nil {
+		panic(err)
+	}
+	id := int(funcres["retval"].(float64))
+
+	newfact := Factoid{
+		_id:       bson.NewObjectId(),
+		Id:        id,
 		Trigger:   trigger,
 		Operator:  operator,
 		FullText:  full,
+		Action:    fact,
 		CreatedBy: message.User.Name,
 	}
 	p.Coll.Insert(newfact)
 	return true
 }
 
-func (p *FactoidPlugin) findTrigger(message string) (bool, *factoid) {
-	var results []factoid
+func (p *FactoidPlugin) findTrigger(message string) (bool, *Factoid) {
+	var results []Factoid
 	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
 	err := iter.All(&results)
 	if err != nil {
@@ -96,22 +114,28 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, *factoid) {
 	return true, &fact
 }
 
-func (p *FactoidPlugin) trigger(message bot.Message) bool {
-	if len(message.Body) > 4 || message.Command {
-		if ok, fact := p.findTrigger(message.Body); ok {
-			msg := p.Bot.Filter(message, fact.FullText)
-			for i, m := 0, strings.Split(msg, "$and"); i < len(m) && i < 4; i++ {
-				msg := strings.TrimSpace(m[i])
-				if len(msg) == 0 {
-					continue
-				}
+func (p *FactoidPlugin) sayFact(message bot.Message, fact Factoid) {
+	msg := p.Bot.Filter(message, fact.FullText)
+	for i, m := 0, strings.Split(msg, "$and"); i < len(m) && i < 4; i++ {
+		msg := strings.TrimSpace(m[i])
+		if len(msg) == 0 {
+			continue
+		}
 
-				if fact.Operator == "action" {
-					p.Bot.SendAction(message.Channel, msg)
-				} else {
-					p.Bot.SendMessage(message.Channel, msg)
-				}
-			}
+		if fact.Operator == "action" {
+			p.Bot.SendAction(message.Channel, msg)
+		} else {
+			p.Bot.SendMessage(message.Channel, msg)
+		}
+	}
+
+	p.LastFact = fact
+}
+
+func (p *FactoidPlugin) trigger(message bot.Message) bool {
+	if len(message.Body) > 4 || message.Command || message.Body == "..." {
+		if ok, fact := p.findTrigger(message.Body); ok {
+			p.sayFact(message, *fact)
 			return true
 		}
 	}
@@ -125,6 +149,13 @@ func (p *FactoidPlugin) trigger(message bot.Message) bool {
 func (p *FactoidPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
 	body := strings.TrimSpace(message.Body)
+
+	if strings.ToLower(message.Body) == "what was that?" {
+		fact := p.LastFact
+		msg := fmt.Sprintf("That was (#%d) '%s <%s> %s'", fact.Id, fact.Trigger, fact.Operator, fact.Action)
+		p.Bot.SendMessage(message.Channel, msg)
+		return true
+	}
 
 	// This plugin has no business with normal messages
 	if !message.Command {
@@ -192,4 +223,41 @@ func (p *FactoidPlugin) Help(channel string, parts []string) {
 // Empty event handler because this plugin does not do anything on event recv
 func (p *FactoidPlugin) Event(kind string, message bot.Message) bool {
 	return false
+}
+
+func (p *FactoidPlugin) randomFact() *Factoid {
+	var results []Factoid
+	iter := p.Coll.Find(bson.M{}).Iter()
+	err := iter.All(&results)
+	if err != nil {
+		panic(err)
+	}
+
+	nfacts := len(results)
+	if nfacts == 0 {
+		return nil
+	}
+
+	fact := results[rand.Intn(nfacts)]
+	return &fact
+}
+
+func (p *FactoidPlugin) factTimer(channel string) {
+	for {
+		time.Sleep(time.Duration(p.Bot.Config.QuoteTime) * time.Minute)
+		chance := 1.0 / p.Bot.Config.QuoteChance
+		if rand.Intn(int(chance)) == 0 {
+			fact := p.randomFact()
+			if fact == nil {
+				continue
+			}
+
+			// we need to fabricate a message so that bot.Filter can operate
+			message := bot.Message{
+				User:    &p.Bot.Users[rand.Intn(len(p.Bot.Users))],
+				Channel: channel,
+			}
+			p.sayFact(message, *fact)
+		}
+	}
 }

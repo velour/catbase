@@ -12,12 +12,6 @@ import (
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 
-type userRemember struct {
-	Nick    string
-	Message string
-	Date    time.Time
-}
-
 type RememberPlugin struct {
 	Bot  *bot.Bot
 	Coll *mgo.Collection
@@ -31,9 +25,9 @@ func NewRememberPlugin(b *bot.Bot) *RememberPlugin {
 		Log: make(map[string][]bot.Message),
 	}
 	p.LoadData()
-	for _, channel := range b.Config.Channels {
-		go p.quoteTimer(channel)
-	}
+	// for _, channel := range b.Config.Channels {
+	// 	go p.quoteTimer(channel)
+	// }
 	return &p
 }
 
@@ -51,6 +45,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 		return true
 	}
 
+	user := message.User
 	parts := strings.Fields(message.Body)
 	if message.Command && len(parts) >= 3 && parts[0] == "remember" {
 		// we have a remember!
@@ -58,7 +53,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 		nick := parts[1]
 		snip := strings.Join(parts[2:], " ")
 
-		if nick == message.User.Name {
+		if nick == user.Name {
 			msg := fmt.Sprintf("Don't try to quote yourself, %s.", nick)
 			p.Bot.SendMessage(message.Channel, msg)
 			return true
@@ -66,8 +61,6 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.Log[message.Channel][i]
-			// find the entry we want
-			fmt.Printf("Comparing '%s' to '%s'\n", entry.Raw, snip)
 			if entry.User.Name == nick && strings.Contains(entry.Body, snip) {
 				// insert new remember entry
 				var msg string
@@ -78,12 +71,20 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				} else {
 					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Raw)
 				}
-				u := userRemember{
-					Nick:    entry.User.Name,
-					Message: msg,
-					Date:    time.Now(),
+
+				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
+
+				fact := Factoid{
+					Trigger:      trigger,
+					Operator:     "<reply>",
+					FullText:     msg,
+					Action:       msg,
+					CreatedBy:    user.Name,
+					DateCreated:  time.Now(),
+					LastAccessed: time.Now(),
+					AccessCount:  0,
 				}
-				p.Coll.Insert(u)
+				p.Coll.Insert(fact)
 
 				// sorry, not creative with names so we're reusing msg
 				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
@@ -103,7 +104,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.
 func (p *RememberPlugin) LoadData() {
-	p.Coll = p.Bot.Db.C("remember")
+	p.Coll = p.Bot.Db.C("factoid")
 	rand.Seed(time.Now().Unix())
 }
 
@@ -115,21 +116,18 @@ func (p *RememberPlugin) Help(channel string, parts []string) {
 	p.Bot.SendMessage(channel, msg)
 }
 
-func (p *RememberPlugin) record(nick, msg string) {
-	message := userRemember{
-		Nick:    nick,
-		Message: msg,
-		Date:    time.Now(),
-	}
-	p.Coll.Insert(message)
-}
-
 // deliver a random quote out of the db.
 // Note: this is the same cache for all channels joined. This plugin needs to be expanded
 // to have this function execute a quote for a particular channel
 func (p *RememberPlugin) randQuote() string {
-	var quotes []userRemember
-	iter := p.Coll.Find(bson.M{}).Iter()
+	var quotes []Factoid
+	// todo: find anything with the word "quotes" in the trigger
+	query := bson.M{
+		"trigger": bson.M{
+			"$regex": "quotes$",
+		},
+	}
+	iter := p.Coll.Find(query).Iter()
 	err := iter.All(&quotes)
 	if err != nil {
 		panic(iter.Err())
@@ -141,7 +139,7 @@ func (p *RememberPlugin) randQuote() string {
 		return "Sorry, I don't know any quotes."
 	}
 	quote := quotes[rand.Intn(nquotes)]
-	return quote.Message
+	return quote.FullText
 }
 
 func (p *RememberPlugin) quoteTimer(channel string) {
@@ -152,7 +150,6 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 		chance := 1.0 / p.Bot.Config.QuoteChance
 		if rand.Intn(int(chance)) == 0 {
 			msg := p.randQuote()
-			fmt.Println("Delivering quote.")
 			p.Bot.SendMessage(channel, msg)
 		}
 	}
