@@ -16,8 +16,8 @@ import (
 
 // factoid stores info about our factoid for lookup and later interaction
 type Factoid struct {
-	Id          bson.ObjectId `bson:"_id"`
-	Idx           int
+	Id           bson.ObjectId `bson:"_id"`
+	Idx          int
 	Trigger      string
 	Operator     string
 	FullText     string
@@ -25,6 +25,7 @@ type Factoid struct {
 	CreatedBy    string
 	DateCreated  time.Time
 	LastAccessed time.Time
+	Updated      time.Time
 	AccessCount  int
 }
 
@@ -34,7 +35,6 @@ type FactoidPlugin struct {
 	Coll     *mgo.Collection
 	NotFound []string
 	LastFact *Factoid
-	LastLearned *Factoid
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
@@ -78,7 +78,7 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 	}
 	trigger = strings.ToLower(trigger)
 
-	q := p.Coll.Find(bson.M{"trigger": trigger, "fulltext": full})
+	q := p.Coll.Find(bson.M{"trigger": trigger, "operator": operator, "fulltext": full})
 	if n, _ := q.Count(); n != 0 {
 		return false
 	}
@@ -91,8 +91,8 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 	id := int(funcres["retval"].(float64))
 
 	newfact := Factoid{
-		Id:       bson.NewObjectId(),
-		Idx:        id,
+		Id:        bson.NewObjectId(),
+		Idx:       id,
 		Trigger:   trigger,
 		Operator:  operator,
 		FullText:  full,
@@ -100,7 +100,7 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 		CreatedBy: message.User.Name,
 	}
 	p.Coll.Insert(newfact)
-	p.LastLearned = &newfact
+	p.LastFact = &newfact
 	fmt.Println(newfact.Id)
 	return true
 }
@@ -166,13 +166,19 @@ func (p *FactoidPlugin) trigger(message bot.Message) bool {
 
 // tellThemWhatThatWas is a hilarious name for a function.
 func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
-		fact := p.LastFact
-		msg := fmt.Sprintf("That was (#%d) '%s <%s> %s'", fact.Id, fact.Trigger, fact.Operator, fact.Action)
-		p.Bot.SendMessage(message.Channel, msg)
-		return true
+	fact := p.LastFact
+	var msg string
+	if fact == nil {
+		msg = "Nope."
+	} else {
+		msg = fmt.Sprintf("That was (#%d) '%s <%s> %s'",
+			fact.Idx, fact.Trigger, fact.Operator, fact.Action)
+	}
+	p.Bot.SendMessage(message.Channel, msg)
+	return true
 }
 
-func (p *FactoidPlugin) learnAction(message bot.Message, action string)  bool {
+func (p *FactoidPlugin) learnAction(message bot.Message, action string) bool {
 	body := message.Body
 
 	parts := strings.SplitN(body, action, 2)
@@ -208,24 +214,24 @@ func (p *FactoidPlugin) learnAction(message bot.Message, action string)  bool {
 
 // Checks body for the ~= operator
 func changeOperator(body string) bool {
-	return strings.Contains(body, "~=")
+	return strings.Contains(body, "=~")
 }
 
 // If the user requesting forget is either the owner of the last learned fact or
 // an admin, it may be deleted
 func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 	if p.LastFact == nil {
-		p.Bot.SendMessage(message.Channel, "I don't remember anything.")
+		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
 	}
 	if message.User.Admin || message.User.Name == p.LastFact.CreatedBy {
-		p.Bot.SendMessage(message.Channel, "Forgetting a fact")
 		err := p.Coll.Remove(bson.M{"_id": p.LastFact.Id})
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(p.LastFact.Id)
-		p.Bot.SendMessage(message.Channel, "I'll just look the other way.")
+		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.Idx, p.LastFact.Trigger,
+			p.LastFact.Operator, p.LastFact.Action)
+		p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
 		p.LastFact = nil
 	} else {
 		p.Bot.SendMessage(message.Channel, "You don't own that fact.")
@@ -236,7 +242,76 @@ func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 
 // Allow users to change facts with a simple regexp
 func (p *FactoidPlugin) changeFact(message bot.Message) bool {
-	p.Bot.SendMessage(message.Channel, "Okay, changing fact.")
+	parts := strings.SplitN(message.Body, "=~", 2)
+	userexp := strings.TrimSpace(parts[1])
+	trigger := strings.TrimSpace(parts[0])
+
+	parts = strings.Split(userexp, "/")
+	if len(parts) == 4 {
+		// replacement
+		if parts[0] != "s" {
+			p.Bot.SendMessage(message.Channel, "Nah.")
+		}
+		find := parts[1]
+		replace := parts[2]
+
+		// replacement
+		var result []Factoid
+		iter := p.Coll.Find(bson.M{"trigger": trigger})
+		if message.User.Admin && userexp[len(userexp)-1] == 'g' {
+			iter.All(&result)
+		} else {
+			result = make([]Factoid, 1)
+			iter.One(&result[0])
+		}
+		// make the changes
+		msg := fmt.Sprintf("Changing %d facts.", len(result))
+		p.Bot.SendMessage(message.Channel, msg)
+		reg, err := regexp.Compile(find)
+		if err != nil {
+			p.Bot.SendMessage(message.Channel, "I don't really want to.")
+			return false
+		}
+		for _, fact := range result {
+			fact.FullText = reg.ReplaceAllString(fact.FullText, replace)
+			fact.Trigger = reg.ReplaceAllString(fact.Trigger, replace)
+			fact.Trigger = strings.ToLower(fact.Trigger)
+			fact.Operator = reg.ReplaceAllString(fact.Operator, replace)
+			fact.Action = reg.ReplaceAllString(fact.Action, replace)
+			fact.AccessCount += 1
+			fact.LastAccessed = time.Now()
+			fact.Updated = time.Now()
+			p.Coll.UpdateId(fact.Id, fact)
+		}
+	} else if len(parts) == 3 {
+		// search for a factoid and print it
+		var result []Factoid
+		iter := p.Coll.Find(bson.M{"trigger": trigger,
+			"fulltext": bson.M{"$regex": parts[1]}})
+		count, _ := iter.Count()
+		if parts[2] == "g" {
+			// summarize
+			iter.Limit(4).All(&result)
+		} else {
+			result = make([]Factoid, 1)
+			iter.One(&result[0])
+			p.sayFact(message, result[0])
+			return true
+		}
+		msg := fmt.Sprintf("%s ", trigger)
+		for i, fact := range result {
+			if i != 0 {
+				msg = fmt.Sprintf("%s |", msg)
+			}
+			msg = fmt.Sprintf("%s %s %s", msg, fact.Operator, fact.Action)
+		}
+		if count > 4 {
+			msg = fmt.Sprintf("%s | ...and %d others", msg, count)
+		}
+		p.Bot.SendMessage(message.Channel, msg)
+	} else {
+		p.Bot.SendMessage(message.Channel, "I don't know what you mean.")
+	}
 	return true
 }
 
