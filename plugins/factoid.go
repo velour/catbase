@@ -15,8 +15,8 @@ import (
 
 // factoid stores info about our factoid for lookup and later interaction
 type Factoid struct {
-	_id          bson.ObjectId `bson:"_id"`
-	Id           int
+	Id          bson.ObjectId `bson:"_id"`
+	Idx           int
 	Trigger      string
 	Operator     string
 	FullText     string
@@ -85,8 +85,8 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 	id := int(funcres["retval"].(float64))
 
 	newfact := Factoid{
-		_id:       bson.NewObjectId(),
-		Id:        id,
+		Id:       bson.NewObjectId(),
+		Idx:        id,
 		Trigger:   trigger,
 		Operator:  operator,
 		FullText:  full,
@@ -129,6 +129,14 @@ func (p *FactoidPlugin) sayFact(message bot.Message, fact Factoid) {
 		}
 	}
 
+	// update fact tracking
+	fact.LastAccessed = time.Now()
+	fact.AccessCount += 1
+	err := p.Coll.UpdateId(fact.Id, fact)
+	if err != nil {
+		fmt.Printf("Could not update fact.\n")
+		fmt.Printf("%#v\n", fact)
+	}
 	p.LastFact = fact
 }
 

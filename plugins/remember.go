@@ -83,7 +83,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				id := int(funcres["retval"].(float64))
 
 				fact := Factoid{
-					Id: id,
+					Idx: id,
 					Trigger:      trigger,
 					Operator:     "reply",
 					FullText:     msg,
