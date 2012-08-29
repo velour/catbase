@@ -101,7 +101,6 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 	}
 	p.Coll.Insert(newfact)
 	p.LastFact = &newfact
-	fmt.Println(newfact.Id)
 	return true
 }
 
@@ -307,7 +306,7 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 			if i != 0 {
 				msg = fmt.Sprintf("%s |", msg)
 			}
-			msg = fmt.Sprintf("%s %s %s", msg, fact.Operator, fact.Action)
+			msg = fmt.Sprintf("%s <%s> %s", msg, fact.Operator, fact.Action)
 		}
 		if count > 4 {
 			msg = fmt.Sprintf("%s | ...and %d others", msg, count)
