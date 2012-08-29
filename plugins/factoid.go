@@ -11,7 +11,8 @@ import (
 	"time"
 )
 
-// This is a factoid plugin to serve as an example and quick copy/paste for new plugins.
+// The factoid plugin provides a learning system to the bot so that it can 
+// respond to queries in a way that is unpredictable and fun
 
 // factoid stores info about our factoid for lookup and later interaction
 type Factoid struct {
@@ -27,11 +28,13 @@ type Factoid struct {
 	AccessCount  int
 }
 
+// FactoidPlugin provides the necessary plugin-wide needs
 type FactoidPlugin struct {
 	Bot      *bot.Bot
 	Coll     *mgo.Collection
 	NotFound []string
-	LastFact Factoid
+	LastFact *Factoid
+	LastLearned *Factoid
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
@@ -55,7 +58,8 @@ func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
 	return p
 }
 
-func (p *FactoidPlugin) findAction(message string) string {
+// findAction simply regexes a string for the action verb
+func findAction(message string) string {
 	r, err := regexp.Compile("<.+?>| is | are ")
 	if err != nil {
 		panic(err)
@@ -64,6 +68,8 @@ func (p *FactoidPlugin) findAction(message string) string {
 	return action
 }
 
+// learnFact assumes we have a learning situation and inserts a new fact
+// into the database
 func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact string) bool {
 	// if it's an action, we only want the fact part of it in the fulltext
 	full := fact
@@ -94,9 +100,12 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 		CreatedBy: message.User.Name,
 	}
 	p.Coll.Insert(newfact)
+	p.LastLearned = &newfact
+	fmt.Println(newfact.Id)
 	return true
 }
 
+// findTrigger checks to see if a given string is a trigger or not
 func (p *FactoidPlugin) findTrigger(message string) (bool, *Factoid) {
 	var results []Factoid
 	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
@@ -114,6 +123,8 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, *Factoid) {
 	return true, &fact
 }
 
+// sayFact spits out a fact to the channel and updates the fact in the database
+// with new time and count information
 func (p *FactoidPlugin) sayFact(message bot.Message, fact Factoid) {
 	msg := p.Bot.Filter(message, fact.FullText)
 	for i, m := 0, strings.Split(msg, "$and"); i < len(m) && i < 4; i++ {
@@ -137,9 +148,11 @@ func (p *FactoidPlugin) sayFact(message bot.Message, fact Factoid) {
 		fmt.Printf("Could not update fact.\n")
 		fmt.Printf("%#v\n", fact)
 	}
-	p.LastFact = fact
+	p.LastFact = &fact
 }
 
+// trigger checks the message for its fitness to be a factoid and then hauls
+// the message off to sayFact for processing if it is in fact a trigger
 func (p *FactoidPlugin) trigger(message bot.Message) bool {
 	if len(message.Body) > 4 || message.Command || message.Body == "..." {
 		if ok, fact := p.findTrigger(message.Body); ok {
@@ -151,18 +164,88 @@ func (p *FactoidPlugin) trigger(message bot.Message) bool {
 	return false
 }
 
-// Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FactoidPlugin) Message(message bot.Message) bool {
-	// This bot does not reply to anything
-	body := strings.TrimSpace(message.Body)
-
-	if strings.ToLower(message.Body) == "what was that?" {
+// tellThemWhatThatWas is a hilarious name for a function.
+func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
 		fact := p.LastFact
 		msg := fmt.Sprintf("That was (#%d) '%s <%s> %s'", fact.Id, fact.Trigger, fact.Operator, fact.Action)
 		p.Bot.SendMessage(message.Channel, msg)
 		return true
+}
+
+func (p *FactoidPlugin) learnAction(message bot.Message, action string)  bool {
+	body := message.Body
+
+	parts := strings.SplitN(body, action, 2)
+	// This could fail if is were the last word or it weren't in the sentence (like no spaces)
+	if len(parts) != 2 {
+		return false
+	}
+
+	trigger := strings.TrimSpace(parts[0])
+	fact := strings.TrimSpace(parts[1])
+	action = strings.TrimSpace(action)
+
+	if len(trigger) == 0 || len(fact) == 0 || len(action) == 0 {
+		p.Bot.SendMessage(message.Channel, "I don't want to learn that.")
+		return true
+	}
+
+	if len(strings.Split(fact, "$and")) > 4 {
+		p.Bot.SendMessage(message.Channel, "You can't use more than 4 $and operators.")
+		return true
+	}
+
+	strippedaction := strings.Replace(strings.Replace(action, "<", "", 1), ">", "", 1)
+
+	if p.learnFact(message, trigger, strippedaction, fact) {
+		p.Bot.SendMessage(message.Channel, fmt.Sprintf("Okay, %s.", message.User.Name))
+	} else {
+		p.Bot.SendMessage(message.Channel, "I already know that.")
+	}
+
+	return true
+}
+
+// Checks body for the ~= operator
+func changeOperator(body string) bool {
+	return strings.Contains(body, "~=")
+}
+
+// If the user requesting forget is either the owner of the last learned fact or
+// an admin, it may be deleted
+func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
+	if p.LastFact == nil {
+		p.Bot.SendMessage(message.Channel, "I don't remember anything.")
+		return true
+	}
+	if message.User.Admin || message.User.Name == p.LastFact.CreatedBy {
+		p.Bot.SendMessage(message.Channel, "Forgetting a fact")
+		err := p.Coll.Remove(bson.M{"_id": p.LastFact.Id})
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(p.LastFact.Id)
+		p.Bot.SendMessage(message.Channel, "I'll just look the other way.")
+		p.LastFact = nil
+	} else {
+		p.Bot.SendMessage(message.Channel, "You don't own that fact.")
+	}
+
+	return true
+}
+
+// Allow users to change facts with a simple regexp
+func (p *FactoidPlugin) changeFact(message bot.Message) bool {
+	p.Bot.SendMessage(message.Channel, "Okay, changing fact.")
+	return true
+}
+
+// Message responds to the bot hook on recieving messages.
+// This function returns true if the plugin responds in a meaningful way to the users message.
+// Otherwise, the function returns false and the bot continues execution of other plugins.
+func (p *FactoidPlugin) Message(message bot.Message) bool {
+	if strings.ToLower(message.Body) == "what was that?" {
+		return p.tellThemWhatThatWas(message)
 	}
 
 	// This plugin has no business with normal messages
@@ -171,37 +254,17 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		return p.trigger(message)
 	}
 
-	action := p.findAction(body)
+	if message.Body == "forget that" {
+		return p.forgetLastFact(message)
+	}
+
+	if changeOperator(message.Body) {
+		return p.changeFact(message)
+	}
+
+	action := findAction(message.Body)
 	if action != "" {
-		parts := strings.SplitN(body, action, 2)
-		// This could fail if is were the last word or it weren't in the sentence (like no spaces)
-		if len(parts) != 2 {
-			return false
-		}
-
-		trigger := strings.TrimSpace(parts[0])
-		fact := strings.TrimSpace(parts[1])
-		action := strings.TrimSpace(action)
-
-		if len(trigger) == 0 || len(fact) == 0 || len(action) == 0 {
-			p.Bot.SendMessage(message.Channel, "I don't want to learn that.")
-			return true
-		}
-
-		if len(strings.Split(fact, "$and")) > 4 {
-			p.Bot.SendMessage(message.Channel, "You can't use more than 4 $and operators.")
-			return true
-		}
-
-		strippedaction := strings.Replace(strings.Replace(action, "<", "", 1), ">", "", 1)
-
-		if p.learnFact(message, trigger, strippedaction, fact) {
-			p.Bot.SendMessage(message.Channel, fmt.Sprintf("Okay, %s.", message.User.Name))
-		} else {
-			p.Bot.SendMessage(message.Channel, "I already know that.")
-		}
-
-		return true
+		return p.learnAction(message, action)
 	}
 
 	// look for any triggers in the db matching this message
@@ -209,6 +272,7 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		return true
 	}
 
+	// We didn't find anything, panic!
 	p.Bot.SendMessage(message.Channel, p.NotFound[rand.Intn(len(p.NotFound))])
 	return true
 }
@@ -217,7 +281,6 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.
 func (p *FactoidPlugin) LoadData() {
-	// This bot has no data to load
 	p.Coll = p.Bot.Db.C("factoid")
 	rand.Seed(time.Now().Unix())
 }
@@ -233,6 +296,7 @@ func (p *FactoidPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
 
+// Pull a fact at random from the database
 func (p *FactoidPlugin) randomFact() *Factoid {
 	var results []Factoid
 	iter := p.Coll.Find(bson.M{}).Iter()
@@ -250,6 +314,7 @@ func (p *FactoidPlugin) randomFact() *Factoid {
 	return &fact
 }
 
+// factTimer spits out a fact at a given interval and with given probability
 func (p *FactoidPlugin) factTimer(channel string) {
 	for {
 		time.Sleep(time.Duration(p.Bot.Config.QuoteTime) * time.Minute)
