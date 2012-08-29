@@ -263,6 +263,10 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 		} else {
 			result = make([]Factoid, 1)
 			iter.One(&result[0])
+			if result[0].CreatedBy != message.User.Name && !message.User.Admin {
+				p.Bot.SendMessage(message.Channel, "That's not your fact to edit.")
+				return true
+			}
 		}
 		// make the changes
 		msg := fmt.Sprintf("Changing %d facts.", len(result))
