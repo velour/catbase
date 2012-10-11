@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -133,8 +134,17 @@ func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
 		Raw:     message,
 		Command: iscmd,
 		Action:  isaction,
+		Time:    time.Now(),
 	}
 	return msg
+}
+
+func (b *Bot) LastMessage() (Message, error) {
+	log := <-b.logOut
+	if len(log) == 0 {
+		return Message{}, errors.New("No messages found.")
+	}
+	return log[len(log)-1], nil
 }
 
 // Handles incomming PRIVMSG requests
@@ -144,7 +154,7 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 	if strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
-		return
+		goto RET
 	}
 
 	for _, name := range b.PluginOrdering {
@@ -153,6 +163,10 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 			break
 		}
 	}
+
+RET:
+	b.logIn <- msg
+	return
 }
 
 // Take an input string and mutate it based on $vars in the string

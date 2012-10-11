@@ -1,9 +1,12 @@
 package bot
 
-import irc "github.com/fluffle/goirc/client"
-import "labix.org/v2/mgo"
-import "bitbucket.org/phlyingpenguin/godeepintir/config"
-import "strings"
+import (
+	"bitbucket.org/phlyingpenguin/godeepintir/config"
+	irc "github.com/fluffle/goirc/client"
+	"labix.org/v2/mgo"
+	"strings"
+	"time"
+)
 
 // Bot type provides storage for bot-wide information, configs, and database connections
 type Bot struct {
@@ -26,7 +29,45 @@ type Bot struct {
 
 	varColl *mgo.Collection
 
+	logIn  chan Message
+	logOut chan Messages
+
 	Version string
+}
+
+// Log provides a slice of messages in order
+type Log Messages
+type Messages []Message
+
+type Logger struct {
+	in      <-chan Message
+	out     chan<- Messages
+	entries Messages
+}
+
+func NewLogger(in chan Message, out chan Messages) *Logger {
+	return &Logger{in, out, make(Messages, 0)}
+}
+
+func RunNewLogger(in chan Message, out chan Messages) {
+	logger := NewLogger(in, out)
+	go logger.Run()
+}
+
+func (l *Logger) sendEntries() {
+	l.out <- l.entries
+}
+
+func (l *Logger) Run() {
+	var msg Message
+	for {
+		select {
+		case msg = <-l.in:
+			l.entries = append(l.entries, msg)
+		case l.out <- l.entries:
+			go l.sendEntries()
+		}
+	}
 }
 
 // User type stores user history. This is a vehicle that will follow the user for the active 
@@ -52,6 +93,7 @@ type Message struct {
 	Raw           string
 	Command       bool
 	Action        bool
+	Time          time.Time
 }
 
 type Variable struct {
@@ -67,6 +109,11 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 
 	db := session.DB(config.DbName)
 
+	logIn := make(chan Message)
+	logOut := make(chan Messages)
+
+	RunNewLogger(logIn, logOut)
+
 	return &Bot{
 		Config:         config,
 		Plugins:        make(map[string]Handler),
@@ -76,6 +123,8 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 		DbSession:      session,
 		Db:             db,
 		varColl:        db.C("variables"),
+		logIn:          logIn,
+		logOut:         logOut,
 		Version:        config.Version,
 	}
 }

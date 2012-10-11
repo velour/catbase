@@ -8,8 +8,8 @@
 	"Nick": "AlePaleTest",
 	"Pass": "AlePaleTest:test",
 	"CommandChar": "!",
-	"QuoteChance": 0.10,
-	"QuoteTime": 30,
+	"QuoteChance": 0.75,
+	"QuoteTime": 20,
 	"LogLength": 50,
 	"Admins": ["flyngpngn1"],
 
