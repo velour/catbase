@@ -60,7 +60,7 @@ func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
 
 // findAction simply regexes a string for the action verb
 func findAction(message string) string {
-	r, err := regexp.Compile("<.+?>| is | are ")
+	r, err := regexp.Compile("<.+?>")
 	if err != nil {
 		panic(err)
 	}
