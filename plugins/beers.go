@@ -3,6 +3,7 @@ package plugins
 import (
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"labix.org/v2/mgo"
@@ -143,7 +144,8 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			ChanNick:    message.User.Name,
 		}
 
-		p.Coll.Upsert(bson.M{"untappduser": parts[1]}, u)
+		p.getUntappdCheckins(u)
+
 		p.Bot.SendMessage(channel, "I'll be watching you.")
 		return true
 	}
@@ -251,9 +253,62 @@ type Beers struct {
 }
 
 type untappdUser struct {
-	UntappdUser string
-	LastCheckin int
-	ChanNick    string
+	UntappdUser   string
+	LastCheckin   int
+	ChanNick      string
+	KnownCheckins [5]int
+}
+
+func (p *BeersPlugin) pullUntappd(user untappdUser) (Beers, error) {
+	access_token := "?access_token=" + p.Bot.Config.UntappdToken
+	baseUrl := "http://api.untappd.com/v4/user/checkins/"
+
+	url := baseUrl + user.UntappdUser + access_token + "&limit=5"
+	log.Println("Request:", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode == 500 {
+		return Beers{}, errors.New(resp.Status)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println(string(body))
+
+	var beers Beers
+	err = json.Unmarshal(body, &beers)
+	if err != nil {
+		log.Println(user, err)
+		return Beers{}, errors.New("Unable to parse JSON")
+	}
+	return beers, nil
+}
+
+func (p *BeersPlugin) getUntappdCheckins(user untappdUser) ([]checkin, error) {
+	beers, err := p.pullUntappd(user)
+	if err != nil {
+		return nil, err
+	}
+
+	var output []checkin
+	chks := beers.Response.Checkins.Items
+
+	for _, chk := range chks {
+		if chk.Checkin_id > user.LastCheckin {
+			output = append(output, chk)
+		}
+	}
+
+	if len(chks) > 0 {
+		user.LastCheckin = chks[0].Checkin_id
+		p.Coll.Upsert(bson.M{"untappduser": user.UntappdUser}, user)
+	}
+
+	return output, nil
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
@@ -262,59 +317,23 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		return
 	}
 
-	access_token := "?access_token=" + p.Bot.Config.UntappdToken
-	baseUrl := "http://api.untappd.com/v4/user/checkins/"
 	frequency := p.Bot.Config.UntappdFreq
 
 	// users := []string{"Tir"}
 
 	for {
-
 		var users []untappdUser
 		p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}}).All(&users)
 
 		log.Println("Found ", len(users), " untappd users")
 
 		for _, user := range users {
-
-			url := baseUrl + user.UntappdUser + access_token
-			if user.LastCheckin > 0 {
-				url = url + "?offset=" + strconv.Itoa(user.LastCheckin)
-			}
-
-			resp, err := http.Get(url)
+			chks, err := p.getUntappdCheckins(user)
 			if err != nil {
-				panic(err)
-			}
-			fmt.Println("User: ", user)
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				panic(err)
-			}
-			// fmt.Println(string(body))
-
-			var beers Beers
-			err = json.Unmarshal(body, &beers)
-			if err != nil {
-				log.Println(user, err)
 				continue
 			}
 
-			log.Printf("%+v\n\n%+v\n", resp, string(body))
-
-			// fmt.Println(beers.Response)
-
-			checkins := beers.Response.Checkins.Items
-			// count := beers.Response.Checkins.Count
-
-			// fmt.Println("Tir has ", count, " checkins:")
-
-			if len(checkins) > 0 {
-				user.LastCheckin = checkins[0].Checkin_id
-				p.Coll.Upsert(bson.M{"untappduser": user.UntappdUser}, user)
-			}
-
-			for _, checkin := range checkins {
+			for _, checkin := range chks {
 				venue := ""
 				switch v := checkin.Venue.(type) {
 				case map[string]interface{}:
