@@ -2,10 +2,14 @@ package plugins
 
 import (
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +28,9 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 		Bot: bot,
 	}
 	p.LoadData()
+	for _, channel := range bot.Config.Channels {
+		go p.checkUntappd(channel)
+	}
 	return &p
 }
 
@@ -87,13 +94,13 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 				p.Bot.SendMessage(channel, msg)
 			}
 			if parts[1] == "+=" {
-				p.setBeers(user, p.getBeers(nick)+count)
+				p.setBeers(nick, p.getBeers(nick)+count)
 				p.randomReply(channel)
 			} else if parts[1] == "=" {
 				if count == 0 {
-					p.puke(user, channel)
+					p.puke(nick, channel)
 				} else {
-					p.setBeers(user, count)
+					p.setBeers(nick, count)
 					p.randomReply(channel)
 				}
 			} else {
@@ -113,17 +120,36 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		// no matter what, if we're in here, then we've responded
 		return true
 	} else if parts[0] == "beers++" {
-		p.addBeers(user)
+		p.addBeers(nick)
 		p.randomReply(channel)
 		return true
 	} else if parts[0] == "puke" {
-		p.puke(user, channel)
+		p.puke(nick, channel)
 		return true
 	}
 
 	if message.Command && parts[0] == "imbibe" {
-		p.addBeers(user)
+		p.addBeers(nick)
 		p.randomReply(channel)
+		return true
+	}
+
+	if message.Command && parts[0] == "reguntappd" {
+		if len(parts) < 2 {
+			p.Bot.SendMessage(channel, "You must also provide a user name.")
+		}
+		u := untappdUser{
+			UntappdUser: parts[1],
+			ChanNick:    message.User.Name,
+		}
+
+		p.Coll.Upsert(bson.M{"untappduser": parts[1]}, u)
+		p.Bot.SendMessage(channel, "I'll be watching you.")
+		return true
+	}
+
+	if message.Command && parts[0] == "checkuntappd" {
+		p.checkUntappd(channel)
 		return true
 	}
 
@@ -151,15 +177,15 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 	p.Bot.SendMessage(channel, msg)
 }
 
-func (p *BeersPlugin) setBeers(user *bot.User, amount int) {
-	ub := getUserBeers(p.Coll, user.Name)
+func (p *BeersPlugin) setBeers(user string, amount int) {
+	ub := getUserBeers(p.Coll, user)
 	ub.Beercount = amount
 	ub.Lastdrunk = time.Now()
 	ub.Save(p.Coll)
 }
 
-func (p *BeersPlugin) addBeers(user *bot.User) {
-	p.setBeers(user, p.getBeers(user.Name)+1)
+func (p *BeersPlugin) addBeers(user string) {
+	p.setBeers(user, p.getBeers(user)+1)
 }
 
 func (p *BeersPlugin) getBeers(nick string) int {
@@ -181,9 +207,9 @@ func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
 	p.Bot.SendMessage(channel, msg)
 }
 
-func (p *BeersPlugin) puke(user *bot.User, channel string) {
+func (p *BeersPlugin) puke(user string, channel string) {
 	p.setBeers(user, 0)
-	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user.Name)
+	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user)
 	p.Bot.SendMessage(channel, msg)
 }
 
@@ -199,4 +225,115 @@ func (p *BeersPlugin) doIKnow(nick string) bool {
 func (p *BeersPlugin) randomReply(channel string) {
 	replies := []string{"ZIGGY! ZAGGY!", "HIC!", "Stay thirsty, my friend!"}
 	p.Bot.SendMessage(channel, replies[rand.Intn(len(replies))])
+}
+
+type checkin struct {
+	Checkin_id      int
+	Created_at      string
+	Checkin_comment string
+	Rating_score    int
+	Beer            map[string]interface{}
+	Brewery         map[string]interface{}
+	Venue           interface{}
+}
+
+type checkins struct {
+	Count int
+	Items []checkin
+}
+
+type resp struct {
+	Checkins checkins
+}
+
+type Beers struct {
+	Response resp
+}
+
+type untappdUser struct {
+	UntappdUser string
+	LastCheckin int
+	ChanNick    string
+}
+
+func (p *BeersPlugin) checkUntappd(channel string) {
+	if p.Bot.Config.UntappdToken == "<Your Token>" {
+		log.Println("No Untappd token, cannot enable plugin.")
+		return
+	}
+
+	access_token := "?access_token=" + p.Bot.Config.UntappdToken
+	baseUrl := "http://api.untappd.com/v4/user/checkins/"
+	frequency := p.Bot.Config.UntappdFreq
+
+	// users := []string{"Tir"}
+
+	for {
+
+		var users []untappdUser
+		p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}}).All(&users)
+
+		log.Println("Found ", len(users), " untappd users")
+
+		for _, user := range users {
+
+			url := baseUrl + user.UntappdUser + access_token
+			if user.LastCheckin > 0 {
+				url = url + "?offset=" + strconv.Itoa(user.LastCheckin)
+			}
+
+			resp, err := http.Get(url)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println("User: ", user)
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				panic(err)
+			}
+			// fmt.Println(string(body))
+
+			var beers Beers
+			err = json.Unmarshal(body, &beers)
+			if err != nil {
+				log.Println(user, err)
+				continue
+			}
+
+			log.Printf("%+v\n\n%+v\n", resp, string(body))
+
+			// fmt.Println(beers.Response)
+
+			checkins := beers.Response.Checkins.Items
+			// count := beers.Response.Checkins.Count
+
+			// fmt.Println("Tir has ", count, " checkins:")
+
+			if len(checkins) > 0 {
+				user.LastCheckin = checkins[0].Checkin_id
+				p.Coll.Upsert(bson.M{"untappduser": user.UntappdUser}, user)
+			}
+
+			for _, checkin := range checkins {
+				venue := ""
+				switch v := checkin.Venue.(type) {
+				case map[string]interface{}:
+					venue = " at " + v["venue_name"].(string)
+
+				}
+				beerName := checkin.Beer["beer_name"].(string)
+				breweryName := checkin.Brewery["brewery_name"].(string)
+				p.addBeers(user.ChanNick)
+				drunken := p.getBeers(user.ChanNick)
+
+				msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
+					user.ChanNick, beerName, breweryName, venue, drunken)
+
+				fmt.Println(msg)
+				p.Bot.SendMessage(channel, msg)
+			}
+		}
+
+		time.Sleep(time.Duration(frequency) * time.Second)
+	}
 }

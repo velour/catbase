@@ -5,13 +5,16 @@
 	"MainChannel": "#AlePaleTest",
 	"Plugins": [],
 	"Server": "127.0.0.1:6666",
-	"Nick": "AlePaleTest",
-	"Pass": "AlePaleTest:test",
+	"Nick": "alepaletest",
+	"Pass": "alepaletest:test",
 	"CommandChar": "!",
-	"QuoteChance": 0.75,
-	"QuoteTime": 20,
+	"QuoteChance": 0.99,
+	"QuoteTime": 1,
 	"LogLength": 50,
 	"Admins": ["flyngpngn1"],
+
+	"UntappdToken": "<Your Token>",
+	"UntappdFreq": 3600,
 
 	"comment": "Follows is the old bot",
 

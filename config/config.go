@@ -19,6 +19,8 @@ type Config struct {
 	QuoteTime          int
 	LogLength          int
 	Admins             []string
+	UntappdToken       string
+	UntappdFreq        int
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
