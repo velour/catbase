@@ -322,6 +322,8 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 	// users := []string{"Tir"}
 
 	for {
+		time.Sleep(time.Duration(frequency) * time.Second)
+
 		var users []untappdUser
 		p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}}).All(&users)
 
@@ -352,7 +354,5 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 				p.Bot.SendMessage(channel, msg)
 			}
 		}
-
-		time.Sleep(time.Duration(frequency) * time.Second)
 	}
 }
