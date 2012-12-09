@@ -125,8 +125,8 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		p.randomReply(channel)
 		return true
 	} else if parts[0] == "bourbon++" {
-		p.addBeers(user)
-		p.addBeers(user)
+		p.addBeers(nick)
+		p.addBeers(nick)
 		p.randomReply(channel)
 		return true
 	} else if parts[0] == "puke" {
