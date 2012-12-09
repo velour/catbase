@@ -349,6 +349,10 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 
 				msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
 					user.ChanNick, beerName, breweryName, venue, drunken)
+				if checkin.Checkin_comment != "" {
+					msg = fmt.Sprintf("%s -- %s",
+						msg, checkin.Checkin_comment)
+				}
 
 				fmt.Println(msg)
 				p.Bot.SendMessage(channel, msg)
