@@ -58,6 +58,7 @@ func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
 		sayings := []string{
 			"Real men use screen, %s.",
 			"Joins upset the hivemind's OCD, %s.",
+			"Joins upset the hivemind's CDO, %s.",
 		}
 		msg := fmt.Sprintf(sayings[rand.Intn(len(sayings))], message.User.Name)
 		p.Bot.SendMessage(message.Channel, msg)
