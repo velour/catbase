@@ -159,7 +159,7 @@ func (p *FactoidPlugin) trigger(message bot.Message) bool {
 			return true
 		}
 		r := strings.NewReplacer("'", "", "\"", "", ",", "", ".", "", ":", "",
-			"?", "")
+			"?", "", "!", "")
 		if ok, fact := p.findTrigger(r.Replace(message.Body)); ok {
 			p.sayFact(message, *fact)
 			return true
