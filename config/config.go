@@ -21,6 +21,7 @@ type Config struct {
 	Admins             []string
 	UntappdToken       string
 	UntappdFreq        int
+	WelcomeMsgs        []string
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

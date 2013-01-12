@@ -18,6 +18,12 @@
 
 	"comment": "Follows is the old bot",
 
+	"WelcomeMsgs": [
+			"Real men use screen, %s.",
+			"Joins upset the hivemind's OCD, %s.",
+			"Joins upset the hivemind's CDO, %s.",
+	],
+
 	"bot": {
 		"dbname":	"deepintir",
 		"inchan": 	"out",
