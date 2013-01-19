@@ -238,10 +238,10 @@ type checkin struct {
 	Checkin_id      int
 	Created_at      string
 	Checkin_comment string
-	Rating_score    int
-	Beer            map[string]interface{}
-	Brewery         map[string]interface{}
-	Venue           interface{}
+	// Rating_score    int // Apparently Untappd makes this a string when not present. :(
+	Beer    map[string]interface{}
+	Brewery map[string]interface{}
+	Venue   interface{}
 }
 
 type checkins struct {
