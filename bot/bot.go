@@ -114,6 +114,8 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 
 	RunNewLogger(logIn, logOut)
 
+	config.Nick = c.Me.Name
+
 	return &Bot{
 		Config:         config,
 		Plugins:        make(map[string]Handler),

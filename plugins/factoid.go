@@ -338,7 +338,7 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		return p.trigger(message)
 	}
 
-	if message.Body == "forget that" {
+	if strings.ToLower(message.Body) == "forget that" {
 		return p.forgetLastFact(message)
 	}
 
