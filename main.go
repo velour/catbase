@@ -45,6 +45,7 @@ func main() {
 	// b.AddHandler(plugins.NewTestPlugin(b))
 	b.AddHandler("admin", plugins.NewAdminPlugin(b))
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
+	b.AddHandler("dice", plugins.NewDicePlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))
 	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))

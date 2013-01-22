@@ -6,7 +6,7 @@
 	"Plugins": [],
 	"Server": "127.0.0.1:6666",
 	"Nick": "alepaletest",
-	"Pass": "alepaletest:test",
+	"Pass": "AlePaleTest:test",
 	"CommandChar": "!",
 	"QuoteChance": 0.99,
 	"QuoteTime": 1,
@@ -16,14 +16,14 @@
 	"UntappdToken": "<Your Token>",
 	"UntappdFreq": 3600,
 
-	"comment": "Follows is the old bot",
-
 	"WelcomeMsgs": [
 			"Real men use screen, %s.",
 			"Joins upset the hivemind's OCD, %s.",
 			"Joins upset the hivemind's CDO, %s.",
 			"%s, I WILL CUT YOU!"
 	],
+
+	"comment": "Follows is the old bot",
 
 	"bot": {
 		"dbname":	"deepintir",

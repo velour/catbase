@@ -81,8 +81,9 @@ func (b *Bot) checkHelp(channel string, parts []string) {
 // Checks if message is a command and returns its curtailed version
 func (b *Bot) isCmd(message string) (bool, string) {
 	cmdc := b.Config.CommandChar
-	botnick := b.Conn.Me.Nick
+	botnick := strings.ToLower(b.Conn.Me.Nick)
 	iscmd := false
+	message = strings.ToLower(message)
 
 	if strings.HasPrefix(message, cmdc) && len(cmdc) > 0 {
 		iscmd = true
