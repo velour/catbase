@@ -4,7 +4,6 @@ import "bitbucket.org/phlyingpenguin/godeepintir/bot"
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -35,7 +34,6 @@ func (p *DicePlugin) Message(message bot.Message) bool {
 	channel := message.Channel
 	parts := strings.Fields(message.Body)
 
-	log.Println(len(parts), parts, message.Command)
 	if (len(parts) == 2 || len(parts) == 1) && message.Command {
 		var dice []string
 		if len(parts) == 1 {
@@ -45,13 +43,11 @@ func (p *DicePlugin) Message(message bot.Message) bool {
 			dice = strings.Split(parts[1], "d")
 		}
 
-		log.Println(dice)
-
 		if len(dice) == 2 {
 			// We actually have a die roll.
 			nDice, _ := strconv.Atoi(dice[0])
 			sides, _ := strconv.Atoi(dice[1])
-			rolls := "You rolled: "
+			rolls := fmt.Sprintf("%s, you rolled: ", message.User.Name)
 
 			for i := 0; i < nDice; i++ {
 				rolls = fmt.Sprintf("%s %d", rolls, rollDie(sides))
