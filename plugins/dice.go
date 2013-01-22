@@ -46,12 +46,16 @@ func (p *DicePlugin) Message(message bot.Message) bool {
 		if len(dice) == 2 {
 			// We actually have a die roll.
 			nDice, err := strconv.Atoi(dice[0])
-			if err != nil || nDice < 1 || nDice > 20 {
-				p.Bot.SendMessage(channel, "You're a dick.")
-				return true
+			if err != nil {
+				return false
 			}
+
 			sides, err := strconv.Atoi(dice[1])
-			if err != nil || sides < 2 {
+			if err != nil {
+				return false
+			}
+
+			if sides < 2 || nDice < 1 || nDice > 20 {
 				p.Bot.SendMessage(channel, "You're a dick.")
 				return true
 			}
