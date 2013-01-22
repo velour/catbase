@@ -43,20 +43,19 @@ func (p *DicePlugin) Message(message bot.Message) bool {
 			dice = strings.Split(parts[1], "d")
 		}
 
-		if dice < 1 || sides < 2 {
-			p.Bot.SendMessage(channel, "You're a dick.")
-		}
-
 		if len(dice) == 2 {
 			// We actually have a die roll.
 			nDice, err := strconv.Atoi(dice[0])
-			if err != nil {
-				return false
+			if err != nil || nDice < 1 {
+				p.Bot.SendMessage(channel, "You're a dick.")
+				return true
 			}
 			sides, err := strconv.Atoi(dice[1])
-			if err != nil {
-				return false
+			if err != nil || sides < 2 {
+				p.Bot.SendMessage(channel, "You're a dick.")
+				return true
 			}
+
 			rolls := fmt.Sprintf("%s, you rolled: ", message.User.Name)
 
 			for i := 0; i < nDice; i++ {
