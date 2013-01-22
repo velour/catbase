@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// The factoid plugin provides a learning system to the bot so that it can 
+// The factoid plugin provides a learning system to the bot so that it can
 // respond to queries in a way that is unpredictable and fun
 
 // factoid stores info about our factoid for lookup and later interaction

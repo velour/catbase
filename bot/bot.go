@@ -70,7 +70,7 @@ func (l *Logger) Run() {
 	}
 }
 
-// User type stores user history. This is a vehicle that will follow the user for the active 
+// User type stores user history. This is a vehicle that will follow the user for the active
 // session
 type User struct {
 	// Current nickname known

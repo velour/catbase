@@ -121,7 +121,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		// no matter what, if we're in here, then we've responded
 		return true
 	} else if parts[0] == "beers--" {
-		p.setBeers(user, p.getBeers(user)-1)
+		p.setBeers(nick, p.getBeers(nick)-1)
 		p.Bot.SendAction(channel, "flushes")
 		return true
 	} else if parts[0] == "beers++" {
