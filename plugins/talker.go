@@ -54,7 +54,7 @@ func (p *TalkerPlugin) Help(channel string, parts []string) {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
-	if kind == "JOIN" && message.User.Name != p.Bot.Config.Nick {
+	if kind == "JOIN" && strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config.Nick) {
 		sayings := p.Bot.Config.WelcomeMsgs
 		msg := fmt.Sprintf(sayings[rand.Intn(len(sayings))], message.User.Name)
 		p.Bot.SendMessage(message.Channel, msg)
