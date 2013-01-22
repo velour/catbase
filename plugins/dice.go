@@ -38,7 +38,6 @@ func (p *DicePlugin) Message(message bot.Message) bool {
 		var dice []string
 		if len(parts) == 1 {
 			dice = strings.Split(parts[0], "d")
-			fmt.Println()
 		} else {
 			dice = strings.Split(parts[1], "d")
 		}
