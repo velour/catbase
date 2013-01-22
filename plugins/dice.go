@@ -45,8 +45,14 @@ func (p *DicePlugin) Message(message bot.Message) bool {
 
 		if len(dice) == 2 {
 			// We actually have a die roll.
-			nDice, _ := strconv.Atoi(dice[0])
-			sides, _ := strconv.Atoi(dice[1])
+			nDice, err := strconv.Atoi(dice[0])
+			if err != nil {
+				return false
+			}
+			sides, err := strconv.Atoi(dice[1])
+			if err != nil {
+				return false
+			}
 			rolls := fmt.Sprintf("%s, you rolled: ", message.User.Name)
 
 			for i := 0; i < nDice; i++ {
