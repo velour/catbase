@@ -55,6 +55,12 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		// pull all of the items associated with "subject"
 		var items []Item
 		p.Coll.Find(bson.M{"nick": subject}).All(&items)
+
+		if len(items) == 0 {
+			p.Bot.SendMessage(channel, fmt.Sprintf("%s has no counters.", subject))
+			return true
+		}
+
 		resp := fmt.Sprintf("%s has the following counters:", subject)
 		for i, item := range items {
 			if i != 0 {
