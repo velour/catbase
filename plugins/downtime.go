@@ -7,6 +7,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
+	"sort"
 	"strings"
 	"time"
 )
@@ -21,6 +22,20 @@ type DowntimePlugin struct {
 type idleEntry struct {
 	Nick     string
 	LastSeen time.Time
+}
+
+type idleEntries []*idleEntry
+
+func (ie idleEntries) Len() int {
+	return len(ie)
+}
+
+func (ie idleEntries) Less(i, j int) bool {
+	return ie[i].LastSeen.After(ie[j].LastSeen)
+}
+
+func (ie idleEntries) Swap(i, j int) {
+	ie[i], ie[j] = ie[j], ie[i]
 }
 
 // NewDowntimePlugin creates a new DowntimePlugin with the Plugin interface
@@ -55,6 +70,12 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 				nick, time.Now().Sub(entry.LastSeen)))
 		}
 		ret = true
+	} else if parts[0] == "idle" && len(parts) == 1 {
+		// Find all idle times, report them.
+		var entries idleEntries
+		p.Coll.Find(nil).All(entries)
+		sort.Sort(entries)
+		fmt.Printf("%+v\n", entries)
 	}
 
 	p.record(strings.ToLower(message.User.Name))
@@ -76,7 +97,6 @@ func (p *DowntimePlugin) record(user string) {
 		// Update their entry, they were baaaaaad
 		entry.LastSeen = time.Now()
 		p.Coll.Upsert(bson.M{"nick": entry.Nick}, entry)
-		log.Println("Updated downtime for:", user)
 	}
 }
 
@@ -110,6 +130,9 @@ func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 		}
 	} else if kind == "PART" {
 		p.remove(strings.ToLower(message.User.Name))
+	} else {
+		log.Println("Unknown event: ", message)
+		p.record(strings.ToLower(message.User.Name))
 	}
 	return false
 }

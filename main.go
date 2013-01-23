@@ -73,6 +73,10 @@ func main() {
 		b.ActionRecieved(conn, line)
 	})
 
+	c.AddHandler("ACTION", func(conn *irc.Conn, line *irc.Line) {
+		b.MsgRecieved(conn, line)
+	})
+
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
 		b.MsgRecieved(conn, line)
 	})
