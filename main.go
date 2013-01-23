@@ -48,6 +48,7 @@ func main() {
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("dice", plugins.NewDicePlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
+	b.AddHandler("counter", plugins.NewCounterPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))
 	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 	// catches anything left, will always return true
