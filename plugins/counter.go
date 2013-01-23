@@ -43,7 +43,44 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		return false
 	}
 
-	if message.Command && parts[0] == "count" {
+	if message.Command && parts[0] == "inspect" && len(parts) == 2 {
+		var subject string
+
+		if parts[1] == "me" {
+			subject = strings.ToLower(nick)
+		} else {
+			subject = parts[1]
+		}
+
+		// pull all of the items associated with "subject"
+		var items []Item
+		p.Coll.Find(bson.M{"nick": subject}).All(&items)
+		resp := fmt.Sprintf("%s has the following counters:", subject)
+		for i, item := range items {
+			if i != 0 {
+				resp = fmt.Sprintf("%s,", resp)
+			}
+			resp = fmt.Sprintf("%s %s: %d", resp, item.Item, item.Count)
+			if i > 20 {
+				fmt.Sprintf("%s, and a few others", resp)
+				break
+			}
+		}
+		resp = fmt.Sprintf("%s.", resp)
+
+		p.Bot.SendMessage(channel, resp)
+		return true
+	} else if message.Command && len(parts) == 2 && parts[0] == "clear" {
+		subject := strings.ToLower(nick)
+		itemName := strings.ToLower(parts[1])
+
+		p.Coll.Remove(bson.M{"nick": subject, "item": itemName})
+
+		p.Bot.SendAction(channel, fmt.Sprintf("chops a few %s out of his brain", itemName))
+
+		return true
+
+	} else if message.Command && parts[0] == "count" {
 		var subject string
 		var itemName string
 
