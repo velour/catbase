@@ -120,6 +120,7 @@ func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
 	if len(line.Args) > 1 {
 		message = line.Args[1]
 	}
+
 	iscmd := false
 	filteredMessage := message
 	if !isaction {
@@ -244,7 +245,7 @@ func (b *Bot) Help(channel string, parts []string) {
 	b.SendMessage(channel, msg)
 }
 
-func (b *Bot) UserJoined(conn *irc.Conn, line *irc.Line) {
+func (b *Bot) ActionRecieved(conn *irc.Conn, line *irc.Line) {
 	msg := b.buildMessage(conn, line)
 	for _, name := range b.PluginOrdering {
 		p := b.Plugins[name]

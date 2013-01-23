@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"strings"
 	"time"
 )
@@ -70,12 +71,18 @@ func (p *DowntimePlugin) record(user string) {
 			Nick:     user,
 			LastSeen: time.Now(),
 		})
+		log.Println("Inserted downtime for:", user)
 	} else {
 		// Update their entry, they were baaaaaad
 		entry.LastSeen = time.Now()
 		p.Coll.Upsert(bson.M{"nick": entry.Nick}, entry)
-
+		log.Println("Updated downtime for:", user)
 	}
+}
+
+func (p *DowntimePlugin) remove(user string) {
+	p.Coll.RemoveAll(bson.M{"nick": user})
+	log.Println("Removed downtime for:", user)
 }
 
 // LoadData imports any configuration data into the plugin. This is not strictly necessary other
@@ -92,9 +99,17 @@ func (p *DowntimePlugin) Help(channel string, parts []string) {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
-	if kind == "JOIN" && message.User.Name != p.Bot.Config.Nick {
+	log.Println(kind, "\t", message)
+	if kind != "PART" && message.User.Name != p.Bot.Config.Nick {
 		// user joined, let's nail them for it
-		p.record(strings.ToLower(message.User.Name))
+		if kind == "NICK" {
+			p.record(strings.ToLower(message.Channel))
+			p.remove(strings.ToLower(message.User.Name))
+		} else {
+			p.record(strings.ToLower(message.User.Name))
+		}
+	} else if kind == "PART" {
+		p.remove(strings.ToLower(message.User.Name))
 	}
 	return false
 }

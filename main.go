@@ -53,12 +53,24 @@ func main() {
 	// catches anything left, will always return true
 	b.AddHandler("factoid", plugins.NewFactoidPlugin(b))
 
-	c.AddHandler("ACTION", func(conn *irc.Conn, line *irc.Line) {
-		b.MsgRecieved(conn, line)
+	c.AddHandler("NICK", func(conn *irc.Conn, line *irc.Line) {
+		b.ActionRecieved(conn, line)
+	})
+
+	c.AddHandler("NAMES", func(conn *irc.Conn, line *irc.Line) {
+		b.ActionRecieved(conn, line)
+	})
+
+	c.AddHandler("MODE", func(conn *irc.Conn, line *irc.Line) {
+		b.ActionRecieved(conn, line)
+	})
+
+	c.AddHandler("PART", func(conn *irc.Conn, line *irc.Line) {
+		b.ActionRecieved(conn, line)
 	})
 
 	c.AddHandler("JOIN", func(conn *irc.Conn, line *irc.Line) {
-		b.UserJoined(conn, line)
+		b.ActionRecieved(conn, line)
 	})
 
 	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
