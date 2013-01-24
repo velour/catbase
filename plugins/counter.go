@@ -38,7 +38,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
 	channel := message.Channel
-	parts := strings.Fields(message.Body)
+	parts := strings.Split(message.Body, " ")
 
 	if len(parts) == 0 {
 		return false
