@@ -119,17 +119,22 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		subject := strings.ToLower(nick)
 		itemName := strings.ToLower(parts[0])[:len(parts[0])-2]
 
+		if nameParts := strings.SplitN(itemName, ".", 2); len(nameParts) == 2 {
+			subject = nameParts[0]
+			itemName = nameParts[1]
+		}
+
 		if strings.HasSuffix(parts[0], "++") {
 			// ++ those fuckers
 			item := p.update(subject, itemName, 1)
-			p.Bot.SendMessage(channel, fmt.Sprintf("You have %d %s, %s.", item.Count,
-				item.Item, nick))
+			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+				item.Count, item.Item))
 			return true
 		} else if strings.HasSuffix(parts[0], "--") {
 			// -- those fuckers
 			item := p.update(subject, itemName, -1)
-			p.Bot.SendMessage(channel, fmt.Sprintf("You have %d %s, %s.", item.Count,
-				item.Item, nick))
+			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+				item.Count, item.Item))
 			return true
 		}
 	}
@@ -165,7 +170,10 @@ func (p *CounterPlugin) LoadData() {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *CounterPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Sorry, I don't really know what counter does.")
+	p.Bot.SendMessage(channel, "You can set counters incrementally by using "+
+		"<noun>++ and <noun>--. You can see all of your counters using "+
+		"\"inspect\", erase them with \"clear\", and view single counters with "+
+		"\"count\".")
 }
 
 // Empty event handler because this plugin does not do anything on event recv
