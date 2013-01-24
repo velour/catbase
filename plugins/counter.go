@@ -1,13 +1,13 @@
 package plugins
 
-import "bitbucket.org/phlyingpenguin/godeepintir/bot"
-
 import (
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strings"
 )
+
+import "bitbucket.org/phlyingpenguin/godeepintir/bot"
 
 // This is a counter plugin to count arbitrary things.
 
@@ -31,8 +31,9 @@ func NewCounterPlugin(bot *bot.Bot) *CounterPlugin {
 }
 
 // Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
+// This function returns true if the plugin responds in a meaningful way to the 
+// users message. Otherwise, the function returns false and the bot continues 
+// execution of other plugins.
 func (p *CounterPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
@@ -82,7 +83,8 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 
 		p.Coll.Remove(bson.M{"nick": subject, "item": itemName})
 
-		p.Bot.SendAction(channel, fmt.Sprintf("chops a few %s out of his brain", itemName))
+		p.Bot.SendAction(channel, fmt.Sprintf("chops a few %s out of his brain",
+			itemName))
 
 		return true
 
@@ -109,7 +111,8 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 			return true
 		}
 
-		p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject, item.Count, itemName))
+		p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
+			itemName))
 
 		return true
 	} else if len(parts) == 1 {
@@ -119,12 +122,14 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		if strings.HasSuffix(parts[0], "++") {
 			// ++ those fuckers
 			item := p.update(subject, itemName, 1)
-			p.Bot.SendMessage(channel, fmt.Sprintf("You have %d %s, %s.", item.Count, item.Item, nick))
+			p.Bot.SendMessage(channel, fmt.Sprintf("You have %d %s, %s.", item.Count,
+				item.Item, nick))
 			return true
 		} else if strings.HasSuffix(parts[0], "--") {
 			// -- those fuckers
 			item := p.update(subject, itemName, -1)
-			p.Bot.SendMessage(channel, fmt.Sprintf("You have %d %s, %s.", item.Count, item.Item, nick))
+			p.Bot.SendMessage(channel, fmt.Sprintf("You have %d %s, %s.", item.Count,
+				item.Item, nick))
 			return true
 		}
 	}
@@ -151,9 +156,9 @@ func (p *CounterPlugin) update(subject, itemName string, delta int) Item {
 	return item
 }
 
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
+// LoadData imports any configuration data into the plugin. This is not 
+// strictly necessary other than the fact that the Plugin interface demands it 
+// exist. This may be deprecated at a later date.
 func (p *CounterPlugin) LoadData() {
 	// This bot has no data to load
 }
