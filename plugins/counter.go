@@ -140,7 +140,7 @@ func (p *CounterPlugin) update(subject, itemName string, delta int) Item {
 		item = Item{
 			Nick:  subject,
 			Item:  itemName,
-			Count: 1,
+			Count: delta,
 		}
 		p.Coll.Insert(item)
 	} else {
