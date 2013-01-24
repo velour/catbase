@@ -72,10 +72,10 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 		ret = true
 	} else if parts[0] == "idle" && len(parts) == 1 {
 		// Find all idle times, report them.
-		var entries idleEntries
-		p.Coll.Find(nil).All(entries)
-		sort.Sort(entries)
-		fmt.Printf("%+v\n", entries)
+		// var entries idleEntries
+		// p.Coll.Find(nil).All(entries)
+		// sort.Sort(entries)
+		// fmt.Printf("%+v\n", entries)
 	}
 
 	p.record(strings.ToLower(message.User.Name))
