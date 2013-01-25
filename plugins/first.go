@@ -32,10 +32,15 @@ func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
 	query := bson.M{"day": midnight(time.Now().UTC())}
 	coll.Find(query).All(&firsts)
 
+	var first *FirstEntry
+	if len(firsts) > 0 {
+		first = &firsts[0]
+	}
+
 	return &FirstPlugin{
 		Bot:   b,
 		Coll:  coll,
-		First: &firsts[0],
+		First: first,
 	}
 }
 
