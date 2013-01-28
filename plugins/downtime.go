@@ -31,7 +31,7 @@ func (ie idleEntries) Len() int {
 }
 
 func (ie idleEntries) Less(i, j int) bool {
-	return ie[i].LastSeen.After(ie[j].LastSeen)
+	return ie[i].LastSeen.Before(ie[j].LastSeen)
 }
 
 func (ie idleEntries) Swap(i, j int) {
@@ -96,7 +96,7 @@ func (p *DowntimePlugin) record(user string) {
 	p.Coll.Find(bson.M{"nick": user}).One(&entry)
 	if entry.Nick != user {
 		// insert a new entry
-		p.Coll.Insert(idleEntry{
+		p.Coll.Upsert(bson.M{"nick": user}, idleEntry{
 			Nick:     user,
 			LastSeen: time.Now(),
 		})
