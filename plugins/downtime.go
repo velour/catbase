@@ -7,6 +7,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
+	"sort"
 	"strings"
 	"time"
 )
@@ -71,10 +72,18 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 		ret = true
 	} else if parts[0] == "idle" && len(parts) == 1 {
 		// Find all idle times, report them.
-		// var entries idleEntries
-		// p.Coll.Find(nil).All(entries)
-		// sort.Sort(entries)
-		// fmt.Printf("%+v\n", entries)
+		var entries idleEntries
+		p.Coll.Find(nil).All(&entries)
+		sort.Sort(entries)
+		tops := "The top entries are: "
+		for _, e := range entries {
+			// filter out ZNC entries
+			if !strings.HasPrefix(e.Nick, "*") {
+				tops = fmt.Sprintf("%s%s: %s ", tops, e.Nick, time.Now().Sub(e.LastSeen))
+			}
+		}
+		p.Bot.SendMessage(channel, tops)
+
 	}
 
 	p.record(strings.ToLower(message.User.Name))
