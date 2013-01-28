@@ -83,6 +83,7 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 			}
 		}
 		p.Bot.SendMessage(channel, tops)
+		ret = true
 
 	}
 
