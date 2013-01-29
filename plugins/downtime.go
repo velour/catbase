@@ -78,8 +78,8 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 		tops := "The top entries are: "
 		for _, e := range entries {
 
-			// filter out ZNC entries
-			if strings.HasPrefix(e.Nick, "*") {
+			// filter out ZNC entries and ourself
+			if strings.HasPrefix(e.Nick, "*") || strings.ToLower(p.Bot.Config.Nick) == e.Nick {
 				p.remove(e.Nick)
 			} else {
 				tops = fmt.Sprintf("%s%s: %s ", tops, e.Nick, time.Now().Sub(e.LastSeen))
