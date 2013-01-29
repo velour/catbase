@@ -77,8 +77,11 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 		sort.Sort(entries)
 		tops := "The top entries are: "
 		for _, e := range entries {
+
 			// filter out ZNC entries
-			if !strings.HasPrefix(e.Nick, "*") {
+			if strings.HasPrefix(e.Nick, "*") {
+				p.remove(e.Nick)
+			} else {
 				tops = fmt.Sprintf("%s%s: %s ", tops, e.Nick, time.Now().Sub(e.LastSeen))
 			}
 		}
@@ -140,7 +143,7 @@ func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 	} else if kind == "PART" {
 		p.remove(strings.ToLower(message.User.Name))
 	} else {
-		log.Println("Unknown event: ", message)
+		log.Println("Unknown event: ", kind, message.User, message)
 		p.record(strings.ToLower(message.User.Name))
 	}
 	return false

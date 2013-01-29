@@ -116,6 +116,10 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 
 		return true
 	} else if len(parts) == 1 {
+		if len(parts[0]) < 3 {
+			return false
+		}
+
 		subject := strings.ToLower(nick)
 		itemName := strings.ToLower(parts[0])[:len(parts[0])-2]
 
