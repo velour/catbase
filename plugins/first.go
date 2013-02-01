@@ -65,6 +65,7 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 	} else {
 		if isToday(p.First.Time) {
 			p.recordFirst(message)
+			return true
 		}
 	}
 
@@ -72,11 +73,8 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 		"?", "", "!", "")
 	msg := strings.ToLower(message.Body)
 	if r.Replace(msg) == "whos on first" {
-		c := message.Channel
-		if p.First != nil {
-			p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
-				p.First.Nick, p.First.Time.Format(time.Kitchen), p.First.Body))
-		}
+		p.announceFirst(message)
+		return true
 	}
 
 	return false
@@ -91,6 +89,15 @@ func (p *FirstPlugin) recordFirst(message bot.Message) {
 		Nick: message.User.Name,
 	}
 	p.Coll.Insert(p.First)
+	p.announceFirst(message)
+}
+
+func (p *FirstPlugin) announceFirst(message bot.Message) {
+	c := message.Channel
+	if p.First != nil {
+		p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
+			p.First.Nick, p.First.Time.Format(time.Kitchen), p.First.Body))
+	}
 }
 
 // LoadData imports any configuration data into the plugin. This is not strictly necessary other
