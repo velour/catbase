@@ -8,6 +8,34 @@ import (
 	"time"
 )
 
+var goatse []string = []string{
+	"* g o a t s e x * g o a t s e x * g o a t s e x *",
+	"g                                               g",
+	"o /     \\             \\            /    \\       o",
+	"a|       |             \\          |      |      a",
+	"t|       `.             |         |       :     t",
+	"s`        |             |        \\|       |     s",
+	"e \\       | /       /  \\\\\\   --__ \\\\       :    e",
+	"x  \\      \\/   _--~~          ~--__| \\     |    x",
+	"*   \\      \\_-~                    ~-_\\    |    *",
+	"g    \\_     \\        _.--------.______\\|   |    g",
+	"o      \\     \\______// _ ___ _ (_(__>  \\   |    o",
+	"a       \\   .  C ___)  ______ (_(____>  |  /    a",
+	"t       /\\ |   C ____)/      \\ (_____>  |_/     t",
+	"s      / /\\|   C_____)       |  (___>   /  \\    s",
+	"e     |   (   _C_____)\\______/  // _/ /     \\   e",
+	"x     |    \\  |__   \\\\_________// (__/       |  x",
+	"*    | \\    \\____)   `----   --'             |  *",
+	"g    |  \\_          ___\\       /_          _/ | g",
+	"o   |              /    |     |  \\            | o",
+	"a   |             |    /       \\  \\           | a",
+	"t   |          / /    |         |  \\           |t",
+	"s   |         / /      \\__/\\___/    |          |s",
+	"e  |           /        |    |       |         |e",
+	"x  |          |         |    |       |         |x",
+	"* g o a t s e x * g o a t s e x * g o a t s e x *",
+}
+
 type TalkerPlugin struct {
 	Bot *bot.Bot
 }
@@ -24,6 +52,13 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 
 	if channel != p.Bot.Config.MainChannel {
 		return false
+	}
+
+	if message.Body == "goatse" {
+		for _, line := range goatse {
+			p.Bot.SendMessage(channel, line)
+		}
+		return true
 	}
 
 	if len(message.User.Name) != 9 {
