@@ -19,17 +19,17 @@ var goatse []string = []string{
 	"x  \\      \\/   _--~~          ~--__| \\     |    x",
 	"*   \\      \\_-~                    ~-_\\    |    *",
 	"g    \\_     \\        _.--------.______\\|   |    g",
-	"o      \\     \\______// _ ___ _ (_(__>  \\   |    o",
-	"a       \\   .  C ___)  ______ (_(____>  |  /    a",
-	"t       /\\ |   C ____)/      \\ (_____>  |_/     t",
-	"s      / /\\|   C_____)       |  (___>   /  \\    s",
-	"e     |   (   _C_____)\\______/  // _/ /     \\   e",
-	"x     |    \\  |__   \\\\_________// (__/       |  x",
+	"o      \\     \\______// _ ___ _ \\_\\__>  \\   |    o",
+	"a       \\   .  C ___)  ______ \\_\\____>  |  /    a",
+	"t       /\\ |   C ____)/      \\ \\_____>  |_/     t",
+	"s      / /\\|   C_____)       |  \\___>   /  \\    s",
+	"e     |   \\   _C_____)\\______/  // _/ /     \\   e",
+	"x     |    \\  |__   \\\\_________// \\__/       |  x",
 	"*    | \\    \\____)   `----   --'             |  *",
 	"g    |  \\_          ___\\       /_          _/ | g",
 	"o   |              /    |     |  \\            | o",
 	"a   |             |    /       \\  \\           | a",
-	"t   |          / /    |         |  \\           |t",
+	"t   |          / /    |{nick}|  \\           |t",
 	"s   |         / /      \\__/\\___/    |          |s",
 	"e  |           /        |    |       |         |e",
 	"x  |          |         |    |       |         |x",
@@ -54,8 +54,15 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 		return false
 	}
 
-	if message.Body == "goatse" {
+	if strings.HasPrefix(message.Body, "goatse") {
+		nick := message.User.Name
+		if parts := strings.Split(message.Body, " "); len(parts) > 1 {
+			nick = parts[1]
+		}
+
 		for _, line := range goatse {
+			nick = fmt.Sprintf("%9.9s", nick)
+			line = strings.Replace(line, "{nick}", nick, 1)
 			p.Bot.SendMessage(channel, line)
 		}
 		return true
