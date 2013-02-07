@@ -83,12 +83,12 @@ func (b *Bot) isCmd(message string) (bool, string) {
 	cmdc := b.Config.CommandChar
 	botnick := strings.ToLower(b.Conn.Me.Nick)
 	iscmd := false
-	message = strings.ToLower(message)
+	lowerMessage := strings.ToLower(message)
 
-	if strings.HasPrefix(message, cmdc) && len(cmdc) > 0 {
+	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
 		iscmd = true
 		message = message[len(cmdc):]
-	} else if strings.HasPrefix(message, botnick) {
+	} else if strings.HasPrefix(lowerMessage, botnick) {
 		iscmd = true
 		message = message[len(botnick):]
 
@@ -138,6 +138,7 @@ func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
 		Action:  isaction,
 		Time:    time.Now(),
 	}
+
 	return msg
 }
 
