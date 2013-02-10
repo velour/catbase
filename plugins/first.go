@@ -65,7 +65,7 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 	} else {
 		if isToday(p.First.Time) {
 			p.recordFirst(message)
-			return true
+			return false
 		}
 	}
 
