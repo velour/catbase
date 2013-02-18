@@ -71,6 +71,10 @@ func main() {
 		b.ActionRecieved(conn, line)
 	})
 
+	c.AddHandler("QUIT", func(conn *irc.Conn, line *irc.Line) {
+		b.ActionRecieved(conn, line)
+	})
+
 	c.AddHandler("JOIN", func(conn *irc.Conn, line *irc.Line) {
 		b.ActionRecieved(conn, line)
 	})

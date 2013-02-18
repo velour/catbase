@@ -140,7 +140,7 @@ func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 		} else {
 			p.record(strings.ToLower(message.User.Name))
 		}
-	} else if kind == "PART" {
+	} else if kind == "PART" || kind == "QUIT" {
 		p.remove(strings.ToLower(message.User.Name))
 	} else {
 		log.Println("Unknown event: ", kind, message.User, message)
