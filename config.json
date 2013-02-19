@@ -16,6 +16,11 @@
 	"UntappdToken": "<Your Token>",
 	"UntappdFreq": 3600,
 
+	"TwitterConsumerKey": "<Your Consumer Key>",
+	"TwitterConsumerSecret": "<Your Consumer Secret>",
+	"TwitterUserKey": "<Your User Key>",
+	"TwitterUserSecret": "<Your User Secret>",
+
 	"WelcomeMsgs": [
 			"Real men use screen, %s.",
 			"Joins upset the hivemind's OCD, %s.",
