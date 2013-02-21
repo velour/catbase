@@ -16,10 +16,10 @@
 	"UntappdToken": "<Your Token>",
 	"UntappdFreq": 3600,
 
-	"TwitterConsumerKey": "<Your Consumer Key>",
-	"TwitterConsumerSecret": "<Your Consumer Secret>",
-	"TwitterUserKey": "<Your User Key>",
-	"TwitterUserSecret": "<Your User Secret>",
+	"TwitterConsumerKey": "9c2EpWSOv4NIb413Sl6ipg",
+	"TwitterConsumerSecret": "JmAAAXFcYr6nUM5Jhq3d5oTSzZUmgtJwwUfptob2WsU",
+	"TwitterUserKey": "644233-KsPtbllqrx8ziCptfyEUxggVqguwKkpPeg2Nis3zXY",
+	"TwitterUserSecret": "rPiQC7fs9L5j9biMhJD41O7avJitW2z1TjpmoOZc",
 
 	"WelcomeMsgs": [
 			"Real men use screen, %s.",
