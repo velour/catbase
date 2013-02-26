@@ -11,15 +11,15 @@
 	"QuoteChance": 0.99,
 	"QuoteTime": 1,
 	"LogLength": 50,
-	"Admins": ["flyngpngn1"],
+	"Admins": ["<Admin Nick>"],
 
 	"UntappdToken": "<Your Token>",
 	"UntappdFreq": 3600,
 
-	"TwitterConsumerKey": "9c2EpWSOv4NIb413Sl6ipg",
-	"TwitterConsumerSecret": "JmAAAXFcYr6nUM5Jhq3d5oTSzZUmgtJwwUfptob2WsU",
-	"TwitterUserKey": "644233-KsPtbllqrx8ziCptfyEUxggVqguwKkpPeg2Nis3zXY",
-	"TwitterUserSecret": "rPiQC7fs9L5j9biMhJD41O7avJitW2z1TjpmoOZc",
+	"TwitterConsumerKey": "<Consumer Key>",
+	"TwitterConsumerSecret": "<Consumer Secret>",
+	"TwitterUserKey": "<User Key>",
+	"TwitterUserSecret": "<User Secret>",
 
 	"WelcomeMsgs": [
 			"Real men use screen, %s.",
@@ -27,57 +27,4 @@
 			"Joins upset the hivemind's CDO, %s.",
 			"%s, I WILL CUT YOU!"
 	],
-
-	"comment": "Follows is the old bot",
-
-	"bot": {
-		"dbname":	"deepintir",
-		"inchan": 	"out",
-		"outchan": 	"in",
-		"logchan": 	"logs",
-		"nick": "|AlePale|",
-		"channel": "#flagonslayers",
-		"command_char": "!",
-		"plugins": {
-			"help": "Help",
-			"talker": "Talker",
-			"remember": "Remember",
-			"beers": "Beers",
-			"first": "First",
-			"sudo": "Sudo"
-		},
-		"_plugins": {
-			"tama": "Tama"
-		},
-		"datastore": "datastore.dat"
-	},
-	"Talker": {
-		"names": ["fredfelps", "felps"],
-		"slogan": "GOD HATES %NICK%"
-	},
-	"Remember": {
-		"quotefile": "quotes.txt",
-		"loglength": 50,
-		"quotechance": 0.10,
-		"quotetimer": 1800
-	},
-	"Beers": {
-		"responses": [
-			"Stay thirsty, my friend!",
-			"HIC!",
-			"ZIGGY! ZAGGY!"
-		],
-		"countfile": "beers.txt",
-		"drinktriggers": [
-			"drink",
-			"imbibe"
-		],
-		"puketriggers": [
-			"puke",
-			"yack"
-		]
-	},
-	"Sudo": {
-		"chance": 0.01
-	}
 }

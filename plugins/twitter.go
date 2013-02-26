@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
-	"github.com/astrata/twitter"
+	"bitbucket.org/phlyingpenguin/twitter"
 	"github.com/garyburd/go-oauth/oauth"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -120,7 +120,7 @@ func (p *TwitterPlugin) checkMessages() {
 	for {
 		time.Sleep(time.Minute * 30)
 		var u url.Values
-		u["screen_name"] = []string{"phlyingpenguin"}
+		u.Set("screen_name", "phlyingpenguin")
 		data, err := p.Client.UserTimeline(u)
 		if err != nil {
 			log.Println(err)
