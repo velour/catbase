@@ -49,12 +49,18 @@ func NewTalkerPlugin(bot *bot.Bot) *TalkerPlugin {
 func (p *TalkerPlugin) Message(message bot.Message) bool {
 	channel := message.Channel
 	body := message.Body
+	lowermessage := strings.ToLower(body)
 
 	if channel != p.Bot.Config.MainChannel {
 		return false
 	}
 
-	if strings.HasPrefix(message.Body, "goatse") {
+	if strings.HasPrefix(lowermessage, "say") {
+		msg := strings.TrimSpace(body[3:])
+		p.Bot.SendMessage(channel, msg)
+	}
+
+	if strings.HasPrefix(lowermessage, "goatse") {
 		nick := message.User.Name
 		if parts := strings.Split(message.Body, " "); len(parts) > 1 {
 			nick = parts[1]
@@ -74,8 +80,6 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 		p.Bot.SendMessage(message.Channel, msg)
 		return true
 	}
-
-	lowermessage := strings.ToLower(body)
 
 	if strings.Contains(lowermessage, "felps") || strings.Contains(lowermessage, "fredfelps") {
 		outmsg := p.Bot.Filter(message, "GOD HATES $NICK")

@@ -3,13 +3,12 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"labix.org/v2/mgo/bson"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	// "labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
-	"regexp"
 )
 import irc "github.com/fluffle/goirc/client"
 
