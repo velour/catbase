@@ -51,13 +51,10 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 	body := message.Body
 	lowermessage := strings.ToLower(body)
 
-	if channel != p.Bot.Config.MainChannel {
-		return false
-	}
-
 	if strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
 		p.Bot.SendMessage(channel, msg)
+		return true
 	}
 
 	if strings.HasPrefix(lowermessage, "goatse") {
