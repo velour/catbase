@@ -52,6 +52,7 @@ func main() {
 	b.AddHandler("counter", plugins.NewCounterPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))
 	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
+	b.AddHandler("your", plugins.NewYourPlugin(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", plugins.NewFactoidPlugin(b))
 
