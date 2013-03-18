@@ -1,9 +1,9 @@
 package plugins
 
 import (
-	"fmt"
 	"math/rand"
 	"strings"
+	"time"
 
 	"bitbucket.org/phlyingpenguin/godeepintir/bot"
 )
@@ -23,14 +23,12 @@ func NewYourPlugin(bot *bot.Bot) *YourPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *YourPlugin) Message(message bot.Message) bool {
-	fmt.Println("Your got a message!")
 	lower := strings.ToLower(message.Body)
 	if strings.Contains(lower, "your") || strings.Contains(lower, "you're") {
 		if rand.Float64() < 0.2 {
 			r := strings.NewReplacer("Your", "You're", "your", "you're", "You're",
 				"Your", "you're", "your", "Youre", "Your", "youre", "your")
 			msg := r.Replace(message.Body)
-			fmt.Println(msg)
 			p.Bot.SendMessage(message.Channel, msg)
 			return true
 		}
