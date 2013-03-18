@@ -217,9 +217,14 @@ func (p *FactoidPlugin) learnAction(message bot.Message, action string) bool {
 	return true
 }
 
-// Checks body for the ~= operator
-func changeOperator(body string) bool {
-	return strings.Contains(body, "=~")
+// Checks body for the ~= operator returns it
+func changeOperator(body string) string {
+	if strings.Contains(body, "=~") {
+		return "=~"
+	} else if strings.Contains(body, "~=") {
+		return "~="
+	}
+	return ""
 }
 
 // If the user requesting forget is either the owner of the last learned fact or
@@ -247,7 +252,8 @@ func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 
 // Allow users to change facts with a simple regexp
 func (p *FactoidPlugin) changeFact(message bot.Message) bool {
-	parts := strings.SplitN(message.Body, "=~", 2)
+	oper := changeOperator(message.Body)
+	parts := strings.SplitN(message.Body, oper, 2)
 	userexp := strings.TrimSpace(parts[1])
 	trigger := strings.TrimSpace(parts[0])
 
@@ -342,7 +348,7 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		return p.forgetLastFact(message)
 	}
 
-	if changeOperator(message.Body) {
+	if changeOperator(message.Body) != "" {
 		return p.changeFact(message)
 	}
 
