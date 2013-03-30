@@ -60,10 +60,11 @@ func isToday(t time.Time) bool {
 func (p *FirstPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
 
-	if p.First == nil {
+	if p.First == nil && p.allowed(message) {
 		p.recordFirst(message)
-	} else {
-		if isToday(p.First.Time) {
+		return false
+	} else if p.First != nil {
+		if isToday(p.First.Time) && p.allowed(message) {
 			p.recordFirst(message)
 			return false
 		}
@@ -74,10 +75,22 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 	msg := strings.ToLower(message.Body)
 	if r.Replace(msg) == "whos on first" {
 		p.announceFirst(message)
+		log.Printf("Disallowing %s: %s from first.",
+			message.User.Name, message.Body)
 		return true
 	}
 
 	return false
+}
+
+func (p *FirstPlugin) allowed(message bot.Message) bool {
+	for _, msg := range p.Bot.Config.BadMsgs {
+		if strings.ToLower(msg) == strings.ToLower(message.Body) {
+			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
+			return false
+		}
+	}
+	return true
 }
 
 func (p *FirstPlugin) recordFirst(message bot.Message) {
