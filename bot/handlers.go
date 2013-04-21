@@ -136,6 +136,7 @@ func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
 		Command: iscmd,
 		Action:  isaction,
 		Time:    time.Now(),
+		Host:    line.Host,
 	}
 
 	return msg

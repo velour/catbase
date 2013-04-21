@@ -94,6 +94,7 @@ type Message struct {
 	Command       bool
 	Action        bool
 	Time          time.Time
+	Host          string
 }
 
 type Variable struct {

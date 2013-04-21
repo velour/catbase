@@ -90,6 +90,18 @@ func (p *FirstPlugin) allowed(message bot.Message) bool {
 			return false
 		}
 	}
+	for _, host := range p.Bot.Config.Bad.Hosts {
+		if host == message.Host {
+			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
+			return false
+		}
+	}
+	for _, nick := range p.Bot.Config.Bad.Nicks {
+		if nick == message.User.Name {
+			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
+			return false
+		}
+	}
 	return true
 }
 
