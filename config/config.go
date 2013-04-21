@@ -27,6 +27,11 @@ type Config struct {
 	TwitterUserKey        string
 	TwitterUserSecret     string
 	BadMsgs               []string
+	Bad                   struct {
+		Msgs  []string
+		Nicks []string
+		Hosts []string
+	}
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

@@ -27,7 +27,9 @@
 			"Joins upset the hivemind's CDO, %s.",
 			"%s, I WILL CUT YOU!"
 	],
-	"BadMsgs": [
-		"I like cron."
-	]
+	"Bad": {
+		"Msgs": [],
+		"Nicks": [],
+		"Hosts": []
+	}
 }

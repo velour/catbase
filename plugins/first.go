@@ -84,7 +84,7 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 }
 
 func (p *FirstPlugin) allowed(message bot.Message) bool {
-	for _, msg := range p.Bot.Config.BadMsgs {
+	for _, msg := range p.Bot.Config.Bad.Msgs {
 		if strings.ToLower(msg) == strings.ToLower(message.Body) {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
