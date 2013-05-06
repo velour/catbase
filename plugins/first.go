@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"bitbucket.org/phlyingpenguin/godeepintir/bot"
+	"github.com/phlyingpenguin/godeepintir/bot"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"

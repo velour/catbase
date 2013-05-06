@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bitbucket.org/phlyingpenguin/godeepintir/bot"
-	"bitbucket.org/phlyingpenguin/godeepintir/config"
-	"bitbucket.org/phlyingpenguin/godeepintir/plugins"
+	"github.com/phlyingpenguin/godeepintir/bot"
+	"github.com/phlyingpenguin/godeepintir/config"
+	"github.com/phlyingpenguin/godeepintir/plugins"
 	"flag"
 	"fmt"
 )

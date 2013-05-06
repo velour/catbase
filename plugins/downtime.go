@@ -1,6 +1,6 @@
 package plugins
 
-import "bitbucket.org/phlyingpenguin/godeepintir/bot"
+import "github.com/phlyingpenguin/godeepintir/bot"
 
 import (
 	"fmt"

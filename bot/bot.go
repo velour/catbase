@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"bitbucket.org/phlyingpenguin/godeepintir/config"
+	"github.com/phlyingpenguin/godeepintir/config"
 	irc "github.com/fluffle/goirc/client"
 	"labix.org/v2/mgo"
 	"strings"

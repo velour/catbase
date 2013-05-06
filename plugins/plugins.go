@@ -1,7 +1,7 @@
 package plugins
 
 import "fmt"
-import "bitbucket.org/phlyingpenguin/godeepintir/bot"
+import "github.com/phlyingpenguin/godeepintir/bot"
 
 // Plugin interface defines the methods needed to accept a plugin
 type Plugin interface {
