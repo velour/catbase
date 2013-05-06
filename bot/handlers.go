@@ -242,7 +242,7 @@ func (b *Bot) listVars(channel string, parts []string) {
 func (b *Bot) Help(channel string, parts []string) {
 	msg := fmt.Sprintf("Hi, I'm based on godeepintir version %s. I'm written in Go, and you "+
 		"can find my source code on the internet here: "+
-		"http://github.com/phlyingpenguin/godeepintir", b.Version)
+		"http://github.com/chrissexton/alepale", b.Version)
 	b.SendMessage(channel, msg)
 }
 

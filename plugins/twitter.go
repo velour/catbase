@@ -1,8 +1,8 @@
 package plugins
 
 import (
-	"github.com/phlyingpenguin/godeepintir/bot"
-	"github.com/phlyingpenguin/twitter"
+	"github.com/chrissexton/alepale/bot"
+	"github.com/chrissexton/twitter"
 	"github.com/garyburd/go-oauth/oauth"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"

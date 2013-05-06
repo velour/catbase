@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/phlyingpenguin/godeepintir/bot"
+	"github.com/chrissexton/alepale/bot"
 )
 
 type YourPlugin struct {

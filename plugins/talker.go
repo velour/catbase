@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"github.com/phlyingpenguin/godeepintir/bot"
+	"github.com/chrissexton/alepale/bot"
 	"fmt"
 	"math/rand"
 	"strings"

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-import "github.com/phlyingpenguin/godeepintir/bot"
+import "github.com/chrissexton/alepale/bot"
 
 // This is a counter plugin to count arbitrary things.
 

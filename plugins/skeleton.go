@@ -1,6 +1,6 @@
 package plugins
 
-import "github.com/phlyingpenguin/godeepintir/bot"
+import "github.com/chrissexton/alepale/bot"
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 

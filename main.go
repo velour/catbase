@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/phlyingpenguin/godeepintir/bot"
-	"github.com/phlyingpenguin/godeepintir/config"
-	"github.com/phlyingpenguin/godeepintir/plugins"
+	"github.com/chrissexton/alepale/bot"
+	"github.com/chrissexton/alepale/config"
+	"github.com/chrissexton/alepale/plugins"
 	"flag"
 	"fmt"
 )
