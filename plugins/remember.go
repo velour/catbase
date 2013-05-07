@@ -51,7 +51,8 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 	parts := strings.Fields(message.Body)
 	if message.Command && len(parts) >= 3 && parts[0] == "remember" {
 		// we have a remember!
-		// look through the logs and find parts[1] as a user, if not, fuck this hoser
+		// look through the logs and find parts[1] as a user, if not,
+		// fuck this hoser
 		nick := parts[1]
 		snip := strings.Join(parts[2:], " ")
 
@@ -71,7 +72,11 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
 
 				var funcres bson.M
-				err := p.Bot.Db.Run(bson.M{"eval": "return counter(\"factoid\");"}, &funcres)
+				err := p.Bot.Db.Run(
+					bson.M{"eval": "return counter(\"factoid\");"},
+					&funcres,
+				)
+
 				if err != nil {
 					panic(err)
 				}
@@ -116,8 +121,9 @@ func (p *RememberPlugin) LoadData() {
 func (p *RememberPlugin) Help(channel string, parts []string) {
 
 	msg := "!remember will let you quote your idiot friends. Just type " +
-		"!remember <nick> <snippet> to remember what they said. Snippet can be " +
-		"any part of their message. Later on, you can ask for a random !quote."
+		"!remember <nick> <snippet> to remember what they said. Snippet can " +
+		"be any part of their message. Later on, you can ask for a random " +
+		"!quote."
 
 	p.Bot.SendMessage(channel, msg)
 }
