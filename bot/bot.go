@@ -117,11 +117,18 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 
 	config.Nick = c.Me.Nick
 
+	users := []User{
+		User{
+			Name:       config.Nick,
+			MessageLog: make([]string, 0),
+		},
+	}
+
 	return &Bot{
 		Config:         config,
 		Plugins:        make(map[string]Handler),
 		PluginOrdering: make([]string, 0),
-		Users:          make([]User, 0),
+		Users:          users,
 		Conn:           c,
 		DbSession:      session,
 		Db:             db,
