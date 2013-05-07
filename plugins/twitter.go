@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"github.com/chrissexton/alepale/bot"
-	"github.com/chrissexton/twitter"
+	"bitbucket.org/phlyingpenguin/twitter"
 	"github.com/garyburd/go-oauth/oauth"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
