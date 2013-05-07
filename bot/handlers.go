@@ -87,7 +87,7 @@ func (b *Bot) isCmd(message string) (bool, string) {
 	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
 		iscmd = true
 		message = message[len(cmdc):]
-	} else if strings.HasPrefix(lowerMessage, botnick) {
+	} else if strings.HasPrefix(lowerMessage, botnick) && lowerMessage[len(botnick)] != ' ' {
 		iscmd = true
 		message = message[len(botnick):]
 
