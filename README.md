@@ -1,5 +1,7 @@
 # AlePale
 
+[![Build Status](https://api.travis-ci.org/chrissexton/alepale.png)](http://travis-ci.org/chrissexton/alepale)
+
 AlePale is a bot that trolls our little corner of the IRC world and keeps our friends laughing from time to time. Sometimes he makes us angry too. He is crafted as a clone of XKCD's Bucket bot, which learns from things he's told and regurgitates his knowledge to the various channels that he lives in. I've found in many such projects that randomness can often make bots feel much more alive than they are, so AlePale is a big experiment in how great randomness is.
 
 - [Project Page](http://chrissexton.org/projects/alepale)
