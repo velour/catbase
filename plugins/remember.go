@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-// This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
+// This is a skeleton plugin to serve as an example and quick copy/paste for new
+// plugins.
 
 type RememberPlugin struct {
 	Bot  *bot.Bot
@@ -32,8 +33,9 @@ func NewRememberPlugin(b *bot.Bot) *RememberPlugin {
 }
 
 // Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
+// This function returns true if the plugin responds in a meaningful way to the
+// users message. Otherwise, the function returns false and the bot continues
+// execution of other plugins.
 func (p *RememberPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
 
@@ -102,9 +104,9 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 	return false
 }
 
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
+// LoadData imports any configuration data into the plugin. This is not strictly
+// necessary other than the fact that the Plugin interface demands it exist.
+// This may be deprecated at a later date.
 func (p *RememberPlugin) LoadData() {
 	p.Coll = p.Bot.Db.C("factoid")
 	rand.Seed(time.Now().Unix())
@@ -112,15 +114,17 @@ func (p *RememberPlugin) LoadData() {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *RememberPlugin) Help(channel string, parts []string) {
-	msg := "!remember will let you quote your idiot friends. Just type !remember <nick>" +
-		" <snippet> to remember what they said. Snippet can be any part of their message. " +
-		"Later on, you can ask for a random !quote."
+
+	msg := "!remember will let you quote your idiot friends. Just type " +
+		"!remember <nick> <snippet> to remember what they said. Snippet can be " +
+		"any part of their message. Later on, you can ask for a random !quote."
+
 	p.Bot.SendMessage(channel, msg)
 }
 
 // deliver a random quote out of the db.
-// Note: this is the same cache for all channels joined. This plugin needs to be expanded
-// to have this function execute a quote for a particular channel
+// Note: this is the same cache for all channels joined. This plugin needs to be
+// expanded to have this function execute a quote for a particular channel
 func (p *RememberPlugin) randQuote() string {
 	var quotes []Factoid
 	// todo: find anything with the word "quotes" in the trigger
