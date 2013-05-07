@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"strings"
 )
 
@@ -31,14 +32,16 @@ func NewCounterPlugin(bot *bot.Bot) *CounterPlugin {
 }
 
 // Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the 
-// users message. Otherwise, the function returns false and the bot continues 
+// This function returns true if the plugin responds in a meaningful way to the
+// users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
 func (p *CounterPlugin) Message(message bot.Message) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
 	channel := message.Channel
 	parts := strings.Split(message.Body, " ")
+
+	log.Println("++Message:", nick, channel, parts)
 
 	if len(parts) == 0 {
 		return false
@@ -128,6 +131,8 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 			itemName = nameParts[1]
 		}
 
+		log.Println("++:", subject, itemName)
+
 		if strings.HasSuffix(parts[0], "++") {
 			// ++ those fuckers
 			item := p.update(subject, itemName, 1)
@@ -165,8 +170,8 @@ func (p *CounterPlugin) update(subject, itemName string, delta int) Item {
 	return item
 }
 
-// LoadData imports any configuration data into the plugin. This is not 
-// strictly necessary other than the fact that the Plugin interface demands it 
+// LoadData imports any configuration data into the plugin. This is not
+// strictly necessary other than the fact that the Plugin interface demands it
 // exist. This may be deprecated at a later date.
 func (p *CounterPlugin) LoadData() {
 	// This bot has no data to load
