@@ -1,8 +1,8 @@
 package plugins
 
 import (
-	"github.com/chrissexton/alepale/bot"
 	"fmt"
+	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math/rand"
@@ -52,12 +52,6 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 		// look through the logs and find parts[1] as a user, if not, fuck this hoser
 		nick := parts[1]
 		snip := strings.Join(parts[2:], " ")
-
-		if nick == user.Name {
-			msg := fmt.Sprintf("Don't try to quote yourself, %s.", nick)
-			p.Bot.SendMessage(message.Channel, msg)
-			return true
-		}
 
 		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.Log[message.Channel][i]
