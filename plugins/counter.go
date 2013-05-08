@@ -2,13 +2,11 @@ package plugins
 
 import (
 	"fmt"
+	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"log"
 	"strings"
 )
-
-import "github.com/chrissexton/alepale/bot"
 
 // This is a counter plugin to count arbitrary things.
 
@@ -40,8 +38,6 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 	nick := message.User.Name
 	channel := message.Channel
 	parts := strings.Split(message.Body, " ")
-
-	log.Println("++Message:", nick, channel, parts)
 
 	if len(parts) == 0 {
 		return false
@@ -130,8 +126,6 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 			subject = nameParts[0]
 			itemName = nameParts[1]
 		}
-
-		log.Println("++:", subject, itemName)
 
 		if strings.HasSuffix(parts[0], "++") {
 			// ++ those fuckers

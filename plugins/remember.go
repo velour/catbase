@@ -5,7 +5,6 @@ import (
 	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -178,16 +177,6 @@ func (p *RememberPlugin) Event(kind string, message bot.Message) bool {
 
 // Record what the bot says in the log
 func (p *RememberPlugin) BotMessage(message bot.Message) bool {
-	log.Printf("Recieved: %+v\n", message)
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)
-
-	for ch, _ := range p.Log {
-		log.Printf("Channel: %+v\n", ch)
-		for _, msg := range p.Log[ch] {
-			log.Println(msg)
-		}
-	}
-	log.Printf("Log:\n%+v\n", p.Log)
-
 	return false
 }
