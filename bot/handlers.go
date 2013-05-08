@@ -91,6 +91,9 @@ func (b *Bot) isCmd(message string) (bool, string) {
 		iscmd = true
 		message = message[len(cmdc):]
 	} else if match, _ := regexp.MatchString(rex, lowerMessage); match {
+        if len(message) < len(botnick) {
+            return false, message
+        }
 		iscmd = true
 		message = message[len(botnick):]
 
