@@ -39,3 +39,8 @@ func (p *SkeletonPlugin) Help(channel string, parts []string) {
 func (p *SkeletonPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
+
+// Handler for bot's own messages
+func (p *SkeletonPlugin) BotMessage(message bot.Message) bool {
+	return false
+}

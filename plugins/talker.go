@@ -1,8 +1,8 @@
 package plugins
 
 import (
-	"github.com/chrissexton/alepale/bot"
 	"fmt"
+	"github.com/chrissexton/alepale/bot"
 	"math/rand"
 	"strings"
 	"time"
@@ -103,5 +103,10 @@ func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
 		p.Bot.SendMessage(message.Channel, msg)
 		return true
 	}
+	return false
+}
+
+// Handler for bot's own messages
+func (p *TalkerPlugin) BotMessage(message bot.Message) bool {
 	return false
 }

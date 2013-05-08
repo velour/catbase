@@ -148,3 +148,8 @@ func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 	}
 	return false
 }
+
+// Handler for bot's own messages
+func (p *DowntimePlugin) BotMessage(message bot.Message) bool {
+	return false
+}

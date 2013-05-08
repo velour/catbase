@@ -16,6 +16,7 @@ import irc "github.com/fluffle/goirc/client"
 type Handler interface {
 	Message(message Message) bool
 	Event(kind string, message Message) bool
+	BotMessage(message Message) bool
 	Help(channel string, parts []string)
 }
 
@@ -152,28 +153,6 @@ func (b *Bot) LastMessage() (Message, error) {
 	return log[len(log)-1], nil
 }
 
-// Handles incomming PRIVMSG requests
-func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
-	msg := b.buildMessage(conn, line)
-
-	if strings.HasPrefix(msg.Body, "help") && msg.Command {
-		parts := strings.Fields(strings.ToLower(msg.Body))
-		b.checkHelp(msg.Channel, parts)
-		goto RET
-	}
-
-	for _, name := range b.PluginOrdering {
-		p := b.Plugins[name]
-		if p.Message(msg) {
-			break
-		}
-	}
-
-RET:
-	b.logIn <- msg
-	return
-}
-
 // Take an input string and mutate it based on $vars in the string
 func (b *Bot) Filter(message Message, input string) string {
 	rand.Seed(time.Now().Unix())
@@ -253,6 +232,26 @@ func (b *Bot) ActionRecieved(conn *irc.Conn, line *irc.Line) {
 	for _, name := range b.PluginOrdering {
 		p := b.Plugins[name]
 		if p.Event(line.Cmd, msg) {
+			break
+		}
+	}
+}
+
+// Send our own musings to the plugins
+func (b *Bot) selfSaid(channel, message string) {
+	msg := Message{
+		User:    &b.Me, // hack
+		Channel: channel,
+		Body:    message,
+		Raw:     message, // hack
+		Command: false,
+		Time:    time.Now(),
+		Host:    "0.0.0.0", // hack
+	}
+
+	for _, name := range b.PluginOrdering {
+		p := b.Plugins[name]
+		if p.BotMessage(msg) {
 			break
 		}
 	}

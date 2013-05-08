@@ -17,6 +17,8 @@ type Bot struct {
 
 	// Users holds information about all of our friends
 	Users []User
+	// Represents the bot
+	Me User
 
 	// Conn allows us to send messages and modify our connection state
 	Conn *irc.Conn
@@ -129,6 +131,7 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 		Plugins:        make(map[string]Handler),
 		PluginOrdering: make([]string, 0),
 		Users:          users,
+		Me:             users[0],
 		Conn:           c,
 		DbSession:      session,
 		Db:             db,
@@ -148,9 +151,37 @@ func (b *Bot) AddHandler(name string, h Handler) {
 // Sends message to channel
 func (b *Bot) SendMessage(channel, message string) {
 	b.Conn.Privmsg(channel, message)
+
+	// Notify plugins that we've said something
+	b.selfSaid(channel, message)
 }
 
 // Sends action to channel
 func (b *Bot) SendAction(channel, message string) {
 	b.Conn.Action(channel, message)
+
+	// Notify plugins that we've said something
+	b.selfSaid(channel, message)
+}
+
+// Handles incomming PRIVMSG requests
+func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
+	msg := b.buildMessage(conn, line)
+
+	if strings.HasPrefix(msg.Body, "help") && msg.Command {
+		parts := strings.Fields(strings.ToLower(msg.Body))
+		b.checkHelp(msg.Channel, parts)
+		goto RET
+	}
+
+	for _, name := range b.PluginOrdering {
+		p := b.Plugins[name]
+		if p.Message(msg) {
+			break
+		}
+	}
+
+RET:
+	b.logIn <- msg
+	return
 }

@@ -1,8 +1,8 @@
 package plugins
 
 import (
-	"github.com/chrissexton/alepale/bot"
 	"fmt"
+	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
@@ -139,5 +139,10 @@ func (p *FirstPlugin) Help(channel string, parts []string) {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *FirstPlugin) Event(kind string, message bot.Message) bool {
+	return false
+}
+
+// Handler for bot's own messages
+func (p *FirstPlugin) BotMessage(message bot.Message) bool {
 	return false
 }

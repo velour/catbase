@@ -189,3 +189,8 @@ func (p *CounterPlugin) Help(channel string, parts []string) {
 func (p *CounterPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
+
+// Handler for bot's own messages
+func (p *CounterPlugin) BotMessage(message bot.Message) bool {
+	return false
+}

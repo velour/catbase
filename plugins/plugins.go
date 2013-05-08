@@ -7,6 +7,7 @@ import "github.com/chrissexton/alepale/bot"
 type Plugin interface {
 	Message(message bot.Message) bool
 	Event(kind string, message bot.Message) bool
+	BotMessage(message bot.Message) bool
 	LoadData()
 	Help()
 }
@@ -61,6 +62,11 @@ func (p *TestPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
 
+// Handler for bot's own messages
+func (p *TestPlugin) BotMessage(message bot.Message) bool {
+	return false
+}
+
 type PluginConfig struct {
 	Name   string
 	Values map[string]interface{}
@@ -92,5 +98,10 @@ func (fp FalsePlugin) LoadData() {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *FalsePlugin) Event(kind string, message bot.Message) bool {
+	return false
+}
+
+// Handler for bot's own messages
+func (p *FalsePlugin) BotMessage(message bot.Message) bool {
 	return false
 }

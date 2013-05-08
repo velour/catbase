@@ -1,10 +1,10 @@
 package plugins
 
 import (
-	"github.com/chrissexton/alepale/bot"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chrissexton/alepale/bot"
 	"io/ioutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -368,4 +368,9 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 			}
 		}
 	}
+}
+
+// Handler for bot's own messages
+func (p *BeersPlugin) BotMessage(message bot.Message) bool {
+	return false
 }

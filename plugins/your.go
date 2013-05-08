@@ -52,3 +52,8 @@ func (p *YourPlugin) Help(channel string, parts []string) {
 func (p *YourPlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
+
+// Handler for bot's own messages
+func (p *YourPlugin) BotMessage(message bot.Message) bool {
+	return false
+}

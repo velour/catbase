@@ -5,6 +5,7 @@ import (
 	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -37,7 +38,6 @@ func NewRememberPlugin(b *bot.Bot) *RememberPlugin {
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
 func (p *RememberPlugin) Message(message bot.Message) bool {
-	// This bot does not reply to anything
 
 	if message.Body == "quote" && message.Command {
 		q := p.randQuote()
@@ -58,7 +58,11 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.Log[message.Channel][i]
-			if entry.User.Name == nick && strings.Contains(entry.Body, snip) {
+			if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
+				strings.Contains(
+					strings.ToLower(entry.Body),
+					strings.ToLower(snip),
+				) {
 				// insert new remember entry
 				var msg string
 
@@ -169,5 +173,21 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *RememberPlugin) Event(kind string, message bot.Message) bool {
+	return false
+}
+
+// Record what the bot says in the log
+func (p *RememberPlugin) BotMessage(message bot.Message) bool {
+	log.Printf("Recieved: %+v\n", message)
+	p.Log[message.Channel] = append(p.Log[message.Channel], message)
+
+	for ch, _ := range p.Log {
+		log.Printf("Channel: %+v\n", ch)
+		for _, msg := range p.Log[ch] {
+			log.Println(msg)
+		}
+	}
+	log.Printf("Log:\n%+v\n", p.Log)
+
 	return false
 }

@@ -93,3 +93,8 @@ func (p *DicePlugin) Help(channel string, parts []string) {
 func (p *DicePlugin) Event(kind string, message bot.Message) bool {
 	return false
 }
+
+// Handler for bot's own messages
+func (p *DicePlugin) BotMessage(message bot.Message) bool {
+	return false
+}

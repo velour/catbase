@@ -1,8 +1,8 @@
 package plugins
 
 import (
-	"github.com/chrissexton/alepale/bot"
 	"bitbucket.org/phlyingpenguin/twitter"
+	"github.com/chrissexton/alepale/bot"
 	"github.com/garyburd/go-oauth/oauth"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -128,4 +128,9 @@ func (p *TwitterPlugin) checkMessages() {
 			log.Println(data)
 		}
 	}
+}
+
+// Handler for bot's own messages
+func (p *TwitterPlugin) BotMessage(message bot.Message) bool {
+	return false
 }
