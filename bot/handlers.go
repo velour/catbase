@@ -85,8 +85,6 @@ func (b *Bot) isCmd(message string) (bool, string) {
 	iscmd := false
 	lowerMessage := strings.ToLower(message)
 
-	rex := fmt.Sprintf(`^%s\S\s.+`, botnick)
-
 	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
 		iscmd = true
 		message = message[len(cmdc):]
