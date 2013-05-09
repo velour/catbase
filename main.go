@@ -1,11 +1,11 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/chrissexton/alepale/bot"
 	"github.com/chrissexton/alepale/config"
 	"github.com/chrissexton/alepale/plugins"
-	"flag"
-	"fmt"
 )
 import irc "github.com/fluffle/goirc/client"
 
