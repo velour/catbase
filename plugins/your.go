@@ -57,3 +57,8 @@ func (p *YourPlugin) Event(kind string, message bot.Message) bool {
 func (p *YourPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *YourPlugin) RegisterWeb() *string {
+	return nil
+}

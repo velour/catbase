@@ -1,9 +1,11 @@
 package bot
 
 import (
+	"fmt"
 	"github.com/chrissexton/alepale/config"
 	irc "github.com/fluffle/goirc/client"
 	"labix.org/v2/mgo"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -35,6 +37,9 @@ type Bot struct {
 	logOut chan Messages
 
 	Version string
+
+	// The entries to the bot's HTTP interface
+	httpEndPoints []string
 }
 
 // Log provides a slice of messages in order
@@ -126,7 +131,7 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 		},
 	}
 
-	return &Bot{
+	bot := &Bot{
 		Config:         config,
 		Plugins:        make(map[string]Handler),
 		PluginOrdering: make([]string, 0),
@@ -140,12 +145,20 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 		logOut:         logOut,
 		Version:        config.Version,
 	}
+
+	http.HandleFunc("/", bot.serveRoot)
+	go http.ListenAndServe(":8080", nil)
+
+	return bot
 }
 
 // Adds a constructed handler to the bots handlers list
 func (b *Bot) AddHandler(name string, h Handler) {
 	b.Plugins[strings.ToLower(name)] = h
 	b.PluginOrdering = append(b.PluginOrdering, name)
+	if entry := h.RegisterWeb(); entry != nil {
+		b.httpEndPoints = append(b.httpEndPoints, *entry)
+	}
 }
 
 // Sends message to channel
@@ -184,4 +197,10 @@ func (b *Bot) MsgRecieved(conn *irc.Conn, line *irc.Line) {
 RET:
 	b.logIn <- msg
 	return
+}
+
+func (b *Bot) serveRoot(w http.ResponseWriter, r *http.Request) {
+	for _, entry := range b.httpEndPoints {
+		fmt.Fprintf(w, "<a href=\"%s\">%s</a>", entry, entry)
+	}
 }

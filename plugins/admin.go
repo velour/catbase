@@ -96,3 +96,8 @@ func (p *AdminPlugin) Event(kind string, message bot.Message) bool {
 func (p *AdminPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *AdminPlugin) RegisterWeb() *string {
+	return nil
+}

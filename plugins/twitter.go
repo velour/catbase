@@ -134,3 +134,8 @@ func (p *TwitterPlugin) checkMessages() {
 func (p *TwitterPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *TwitterPlugin) RegisterWeb() *string {
+	return nil
+}

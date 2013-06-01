@@ -188,3 +188,8 @@ func (p *CounterPlugin) Event(kind string, message bot.Message) bool {
 func (p *CounterPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *CounterPlugin) RegisterWeb() *string {
+	return nil
+}

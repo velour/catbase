@@ -110,3 +110,8 @@ func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
 func (p *TalkerPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *TalkerPlugin) RegisterWeb() *string {
+	return nil
+}

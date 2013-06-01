@@ -18,6 +18,7 @@ type Handler interface {
 	Event(kind string, message Message) bool
 	BotMessage(message Message) bool
 	Help(channel string, parts []string)
+	RegisterWeb() *string
 }
 
 // Checks to see if our user exists and if any changes have occured to it

@@ -180,3 +180,8 @@ func (p *RememberPlugin) BotMessage(message bot.Message) bool {
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 	return false
 }
+
+// Register any web URLs desired
+func (p *RememberPlugin) RegisterWeb() *string {
+	return nil
+}

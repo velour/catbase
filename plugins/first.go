@@ -146,3 +146,8 @@ func (p *FirstPlugin) Event(kind string, message bot.Message) bool {
 func (p *FirstPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *FirstPlugin) RegisterWeb() *string {
+	return nil
+}

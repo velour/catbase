@@ -44,3 +44,8 @@ func (p *SkeletonPlugin) Event(kind string, message bot.Message) bool {
 func (p *SkeletonPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *SkeletonPlugin) RegisterWeb() *string {
+	return nil
+}

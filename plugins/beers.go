@@ -374,3 +374,8 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 func (p *BeersPlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *BeersPlugin) RegisterWeb() *string {
+	return nil
+}

@@ -10,6 +10,7 @@ type Plugin interface {
 	BotMessage(message bot.Message) bool
 	LoadData()
 	Help()
+	RegisterWeb()
 }
 
 // ---- Below are some example plugins

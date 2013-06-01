@@ -3,9 +3,12 @@ package plugins
 import (
 	"fmt"
 	"github.com/chrissexton/alepale/bot"
+	"html/template"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"math/rand"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -441,4 +444,38 @@ func (p *FactoidPlugin) factTimer(channel string) {
 // Handler for bot's own messages
 func (p *FactoidPlugin) BotMessage(message bot.Message) bool {
 	return false
+}
+
+// Register any web URLs desired
+func (p *FactoidPlugin) RegisterWeb() *string {
+	http.HandleFunc("/factoid/req", p.serveQuery)
+	http.HandleFunc("/factoid", p.serveIndex)
+	tmp := "/factoid"
+	return &tmp
+}
+
+// Serve up the index template
+func (p *FactoidPlugin) serveIndex(w http.ResponseWriter, r *http.Request) {
+	t, err := template.New("factoidIndex").Parse(factoidIndex)
+	if err != nil {
+		log.Println(err)
+	}
+	t.Execute(w, nil)
+}
+
+func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
+	context := make(map[string]interface{})
+	if e := r.PostFormValue("entry"); e != "" {
+		var entries []Factoid
+		p.Coll.Find(bson.M{"trigger": e}).All(&entries)
+		context["Count"] = fmt.Sprintf("Found %d entries", len(entries))
+		context["Entries"] = entries
+	} else {
+		context["Error"] = "Something's fucked."
+	}
+	t, err := template.New("factoidIndex").Parse(factoidIndex)
+	if err != nil {
+		log.Println(err)
+	}
+	t.Execute(w, context)
 }

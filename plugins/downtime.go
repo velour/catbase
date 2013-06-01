@@ -153,3 +153,8 @@ func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 func (p *DowntimePlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *DowntimePlugin) RegisterWeb() *string {
+	return nil
+}

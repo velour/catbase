@@ -98,3 +98,8 @@ func (p *DicePlugin) Event(kind string, message bot.Message) bool {
 func (p *DicePlugin) BotMessage(message bot.Message) bool {
 	return false
 }
+
+// Register any web URLs desired
+func (p *DicePlugin) RegisterWeb() *string {
+	return nil
+}
