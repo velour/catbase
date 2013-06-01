@@ -347,6 +347,15 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 		return p.trigger(message)
 	}
 
+	if strings.ToLower(message.Body) == "factoid" {
+		if fact := p.randomFact(); fact != nil {
+			p.sayFact(message, *fact)
+			return true
+		} else {
+			log.Println("Got a nil fact.")
+		}
+	}
+
 	if strings.ToLower(message.Body) == "forget that" {
 		return p.forgetLastFact(message)
 	}
@@ -391,19 +400,17 @@ func (p *FactoidPlugin) Event(kind string, message bot.Message) bool {
 
 // Pull a fact at random from the database
 func (p *FactoidPlugin) randomFact() *Factoid {
-	var results []Factoid
-	iter := p.Coll.Find(bson.M{}).Iter()
-	err := iter.All(&results)
-	if err != nil {
-		panic(err)
-	}
+	var fact Factoid
 
-	nfacts := len(results)
-	if nfacts == 0 {
+	nFacts, err := p.Coll.Count()
+	if err != nil {
 		return nil
 	}
 
-	fact := results[rand.Intn(nfacts)]
+	if err := p.Coll.Find(nil).Skip(rand.Intn(nFacts)).One(&fact); err != nil {
+		log.Println("Couldn't get next...")
+	}
+
 	return &fact
 }
 
