@@ -461,8 +461,22 @@ func (p *FactoidPlugin) RegisterWeb() *string {
 	return &tmp
 }
 
+func linkify(text string) template.HTML {
+	parts := strings.Split(text, " ")
+	for i, word := range parts {
+		if strings.HasPrefix(word, "http") {
+			parts[i] = fmt.Sprintf("<a href=\"%s\">%s</a>", word, word)
+		}
+	}
+	return template.HTML(strings.Join(parts, " "))
+}
+
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	context := make(map[string]interface{})
+	funcMap := template.FuncMap{
+		// The name "title" is what the function will be called in the template text.
+		"linkify": linkify,
+	}
 	if e := r.FormValue("entry"); e != "" {
 		var entries []Factoid
 		p.Coll.Find(bson.M{"trigger": bson.M{"$regex": e}}).All(&entries)
@@ -470,7 +484,7 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 		context["Entries"] = entries
 		context["Search"] = e
 	}
-	t, err := template.New("factoidIndex").Parse(factoidIndex)
+	t, err := template.New("factoidIndex").Funcs(funcMap).Parse(factoidIndex)
 	if err != nil {
 		log.Println(err)
 	}

@@ -76,7 +76,7 @@ var factoidIndex string = `
 				{{range .Entries}}
 				<tr>
 					<td>{{.Trigger}}</td>
-					<td>{{.FullText}}</td>
+					<td>{{linkify .FullText}}</td>
 					<td>{{.CreatedBy}}</td>
 					<td>{{.AccessCount}}</td>
 				</tr>
