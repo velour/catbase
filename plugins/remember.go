@@ -5,6 +5,7 @@ import (
 	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -86,6 +87,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				id := int(funcres["retval"].(float64))
 
 				fact := Factoid{
+					Id:           bson.NewObjectId(),
 					Idx:          id,
 					Trigger:      trigger,
 					Operator:     "reply",
@@ -96,7 +98,9 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 					LastAccessed: time.Now(),
 					AccessCount:  0,
 				}
-				p.Coll.Insert(fact)
+				if err = p.Coll.Insert(fact); err != nil {
+					log.Println("ERROR!!!!:", err)
+				}
 
 				// sorry, not creative with names so we're reusing msg
 				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
