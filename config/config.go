@@ -19,6 +19,7 @@ type Config struct {
 	QuoteTime             int
 	LogLength             int
 	Admins                []string
+	HttpAddr              string
 	UntappdToken          string
 	UntappdFreq           int
 	WelcomeMsgs           []string

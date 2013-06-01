@@ -12,6 +12,7 @@
 	"QuoteTime": 1,
 	"LogLength": 50,
 	"Admins": ["<Admin Nick>"],
+	"HttpAddr": "127.0.0.1:1337",
 
 	"UntappdToken": "<Your Token>",
 	"UntappdFreq": 3600,

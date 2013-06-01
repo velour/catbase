@@ -147,7 +147,10 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 	}
 
 	http.HandleFunc("/", bot.serveRoot)
-	go http.ListenAndServe(":8080", nil)
+	if config.HttpAddr == "" {
+		config.HttpAddr = "127.0.0.1:1337"
+	}
+	go http.ListenAndServe(config.HttpAddr, nil)
 
 	return bot
 }

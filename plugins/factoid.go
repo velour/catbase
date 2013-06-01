@@ -470,6 +470,7 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 		p.Coll.Find(bson.M{"trigger": e}).All(&entries)
 		context["Count"] = fmt.Sprintf("Found %d entries", len(entries))
 		context["Entries"] = entries
+		context["Search"] = e
 	} else {
 		context["Error"] = "Something's fucked."
 	}
