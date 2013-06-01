@@ -11,7 +11,7 @@ var factoidIndex string = `
 	<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.1.0/pure-min.css">
 </head>
 	<div>
-		<form action="/factoid/req" method="POST" class="pure-form">
+		<form action="/factoid" method="POST" class="pure-form">
 			<fieldset>
 				<legend>Search for a factoid</legend>
 				<input type="text" name="entry" placeholder="trigger" value="{{.Search}}" />

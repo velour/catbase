@@ -449,18 +449,9 @@ func (p *FactoidPlugin) BotMessage(message bot.Message) bool {
 // Register any web URLs desired
 func (p *FactoidPlugin) RegisterWeb() *string {
 	http.HandleFunc("/factoid/req", p.serveQuery)
-	http.HandleFunc("/factoid", p.serveIndex)
+	http.HandleFunc("/factoid", p.serveQuery)
 	tmp := "/factoid"
 	return &tmp
-}
-
-// Serve up the index template
-func (p *FactoidPlugin) serveIndex(w http.ResponseWriter, r *http.Request) {
-	t, err := template.New("factoidIndex").Parse(factoidIndex)
-	if err != nil {
-		log.Println(err)
-	}
-	t.Execute(w, nil)
 }
 
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
@@ -471,8 +462,6 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 		context["Count"] = fmt.Sprintf("%d", len(entries))
 		context["Entries"] = entries
 		context["Search"] = e
-	} else {
-		context["Error"] = "Something's fucked."
 	}
 	t, err := template.New("factoidIndex").Parse(factoidIndex)
 	if err != nil {
