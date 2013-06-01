@@ -468,7 +468,7 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	if e := r.PostFormValue("entry"); e != "" {
 		var entries []Factoid
 		p.Coll.Find(bson.M{"trigger": e}).All(&entries)
-		context["Count"] = fmt.Sprintf("Found %d entries", len(entries))
+		context["Count"] = fmt.Sprintf("%d", len(entries))
 		context["Entries"] = entries
 		context["Search"] = e
 	} else {
