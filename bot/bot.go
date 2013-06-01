@@ -1,10 +1,11 @@
 package bot
 
 import (
-	"fmt"
 	"github.com/chrissexton/alepale/config"
 	irc "github.com/fluffle/goirc/client"
+	"html/template"
 	"labix.org/v2/mgo"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ type Bot struct {
 	Version string
 
 	// The entries to the bot's HTTP interface
-	httpEndPoints []string
+	httpEndPoints map[string]string
 }
 
 // Log provides a slice of messages in order
@@ -144,6 +145,7 @@ func NewBot(config *config.Config, c *irc.Conn) *Bot {
 		logIn:          logIn,
 		logOut:         logOut,
 		Version:        config.Version,
+		httpEndPoints:  make(map[string]string),
 	}
 
 	http.HandleFunc("/", bot.serveRoot)
@@ -160,7 +162,7 @@ func (b *Bot) AddHandler(name string, h Handler) {
 	b.Plugins[strings.ToLower(name)] = h
 	b.PluginOrdering = append(b.PluginOrdering, name)
 	if entry := h.RegisterWeb(); entry != nil {
-		b.httpEndPoints = append(b.httpEndPoints, *entry)
+		b.httpEndPoints[name] = *entry
 	}
 }
 
@@ -202,8 +204,41 @@ RET:
 	return
 }
 
+var rootIndex string = `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Factoids</title>
+		<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.1.0/pure-min.css">
+	</head>
+	{{if .EndPoints}}
+	<div style="padding-top: 1em;">
+		<table class="pure-table">
+			<thead>
+				<tr>
+					<th>Plugin</th>
+				</tr>
+			</thead>
+
+			<tbody>
+				{{range $key, $value := .EndPoints}}
+				<tr>
+					<td><a href="{{$value}}">{{$key}}</a></td>
+				</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</div>
+	{{end}}
+</html>
+`
+
 func (b *Bot) serveRoot(w http.ResponseWriter, r *http.Request) {
-	for _, entry := range b.httpEndPoints {
-		fmt.Fprintf(w, "<a href=\"%s\">%s</a>", entry, entry)
+	context := make(map[string]interface{})
+	context["EndPoints"] = b.httpEndPoints
+	t, err := template.New("rootIndex").Parse(rootIndex)
+	if err != nil {
+		log.Println(err)
 	}
+	t.Execute(w, context)
 }
