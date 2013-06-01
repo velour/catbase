@@ -89,7 +89,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				fact := Factoid{
 					Id:           bson.NewObjectId(),
 					Idx:          id,
-					Trigger:      trigger,
+					Trigger:      strings.ToLower(trigger),
 					Operator:     "reply",
 					FullText:     msg,
 					Action:       msg,
