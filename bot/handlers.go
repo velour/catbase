@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"code.google.com/p/velour/irc"
 	"errors"
 	"fmt"
 	"labix.org/v2/mgo/bson"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 )
-import irc "github.com/fluffle/goirc/client"
 
 // Interface used for compatibility with the Plugin interface
 type Handler interface {
@@ -19,35 +19,6 @@ type Handler interface {
 	BotMessage(message Message) bool
 	Help(channel string, parts []string)
 	RegisterWeb() *string
-}
-
-// Checks to see if our user exists and if any changes have occured to it
-// This uses a linear scan for now, oh well.
-func (b *Bot) checkuser(nick string) *User {
-	var user *User = nil
-	for _, usr := range b.Users {
-		if usr.Name == nick {
-			user = &usr
-			break
-		}
-	}
-	if user == nil {
-		isadmin := false
-		for _, u := range b.Config.Admins {
-			if nick == u {
-				isadmin = true
-			}
-		}
-		user = &User{
-			Name:       nick,
-			Alts:       make([]string, 1),
-			MessageLog: make([]string, 50),
-			Admin:      isadmin,
-		}
-		b.Users = append(b.Users, *user)
-	}
-
-	return user
 }
 
 // Checks to see if the user is asking for help, returns true if so and handles the situation.
@@ -82,7 +53,7 @@ func (b *Bot) checkHelp(channel string, parts []string) {
 // Checks if message is a command and returns its curtailed version
 func (b *Bot) isCmd(message string) (bool, string) {
 	cmdc := b.Config.CommandChar
-	botnick := strings.ToLower(b.Conn.Me.Nick)
+	botnick := strings.ToLower(b.Config.Nick)
 	iscmd := false
 	lowerMessage := strings.ToLower(message)
 
@@ -112,29 +83,33 @@ func (b *Bot) isCmd(message string) (bool, string) {
 }
 
 // Builds our internal message type out of a Conn & Line from irc
-func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
+func (b *Bot) buildMessage(conn *irc.Client, inMsg irc.Msg) Message {
 	// Check for the user
-	user := b.checkuser(line.Nick)
+	user := b.GetUser(inMsg.Origin)
 
-	channel := line.Args[0]
-	if channel == conn.Me.Nick {
-		channel = line.Nick
+	channel := inMsg.Args[0]
+	if channel == b.Config.Nick {
+		channel = inMsg.Args[0]
 	}
 
-	isaction := line.Cmd == "ACTION"
-
+	isAction := false
 	var message string
-	if len(line.Args) > 1 {
-		message = line.Args[1]
+	if len(inMsg.Args) > 1 {
+		message = inMsg.Args[1]
+
+		isAction = strings.HasPrefix(message, actionPrefix)
+		if isAction {
+			message = strings.TrimRight(message[len(actionPrefix):], "\x01")
+			message = strings.TrimSpace(message)
+		}
+
 	}
 
 	iscmd := false
 	filteredMessage := message
-	if !isaction {
+	if !isAction {
 		iscmd, filteredMessage = b.isCmd(message)
 	}
-
-	user.MessageLog = append(user.MessageLog, message)
 
 	msg := Message{
 		User:    user,
@@ -142,9 +117,9 @@ func (b *Bot) buildMessage(conn *irc.Conn, line *irc.Line) Message {
 		Body:    filteredMessage,
 		Raw:     message,
 		Command: iscmd,
-		Action:  isaction,
+		Action:  isAction,
 		Time:    time.Now(),
-		Host:    line.Host,
+		Host:    inMsg.Host,
 	}
 
 	return msg
@@ -175,7 +150,8 @@ func (b *Bot) Filter(message Message, input string) string {
 	}
 
 	if strings.Contains(input, "$someone") {
-		someone := b.Users[rand.Intn(len(b.Users))].Name
+		nicks := b.Who(message.Channel)
+		someone := nicks[rand.Intn(len(nicks))].Name
 		input = strings.Replace(input, "$someone", someone, -1)
 	}
 
@@ -230,16 +206,6 @@ func (b *Bot) Help(channel string, parts []string) {
 		"can find my source code on the internet here: "+
 		"http://github.com/chrissexton/alepale", b.Version)
 	b.SendMessage(channel, msg)
-}
-
-func (b *Bot) ActionRecieved(conn *irc.Conn, line *irc.Line) {
-	msg := b.buildMessage(conn, line)
-	for _, name := range b.PluginOrdering {
-		p := b.Plugins[name]
-		if p.Event(line.Cmd, msg) {
-			break
-		}
-	}
 }
 
 // Send our own musings to the plugins

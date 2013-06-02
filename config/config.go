@@ -13,6 +13,7 @@ type Config struct {
 	MainChannel           string
 	Plugins               []string
 	Nick, Server, Pass    string
+	FullName              string
 	Version               string
 	CommandChar           string
 	QuoteChance           float64

@@ -1,98 +1,178 @@
 package main
 
 import (
+	"code.google.com/p/velour/irc"
 	"flag"
-	"fmt"
 	"github.com/chrissexton/alepale/bot"
 	"github.com/chrissexton/alepale/config"
 	"github.com/chrissexton/alepale/plugins"
+	"io"
+	"log"
+	"os"
+	"time"
 )
-import irc "github.com/fluffle/goirc/client"
+
+const (
+	// DefaultPort is the port used to connect to
+	// the server if one is not specified.
+	defaultPort = "6667"
+
+	// InitialTimeout is the initial amount of time
+	// to delay before reconnecting.  Each failed
+	// reconnection doubles the timout until
+	// a connection is made successfully.
+	initialTimeout = 2 * time.Second
+
+	// PingTime is the amount of inactive time
+	// to wait before sending a ping to the server.
+	pingTime = 120 * time.Second
+)
+
+var (
+	Client *irc.Client
+	Bot    *bot.Bot
+	Config *config.Config
+)
 
 func main() {
-
-	// These belong in the JSON file
-	// var server = flag.String("server", "irc.freenode.net", "Server to connect to.")
-	// var nick = flag.String("nick", "CrappyBot", "Nick to set upon connection.")
-	// var pass = flag.String("pass", "", "IRC server password to use")
-	// var channel = flag.String("channel", "#AlePaleTest", "Channel to connet to.")
-
-	var cfile = flag.String("config", "config.json", "Config file to load. (Defaults to config.json)")
+	var err error
+	var cfile = flag.String("config", "config.json",
+		"Config file to load. (Defaults to config.json)")
 	flag.Parse() // parses the logging flags.
 
-	config := config.Readconfig(Version, *cfile)
+	Config = config.Readconfig(Version, *cfile)
 
-	c := irc.SimpleClient(config.Nick)
-	// Optionally, enable SSL
-	c.SSL = false
+	Client, err = irc.DialServer(Config.Server,
+		Config.Nick,
+		Config.FullName,
+		Config.Pass)
 
-	// Add handlers to do things here!
-	// e.g. join a channel on connect.
-	c.AddHandler("connected",
-		func(conn *irc.Conn, line *irc.Line) {
-			for _, channel := range config.Channels {
-				conn.Join(channel)
-				fmt.Printf("Now talking in %s.\n", channel)
-			}
-		})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	Bot = bot.NewBot(Config, Client)
+	// Bot.AddHandler(plugins.NewTestPlugin(Bot))
+	Bot.AddHandler("admin", plugins.NewAdminPlugin(Bot))
+	Bot.AddHandler("first", plugins.NewFirstPlugin(Bot))
+	Bot.AddHandler("downtime", plugins.NewDowntimePlugin(Bot))
+	Bot.AddHandler("talker", plugins.NewTalkerPlugin(Bot))
+	Bot.AddHandler("dice", plugins.NewDicePlugin(Bot))
+	Bot.AddHandler("beers", plugins.NewBeersPlugin(Bot))
+	Bot.AddHandler("counter", plugins.NewCounterPlugin(Bot))
+	Bot.AddHandler("remember", plugins.NewRememberPlugin(Bot))
+	Bot.AddHandler("skeleton", plugins.NewSkeletonPlugin(Bot))
+	Bot.AddHandler("your", plugins.NewYourPlugin(Bot))
+	// catches anything left, will always return true
+	Bot.AddHandler("factoid", plugins.NewFactoidPlugin(Bot))
+
+	handleConnection()
+
 	// And a signal on disconnect
 	quit := make(chan bool)
 
-	c.AddHandler("disconnected",
-		func(conn *irc.Conn, line *irc.Line) { quit <- true })
-
-	b := bot.NewBot(config, c)
-	// b.AddHandler(plugins.NewTestPlugin(b))
-	b.AddHandler("admin", plugins.NewAdminPlugin(b))
-	b.AddHandler("first", plugins.NewFirstPlugin(b))
-	b.AddHandler("downtime", plugins.NewDowntimePlugin(b))
-	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
-	b.AddHandler("dice", plugins.NewDicePlugin(b))
-	b.AddHandler("beers", plugins.NewBeersPlugin(b))
-	b.AddHandler("counter", plugins.NewCounterPlugin(b))
-	b.AddHandler("remember", plugins.NewRememberPlugin(b))
-	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
-	b.AddHandler("your", plugins.NewYourPlugin(b))
-	// catches anything left, will always return true
-	b.AddHandler("factoid", plugins.NewFactoidPlugin(b))
-
-	c.AddHandler("NICK", func(conn *irc.Conn, line *irc.Line) {
-		b.ActionRecieved(conn, line)
-	})
-
-	c.AddHandler("NAMES", func(conn *irc.Conn, line *irc.Line) {
-		b.ActionRecieved(conn, line)
-	})
-
-	c.AddHandler("MODE", func(conn *irc.Conn, line *irc.Line) {
-		b.ActionRecieved(conn, line)
-	})
-
-	c.AddHandler("PART", func(conn *irc.Conn, line *irc.Line) {
-		b.ActionRecieved(conn, line)
-	})
-
-	c.AddHandler("QUIT", func(conn *irc.Conn, line *irc.Line) {
-		b.ActionRecieved(conn, line)
-	})
-
-	c.AddHandler("JOIN", func(conn *irc.Conn, line *irc.Line) {
-		b.ActionRecieved(conn, line)
-	})
-
-	c.AddHandler("ACTION", func(conn *irc.Conn, line *irc.Line) {
-		b.MsgRecieved(conn, line)
-	})
-
-	c.AddHandler("PRIVMSG", func(conn *irc.Conn, line *irc.Line) {
-		b.MsgRecieved(conn, line)
-	})
-
-	// Tell client to connect
-	if err := c.Connect(config.Server, config.Pass); err != nil {
-		fmt.Printf("Connection error: %s\n", err)
-	}
-
 	// Wait for disconnect
 	<-quit
+}
+
+func handleConnection() {
+	t := time.NewTimer(pingTime)
+
+	defer func() {
+		t.Stop()
+		close(Client.Out)
+		for err := range Client.Errors {
+			if err != io.EOF {
+				log.Println(err)
+			}
+		}
+	}()
+
+	for {
+		select {
+		case msg, ok := <-Client.In:
+			if !ok { // disconnect
+				return
+			}
+			t.Stop()
+			t = time.NewTimer(pingTime)
+			handleMsg(msg)
+
+		case <-t.C:
+			Client.Out <- irc.Msg{Cmd: irc.PING, Args: []string{Client.Server}}
+			t = time.NewTimer(pingTime)
+
+		case err, ok := <-Client.Errors:
+			if ok && err != io.EOF {
+				log.Println(err)
+				return
+			}
+		}
+	}
+}
+
+// HandleMsg handles IRC messages from the server.
+func handleMsg(msg irc.Msg) {
+	switch msg.Cmd {
+	case irc.ERROR:
+		log.Println(1, "Received error: "+msg.Raw)
+
+	case irc.PING:
+		Client.Out <- irc.Msg{Cmd: irc.PONG}
+
+	case irc.PONG:
+		// OK, ignore
+
+	case irc.ERR_NOSUCHNICK:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.ERR_NOSUCHCHANNEL:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.RPL_MOTD:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.RPL_NAMREPLY:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.RPL_TOPIC:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.KICK:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.TOPIC:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.MODE:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.JOIN:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.PART:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.QUIT:
+		os.Exit(1)
+
+	case irc.NOTICE:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.PRIVMSG:
+		Bot.MsgRecieved(Client, msg)
+
+	case irc.NICK:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.RPL_WHOREPLY:
+		Bot.EventRecieved(Client, msg)
+
+	case irc.RPL_ENDOFWHO:
+		Bot.EventRecieved(Client, msg)
+
+	default:
+		cmd := irc.CmdNames[msg.Cmd]
+		log.Println("(" + cmd + ") " + msg.Raw)
+	}
 }
