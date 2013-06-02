@@ -29,8 +29,11 @@ type FirstEntry struct {
 func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
 	coll := b.Db.C("first")
 	var firsts []FirstEntry
-	query := bson.M{"day": midnight(time.Now().UTC())}
+	query := bson.M{"day": midnight(time.Now())}
+	log.Println("Day:", midnight(time.Now()))
 	coll.Find(query).All(&firsts)
+
+	log.Println("FIRSTS:", firsts)
 
 	var first *FirstEntry
 	if len(firsts) > 0 {
