@@ -151,6 +151,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		u := untappdUser{
 			UntappdUser: parts[1],
 			ChanNick:    message.User.Name,
+			Channel:     message.Channel,
 		}
 
 		p.getUntappdCheckins(u)
@@ -263,6 +264,7 @@ type Beers struct {
 
 type untappdUser struct {
 	UntappdUser   string
+	Channel       string
 	LastCheckin   int
 	ChanNick      string
 	KnownCheckins [5]int
@@ -334,7 +336,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		time.Sleep(time.Duration(frequency) * time.Second)
 
 		var users []untappdUser
-		p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}}).All(&users)
+		p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}, "channel": channel}).All(&users)
 
 		log.Println("Found ", len(users), " untappd users")
 
