@@ -9,6 +9,16 @@ var factoidIndex string = `
 <head>
 	<title>Factoids</title>
 	<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.1.0/pure-min.css">
+
+	<!-- DataTables CSS -->
+	<link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
+	 
+	<!-- jQuery -->
+	<script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.2.min.js"></script>
+	 
+	<!-- DataTables -->
+	<script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+
 </head>
 	<div>
 		<form action="/factoid" method="GET" class="pure-form">
@@ -62,7 +72,7 @@ var factoidIndex string = `
 
 	{{if .Entries}}
 	<div style="padding-top: 1em;">
-		<table class="pure-table">
+		<table class="pure-table" id="factTable">
 			<thead>
 				<tr>
 					<th>Trigger</th>
@@ -85,6 +95,14 @@ var factoidIndex string = `
 		</table>
 	</div>
 	{{end}}
+
+	<script>
+	$(document).ready(function(){
+		$('#factTable').dataTable({
+			"bPaginate": false
+		});
+	});
+	</script>
 
 </html>
 `
