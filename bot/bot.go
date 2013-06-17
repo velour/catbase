@@ -149,6 +149,9 @@ func (b *Bot) AddHandler(name string, h Handler) {
 }
 
 func (b *Bot) SendMessage(channel, message string) {
+	if !strings.HasPrefix(message, actionPrefix) {
+		b.selfSaid(channel, message, false)
+	}
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -164,19 +167,16 @@ func (b *Bot) SendMessage(channel, message string) {
 		}
 		b.Client.Out <- m
 	}
-
-	b.selfSaid(channel, message)
 }
 
 // Sends action to channel
 func (b *Bot) SendAction(channel, message string) {
-	// TODO: ADD CTCP ACTION
+	// Notify plugins that we've said something
+	b.selfSaid(channel, message, true)
+
 	message = actionPrefix + " " + message + "\x01"
 
 	b.SendMessage(channel, message)
-
-	// Notify plugins that we've said something
-	b.selfSaid(channel, message)
 }
 
 // Handles incomming PRIVMSG requests

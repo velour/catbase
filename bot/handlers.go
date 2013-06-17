@@ -215,12 +215,13 @@ func (b *Bot) Help(channel string, parts []string) {
 }
 
 // Send our own musings to the plugins
-func (b *Bot) selfSaid(channel, message string) {
+func (b *Bot) selfSaid(channel, message string, action bool) {
 	msg := Message{
 		User:    &b.Me, // hack
 		Channel: channel,
 		Body:    message,
 		Raw:     message, // hack
+		Action:  action,
 		Command: false,
 		Time:    time.Now(),
 		Host:    "0.0.0.0", // hack

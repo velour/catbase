@@ -58,6 +58,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.Log[message.Channel][i]
+
 			if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
 				strings.Contains(
 					strings.ToLower(entry.Body),
