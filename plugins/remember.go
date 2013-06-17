@@ -48,7 +48,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 	}
 
 	user := message.User
-	parts := strings.Fields(message.Body)
+	parts := strings.Split(message.Body, " ")
 	if message.Command && len(parts) >= 3 && parts[0] == "remember" {
 		// we have a remember!
 		// look through the logs and find parts[1] as a user, if not,
@@ -68,9 +68,9 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 				// check if it's an action
 				if entry.Action {
-					msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Raw)
+					msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body)
 				} else {
-					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Raw)
+					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body)
 				}
 
 				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
@@ -111,6 +111,8 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 			}
 		}
 		p.Bot.SendMessage(message.Channel, "Sorry, I don't know that phrase.")
+		p.Log[message.Channel] = append(p.Log[message.Channel], message)
+		return true
 	}
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 	return false
