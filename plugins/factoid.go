@@ -421,7 +421,7 @@ func (p *FactoidPlugin) factTimer(channel string) {
 	for {
 		time.Sleep(time.Duration(5) * time.Second)
 
-		lastmsg, err := p.Bot.LastMessage()
+		lastmsg, err := p.Bot.LastMessage(channel)
 		if err != nil {
 			continue
 		}

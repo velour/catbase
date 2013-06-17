@@ -125,12 +125,17 @@ func (b *Bot) buildMessage(conn *irc.Client, inMsg irc.Msg) Message {
 	return msg
 }
 
-func (b *Bot) LastMessage() (Message, error) {
+func (b *Bot) LastMessage(channel string) (Message, error) {
 	log := <-b.logOut
 	if len(log) == 0 {
 		return Message{}, errors.New("No messages found.")
 	}
-	return log[len(log)-1], nil
+	for i := len(log); i > 0; i-- {
+		if log[i].Channel == channel {
+			return log[i], nil
+		}
+	}
+	return Message{}, errors.New("No messages found.")
 }
 
 // Take an input string and mutate it based on $vars in the string
