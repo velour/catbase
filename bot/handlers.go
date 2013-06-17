@@ -130,9 +130,10 @@ func (b *Bot) LastMessage(channel string) (Message, error) {
 	if len(log) == 0 {
 		return Message{}, errors.New("No messages found.")
 	}
-	for i := len(log); i > 0; i-- {
-		if log[i].Channel == channel {
-			return log[i], nil
+	for i := len(log) - 1; i >= 0; i-- {
+		msg := log[i]
+		if strings.ToLower(msg.Channel) == strings.ToLower(channel) {
+			return msg, nil
 		}
 	}
 	return Message{}, errors.New("No messages found.")
