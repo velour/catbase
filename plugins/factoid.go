@@ -113,7 +113,7 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, *Factoid) {
 	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
 	err := iter.All(&results)
 	if err != nil {
-		panic(err)
+                return false, nil
 	}
 
 	nfacts := len(results)
