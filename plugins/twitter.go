@@ -88,13 +88,13 @@ func (p *TwitterPlugin) Message(message bot.Message) bool {
 func (p *TwitterPlugin) LoadData() {
 	// This bot has no data to load
 	p.Client = twitter.New(&oauth.Credentials{
-		p.Bot.Config.TwitterConsumerKey,
-		p.Bot.Config.TwitterConsumerSecret,
+		Token:  p.Bot.Config.TwitterConsumerKey,
+		Secret: p.Bot.Config.TwitterConsumerSecret,
 	})
 
 	p.Client.SetAuth(&oauth.Credentials{
-		p.Bot.Config.TwitterUserKey,
-		p.Bot.Config.TwitterUserSecret,
+		Token:  p.Bot.Config.TwitterUserKey,
+		Secret: p.Bot.Config.TwitterUserSecret,
 	})
 
 	_, err := p.Client.VerifyCredentials(nil)
