@@ -63,9 +63,7 @@ func (b *Bot) isCmd(message string) (bool, string) {
 		// } else if match, _ := regexp.MatchString(rex, lowerMessage); match {
 	} else if strings.HasPrefix(lowerMessage, botnick) &&
 		len(lowerMessage) > len(botnick) &&
-		(lowerMessage[len(botnick)] == ',' ||
-			lowerMessage[len(botnick)] == ':') &&
-		lowerMessage[len(botnick)+1] == ' ' {
+                (lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
 
 		iscmd = true
 		message = message[len(botnick):]
