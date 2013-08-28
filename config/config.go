@@ -28,6 +28,7 @@ type Config struct {
 	TwitterConsumerSecret string
 	TwitterUserKey        string
 	TwitterUserSecret     string
+	StartupFact           string
 	BadMsgs               []string
 	Bad                   struct {
 		Msgs  []string

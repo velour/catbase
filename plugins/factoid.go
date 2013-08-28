@@ -41,9 +41,9 @@ type FactoidPlugin struct {
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
-func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
+func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 	p := &FactoidPlugin{
-		Bot:  bot,
+		Bot:  botInst,
 		Coll: nil,
 		NotFound: []string{
 			"I don't know.",
@@ -55,9 +55,23 @@ func NewFactoidPlugin(bot *bot.Bot) *FactoidPlugin {
 		},
 	}
 	p.LoadData()
-	for _, channel := range bot.Config.Channels {
+	for _, channel := range botInst.Config.Channels {
 		go p.factTimer(channel)
+
+		go func() {
+			// Some random time to start up
+			time.Sleep(time.Duration(10) * time.Second)
+			if ok, fact := p.findTrigger(p.Bot.Config.StartupFact); ok {
+				p.sayFact(bot.Message{
+					Channel: channel,
+					Body:    "speed test",
+					Command: true,
+					Action:  false,
+				}, *fact)
+			}
+		}()
 	}
+
 	return p
 }
 
@@ -113,7 +127,7 @@ func (p *FactoidPlugin) findTrigger(message string) (bool, *Factoid) {
 	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
 	err := iter.All(&results)
 	if err != nil {
-                return false, nil
+		return false, nil
 	}
 
 	nfacts := len(results)

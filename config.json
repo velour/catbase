@@ -23,6 +23,8 @@
 	"TwitterUserKey": "<User Key>",
 	"TwitterUserSecret": "<User Secret>",
 
+	"StartupFact": "speed test",
+
 	"WelcomeMsgs": [
 			"Real men use screen, %s.",
 			"Joins upset the hivemind's OCD, %s.",
