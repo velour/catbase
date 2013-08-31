@@ -19,7 +19,7 @@ import (
 
 // factoid stores info about our factoid for lookup and later interaction
 type Factoid struct {
-	Id           bson.ObjectId `bson:"_id"`
+	Id           bson.ObjectId `bson:"_id,omitempty"`
 	Idx          int
 	Trigger      string
 	Operator     string
