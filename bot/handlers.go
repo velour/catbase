@@ -63,7 +63,7 @@ func (b *Bot) isCmd(message string) (bool, string) {
 		// } else if match, _ := regexp.MatchString(rex, lowerMessage); match {
 	} else if strings.HasPrefix(lowerMessage, botnick) &&
 		len(lowerMessage) > len(botnick) &&
-                (lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
+		(lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
 
 		iscmd = true
 		message = message[len(botnick):]
@@ -153,10 +153,10 @@ func (b *Bot) Filter(message Message, input string) string {
 		input = strings.Replace(input, "$nick", nick, -1)
 	}
 
-	if strings.Contains(input, "$someone") {
+	for strings.Contains(input, "$someone") {
 		nicks := b.Who(message.Channel)
 		someone := nicks[rand.Intn(len(nicks))].Name
-		input = strings.Replace(input, "$someone", someone, -1)
+		input = strings.Replace(input, "$someone", someone, 1)
 	}
 
 	for strings.Contains(input, "$digit") {
