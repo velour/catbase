@@ -145,20 +145,34 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 	}
 
 	if message.Command && parts[0] == "reguntappd" {
+		chanNick := message.User.Name
+		channel := message.Channel
+
 		if len(parts) < 2 {
 			p.Bot.SendMessage(channel, "You must also provide a user name.")
+		} else if len(parts) == 3 {
+			chanNick = parts[2]
+		} else if len(parts) == 4 {
+			chanNick = parts[2]
+			channel = parts[3]
 		}
 		u := untappdUser{
 			UntappdUser: parts[1],
-			ChanNick:    message.User.Name,
-			Channel:     message.Channel,
+			ChanNick:    chanNick,
+			Channel:     channel,
 		}
 
-		p.Coll.Upsert(bson.M{"untappduser": u.UntappdUser}, user)
+		log.Println("Creating Untappd user:", u.UntappdUser, "nick:", u.ChanNick)
 
-		p.getUntappdCheckins()
+		_, err := p.Coll.Upsert(bson.M{"untappduser": u.UntappdUser}, u)
+		if err != nil {
+			log.Println("ERROR!!!:", err)
+		}
 
 		p.Bot.SendMessage(channel, "I'll be watching you.")
+
+		p.checkUntappd(channel)
+
 		return true
 	}
 
@@ -272,6 +286,7 @@ type Beers struct {
 }
 
 type untappdUser struct {
+	Id            bson.ObjectId `bson:"_id,omitempty"`
 	UntappdUser   string
 	Channel       string
 	LastCheckin   int
@@ -279,7 +294,7 @@ type untappdUser struct {
 	KnownCheckins [5]int
 }
 
-func (p *BeersPlugin) pullUntappd() (Beers, error) {
+func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	access_token := "?access_token=" + p.Bot.Config.UntappdToken
 	baseUrl := "http://api.untappd.com/v4/checkin/recent/"
 
@@ -291,32 +306,20 @@ func (p *BeersPlugin) pullUntappd() (Beers, error) {
 		panic(err)
 	}
 	if resp.StatusCode == 500 {
-		return Beers{}, errors.New(resp.Status)
+		return []checkin{}, errors.New(resp.Status)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
-	// fmt.Println(string(body))
 
 	var beers Beers
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
 		log.Println(err)
-		return Beers{}, errors.New("Unable to parse JSON")
+		return []checkin{}, errors.New("Unable to parse JSON")
 	}
-	return beers, nil
-}
-
-func (p *BeersPlugin) getUntappdCheckins() ([]checkin, error) {
-	beers, err := p.pullUntappd()
-	if err != nil {
-		return nil, err
-	}
-
-	chks := beers.Response.Checkins.Items
-
-	return chks, nil
+	return beers.Response.Checkins.Items, nil
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
@@ -335,9 +338,16 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		userMap[u.UntappdUser] = u
 	}
 
-	chks, err := p.getUntappdCheckins()
-	for _, checkin := range chks {
+	chks, err := p.pullUntappd()
+	for i := len(chks); i > 0; i-- {
+		checkin := chks[i-1]
+
 		if err != nil {
+			log.Println("ERROR!:", err)
+			continue
+		}
+
+		if checkin.Checkin_id <= userMap[checkin.User.User_name].LastCheckin {
 			continue
 		}
 
@@ -362,18 +372,21 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 				msg, checkin.Checkin_comment)
 		}
 
-		p.Coll.Update(
-			bson.M{"untappduser": user.UntappdUser},
-			bson.M{"set": bson.M{"lastcheckin": checkin.Checkin_id}},
-		)
+		user.LastCheckin = checkin.Checkin_id
+		err := p.Coll.Update(bson.M{"_id": user.Id}, user)
+		if err != nil {
+			log.Println("UPDATE ERROR!:", err)
+		}
 
-		fmt.Println(msg)
+		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
 		p.Bot.SendMessage(channel, msg)
 	}
 }
 
 func (p *BeersPlugin) untappdLoop(channel string) {
 	frequency := p.Bot.Config.UntappdFreq
+
+	log.Println("Checking every ", frequency, " seconds")
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
