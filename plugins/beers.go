@@ -154,7 +154,9 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			Channel:     message.Channel,
 		}
 
-		p.getUntappdCheckins(u)
+		p.Coll.Upsert(bson.M{"untappduser": u.UntappdUser}, user)
+
+		p.getUntappdCheckins()
 
 		p.Bot.SendMessage(channel, "I'll be watching you.")
 		return true
@@ -247,6 +249,13 @@ type checkin struct {
 	Beer    map[string]interface{}
 	Brewery map[string]interface{}
 	Venue   interface{}
+	User    mrUntappd
+}
+
+type mrUntappd struct {
+	Uid          int
+	User_name    string
+	Relationship string
 }
 
 type checkins struct {
@@ -270,11 +279,11 @@ type untappdUser struct {
 	KnownCheckins [5]int
 }
 
-func (p *BeersPlugin) pullUntappd(user untappdUser) (Beers, error) {
+func (p *BeersPlugin) pullUntappd() (Beers, error) {
 	access_token := "?access_token=" + p.Bot.Config.UntappdToken
-	baseUrl := "http://api.untappd.com/v4/user/checkins/"
+	baseUrl := "http://api.untappd.com/v4/checkin/recent/"
 
-	url := baseUrl + user.UntappdUser + access_token + "&limit=5"
+	url := baseUrl + access_token + "&limit=25"
 	log.Println("Request:", url)
 
 	resp, err := http.Get(url)
@@ -293,33 +302,21 @@ func (p *BeersPlugin) pullUntappd(user untappdUser) (Beers, error) {
 	var beers Beers
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
-		log.Println(user, err)
+		log.Println(err)
 		return Beers{}, errors.New("Unable to parse JSON")
 	}
 	return beers, nil
 }
 
-func (p *BeersPlugin) getUntappdCheckins(user untappdUser) ([]checkin, error) {
-	beers, err := p.pullUntappd(user)
+func (p *BeersPlugin) getUntappdCheckins() ([]checkin, error) {
+	beers, err := p.pullUntappd()
 	if err != nil {
 		return nil, err
 	}
 
-	var output []checkin
 	chks := beers.Response.Checkins.Items
 
-	for _, chk := range chks {
-		if chk.Checkin_id > user.LastCheckin {
-			output = append(output, chk)
-		}
-	}
-
-	if len(chks) > 0 {
-		user.LastCheckin = chks[0].Checkin_id
-		p.Coll.Upsert(bson.M{"untappduser": user.UntappdUser}, user)
-	}
-
-	return output, nil
+	return chks, nil
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
@@ -328,47 +325,59 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		return
 	}
 
-	frequency := p.Bot.Config.UntappdFreq
+	var users []untappdUser
+	p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}, "channel": channel}).All(&users)
 
-	// users := []string{"Tir"}
+	log.Println("Found ", len(users), " untappd users")
+
+	userMap := make(map[string]untappdUser)
+	for _, u := range users {
+		userMap[u.UntappdUser] = u
+	}
+
+	chks, err := p.getUntappdCheckins()
+	for _, checkin := range chks {
+		if err != nil {
+			continue
+		}
+
+		venue := ""
+		switch v := checkin.Venue.(type) {
+		case map[string]interface{}:
+			venue = " at " + v["venue_name"].(string)
+		}
+		beerName := checkin.Beer["beer_name"].(string)
+		breweryName := checkin.Brewery["brewery_name"].(string)
+		user, ok := userMap[checkin.User.User_name]
+		if !ok {
+			continue
+		}
+		p.addBeers(user.ChanNick)
+		drunken := p.getBeers(user.ChanNick)
+
+		msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
+			user.ChanNick, beerName, breweryName, venue, drunken)
+		if checkin.Checkin_comment != "" {
+			msg = fmt.Sprintf("%s -- %s",
+				msg, checkin.Checkin_comment)
+		}
+
+		p.Coll.Update(
+			bson.M{"untappduser": user.UntappdUser},
+			bson.M{"set": bson.M{"lastcheckin": checkin.Checkin_id}},
+		)
+
+		fmt.Println(msg)
+		p.Bot.SendMessage(channel, msg)
+	}
+}
+
+func (p *BeersPlugin) untappdLoop(channel string) {
+	frequency := p.Bot.Config.UntappdFreq
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
-
-		var users []untappdUser
-		p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}, "channel": channel}).All(&users)
-
-		log.Println("Found ", len(users), " untappd users")
-
-		for _, user := range users {
-			chks, err := p.getUntappdCheckins(user)
-			if err != nil {
-				continue
-			}
-
-			for _, checkin := range chks {
-				venue := ""
-				switch v := checkin.Venue.(type) {
-				case map[string]interface{}:
-					venue = " at " + v["venue_name"].(string)
-
-				}
-				beerName := checkin.Beer["beer_name"].(string)
-				breweryName := checkin.Brewery["brewery_name"].(string)
-				p.addBeers(user.ChanNick)
-				drunken := p.getBeers(user.ChanNick)
-
-				msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
-					user.ChanNick, beerName, breweryName, venue, drunken)
-				if checkin.Checkin_comment != "" {
-					msg = fmt.Sprintf("%s -- %s",
-						msg, checkin.Checkin_comment)
-				}
-
-				fmt.Println(msg)
-				p.Bot.SendMessage(channel, msg)
-			}
-		}
+		p.checkUntappd(channel)
 	}
 }
 
