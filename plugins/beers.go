@@ -30,7 +30,7 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 	}
 	p.LoadData()
 	for _, channel := range bot.Config.Channels {
-		go p.checkUntappd(channel)
+		go p.untappdLoop(channel)
 	}
 	return &p
 }
