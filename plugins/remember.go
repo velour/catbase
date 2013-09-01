@@ -55,64 +55,76 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 		// we have a remember!
 		// look through the logs and find parts[1] as a user, if not,
 		// fuck this hoser
-		nick := parts[1]
-		snip := strings.Join(parts[2:], " ")
+		snips := strings.Split(strings.Join(parts[1:], " "), "$and")
+		var msgs []string
+		var trigger string
 
-		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
-			entry := p.Log[message.Channel][i]
+		for _, snip := range snips {
+			snipParts := strings.Split(snip, " ")
+			nick := snipParts[0]
+			snip := strings.Join(snipParts[1:], " ")
 
-			if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
-				strings.Contains(
-					strings.ToLower(entry.Body),
-					strings.ToLower(snip),
-				) {
-				// insert new remember entry
-				var msg string
+			for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
+				entry := p.Log[message.Channel][i]
 
-				// check if it's an action
-				if entry.Action {
-					msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body)
-				} else {
-					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body)
+				if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
+					strings.Contains(
+						strings.ToLower(entry.Body),
+						strings.ToLower(snip),
+					) {
+
+					// check if it's an action
+					if entry.Action {
+						msgs = append(msgs, fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body))
+					} else {
+						msgs = append(msgs, fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body))
+					}
+
+					if trigger == "" {
+						trigger = fmt.Sprintf("%s quotes", entry.User.Name)
+					}
+
 				}
-
-				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
-
-				var funcres bson.M
-				err := p.Bot.Db.Run(
-					bson.M{"eval": "return counter(\"factoid\");"},
-					&funcres,
-				)
-
-				if err != nil {
-					panic(err)
-				}
-				id := int(funcres["retval"].(float64))
-
-				fact := Factoid{
-					Id:           bson.NewObjectId(),
-					Idx:          id,
-					Trigger:      strings.ToLower(trigger),
-					Operator:     "reply",
-					FullText:     msg,
-					Action:       msg,
-					CreatedBy:    user.Name,
-					DateCreated:  time.Now(),
-					LastAccessed: time.Now(),
-					AccessCount:  0,
-				}
-				if err = p.Coll.Insert(fact); err != nil {
-					log.Println("ERROR!!!!:", err)
-				}
-
-				// sorry, not creative with names so we're reusing msg
-				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
-					message.User.Name, msg)
-				p.Bot.SendMessage(message.Channel, msg)
-				p.Log[message.Channel] = append(p.Log[message.Channel], message)
-				return true
 			}
 		}
+
+		if len(msgs) == len(snips) {
+			msg := strings.Join(msgs, "$and")
+			var funcres bson.M
+			err := p.Bot.Db.Run(
+				bson.M{"eval": "return counter(\"factoid\");"},
+				&funcres,
+			)
+
+			if err != nil {
+				panic(err)
+			}
+			id := int(funcres["retval"].(float64))
+
+			fact := Factoid{
+				Id:           bson.NewObjectId(),
+				Idx:          id,
+				Trigger:      strings.ToLower(trigger),
+				Operator:     "reply",
+				FullText:     msg,
+				Action:       msg,
+				CreatedBy:    user.Name,
+				DateCreated:  time.Now(),
+				LastAccessed: time.Now(),
+				AccessCount:  0,
+			}
+			if err = p.Coll.Insert(fact); err != nil {
+				log.Println("ERROR!!!!:", err)
+			}
+
+			// sorry, not creative with names so we're reusing msg
+			msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
+				message.User.Name, msg)
+			p.Bot.SendMessage(message.Channel, msg)
+			p.Log[message.Channel] = append(p.Log[message.Channel], message)
+			return true
+		}
+
 		p.Bot.SendMessage(message.Channel, "Sorry, I don't know that phrase.")
 		p.Log[message.Channel] = append(p.Log[message.Channel], message)
 		return true
