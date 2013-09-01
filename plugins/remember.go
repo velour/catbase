@@ -60,12 +60,15 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 		var trigger string
 
 		for _, snip := range snips {
+			snip = strings.TrimSpace(snip)
 			snipParts := strings.Split(snip, " ")
 			nick := snipParts[0]
 			snip := strings.Join(snipParts[1:], " ")
 
 			for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 				entry := p.Log[message.Channel][i]
+
+				log.Println("Test entry:", entry.User.Name, entry.Body)
 
 				if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
 					strings.Contains(
@@ -116,6 +119,8 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 			if err = p.Coll.Insert(fact); err != nil {
 				log.Println("ERROR!!!!:", err)
 			}
+
+			log.Println("Remembering factoid:", msg)
 
 			// sorry, not creative with names so we're reusing msg
 			msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
