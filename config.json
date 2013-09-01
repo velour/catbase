@@ -17,6 +17,7 @@
 
 	"UntappdToken": "<Your Token>",
 	"UntappdFreq": 3600,
+	"UntappdChannels": [],
 
 	"TwitterConsumerKey": "<Consumer Key>",
 	"TwitterConsumerSecret": "<Consumer Secret>",

@@ -23,6 +23,7 @@ type Config struct {
 	HttpAddr              string
 	UntappdToken          string
 	UntappdFreq           int
+	UntappdChannels       []string
 	WelcomeMsgs           []string
 	TwitterConsumerKey    string
 	TwitterConsumerSecret string
