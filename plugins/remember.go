@@ -39,7 +39,7 @@ func NewRememberPlugin(b *bot.Bot) *RememberPlugin {
 // execution of other plugins.
 func (p *RememberPlugin) Message(message bot.Message) bool {
 
-	if message.Body == "quote" && message.Command {
+	if strings.ToLower(message.Body) == "quote" && message.Command {
 		q := p.randQuote()
 		p.Bot.SendMessage(message.Channel, q)
 
@@ -49,7 +49,9 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 	user := message.User
 	parts := strings.Split(message.Body, " ")
-	if message.Command && len(parts) >= 3 && parts[0] == "remember" {
+	if message.Command && len(parts) >= 3 &&
+		strings.ToLower(parts[0]) == "remember" {
+
 		// we have a remember!
 		// look through the logs and find parts[1] as a user, if not,
 		// fuck this hoser
