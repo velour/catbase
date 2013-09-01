@@ -331,8 +331,6 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 	var users []untappdUser
 	p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}, "channel": channel}).All(&users)
 
-	log.Println("Found ", len(users), " untappd users")
-
 	userMap := make(map[string]untappdUser)
 	for _, u := range users {
 		userMap[u.UntappdUser] = u
