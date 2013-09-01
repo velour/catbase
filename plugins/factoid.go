@@ -60,7 +60,7 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 
 		go func() {
 			// Some random time to start up
-			time.Sleep(time.Duration(10) * time.Second)
+			time.Sleep(time.Duration(15) * time.Second)
 			if ok, fact := p.findTrigger(p.Bot.Config.StartupFact); ok {
 				p.sayFact(bot.Message{
 					Channel: channel,
