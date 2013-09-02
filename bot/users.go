@@ -37,18 +37,15 @@ func (b *Bot) GetUser(nick string) *User {
 	var user *User
 
 	count, err := query.Count()
-	log.Printf("Searching for %s. Found %d entries.\n", nick, count)
 
 	if err != nil {
-		log.Printf("Error fetching user, %s: %s\n", nick, err)
 		user = b.NewUser(nick)
 		coll.Insert(*user)
 	} else if count == 1 {
 		err = query.One(&user)
 		if err != nil {
-			panic(err)
+			log.Printf("ERROR adding user: %s -- %s\n", nick, err)
 		}
-		log.Printf("Found user: %s\n", nick)
 	} else if count == 0 {
 		// create the user
 		log.Printf("Creating new user: %s\n", nick)
