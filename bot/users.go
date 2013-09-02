@@ -53,7 +53,7 @@ func (b *Bot) GetUser(nick string) *User {
 		coll.Insert(user)
 	} else {
 		log.Printf("Error: %s appears to have more than one user?\n", nick)
-		query.One(user)
+		query.One(&user)
 	}
 
 	// grab linked user, if any
