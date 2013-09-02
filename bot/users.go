@@ -2,6 +2,7 @@ package bot
 
 import (
 	// "labix.org/v2/mgo"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
 )
@@ -20,31 +21,39 @@ type User struct {
 
 	Admin bool
 
-	bot *Bot
+	//bot *Bot
 }
 
-func NewUser(nick string) *User {
+func (b *Bot) NewUser(nick string) *User {
 	return &User{
 		Name:  nick,
-		Admin: false,
+		Admin: b.checkAdmin(nick),
 	}
 }
 
 func (b *Bot) GetUser(nick string) *User {
 	coll := b.Db.C("users")
-	query := coll.Find(bson.M{"nick": nick})
+	query := coll.Find(bson.M{"name": nick})
 	var user *User
 
-	if count, err := query.Count(); err != nil {
+	count, err := query.Count()
+	log.Printf("Searching for %s. Found %d entries.\n", nick, count)
+
+	if err != nil {
 		log.Printf("Error fetching user, %s: %s\n", nick, err)
-		user = NewUser(nick)
-		coll.Insert(NewUser(nick))
+		user = b.NewUser(nick)
+		coll.Insert(*user)
 	} else if count == 1 {
-		query.One(user)
+		err = query.One(&user)
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("Found user: %s\n", nick)
 	} else if count == 0 {
 		// create the user
-		user = NewUser(nick)
-		coll.Insert(NewUser(nick))
+		log.Printf("Creating new user: %s\n", nick)
+		user = b.NewUser(nick)
+		coll.Insert(user)
 	} else {
 		log.Printf("Error: %s appears to have more than one user?\n", nick)
 		query.One(user)
@@ -62,8 +71,6 @@ func (b *Bot) GetUser(nick string) *User {
 		}
 	}
 
-	user.bot = b
-
 	found := false
 	for _, u := range b.Users {
 		if u.Name == user.Name {
@@ -78,26 +85,24 @@ func (b *Bot) GetUser(nick string) *User {
 }
 
 // Modify user entry to be a link to other, return other
-func (u *User) LinkUser(other string) *User {
-	coll := u.bot.Db.C("users")
-	user := u.bot.GetUser(u.Name)
-	otherUser := u.bot.GetUser(other)
+func (u *User) LinkUser(coll *mgo.Collection, other *User) *User {
+	user := u
 
-	otherUser.Alts = append(otherUser.Alts, user.Alts...)
+	other.Alts = append(other.Alts, user.Alts...)
 	user.Alts = []string{}
-	user.Parent = other
+	user.Parent = other.Name
 
-	err := coll.Update(bson.M{"Name": u.Name}, u)
+	err := coll.Update(bson.M{"name": u.Name}, u)
 	if err != nil {
 		log.Printf("Error updating user: %s\n", u.Name)
 	}
 
-	err = coll.Update(bson.M{"Name": other}, otherUser)
+	err = coll.Update(bson.M{"name": other.Name}, other)
 	if err != nil {
-		log.Printf("Error updating other user: %s\n", other)
+		log.Printf("Error updating other user: %s\n", other.Name)
 	}
 
-	return otherUser
+	return other
 }
 
 func (b *Bot) checkAdmin(nick string) bool {
