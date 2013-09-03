@@ -299,7 +299,6 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	baseUrl := "http://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
-	log.Println("Request:", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
