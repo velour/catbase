@@ -82,6 +82,15 @@ func findAction(message string) string {
 		panic(err)
 	}
 	action := r.FindString(message)
+
+	if action == "" {
+		if strings.Contains(message, " is ") {
+			return "is"
+		} else if strings.Contains(message, " are ") {
+			return "are"
+		}
+	}
+
 	return action
 }
 
