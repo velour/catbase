@@ -1,3 +1,5 @@
+// © 2013 the AlePale Authors under the WTFPL. See AUTHORS for the list of authors.
+
 package main
 
 import (
