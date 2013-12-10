@@ -6,6 +6,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
+        "regexp"
 	"strings"
 	"time"
 )
@@ -88,7 +89,11 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 
 func (p *FirstPlugin) allowed(message bot.Message) bool {
 	for _, msg := range p.Bot.Config.Bad.Msgs {
-		if strings.ToLower(msg) == strings.ToLower(message.Body) {
+                match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
+                if err != nil {
+                        log.Println("Bad regexp: ", err)
+                }
+                if match {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
 		}
