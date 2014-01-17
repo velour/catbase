@@ -54,7 +54,7 @@ func (p *AdminPlugin) handleVariables(message bot.Message) bool {
 	}
 
 	variable := strings.TrimSpace(parts[0])
-	value := strings.TrimSpace(parts[1])
+	value := parts[1]
 
 	q := p.varC.Find(bson.M{"variable": variable, "value": value})
 	if n, _ := q.Count(); n != 0 {
