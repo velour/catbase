@@ -1,3 +1,5 @@
+// © 2014 the AlePale Authors under the WTFPL license. See AUTHORS for the list of authors.
+
 package plugins
 
 import (
