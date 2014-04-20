@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chrissexton/alepale/bot"
 	"io/ioutil"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/chrissexton/alepale/bot"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
@@ -298,7 +299,7 @@ type untappdUser struct {
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	access_token := "?access_token=" + p.Bot.Config.UntappdToken
-	baseUrl := "http://api.untappd.com/v4/checkin/recent/"
+	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
 
