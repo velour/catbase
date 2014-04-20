@@ -9,6 +9,7 @@
 	"Pass": "AlePaleTest:test",
 	"FullName": "Ale Pale",
 	"CommandChar": "!",
+	"RatePerSec": 10.0,
 	"QuoteChance": 0.99,
 	"QuoteTime": 1,
 	"LogLength": 50,

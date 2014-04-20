@@ -3,15 +3,16 @@
 package main
 
 import (
-	"code.google.com/p/velour/irc"
 	"flag"
-	"github.com/chrissexton/alepale/bot"
-	"github.com/chrissexton/alepale/config"
-	"github.com/chrissexton/alepale/plugins"
 	"io"
 	"log"
 	"os"
 	"time"
+
+	"code.google.com/p/velour/irc"
+	"github.com/chrissexton/alepale/bot"
+	"github.com/chrissexton/alepale/config"
+	"github.com/chrissexton/alepale/plugins"
 )
 
 const (
@@ -90,6 +91,9 @@ func handleConnection() {
 		}
 	}()
 
+	ratePerSec := Config.RatePerSec
+	throttle := time.Tick(time.Second * time.Duration(1.0/ratePerSec))
+
 	for {
 		select {
 		case msg, ok := <-Client.In:
@@ -101,6 +105,7 @@ func handleConnection() {
 			handleMsg(msg)
 
 		case <-t.C:
+			<-throttle // rate limit our Service.Method RPCs
 			Client.Out <- irc.Msg{Cmd: irc.PING, Args: []string{Client.Server}}
 			t = time.NewTimer(pingTime)
 

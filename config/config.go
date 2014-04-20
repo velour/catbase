@@ -18,6 +18,7 @@ type Config struct {
 	FullName              string
 	Version               string
 	CommandChar           string
+	RatePerSec            float64
 	QuoteChance           float64
 	QuoteTime             int
 	LogLength             int
