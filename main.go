@@ -91,9 +91,6 @@ func handleConnection() {
 		}
 	}()
 
-	ratePerSec := Config.RatePerSec
-	throttle := time.Tick(time.Second * time.Duration(1.0/ratePerSec))
-
 	for {
 		select {
 		case msg, ok := <-Client.In:
@@ -105,7 +102,6 @@ func handleConnection() {
 			handleMsg(msg)
 
 		case <-t.C:
-			<-throttle // rate limit our Service.Method RPCs
 			Client.Out <- irc.Msg{Cmd: irc.PING, Args: []string{Client.Server}}
 			t = time.NewTimer(pingTime)
 

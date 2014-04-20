@@ -3,17 +3,20 @@
 package bot
 
 import (
-	"code.google.com/p/velour/irc"
-	"github.com/chrissexton/alepale/config"
 	"html/template"
-	"labix.org/v2/mgo"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"code.google.com/p/velour/irc"
+	"github.com/chrissexton/alepale/config"
+	"labix.org/v2/mgo"
 )
 
 const actionPrefix = "\x01ACTION"
+
+var throttle <-chan time.Time
 
 // Bot type provides storage for bot-wide information, configs, and database connections
 type Bot struct {
@@ -167,6 +170,14 @@ func (b *Bot) SendMessage(channel, message string) {
 		} else {
 			message = ""
 		}
+
+		if throttle == nil {
+			ratePerSec := b.Config.RatePerSec
+			throttle = time.Tick(time.Second / time.Duration(ratePerSec))
+		}
+
+		<-throttle
+
 		b.Client.Out <- m
 	}
 }
