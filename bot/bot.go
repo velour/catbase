@@ -232,7 +232,13 @@ func (b *Bot) EventRecieved(conn *irc.Client, inMsg irc.Msg) {
 }
 
 func (b *Bot) Who(channel string) []User {
-	return b.Users
+	out := []User{}
+	for _, u := range b.Users {
+		if u.Name != b.Config.Nick {
+			out = append(out, u)
+		}
+	}
+	return out
 }
 
 var rootIndex string = `
