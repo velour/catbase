@@ -247,6 +247,7 @@ var rootIndex string = `
 	<head>
 		<title>Factoids</title>
 		<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.1.0/pure-min.css">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
 	{{if .EndPoints}}
 	<div style="padding-top: 1em;">
