@@ -4,16 +4,17 @@ package plugins
 
 import (
 	"fmt"
-	"github.com/chrissexton/alepale/bot"
 	"html/template"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/chrissexton/alepale/bot"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 // The factoid plugin provides a learning system to the bot so that it can
@@ -111,12 +112,23 @@ func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact s
 		return false
 	}
 
-	var funcres bson.M
-	err := p.Bot.Db.Run(bson.M{"eval": "return counter(\"factoid\");"}, &funcres)
+	// definite error here if no func setup
+	// let's just aggregate
+	var count map[string]interface{}
+	query := []bson.M{{
+		"$group": bson.M{
+			"_id": nil,
+			"idx": bson.M{
+				"$max": "$idx",
+			},
+		},
+	}}
+	pipe := p.Coll.Pipe(query)
+	err := pipe.One(&count)
 	if err != nil {
 		panic(err)
 	}
-	id := int(funcres["retval"].(float64))
+	id := count["idx"].(int) + 1
 
 	newfact := Factoid{
 		Id:        bson.NewObjectId(),
@@ -432,6 +444,7 @@ func (p *FactoidPlugin) randomFact() *Factoid {
 		return nil
 	}
 
+	// Possible bug here with no db
 	if err := p.Coll.Find(nil).Skip(rand.Intn(nFacts)).One(&fact); err != nil {
 		log.Println("Couldn't get next...")
 	}
