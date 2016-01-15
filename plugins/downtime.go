@@ -2,7 +2,11 @@
 
 package plugins
 
-import "github.com/chrissexton/alepale/bot"
+import (
+	"database/sql"
+
+	"github.com/chrissexton/alepale/bot"
+)
 
 import (
 	"fmt"
@@ -10,21 +14,74 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 // This is a downtime plugin to monitor how much our users suck
 
 type DowntimePlugin struct {
-	Bot  *bot.Bot
-	Coll *mgo.Collection
+	Bot *bot.Bot
+	db  *sql.DB
 }
 
 type idleEntry struct {
-	Nick     string
-	LastSeen time.Time
+	id       sql.NullInt64
+	nick     string
+	lastSeen time.Time
+}
+
+func (entry idleEntry) saveIdleEntry(db *sql.DB) error {
+	var err error
+	if entry.id.Valid {
+		log.Println("Updating downtime for: ", entry)
+		_, err = db.Exec(`update downtime set
+			nick=?, lastSeen=?
+			where id=?;`, entry.nick, entry.lastSeen.Unix(), entry.id.Int64)
+	} else {
+		log.Println("Inserting downtime for: ", entry)
+		_, err = db.Exec(`insert into downtime (nick, lastSeen)
+			values (?, ?)`, entry.nick, entry.lastSeen.Unix())
+	}
+	return err
+}
+
+func getIdleEntryByNick(db *sql.DB, nick string) (idleEntry, error) {
+	var id sql.NullInt64
+	var lastSeen sql.NullInt64
+	err := db.QueryRow(`select id, max(lastSeen) from downtime
+		where nick = ?`, nick).Scan(&id, &lastSeen)
+	if err != nil {
+		log.Println("Error selecting downtime: ", err)
+		return idleEntry{}, err
+	}
+	if !id.Valid {
+		return idleEntry{
+			nick:     nick,
+			lastSeen: time.Now(),
+		}, nil
+	}
+	return idleEntry{
+		id:       id,
+		nick:     nick,
+		lastSeen: time.Unix(lastSeen.Int64, 0),
+	}, nil
+}
+
+func getAllIdleEntries(db *sql.DB) (idleEntries, error) {
+	rows, err := db.Query(`select id, nick, max(lastSeen) from downtime
+	group by nick`)
+	if err != nil {
+		return nil, err
+	}
+	entries := idleEntries{}
+	for rows.Next() {
+		var e idleEntry
+		err := rows.Scan(&e.id, &e.nick, &e.lastSeen)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, &e)
+	}
+	return entries, nil
 }
 
 type idleEntries []*idleEntry
@@ -34,7 +91,7 @@ func (ie idleEntries) Len() int {
 }
 
 func (ie idleEntries) Less(i, j int) bool {
-	return ie[i].LastSeen.Before(ie[j].LastSeen)
+	return ie[i].lastSeen.Before(ie[j].lastSeen)
 }
 
 func (ie idleEntries) Swap(i, j int) {
@@ -45,8 +102,20 @@ func (ie idleEntries) Swap(i, j int) {
 func NewDowntimePlugin(bot *bot.Bot) *DowntimePlugin {
 	p := DowntimePlugin{
 		Bot: bot,
+		db:  bot.DB,
 	}
-	p.LoadData()
+
+	if bot.DBVersion == 1 {
+		_, err := p.db.Exec(`create table if not exists downtime (
+			id integer primary key,
+			nick string,
+			lastSeen integer
+		);`)
+		if err != nil {
+			log.Fatal("Error creating downtime table: ", err)
+		}
+	}
+
 	return &p
 }
 
@@ -63,29 +132,33 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 	if parts[0] == "idle" && len(parts) == 2 {
 		nick := parts[1]
 		// parts[1] must be the userid, or we don't know them
-		var entry idleEntry
-		p.Coll.Find(bson.M{"nick": nick}).One(&entry)
-		if entry.Nick != nick {
+		entry, err := getIdleEntryByNick(p.db, nick)
+		if err != nil {
+			log.Println("Error getting idle entry: ", err)
+		}
+		if !entry.id.Valid {
 			// couldn't find em
 			p.Bot.SendMessage(channel, fmt.Sprintf("Sorry, I don't know %s.", nick))
 		} else {
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has been idle for: %s",
-				nick, time.Now().Sub(entry.LastSeen)))
+				nick, time.Now().Sub(entry.lastSeen)))
 		}
 		ret = true
 	} else if parts[0] == "idle" && len(parts) == 1 {
 		// Find all idle times, report them.
-		var entries idleEntries
-		p.Coll.Find(nil).All(&entries)
+		entries, err := getAllIdleEntries(p.db)
+		if err != nil {
+			log.Println("Error retrieving idle entries: ", err)
+		}
 		sort.Sort(entries)
 		tops := "The top entries are: "
 		for _, e := range entries {
 
 			// filter out ZNC entries and ourself
-			if strings.HasPrefix(e.Nick, "*") || strings.ToLower(p.Bot.Config.Nick) == e.Nick {
-				p.remove(e.Nick)
+			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config.Nick) == e.nick {
+				p.remove(e.nick)
 			} else {
-				tops = fmt.Sprintf("%s%s: %s ", tops, e.Nick, time.Now().Sub(e.LastSeen))
+				tops = fmt.Sprintf("%s%s: %s ", tops, e.nick, time.Now().Sub(e.lastSeen))
 			}
 		}
 		p.Bot.SendMessage(channel, tops)
@@ -99,34 +172,23 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 }
 
 func (p *DowntimePlugin) record(user string) {
-	var entry idleEntry
-	p.Coll.Find(bson.M{"nick": user}).One(&entry)
-	if entry.Nick != user {
-		// insert a new entry
-		p.Coll.Upsert(bson.M{"nick": user}, idleEntry{
-			Nick:     user,
-			LastSeen: time.Now(),
-		})
-		log.Println("Inserted downtime for:", user)
-	} else {
-		// Update their entry, they were baaaaaad
-		entry.LastSeen = time.Now()
-		p.Coll.Upsert(bson.M{"nick": entry.Nick}, entry)
+	entry, err := getIdleEntryByNick(p.db, user)
+	if err != nil {
+		log.Println("Error recording downtime: ", err)
 	}
+	entry.lastSeen = time.Now()
+	entry.saveIdleEntry(p.db)
+	log.Println("Inserted downtime for:", user)
 }
 
-func (p *DowntimePlugin) remove(user string) {
-	p.Coll.RemoveAll(bson.M{"nick": user})
+func (p *DowntimePlugin) remove(user string) error {
+	_, err := p.db.Exec(`delete from downtime where nick = ?`, user)
+	if err != nil {
+		log.Println("Error removing downtime for user: ", user, err)
+		return err
+	}
 	log.Println("Removed downtime for:", user)
-}
-
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
-func (p *DowntimePlugin) LoadData() {
-	// Mongo is removed, this plugin will crash if started
-	log.Fatal("The Downtime plugin has not been upgraded to SQL yet.")
-	// p.Coll = p.Bot.Db.C("downtime")
+	return nil
 }
 
 // Help responds to help requests. Every plugin must implement a help function.

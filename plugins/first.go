@@ -34,8 +34,8 @@ type FirstEntry struct {
 func (fe *FirstEntry) save(db *sql.DB) error {
 	if _, err := db.Exec(`insert into first (day, time, body, nick)
 		values (?, ?, ?, ?)`,
-		fe.day,
-		fe.time,
+		fe.day.Unix(),
+		fe.time.Unix(),
 		fe.body,
 		fe.nick,
 	); err != nil {
@@ -49,8 +49,8 @@ func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
 	if b.DBVersion == 1 {
 		_, err := b.DB.Exec(`create table if not exists first (
 			id integer primary key,
-			day datetime,
-			time datetime,
+			day integer,
+			time integer,
 			body string,
 			nick string
 		);`)
@@ -96,8 +96,10 @@ func getLastFirst(db *sql.DB) (*FirstEntry, error) {
 		log.Println("No previous first entries")
 		return nil, nil
 	case err != nil:
+		log.Println("Error on first query row: ", err)
 		return nil, err
 	}
+	log.Println(id, day, timeEntered, body, nick)
 	return &FirstEntry{
 		id:    id.Int64,
 		day:   time.Unix(day.Int64, 0),
