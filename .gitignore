@@ -21,3 +21,5 @@ _testmain.go
 
 *.exe
 alepale
+config.json
+*.db
