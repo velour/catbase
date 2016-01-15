@@ -4,10 +4,11 @@ package plugins
 
 import (
 	"fmt"
-	"github.com/chrissexton/alepale/bot"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/chrissexton/alepale/bot"
 )
 
 var goatse []string = []string{
@@ -39,12 +40,14 @@ var goatse []string = []string{
 }
 
 type TalkerPlugin struct {
-	Bot *bot.Bot
+	Bot          *bot.Bot
+	enforceNicks bool
 }
 
 func NewTalkerPlugin(bot *bot.Bot) *TalkerPlugin {
 	return &TalkerPlugin{
-		Bot: bot,
+		Bot:          bot,
+		enforceNicks: bot.Config.EnforceNicks,
 	}
 }
 
@@ -53,6 +56,7 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 	body := message.Body
 	lowermessage := strings.ToLower(body)
 
+	// TODO: This ought to be space split afterwards to remove any punctuation
 	if strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
 		p.Bot.SendMessage(channel, msg)
@@ -73,7 +77,7 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 		return true
 	}
 
-	if len(message.User.Name) != 9 {
+	if p.enforceNicks && len(message.User.Name) != 9 {
 		msg := fmt.Sprintf("Hey %s, we really like to have 9 character nicks because we're crazy OCD and stuff.",
 			message.User.Name)
 		p.Bot.SendMessage(message.Channel, msg)

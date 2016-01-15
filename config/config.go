@@ -28,6 +28,7 @@ type Config struct {
 	UntappdToken          string
 	UntappdFreq           int
 	UntappdChannels       []string
+	EnforceNicks          bool
 	WelcomeMsgs           []string
 	TwitterConsumerKey    string
 	TwitterConsumerSecret string
