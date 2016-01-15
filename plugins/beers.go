@@ -48,7 +48,7 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 			id integer primary key,
 			nick string,
 			count integer,
-			lastDrunk integer
+			lastDrunk datetime
 		);`); err != nil {
 			log.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 			id integer primary key,
 			untappdUser string
 			channel string
-			lastCheckin integer
+			lastCheckin datetime
 			chanNick string
 		);`); err != nil {
 			log.Fatal(err)
@@ -77,9 +77,9 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 func (u *userBeers) Save(db *sql.DB) error {
 	if !u.saved {
 		res, err := db.Exec(`insert into beers (
-			nick string,
-			count integer,
-			lastDrunk integer
+			nick,
+			count,
+			lastDrunk
 		) values (?, ?, ?)`, u.nick, u.count, u.lastDrunk)
 		if err != nil {
 			return err
@@ -89,12 +89,21 @@ func (u *userBeers) Save(db *sql.DB) error {
 			return err
 		}
 		u.id = id
+	} else {
+		_, err := db.Exec(`update beers set
+			count = ?,
+			lastDrunk = ?
+		where id = ?;`, u.count, time.Now(), u.id)
+		if err != nil {
+			log.Println("Error updating beers: ", err)
+			return err
+		}
 	}
 	return nil
 }
 
 func getUserBeers(db *sql.DB, nick string) *userBeers {
-	var ub userBeers
+	ub := userBeers{saved: true}
 	err := db.QueryRow(`select id, nick, count, lastDrunk from beers
 		where nick = ?`, nick).Scan(
 		&ub.id,
@@ -102,8 +111,15 @@ func getUserBeers(db *sql.DB, nick string) *userBeers {
 		&ub.count,
 		&ub.lastDrunk,
 	)
+	if err == sql.ErrNoRows {
+		log.Println("DIDN'T FIND THAT USER: ", err)
+		return &userBeers{
+			nick:  nick,
+			count: 0,
+		}
+	}
 	if err != nil && err != sql.ErrNoRows {
-		log.Println(err)
+		log.Println("Error finding beers: ", err)
 		return nil
 	}
 
@@ -140,6 +156,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 				// you can't be negative
 				msg := fmt.Sprintf("Sorry %s, you can't have negative beers!", nick)
 				p.Bot.SendMessage(channel, msg)
+				return true
 			}
 			if parts[1] == "+=" {
 				p.setBeers(nick, p.getBeers(nick)+count)
@@ -212,7 +229,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		log.Println("Creating Untappd user:", u.untappdUser, "nick:", u.chanNick)
 
 		var count int
-		err := p.db.QueryRow(`select count(*) from untappd 
+		err := p.db.QueryRow(`select count(*) from untappd
 			where untappdUser = ?`, u.untappdUser).Scan(&count)
 		if err != nil {
 			log.Println("Error registering untappd: ", err)
@@ -272,7 +289,9 @@ func (p *BeersPlugin) setBeers(user string, amount int) {
 	ub := getUserBeers(p.db, user)
 	ub.count = amount
 	ub.lastDrunk = time.Now()
-	ub.Save(p.db)
+	if err := ub.Save(p.db); err != nil {
+		log.Println("Error saving beers: ", err)
+	}
 }
 
 func (p *BeersPlugin) addBeers(user string) {
