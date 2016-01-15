@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,21 +16,56 @@ import (
 	"time"
 
 	"github.com/chrissexton/alepale/bot"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 
 type BeersPlugin struct {
-	Bot  *bot.Bot
-	Coll *mgo.Collection
+	Bot *bot.Bot
+	db  *sql.DB
+}
+
+type userBeers struct {
+	id        int64
+	nick      string
+	count     int
+	lastDrunk time.Time
+	saved     bool
+}
+
+type untappdUser struct {
+	id          int64
+	untappdUser string
+	channel     string
+	lastCheckin int
+	chanNick    string
 }
 
 // NewBeersPlugin creates a new BeersPlugin with the Plugin interface
 func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
+	if bot.DBVersion == 1 {
+		if _, err := bot.DB.Exec(`create table if not exists beers (
+			id integer primary key,
+			nick string,
+			count integer,
+			lastDrunk integer
+		);`); err != nil {
+			log.Fatal(err)
+		}
+
+		if _, err := bot.DB.Exec(`create table if not exists untappd (
+			id integer primary key,
+			untappdUser string
+			channel string
+			lastCheckin integer
+			chanNick string
+		);`); err != nil {
+			log.Fatal(err)
+		}
+	}
 	p := BeersPlugin{
 		Bot: bot,
+		db:  bot.DB,
 	}
 	p.LoadData()
 	for _, channel := range bot.Config.UntappdChannels {
@@ -38,31 +74,39 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 	return &p
 }
 
-type userBeers struct {
-	Nick      string
-	Beercount int
-	Lastdrunk time.Time
-	Momentum  float64
-	New       bool
+func (u *userBeers) Save(db *sql.DB) error {
+	if !u.saved {
+		res, err := db.Exec(`insert into beers (
+			nick string,
+			count integer,
+			lastDrunk integer
+		) values (?, ?, ?)`, u.nick, u.count, u.lastDrunk)
+		if err != nil {
+			return err
+		}
+		id, err := res.LastInsertId()
+		if err != nil {
+			return err
+		}
+		u.id = id
+	}
+	return nil
 }
 
-func (u *userBeers) Save(coll *mgo.Collection) {
-	_, err := coll.Upsert(bson.M{"nick": u.Nick}, u)
-	if err != nil {
-		panic(err)
+func getUserBeers(db *sql.DB, nick string) *userBeers {
+	var ub userBeers
+	err := db.QueryRow(`select id, nick, count, lastDrunk from beers
+		where nick = ?`, nick).Scan(
+		&ub.id,
+		&ub.nick,
+		&ub.count,
+		&ub.lastDrunk,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		log.Println(err)
+		return nil
 	}
-}
 
-func getUserBeers(coll *mgo.Collection, nick string) *userBeers {
-	ub := userBeers{New: true}
-	coll.Find(bson.M{"nick": nick}).One(&ub)
-	if ub.New == true {
-		ub.New = false
-		ub.Nick = nick
-		ub.Beercount = 0
-		ub.Momentum = 0
-		ub.Save(coll)
-	}
 	return &ub
 }
 
@@ -160,16 +204,33 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			channel = parts[3]
 		}
 		u := untappdUser{
-			UntappdUser: parts[1],
-			ChanNick:    chanNick,
-			Channel:     channel,
+			untappdUser: parts[1],
+			chanNick:    chanNick,
+			channel:     channel,
 		}
 
-		log.Println("Creating Untappd user:", u.UntappdUser, "nick:", u.ChanNick)
+		log.Println("Creating Untappd user:", u.untappdUser, "nick:", u.chanNick)
 
-		_, err := p.Coll.Upsert(bson.M{"untappduser": u.UntappdUser}, u)
+		var count int
+		err := p.db.QueryRow(`select count(*) from untappd 
+			where untappdUser = ?`, u.untappdUser).Scan(&count)
 		if err != nil {
-			log.Println("ERROR!!!:", err)
+			log.Println("Error registering untappd: ", err)
+		}
+		if count > 0 {
+			p.Bot.SendMessage(channel, "I'm already watching you.")
+			return true
+		}
+		_, err = p.db.Exec(`insert into untappd (
+			untappdUser,
+			channel,
+			lastCheckin,
+			chanNick
+		) values (?, ?, ?, ?);`)
+		if err != nil {
+			log.Println("Error registering untappd: ", err)
+			p.Bot.SendMessage(channel, "I can't see.")
+			return true
 		}
 
 		p.Bot.SendMessage(channel, "I'll be watching you.")
@@ -196,7 +257,6 @@ func (p *BeersPlugin) Event(kind string, message bot.Message) bool {
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.
 func (p *BeersPlugin) LoadData() {
-	p.Coll = p.Bot.Db.C("beers")
 	rand.Seed(time.Now().Unix())
 }
 
@@ -209,10 +269,10 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 }
 
 func (p *BeersPlugin) setBeers(user string, amount int) {
-	ub := getUserBeers(p.Coll, user)
-	ub.Beercount = amount
-	ub.Lastdrunk = time.Now()
-	ub.Save(p.Coll)
+	ub := getUserBeers(p.db, user)
+	ub.count = amount
+	ub.lastDrunk = time.Now()
+	ub.Save(p.db)
 }
 
 func (p *BeersPlugin) addBeers(user string) {
@@ -220,9 +280,8 @@ func (p *BeersPlugin) addBeers(user string) {
 }
 
 func (p *BeersPlugin) getBeers(nick string) int {
-	ub := getUserBeers(p.Coll, nick)
-
-	return ub.Beercount
+	ub := getUserBeers(p.db, nick)
+	return ub.count
 }
 
 func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
@@ -245,9 +304,10 @@ func (p *BeersPlugin) puke(user string, channel string) {
 }
 
 func (p *BeersPlugin) doIKnow(nick string) bool {
-	count, err := p.Coll.Find(bson.M{"nick": nick}).Count()
+	var count int
+	err := p.db.QueryRow(`select count(*) from beers where nick = ?`, nick).Scan(&count)
 	if err != nil {
-		panic(err)
+		return false
 	}
 	return count > 0
 }
@@ -288,15 +348,6 @@ type Beers struct {
 	Response resp
 }
 
-type untappdUser struct {
-	Id            bson.ObjectId `bson:"_id,omitempty"`
-	UntappdUser   string
-	Channel       string
-	LastCheckin   int
-	ChanNick      string
-	KnownCheckins [5]int
-}
-
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	access_token := "?access_token=" + p.Bot.Config.UntappdToken
 	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
@@ -331,11 +382,20 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 	}
 
 	var users []untappdUser
-	p.Coll.Find(bson.M{"untappduser": bson.M{"$exists": true}, "channel": channel}).All(&users)
+	rows, err := p.db.Query(`select *from untappd`)
+	if err != nil {
+		log.Println("Error getting untappd users: ", err)
+		return
+	}
+	for rows.Next() {
+		u := untappdUser{}
+		rows.Scan(&u.id, &u.untappdUser, &u.channel, &u.lastCheckin, &u.chanNick)
+		users = append(users, u)
+	}
 
 	userMap := make(map[string]untappdUser)
 	for _, u := range users {
-		userMap[u.UntappdUser] = u
+		userMap[u.untappdUser] = u
 	}
 
 	chks, err := p.pullUntappd()
@@ -347,7 +407,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 			continue
 		}
 
-		if checkin.Checkin_id <= userMap[checkin.User.User_name].LastCheckin {
+		if checkin.Checkin_id <= userMap[checkin.User.User_name].lastCheckin {
 			continue
 		}
 
@@ -362,18 +422,20 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		if !ok {
 			continue
 		}
-		p.addBeers(user.ChanNick)
-		drunken := p.getBeers(user.ChanNick)
+		p.addBeers(user.chanNick)
+		drunken := p.getBeers(user.chanNick)
 
 		msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
-			user.ChanNick, beerName, breweryName, venue, drunken)
+			user.chanNick, beerName, breweryName, venue, drunken)
 		if checkin.Checkin_comment != "" {
 			msg = fmt.Sprintf("%s -- %s",
 				msg, checkin.Checkin_comment)
 		}
 
-		user.LastCheckin = checkin.Checkin_id
-		err := p.Coll.Update(bson.M{"_id": user.Id}, user)
+		user.lastCheckin = checkin.Checkin_id
+		_, err := p.db.Exec(`update untappd set
+			lastCheckin = ?
+		where id = ?`, user.lastCheckin, user.id)
 		if err != nil {
 			log.Println("UPDATE ERROR!:", err)
 		}

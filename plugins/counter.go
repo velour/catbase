@@ -3,21 +3,23 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/chrissexton/alepale/bot"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"log"
 	"strings"
+
+	"github.com/chrissexton/alepale/bot"
 )
 
 // This is a counter plugin to count arbitrary things.
 
 type CounterPlugin struct {
-	Bot  *bot.Bot
-	Coll *mgo.Collection
+	Bot *bot.Bot
+	DB  *sql.DB
 }
 
 type Item struct {
+	ID    int64
 	Nick  string
 	Item  string
 	Count int
@@ -25,9 +27,19 @@ type Item struct {
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
 func NewCounterPlugin(bot *bot.Bot) *CounterPlugin {
+	if bot.DBVersion == 1 {
+		if _, err := bot.DB.Exec(`create table if not exists counter (
+			id integer primary key,
+			nick string,
+			item string,
+			count integer
+		);`); err != nil {
+			log.Fatal(err)
+		}
+	}
 	return &CounterPlugin{
-		Bot:  bot,
-		Coll: bot.Db.C("counter"),
+		Bot: bot,
+		DB:  bot.DB,
 	}
 }
 
@@ -55,26 +67,33 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		}
 
 		// pull all of the items associated with "subject"
-		var items []Item
-		p.Coll.Find(bson.M{"nick": subject}).All(&items)
-
-		if len(items) == 0 {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has no counters.", subject))
-			return true
+		rows, err := p.DB.Query(`select * from counter where nick = ?`, subject)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		resp := fmt.Sprintf("%s has the following counters:", subject)
-		for i, item := range items {
-			if i != 0 {
-				resp = fmt.Sprintf("%s,", resp)
+		count := 0
+		for rows.Next() {
+			count += 1
+			var it Item
+			rows.Scan(&it.Nick, &it.Item, &it.Count)
+
+			if count > 1 {
+				resp = fmt.Sprintf("%s, ", resp)
 			}
-			resp = fmt.Sprintf("%s %s: %d", resp, item.Item, item.Count)
-			if i > 20 {
+			resp = fmt.Sprintf("%s %s: %d", resp, it.Item, it.Count)
+			if count > 20 {
 				fmt.Sprintf("%s, and a few others", resp)
 				break
 			}
 		}
 		resp = fmt.Sprintf("%s.", resp)
+
+		if count == 0 {
+			p.Bot.SendMessage(channel, fmt.Sprintf("%s has no counters.", subject))
+			return true
+		}
 
 		p.Bot.SendMessage(channel, resp)
 		return true
@@ -82,11 +101,13 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		subject := strings.ToLower(nick)
 		itemName := strings.ToLower(parts[1])
 
-		p.Coll.Remove(bson.M{"nick": subject, "item": itemName})
+		if _, err := p.DB.Exec(`delete from counters where nick = ? and item = ?`, subject, itemName); err != nil {
+			p.Bot.SendMessage(channel, "Something went wrong removing that counter;")
+			return true
+		}
 
 		p.Bot.SendAction(channel, fmt.Sprintf("chops a few %s out of his brain",
 			itemName))
-
 		return true
 
 	} else if message.Command && parts[0] == "count" {
@@ -105,10 +126,17 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		}
 
 		var item Item
-		err := p.Coll.Find(bson.M{"nick": subject, "item": itemName}).One(&item)
-		if err != nil {
+		err := p.DB.QueryRow(`select nick, item, count from counters 
+			where nick = ? and item = ?`, subject, itemName).Scan(
+			&item.Nick, &item.Item, &item.Count,
+		)
+		switch {
+		case err == sql.ErrNoRows:
 			p.Bot.SendMessage(channel, fmt.Sprintf("I don't think %s has any %s.",
 				subject, itemName))
+			return true
+		case err != nil:
+			log.Println(err)
 			return true
 		}
 
@@ -149,21 +177,31 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 
 func (p *CounterPlugin) update(subject, itemName string, delta int) Item {
 	var item Item
-	err := p.Coll.Find(bson.M{"nick": subject, "item": itemName}).One(&item)
-	if err != nil {
+	err := p.DB.QueryRow(`select id, nick, item, count from counter
+		where nick = ? and item = ?;`, subject, itemName).Scan(
+		&item.ID, &item.Nick, &item.Item, &item.Count,
+	)
+	switch {
+	case err == sql.ErrNoRows:
 		// insert it
-		item = Item{
-			Nick:  subject,
-			Item:  itemName,
-			Count: delta,
+		res, err := p.DB.Exec(`insert into counter (nick, item, count) 
+			values (?, ?, ?)`, subject, itemName, delta)
+		if err != nil {
+			log.Println(err)
 		}
-		p.Coll.Insert(item)
-	} else {
-		// update it
+		id, err := res.LastInsertId()
+		return Item{id, subject, itemName, delta}
+	case err != nil:
+		log.Println(err)
+		return item
+	default:
 		item.Count += delta
-		p.Coll.Update(bson.M{"nick": subject, "item": itemName}, item)
+		_, err := p.DB.Exec(`update counter set count = ? where id = ?`, item.Count, item.ID)
+		if err != nil {
+			log.Println(err)
+		}
+		return item
 	}
-	return item
 }
 
 // LoadData imports any configuration data into the plugin. This is not

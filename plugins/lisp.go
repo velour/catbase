@@ -4,17 +4,16 @@ package plugins
 
 import (
 	"fmt"
-	"github.com/chrissexton/alepale/bot"
-	"github.com/chrissexton/kakapo/lisp"
-	"labix.org/v2/mgo"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/chrissexton/alepale/bot"
+	"github.com/chrissexton/kakapo/lisp"
 )
 
 type LispPlugin struct {
-	Bot  *bot.Bot
-	Coll *mgo.Collection
+	Bot *bot.Bot
 }
 
 type Program struct {
@@ -26,8 +25,7 @@ type Program struct {
 // NewLispPlugin creates a new LispPlugin with the Plugin interface
 func NewLispPlugin(bot *bot.Bot) *LispPlugin {
 	return &LispPlugin{
-		Bot:  bot,
-		Coll: bot.Db.C("lisp"),
+		Bot: bot,
 	}
 }
 
@@ -43,7 +41,6 @@ func (p *LispPlugin) Message(message bot.Message) bool {
 			Contents: strings.Replace(message.Body, "lisp:", "", 1),
 		}
 		log.Println("Evaluating:", prog)
-		p.Coll.Insert(prog)
 
 		defer func() {
 			if r := recover(); r != nil {

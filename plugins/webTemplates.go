@@ -5,6 +5,8 @@ package plugins
 // I hate this, but I'm creating strings of the templates to avoid having to
 // track where templates reside.
 
+// 2016-01-15 Later note, why are these in plugins and the server is in bot?
+
 var factoidIndex string = `
 <!DOCTYPE html>
 <html>

@@ -75,8 +75,7 @@ type PluginConfig struct {
 	Values map[string]interface{}
 }
 
-// Loads plugin config out of the DB
-// Stored in db.plugins.find("name": name)
+// Loads plugin config (could be out of a DB or something)
 func GetPluginConfig(name string) PluginConfig {
 	return PluginConfig{
 		Name: "TestPlugin",

@@ -6,12 +6,13 @@ import "github.com/chrissexton/alepale/bot"
 
 import (
 	"fmt"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"sort"
 	"strings"
 	"time"
+
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 // This is a downtime plugin to monitor how much our users suck
@@ -123,7 +124,9 @@ func (p *DowntimePlugin) remove(user string) {
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.
 func (p *DowntimePlugin) LoadData() {
-	p.Coll = p.Bot.Db.C("downtime")
+	// Mongo is removed, this plugin will crash if started
+	log.Fatal("The Downtime plugin has not been upgraded to SQL yet.")
+	// p.Coll = p.Bot.Db.C("downtime")
 }
 
 // Help responds to help requests. Every plugin must implement a help function.

@@ -23,9 +23,11 @@ type FeedPlugin struct {
 
 // NewFeedPlugin creates a new FeedPlugin with the Plugin interface
 func NewFeedPlugin(bot *bot.Bot) *FeedPlugin {
+	// Mongo is removed, this plugin will crash if started
+	log.Fatal("The Feed plugin has not been upgraded to SQL yet.")
 	p := FeedPlugin{
-		Bot:  bot,
-		Coll: bot.Db.C("feed"),
+		Bot: bot,
+		// Coll: bot.Db.C("feed"),
 	}
 	go p.pollFeeds()
 	return &p

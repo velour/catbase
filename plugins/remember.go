@@ -4,13 +4,14 @@ package plugins
 
 import (
 	"fmt"
-	"github.com/chrissexton/alepale/bot"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/chrissexton/alepale/bot"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new
@@ -94,14 +95,15 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 		if len(msgs) == len(snips) {
 			msg := strings.Join(msgs, "$and")
 			var funcres bson.M
-			err := p.Bot.Db.Run(
-				bson.M{"eval": "return counter(\"factoid\");"},
-				&funcres,
-			)
+			// Needs to be upgraded to SQL
+			// err := p.Bot.Db.Run(
+			// 	bson.M{"eval": "return counter(\"factoid\");"},
+			// 	&funcres,
+			// )
 
-			if err != nil {
-				panic(err)
-			}
+			// if err != nil {
+			// 	panic(err)
+			// }
 			id := int(funcres["retval"].(float64))
 
 			fact := Factoid{
@@ -116,7 +118,7 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				LastAccessed: time.Now(),
 				AccessCount:  0,
 			}
-			if err = p.Coll.Insert(fact); err != nil {
+			if err := p.Coll.Insert(fact); err != nil {
 				log.Println("ERROR!!!!:", err)
 			}
 
@@ -142,7 +144,9 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 // necessary other than the fact that the Plugin interface demands it exist.
 // This may be deprecated at a later date.
 func (p *RememberPlugin) LoadData() {
-	p.Coll = p.Bot.Db.C("factoid")
+	// Mongo is removed, this plugin will crash if started
+	log.Fatal("The Remember plugin has not been upgraded to SQL yet.")
+	// p.Coll = p.Bot.Db.C("factoid")
 	rand.Seed(time.Now().Unix())
 }
 

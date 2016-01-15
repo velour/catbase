@@ -3,15 +3,17 @@
 package bot
 
 import (
-	"code.google.com/p/velour/irc"
+	"database/sql"
 	"errors"
 	"fmt"
-	"labix.org/v2/mgo/bson"
+	"log"
 	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"code.google.com/p/velour/irc"
 )
 
 // Interface used for compatibility with the Plugin interface
@@ -180,28 +182,43 @@ func (b *Bot) Filter(message Message, input string) string {
 	blacklist := make(map[string]bool)
 	blacklist["$and"] = true
 	for len(varname) > 0 && !blacklist[varname] {
-		var result []Variable
-		b.varColl.Find(bson.M{"variable": varname}).All(&result)
-		if len(result) == 0 {
+		text, err := b.getVar(varname)
+		if err != nil {
 			blacklist[varname] = true
 			continue
 		}
-		variable := result[rand.Intn(len(result))]
-		input = strings.Replace(input, varname, variable.Value, 1)
+		input = strings.Replace(input, varname, text, 1)
 		varname = r.FindString(input)
 	}
 
 	return input
 }
 
+func (b *Bot) getVar(varName string) (string, error) {
+	var text string
+	err := b.DB.QueryRow("select v.value from variables as va inner join values as v on va.id = va.id = v.varId order by random() limit 1").Scan(&text)
+	switch {
+	case err == sql.ErrNoRows:
+		return "", fmt.Errorf("No factoid found")
+	case err != nil:
+		log.Fatal(err)
+	}
+	return text, nil
+}
+
 func (b *Bot) listVars(channel string, parts []string) {
-	var result []string
-	err := b.varColl.Find(bson.M{}).Distinct("variable", &result)
+	rows, err := b.DB.Query(`select name from variables`)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	msg := "I know: $who, $someone, $digit, $nonzero"
-	for _, variable := range result {
+	for rows.Next() {
+		var variable string
+		err := rows.Scan(&variable)
+		if err != nil {
+			log.Println("Error scanning variable.")
+			continue
+		}
 		msg = fmt.Sprintf("%s, %s", msg, variable)
 	}
 	b.SendMessage(channel, msg)

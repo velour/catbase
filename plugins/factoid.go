@@ -420,7 +420,9 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 // than the fact that the Plugin interface demands it exist. This may be deprecated at a later
 // date.
 func (p *FactoidPlugin) LoadData() {
-	p.Coll = p.Bot.Db.C("factoid")
+	// Mongo is removed, this plugin will crash if started
+	log.Fatal("The Factoid plugin has not been upgraded to SQL yet.")
+	// p.Coll = p.Bot.Db.C("factoid")
 	rand.Seed(time.Now().Unix())
 }
 
@@ -517,7 +519,7 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	if e := r.FormValue("entry"); e != "" {
 		var entries []Factoid
-                p.Coll.Find(bson.M{"trigger": bson.M{"$regex": strings.ToLower(e)}}).All(&entries)
+		p.Coll.Find(bson.M{"trigger": bson.M{"$regex": strings.ToLower(e)}}).All(&entries)
 		context["Count"] = fmt.Sprintf("%d", len(entries))
 		context["Entries"] = entries
 		context["Search"] = e

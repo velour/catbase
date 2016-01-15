@@ -3,6 +3,7 @@
 package bot
 
 import (
+	"database/sql"
 	"html/template"
 	"log"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 
 	"code.google.com/p/velour/irc"
 	"github.com/chrissexton/alepale/config"
-	"labix.org/v2/mgo"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const actionPrefix = "\x01ACTION"
@@ -35,11 +37,9 @@ type Bot struct {
 
 	Config *config.Config
 
-	// Mongo connection and db allow botwide access to the database
-	DbSession *mgo.Session
-	Db        *mgo.Database
-
-	varColl *mgo.Collection
+	// SQL DB
+	DB        *sql.DB
+	DBVersion int64
 
 	logIn  chan Message
 	logOut chan Messages
@@ -101,12 +101,10 @@ type Variable struct {
 
 // NewBot creates a Bot for a given connection and set of handlers.
 func NewBot(config *config.Config, c *irc.Client) *Bot {
-	session, err := mgo.Dial(config.DbServer)
+	sqlDB, err := sql.Open("sqlite3", config.DbFile)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
-	db := session.DB(config.DbName)
 
 	logIn := make(chan Message)
 	logOut := make(chan Messages)
@@ -126,14 +124,14 @@ func NewBot(config *config.Config, c *irc.Client) *Bot {
 		Users:          users,
 		Me:             users[0],
 		Client:         c,
-		DbSession:      session,
-		Db:             db,
-		varColl:        db.C("variables"),
+		DB:             sqlDB,
 		logIn:          logIn,
 		logOut:         logOut,
 		Version:        config.Version,
 		httpEndPoints:  make(map[string]string),
 	}
+
+	bot.migrateDB()
 
 	http.HandleFunc("/", bot.serveRoot)
 	if config.HttpAddr == "" {
@@ -142,6 +140,49 @@ func NewBot(config *config.Config, c *irc.Client) *Bot {
 	go http.ListenAndServe(config.HttpAddr, nil)
 
 	return bot
+}
+
+// Create any tables if necessary based on version of DB
+// Plugins should create their own tables, these are only for official bot stuff
+// Note: This does not return an error. Database issues are all fatal at this stage.
+func (b *Bot) migrateDB() {
+	_, err := b.DB.Exec(`create table if not exists version (version integer);`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var version int64
+	err = b.DB.QueryRow("select max(version) from version").Scan(&version)
+	switch {
+	case err == sql.ErrNoRows:
+		log.Printf("No versions, we're the first!.")
+		_, err := b.DB.Exec(`insert into version (version) values (1)`)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case err != nil:
+		log.Fatal(err)
+	default:
+		b.DBVersion = version
+		log.Printf("Database version: %d\n", version)
+	}
+
+	if version == 1 {
+		if _, err := b.DB.Exec(`create table if not exists variables (
+			id integer primary key,
+			name string,
+			perms string,
+			type string
+		);`); err != nil {
+			log.Fatal(err)
+		}
+		if _, err := b.DB.Exec(`create table if not exists values (
+			id integer primary key,
+			varId integer,
+			value string
+		);`); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 // Adds a constructed handler to the bots handlers list

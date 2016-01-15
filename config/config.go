@@ -9,6 +9,7 @@ import "io/ioutil"
 // Config stores any system-wide startup information that cannot be easily configured via
 // the database
 type Config struct {
+	DbFile                string
 	DbName                string
 	DbServer              string
 	Channels              []string

@@ -4,13 +4,14 @@ package plugins
 
 import (
 	"fmt"
+	"log"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/chrissexton/alepale/bot"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"log"
-        "regexp"
-	"strings"
-	"time"
 )
 
 // This is a first plugin to serve as an example and quick copy/paste for new plugins.
@@ -30,7 +31,10 @@ type FirstEntry struct {
 
 // NewFirstPlugin creates a new FirstPlugin with the Plugin interface
 func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
-	coll := b.Db.C("first")
+	// Mongo is removed, this plugin will crash if started
+	log.Fatal("The First plugin has not been upgraded to SQL yet.")
+	var coll *mgo.Collection
+	// coll := b.Db.C("first")
 	var firsts []FirstEntry
 	query := bson.M{"day": midnight(time.Now())}
 	log.Println("Day:", midnight(time.Now()))
@@ -91,11 +95,11 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 
 func (p *FirstPlugin) allowed(message bot.Message) bool {
 	for _, msg := range p.Bot.Config.Bad.Msgs {
-                match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
-                if err != nil {
-                        log.Println("Bad regexp: ", err)
-                }
-                if match {
+		match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
+		if err != nil {
+			log.Println("Bad regexp: ", err)
+		}
+		if match {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
 		}
