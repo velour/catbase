@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"regexp"
@@ -10,8 +11,6 @@ import (
 	"time"
 
 	"github.com/chrissexton/alepale/bot"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 // This is a first plugin to serve as an example and quick copy/paste for new plugins.
@@ -19,39 +18,94 @@ import (
 type FirstPlugin struct {
 	First *FirstEntry
 	Bot   *bot.Bot
-	Coll  *mgo.Collection
+	db    *sql.DB
 }
 
 type FirstEntry struct {
-	Day  time.Time
-	Time time.Time
-	Body string
-	Nick string
+	id    int64
+	day   time.Time
+	time  time.Time
+	body  string
+	nick  string
+	saved bool
+}
+
+// Insert or update the first entry
+func (fe *FirstEntry) save(db *sql.DB) error {
+	if _, err := db.Exec(`insert into first (day, time, body, nick)
+		values (?, ?, ?, ?)`,
+		fe.day,
+		fe.time,
+		fe.body,
+		fe.nick,
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewFirstPlugin creates a new FirstPlugin with the Plugin interface
 func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
-	// Mongo is removed, this plugin will crash if started
-	log.Fatal("The First plugin has not been upgraded to SQL yet.")
-	var coll *mgo.Collection
-	// coll := b.Db.C("first")
-	var firsts []FirstEntry
-	query := bson.M{"day": midnight(time.Now())}
-	log.Println("Day:", midnight(time.Now()))
-	coll.Find(query).All(&firsts)
+	if b.DBVersion == 1 {
+		_, err := b.DB.Exec(`create table if not exists first (
+			id integer primary key,
+			day datetime,
+			time datetime,
+			body string,
+			nick string
+		);`)
+		if err != nil {
+			log.Fatal("Could not create first table: ", err)
+		}
+	}
 
-	log.Println("FIRSTS:", firsts)
+	log.Println("First plugin initialized with day:", midnight(time.Now()))
 
-	var first *FirstEntry
-	if len(firsts) > 0 {
-		first = &firsts[0]
+	first, err := getLastFirst(b.DB)
+	if err != nil {
+		log.Fatal("Could not initialize first plugin: ", err)
 	}
 
 	return &FirstPlugin{
 		Bot:   b,
-		Coll:  coll,
+		db:    b.DB,
 		First: first,
 	}
+}
+
+func getLastFirst(db *sql.DB) (*FirstEntry, error) {
+	// Get last first entry
+	var id sql.NullInt64
+	var day sql.NullInt64
+	var timeEntered sql.NullInt64
+	var body sql.NullString
+	var nick sql.NullString
+
+	err := db.QueryRow(`select
+		id, max(day), time, body, nick from first
+		limit 1;
+	`).Scan(
+		&id,
+		&day,
+		&timeEntered,
+		&body,
+		&nick,
+	)
+	switch {
+	case err == sql.ErrNoRows || !id.Valid:
+		log.Println("No previous first entries")
+		return nil, nil
+	case err != nil:
+		return nil, err
+	}
+	return &FirstEntry{
+		id:    id.Int64,
+		day:   time.Unix(day.Int64, 0),
+		time:  time.Unix(timeEntered.Int64, 0),
+		body:  body.String,
+		nick:  nick.String,
+		saved: true,
+	}, nil
 }
 
 func midnight(t time.Time) time.Time {
@@ -74,7 +128,7 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 		p.recordFirst(message)
 		return false
 	} else if p.First != nil {
-		if isToday(p.First.Time) && p.allowed(message) {
+		if isToday(p.First.time) && p.allowed(message) {
 			p.recordFirst(message)
 			return false
 		}
@@ -122,12 +176,16 @@ func (p *FirstPlugin) allowed(message bot.Message) bool {
 func (p *FirstPlugin) recordFirst(message bot.Message) {
 	log.Println("Recording first: ", message.User.Name, ":", message.Body)
 	p.First = &FirstEntry{
-		Day:  midnight(time.Now()),
-		Time: message.Time,
-		Body: message.Body,
-		Nick: message.User.Name,
+		day:  midnight(time.Now()),
+		time: message.Time,
+		body: message.Body,
+		nick: message.User.Name,
 	}
-	p.Coll.Insert(p.First)
+	err := p.First.save(p.db)
+	if err != nil {
+		log.Println("Error saving first entry: ", err)
+		return
+	}
 	p.announceFirst(message)
 }
 
@@ -135,7 +193,7 @@ func (p *FirstPlugin) announceFirst(message bot.Message) {
 	c := message.Channel
 	if p.First != nil {
 		p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
-			p.First.Nick, p.First.Time.Format(time.Kitchen), p.First.Body))
+			p.First.nick, p.First.time.Format(time.Kitchen), p.First.body))
 	}
 }
 
