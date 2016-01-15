@@ -101,7 +101,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		subject := strings.ToLower(nick)
 		itemName := strings.ToLower(parts[1])
 
-		if _, err := p.DB.Exec(`delete from counters where nick = ? and item = ?`, subject, itemName); err != nil {
+		if _, err := p.DB.Exec(`delete from counter where nick = ? and item = ?`, subject, itemName); err != nil {
 			p.Bot.SendMessage(channel, "Something went wrong removing that counter;")
 			return true
 		}
@@ -126,7 +126,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		}
 
 		var item Item
-		err := p.DB.QueryRow(`select nick, item, count from counters 
+		err := p.DB.QueryRow(`select nick, item, count from counter
 			where nick = ? and item = ?`, subject, itemName).Scan(
 			&item.Nick, &item.Item, &item.Count,
 		)
@@ -184,7 +184,7 @@ func (p *CounterPlugin) update(subject, itemName string, delta int) Item {
 	switch {
 	case err == sql.ErrNoRows:
 		// insert it
-		res, err := p.DB.Exec(`insert into counter (nick, item, count) 
+		res, err := p.DB.Exec(`insert into counter (nick, item, count)
 			values (?, ?, ?)`, subject, itemName, delta)
 		if err != nil {
 			log.Println(err)

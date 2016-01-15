@@ -148,39 +148,39 @@ func NewBot(config *config.Config, c *irc.Client) *Bot {
 func (b *Bot) migrateDB() {
 	_, err := b.DB.Exec(`create table if not exists version (version integer);`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Initial DB migration create version table: ", err)
 	}
-	var version int64
+	var version sql.NullInt64
 	err = b.DB.QueryRow("select max(version) from version").Scan(&version)
-	switch {
-	case err == sql.ErrNoRows:
+	if err != nil {
+		log.Fatal("Initial DB migration get version: ", err)
+	}
+	if version.Valid {
+		b.DBVersion = version.Int64
+		log.Printf("Database version: %v\n", b.DBVersion)
+	} else {
 		log.Printf("No versions, we're the first!.")
 		_, err := b.DB.Exec(`insert into version (version) values (1)`)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Initial DB migration insert: ", err)
 		}
-	case err != nil:
-		log.Fatal(err)
-	default:
-		b.DBVersion = version
-		log.Printf("Database version: %d\n", version)
 	}
 
-	if version == 1 {
+	if b.DBVersion == 1 {
 		if _, err := b.DB.Exec(`create table if not exists variables (
 			id integer primary key,
 			name string,
 			perms string,
 			type string
 		);`); err != nil {
-			log.Fatal(err)
+			log.Fatal("Initial DB migration create variables table: ", err)
 		}
-		if _, err := b.DB.Exec(`create table if not exists values (
+		if _, err := b.DB.Exec(`create table if not exists 'values' (
 			id integer primary key,
 			varId integer,
 			value string
 		);`); err != nil {
-			log.Fatal(err)
+			log.Fatal("Initial DB migration create values table: ", err)
 		}
 	}
 }
@@ -231,45 +231,6 @@ func (b *Bot) SendAction(channel, message string) {
 	message = actionPrefix + " " + message + "\x01"
 
 	b.SendMessage(channel, message)
-}
-
-// Handles incomming PRIVMSG requests
-func (b *Bot) MsgRecieved(client *irc.Client, inMsg irc.Msg) {
-	if inMsg.User == "" {
-		return
-	}
-
-	msg := b.buildMessage(client, inMsg)
-
-	if strings.HasPrefix(msg.Body, "help") && msg.Command {
-		parts := strings.Fields(strings.ToLower(msg.Body))
-		b.checkHelp(msg.Channel, parts)
-		goto RET
-	}
-
-	for _, name := range b.PluginOrdering {
-		p := b.Plugins[name]
-		if p.Message(msg) {
-			break
-		}
-	}
-
-RET:
-	b.logIn <- msg
-	return
-}
-
-func (b *Bot) EventRecieved(conn *irc.Client, inMsg irc.Msg) {
-	if inMsg.User == "" {
-		return
-	}
-	msg := b.buildMessage(conn, inMsg)
-	for _, name := range b.PluginOrdering {
-		p := b.Plugins[name]
-		if p.Event(inMsg.Cmd, msg) {
-			break
-		}
-	}
 }
 
 func (b *Bot) Who(channel string) []User {

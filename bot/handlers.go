@@ -16,6 +16,48 @@ import (
 	"code.google.com/p/velour/irc"
 )
 
+// Handles incomming PRIVMSG requests
+func (b *Bot) MsgRecieved(client *irc.Client, inMsg irc.Msg) {
+	log.Println("Recieved message: ", inMsg)
+	if inMsg.User == "" {
+		return
+	}
+
+	msg := b.buildMessage(client, inMsg)
+
+	if strings.HasPrefix(msg.Body, "help") && msg.Command {
+		parts := strings.Fields(strings.ToLower(msg.Body))
+		b.checkHelp(msg.Channel, parts)
+		goto RET
+	}
+
+	for _, name := range b.PluginOrdering {
+		p := b.Plugins[name]
+		if p.Message(msg) {
+			break
+		}
+	}
+
+RET:
+	b.logIn <- msg
+	return
+}
+
+// Handle incoming events
+func (b *Bot) EventRecieved(conn *irc.Client, inMsg irc.Msg) {
+	log.Println("Recieved event: ", inMsg)
+	if inMsg.User == "" {
+		return
+	}
+	msg := b.buildMessage(conn, inMsg)
+	for _, name := range b.PluginOrdering {
+		p := b.Plugins[name]
+		if p.Event(inMsg.Cmd, msg) {
+			break
+		}
+	}
+}
+
 // Interface used for compatibility with the Plugin interface
 type Handler interface {
 	Message(message Message) bool
@@ -201,7 +243,7 @@ func (b *Bot) getVar(varName string) (string, error) {
 	case err == sql.ErrNoRows:
 		return "", fmt.Errorf("No factoid found")
 	case err != nil:
-		log.Fatal(err)
+		log.Fatal("getVar error: ", err)
 	}
 	return text, nil
 }

@@ -19,7 +19,7 @@ type User struct {
 	//bot *Bot
 }
 
-var users map[string]*User
+var users = map[string]*User{}
 
 func (b *Bot) GetUser(nick string) *User {
 	if _, ok := users[nick]; !ok {

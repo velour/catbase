@@ -72,7 +72,7 @@ func (p *AdminPlugin) handleVariables(message bot.Message) bool {
 		return true
 	case err != nil:
 		p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
-		log.Println(err)
+		log.Println("Admin error: ", err)
 		return true
 	}
 	p.Bot.SendMessage(message.Channel, "I've already got that one.")

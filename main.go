@@ -57,17 +57,17 @@ func main() {
 	Bot = bot.NewBot(Config, Client)
 	// Bot.AddHandler(plugins.NewTestPlugin(Bot))
 	Bot.AddHandler("admin", plugins.NewAdminPlugin(Bot))
-	Bot.AddHandler("first", plugins.NewFirstPlugin(Bot))
-	Bot.AddHandler("downtime", plugins.NewDowntimePlugin(Bot))
+	// Bot.AddHandler("first", plugins.NewFirstPlugin(Bot))
+	// Bot.AddHandler("downtime", plugins.NewDowntimePlugin(Bot))
 	Bot.AddHandler("talker", plugins.NewTalkerPlugin(Bot))
 	Bot.AddHandler("dice", plugins.NewDicePlugin(Bot))
 	Bot.AddHandler("beers", plugins.NewBeersPlugin(Bot))
 	Bot.AddHandler("counter", plugins.NewCounterPlugin(Bot))
-	Bot.AddHandler("remember", plugins.NewRememberPlugin(Bot))
+	// Bot.AddHandler("remember", plugins.NewRememberPlugin(Bot))
 	Bot.AddHandler("skeleton", plugins.NewSkeletonPlugin(Bot))
 	Bot.AddHandler("your", plugins.NewYourPlugin(Bot))
 	// catches anything left, will always return true
-	Bot.AddHandler("factoid", plugins.NewFactoidPlugin(Bot))
+	// Bot.AddHandler("factoid", plugins.NewFactoidPlugin(Bot))
 
 	handleConnection()
 
