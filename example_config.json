@@ -1,5 +1,5 @@
 {
-	"DFile": "catbase.json",
+	"DFile": "catbase.db",
 	"Dbserver": "127.0.0.1",
 	"Channels": ["#CatBaseTest"],
 	"MainChannel": "#CatBaseTest",

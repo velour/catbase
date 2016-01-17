@@ -21,5 +21,7 @@ This bot was written a long time back in the spare time of a busy person. The co
 * Implement factoid aliasing
 * Implement an object system for the give/take commands
 * Create some kind of web reference page
+* Verify (fix) untappd integration
+	* Has not even been run
 * Write godoc for pretty much everything and explain why functions exist
 * Enter all of this into GitHub tickets
