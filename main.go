@@ -63,7 +63,7 @@ func main() {
 	Bot.AddHandler("dice", plugins.NewDicePlugin(Bot))
 	Bot.AddHandler("beers", plugins.NewBeersPlugin(Bot))
 	Bot.AddHandler("counter", plugins.NewCounterPlugin(Bot))
-	// Bot.AddHandler("remember", plugins.NewRememberPlugin(Bot))
+	Bot.AddHandler("remember", plugins.NewRememberPlugin(Bot))
 	Bot.AddHandler("skeleton", plugins.NewSkeletonPlugin(Bot))
 	Bot.AddHandler("your", plugins.NewYourPlugin(Bot))
 	// catches anything left, will always return true

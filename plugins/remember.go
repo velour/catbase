@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -10,17 +11,15 @@ import (
 	"time"
 
 	"github.com/chrissexton/alepale/bot"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new
 // plugins.
 
 type RememberPlugin struct {
-	Bot  *bot.Bot
-	Coll *mgo.Collection
-	Log  map[string][]bot.Message
+	Bot *bot.Bot
+	Log map[string][]bot.Message
+	db  *sql.DB
 }
 
 // NewRememberPlugin creates a new RememberPlugin with the Plugin interface
@@ -28,11 +27,8 @@ func NewRememberPlugin(b *bot.Bot) *RememberPlugin {
 	p := RememberPlugin{
 		Bot: b,
 		Log: make(map[string][]bot.Message),
+		db:  b.DB,
 	}
-	p.LoadData()
-	// for _, channel := range b.Config.Channels {
-	// 	go p.quoteTimer(channel)
-	// }
 	return &p
 }
 
@@ -94,15 +90,6 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 		if len(msgs) == len(snips) {
 			msg := strings.Join(msgs, "$and")
-			// Needs to be upgraded to SQL
-			// err := p.Bot.Db.Run(
-			// 	bson.M{"eval": "return counter(\"factoid\");"},
-			// 	&funcres,
-			// )
-
-			// if err != nil {
-			// 	panic(err)
-			// }
 
 			fact := factoid{
 				fact:     strings.ToLower(trigger),
@@ -113,8 +100,9 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 				accessed: time.Now(),
 				count:    0,
 			}
-			if err := p.Coll.Insert(fact); err != nil {
+			if err := fact.save(p.db); err != nil {
 				log.Println("ERROR!!!!:", err)
+				p.Bot.SendMessage(message.Channel, "Tell somebody I'm broke.")
 			}
 
 			log.Println("Remembering factoid:", msg)
@@ -135,16 +123,6 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 	return false
 }
 
-// LoadData imports any configuration data into the plugin. This is not strictly
-// necessary other than the fact that the Plugin interface demands it exist.
-// This may be deprecated at a later date.
-func (p *RememberPlugin) LoadData() {
-	// Mongo is removed, this plugin will crash if started
-	log.Fatal("The Remember plugin has not been upgraded to SQL yet.")
-	// p.Coll = p.Bot.Db.C("factoid")
-	rand.Seed(time.Now().Unix())
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *RememberPlugin) Help(channel string, parts []string) {
 
@@ -160,26 +138,29 @@ func (p *RememberPlugin) Help(channel string, parts []string) {
 // Note: this is the same cache for all channels joined. This plugin needs to be
 // expanded to have this function execute a quote for a particular channel
 func (p *RememberPlugin) randQuote() string {
-	var quotes []factoid
-	// todo: find anything with the word "quotes" in the trigger
-	query := bson.M{
-		"trigger": bson.M{
-			"$regex": "quotes$",
-		},
-	}
-	iter := p.Coll.Find(query).Iter()
-	err := iter.All(&quotes)
-	if err != nil {
-		panic(iter.Err())
-	}
 
-	// rand quote idx
-	nquotes := len(quotes)
-	if nquotes == 0 {
-		return "Sorry, I don't know any quotes."
+	var f factoid
+	var tmpCreated int64
+	var tmpAccessed int64
+	err := p.db.QueryRow(`select * from factoid where fact like '%quotes'
+		order by random() limit 1;`).Scan(
+		&f.id,
+		&f.fact,
+		&f.tidbit,
+		&f.verb,
+		&f.owner,
+		&tmpCreated,
+		&tmpAccessed,
+		&f.count,
+	)
+	if err != nil {
+		log.Println("Error getting quotes: ", err)
+		return "I had a problem getting your quote."
 	}
-	quote := quotes[rand.Intn(nquotes)]
-	return quote.tidbit
+	f.created = time.Unix(tmpCreated, 0)
+	f.accessed = time.Unix(tmpAccessed, 0)
+
+	return f.tidbit
 }
 
 func (p *RememberPlugin) quoteTimer(channel string) {
