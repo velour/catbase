@@ -129,6 +129,10 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 	channel := message.Channel
 	ret := false
 
+	if len(parts) == 0 {
+		return false
+	}
+
 	if parts[0] == "idle" && len(parts) == 2 {
 		nick := parts[1]
 		// parts[1] must be the userid, or we don't know them

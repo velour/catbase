@@ -42,6 +42,10 @@ func (p *AdminPlugin) Message(message bot.Message) bool {
 
 	body := message.Body
 
+	if len(body) == 0 {
+		return false
+	}
+
 	if body[0] == '$' {
 		return p.handleVariables(message)
 	}
