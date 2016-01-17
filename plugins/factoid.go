@@ -307,7 +307,6 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *factoid) {
 
 	f, err := getSingleFact(p.db, fact)
 	if err != nil {
-		log.Printf("Looking for trigger '%s', got err: %s", fact, err)
 		return false, nil
 	}
 	return true, f
