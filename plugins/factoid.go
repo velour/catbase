@@ -654,9 +654,10 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 		"linkify": linkify,
 	}
 	if e := r.FormValue("entry"); e != "" {
-		var entries []factoid
-		// TODO: Fix the web interface with text search?
-		// p.Coll.Find(bson.M{"trigger": bson.M{"$regex": strings.ToLower(e)}}).All(&entries)
+		entries, err := getFacts(p.db, e)
+		if err != nil {
+			log.Println("Web error searching: ", err)
+		}
 		context["Count"] = fmt.Sprintf("%d", len(entries))
 		context["Entries"] = entries
 		context["Search"] = e

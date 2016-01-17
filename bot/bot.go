@@ -38,6 +38,9 @@ type Bot struct {
 	Config *config.Config
 
 	// SQL DB
+	// TODO: I think it'd be nice to use https://github.com/jmoiron/sqlx so that
+	//       the select/update/etc statements could be simplified with struct
+	//       marshalling.
 	DB        *sql.DB
 	DBVersion int64
 
