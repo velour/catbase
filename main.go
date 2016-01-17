@@ -1,4 +1,4 @@
-// © 2013 the AlePale Authors under the WTFPL. See AUTHORS for the list of authors.
+// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
 package main
 
@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"code.google.com/p/velour/irc"
-	"github.com/chrissexton/alepale/bot"
-	"github.com/chrissexton/alepale/config"
-	"github.com/chrissexton/alepale/plugins"
+	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/config"
+	"github.com/velour/catbase/plugins"
 )
 
 const (

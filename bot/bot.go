@@ -1,4 +1,4 @@
-// © 2013 the AlePale Authors under the WTFPL. See AUTHORS for the list of authors.
+// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
 package bot
 
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"code.google.com/p/velour/irc"
-	"github.com/chrissexton/alepale/config"
+	"github.com/velour/catbase/config"
 
 	_ "github.com/mattn/go-sqlite3"
 )

@@ -1,8 +1,8 @@
-// © 2013 the AlePale Authors under the WTFPL. See AUTHORS for the list of authors.
+// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
 package plugins
 
-import "github.com/chrissexton/alepale/bot"
+import "github.com/velour/catbase/bot"
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 

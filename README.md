@@ -1,40 +1,36 @@
-# AlePale
+# CatBase
 
-[![Build Status](https://api.travis-ci.org/chrissexton/alepale.png)](http://travis-ci.org/chrissexton/alepale)
-
-AlePale is a bot that trolls our little corner of the IRC world and keeps our friends laughing from time to time. Sometimes he makes us angry too. He is crafted as a clone of XKCD's Bucket bot, which learns from things he's told and regurgitates his knowledge to the various channels that he lives in. I've found in many such projects that randomness can often make bots feel much more alive than they are, so AlePale is a big experiment in how great randomness is.
-
-- [Project Page](http://chrissexton.org/projects/alepale)
+CatBase is a bot that trolls our little corner of the IRC world and keeps our friends laughing from time to time. Sometimes he makes us angry too. He is crafted as a clone of XKCD's Bucket bot, which learns from things he's told and regurgitates his knowledge to the various channels that he lives in. I've found in many such projects that randomness can often make bots feel much more alive than they are, so CatBase is a big experiment in how great randomness is.
 
 ## Getting Help
 
 The bot has some very basic help functions built in. Just ask for help and he'll give it to you!
 
-> Chris: AlePale, help
+> Chris: CatBase, help
 
-> AlePale: Help topics: about variables, talker, remember, admin, factoid, beers, skeleton
+> CatBase: Help topics: about variables, talker, remember, admin, factoid, beers, skeleton
 
-> Chris: AlePale, help about
+> Chris: CatBase, help about
 
-> AlePale: Hi, I'm based on godeepintir version 0.81. I'm written in Go, and you can find my source code on the internet here: http://bitbucket.org/phlyingpenguin/godeepintir
+> CatBase: Hi, I'm based on godeepintir version 0.81. I'm written in Go, and you can find my source code on the internet here: http://bitbucket.org/phlyingpenguin/godeepintir
 
 ## Factoids
 
-The primary interaction with AlePale is through factoids. These are simply just statements which can be taught to the bot and triggered at a later time. They may be triggered via the text specified in a factoid, or they may be triggered randomly by the bot when the room is silent. A simple factoid takes the shape of some trigger text, a verb, and the body of the factoid. By default, the verb is included in the full text that the bot repeats, but there are two special verbs, &lt;reply&gt; and &lt;action&gt; which do not come out in the final message.
+The primary interaction with CatBase is through factoids. These are simply just statements which can be taught to the bot and triggered at a later time. They may be triggered via the text specified in a factoid, or they may be triggered randomly by the bot when the room is silent. A simple factoid takes the shape of some trigger text, a verb, and the body of the factoid. By default, the verb is included in the full text that the bot repeats, but there are two special verbs, &lt;reply&gt; and &lt;action&gt; which do not come out in the final message.
 
 An example:
 
-> Chris: AlePale, Chris &lt;is&gt; amazing.
+> Chris: CatBase, Chris &lt;is&gt; amazing.
 
-> AlePale: Okay Chris.
+> CatBase: Okay Chris.
 
-> Chris: AlePale, Chris
+> Chris: CatBase, Chris
 
-> AlePale: Chris is amazing.
+> CatBase: Chris is amazing.
 
-When teaching facts, verbs are always enclosed with &lt;&gt;, no exceptions. Using &lt;reply&gt; causes AlePale to reply with only the body text, omitting both the verb and the trigger. Using &lt;action&gt; is similar to the &lt;reply&gt; verb except he sends an IRC action (/me) instead of a regular reply.
+When teaching facts, verbs are always enclosed with &lt;&gt;, no exceptions. Using &lt;reply&gt; causes CatBase to reply with only the body text, omitting both the verb and the trigger. Using &lt;action&gt; is similar to the &lt;reply&gt; verb except he sends an IRC action (/me) instead of a regular reply.
 
-Factoids can be removed by telling the bot, "forget that." They can be searched and updated using the =~ operator. This works by giving a trigger, the operator, and an RE2 compatible regular expression. For example, "AlePale: Chris =~ s/amazing/the best/" would update the previous factoid to be more accurate.
+Factoids can be removed by telling the bot, "forget that." They can be searched and updated using the =~ operator. This works by giving a trigger, the operator, and an RE2 compatible regular expression. For example, "CatBase: Chris =~ s/amazing/the best/" would update the previous factoid to be more accurate.
 
 ### Variables
 
@@ -63,17 +59,17 @@ An example:
 
 > Chris: Everything I say is great.
 
-> Jordan: AlePale, remember Chris Everything
+> Jordan: CatBase, remember Chris Everything
 
-> AlePale: Okay Jordan. Remembering what Chris said about Everything.
+> CatBase: Okay Jordan. Remembering what Chris said about Everything.
 
-> Jordan: AlePale, Chris quotes
+> Jordan: CatBase, Chris quotes
 
-> AlePale: Chris: Everything I say is great.
+> CatBase: Chris: Everything I say is great.
 
 ## Beers
 
-One of the fun parts about AlePale is that he remembers how many beers we have. Gamification of our drinking habits is a great motivator to get out and have more beer, so he will keep track. The keywords to know are: beers, beers++, beers = X (where X is an integer), and puke. Upon puking, your beer count is reset. Otherwise, the functionality is obvious. The spacing on "beers++" and "beers = X" is important. He also knows "bourbon++" if you're drinking something else. This counts as two beers, use sparingly!
+One of the fun parts about CatBase is that he remembers how many beers we have. Gamification of our drinking habits is a great motivator to get out and have more beer, so he will keep track. The keywords to know are: beers, beers++, beers = X (where X is an integer), and puke. Upon puking, your beer count is reset. Otherwise, the functionality is obvious. The spacing on "beers++" and "beers = X" is important. He also knows "bourbon++" if you're drinking something else. This counts as two beers, use sparingly!
 
 ### Untappd
 
@@ -81,7 +77,7 @@ One small improvement for the beer tracker is integration into [Untappd](http://
 
 ## Other, randomer things
 
-The saga of bots in our channel started out with a simple bot named FredFelps which would just reply about how God hates our users at various times when they talked about the real Felps. This is still a tradition that AlePale keeps up, but could be easily modified to fit somebody else's needs.
+The saga of bots in our channel started out with a simple bot named FredFelps which would just reply about how God hates our users at various times when they talked about the real Felps. This is still a tradition that CatBase keeps up, but could be easily modified to fit somebody else's needs.
 
 We're also a bit OCD about the length of the IRC nicks that people use. As it turns out, if everybody agrees on a particular length, say 9 characters, then the messages and names all line up very nicely when using a fixed-width font. We like 9 characters.
 

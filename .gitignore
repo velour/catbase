@@ -20,6 +20,6 @@ _cgo_export.*
 _testmain.go
 
 *.exe
-alepale
+catbase
 config.json
 *.db

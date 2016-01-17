@@ -1,4 +1,4 @@
-// © 2013 the AlePale Authors under the WTFPL. See AUTHORS for the list of authors.
+// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
 package plugins
 
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chrissexton/alepale/bot"
+	"github.com/velour/catbase/bot"
 )
 
 var goatse []string = []string{

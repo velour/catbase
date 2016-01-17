@@ -24,4 +24,6 @@ This bot was written a long time back in the spare time of a busy person. The co
 * Verify (fix) untappd integration
 	* Has not even been run
 * Write godoc for pretty much everything and explain why functions exist
+* Write a history doc
+* Fix formatting everywhere
 * Enter all of this into GitHub tickets

@@ -1,4 +1,4 @@
-// © 2013 the AlePale Authors under the WTFPL. See AUTHORS for the list of authors.
+// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
 package plugins
 
@@ -8,7 +8,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/chrissexton/alepale/bot"
+	"github.com/velour/catbase/bot"
 )
 
 // This is a counter plugin to count arbitrary things.
