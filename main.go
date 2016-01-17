@@ -67,7 +67,7 @@ func main() {
 	Bot.AddHandler("skeleton", plugins.NewSkeletonPlugin(Bot))
 	Bot.AddHandler("your", plugins.NewYourPlugin(Bot))
 	// catches anything left, will always return true
-	// Bot.AddHandler("factoid", plugins.NewFactoidPlugin(Bot))
+	Bot.AddHandler("factoid", plugins.NewFactoidPlugin(Bot))
 
 	handleConnection()
 

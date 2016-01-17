@@ -94,7 +94,6 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 
 		if len(msgs) == len(snips) {
 			msg := strings.Join(msgs, "$and")
-			var funcres bson.M
 			// Needs to be upgraded to SQL
 			// err := p.Bot.Db.Run(
 			// 	bson.M{"eval": "return counter(\"factoid\");"},
@@ -104,19 +103,15 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 			// if err != nil {
 			// 	panic(err)
 			// }
-			id := int(funcres["retval"].(float64))
 
-			fact := Factoid{
-				Id:           bson.NewObjectId(),
-				Idx:          id,
-				Trigger:      strings.ToLower(trigger),
-				Operator:     "reply",
-				FullText:     msg,
-				Action:       msg,
-				CreatedBy:    user.Name,
-				DateCreated:  time.Now(),
-				LastAccessed: time.Now(),
-				AccessCount:  0,
+			fact := factoid{
+				fact:     strings.ToLower(trigger),
+				verb:     "reply",
+				tidbit:   msg,
+				owner:    user.Name,
+				created:  time.Now(),
+				accessed: time.Now(),
+				count:    0,
 			}
 			if err := p.Coll.Insert(fact); err != nil {
 				log.Println("ERROR!!!!:", err)
@@ -165,7 +160,7 @@ func (p *RememberPlugin) Help(channel string, parts []string) {
 // Note: this is the same cache for all channels joined. This plugin needs to be
 // expanded to have this function execute a quote for a particular channel
 func (p *RememberPlugin) randQuote() string {
-	var quotes []Factoid
+	var quotes []factoid
 	// todo: find anything with the word "quotes" in the trigger
 	query := bson.M{
 		"trigger": bson.M{
@@ -184,7 +179,7 @@ func (p *RememberPlugin) randQuote() string {
 		return "Sorry, I don't know any quotes."
 	}
 	quote := quotes[rand.Intn(nquotes)]
-	return quote.FullText
+	return quote.tidbit
 }
 
 func (p *RememberPlugin) quoteTimer(channel string) {

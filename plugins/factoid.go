@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -13,41 +14,193 @@ import (
 	"time"
 
 	"github.com/chrissexton/alepale/bot"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 // The factoid plugin provides a learning system to the bot so that it can
 // respond to queries in a way that is unpredictable and fun
 
 // factoid stores info about our factoid for lookup and later interaction
-type Factoid struct {
-	Id           bson.ObjectId `bson:"_id,omitempty"`
-	Idx          int
-	Trigger      string
-	Operator     string
-	FullText     string
-	Action       string
-	CreatedBy    string
-	DateCreated  time.Time
-	LastAccessed time.Time
-	Updated      time.Time
-	AccessCount  int
+type factoid struct {
+	id       sql.NullInt64
+	fact     string
+	tidbit   string
+	verb     string
+	owner    string
+	created  time.Time
+	accessed time.Time
+	count    int
+}
+
+func (f *factoid) save(db *sql.DB) error {
+	var err error
+	if f.id.Valid {
+		// update
+		_, err = db.Exec(`update factoid set
+			fact=?,
+			tidbit=?,
+			verb=?,
+			owner=?,
+			accessed=?,
+			count=?
+		where id=?`,
+			f.fact,
+			f.tidbit,
+			f.verb,
+			f.owner,
+			f.accessed.Unix(),
+			f.count,
+			f.id.Int64)
+	} else {
+		f.created = time.Now()
+		f.accessed = time.Now()
+		// insert
+		res, err := db.Exec(`insert into factoid (
+			fact,
+			tidbit,
+			verb,
+			owner,
+			created,
+			accessed,
+			count
+		) values (?, ?, ?, ?, ?, ?, ?);`,
+			f.fact,
+			f.tidbit,
+			f.verb,
+			f.owner,
+			f.created.Unix(),
+			f.accessed.Unix(),
+			f.count,
+		)
+		if err != nil {
+			return err
+		}
+		id, err := res.LastInsertId()
+		// hackhackhack?
+		f.id.Int64 = id
+		f.id.Valid = true
+	}
+	return err
+}
+
+func (f *factoid) delete(db *sql.DB) error {
+	var err error
+	if f.id.Valid {
+		_, err = db.Exec(`delete from factoid where id=?`, f.id)
+	}
+	f.id.Valid = false
+	return err
+}
+
+func getFacts(db *sql.DB, fact string) ([]*factoid, error) {
+	var fs []*factoid
+	rows, err := db.Query(`select
+			id,
+			fact,
+			tidbit,
+			verb,
+			owner,
+			created,
+			accessed,
+			count
+		from factoid
+		where fact like ?;`,
+		fact)
+	for rows.Next() {
+		var f factoid
+		var tmpCreated int64
+		var tmpAccessed int64
+		err := rows.Scan(
+			&f.id,
+			&f.fact,
+			&f.tidbit,
+			&f.verb,
+			&f.owner,
+			&tmpCreated,
+			&tmpAccessed,
+			&f.count,
+		)
+		if err != nil {
+			return nil, err
+		}
+		f.created = time.Unix(tmpCreated, 0)
+		f.accessed = time.Unix(tmpAccessed, 0)
+		fs = append(fs, &f)
+	}
+	return fs, err
+}
+
+func getSingle(db *sql.DB) (*factoid, error) {
+	var f factoid
+	var tmpCreated int64
+	var tmpAccessed int64
+	err := db.QueryRow(`select
+			id,
+			fact,
+			tidbit,
+			verb,
+			owner,
+			created,
+			accessed,
+			count
+		from factoid
+		order by random() limit 1;`).Scan(
+		&f.id,
+		&f.fact,
+		&f.tidbit,
+		&f.verb,
+		&f.owner,
+		&tmpCreated,
+		&tmpAccessed,
+		&f.count,
+	)
+	f.created = time.Unix(tmpCreated, 0)
+	f.accessed = time.Unix(tmpAccessed, 0)
+	return &f, err
+}
+
+func getSingleFact(db *sql.DB, fact string) (*factoid, error) {
+	var f factoid
+	var tmpCreated int64
+	var tmpAccessed int64
+	err := db.QueryRow(`select
+			id,
+			fact,
+			tidbit,
+			verb,
+			owner,
+			created,
+			accessed,
+			count
+		from factoid
+		where fact like ?
+		order by random() limit 1;`,
+		fact).Scan(
+		&f.id,
+		&f.fact,
+		&f.tidbit,
+		&f.verb,
+		&f.owner,
+		&tmpCreated,
+		&tmpAccessed,
+		&f.count,
+	)
+	f.created = time.Unix(tmpCreated, 0)
+	f.accessed = time.Unix(tmpAccessed, 0)
+	return &f, err
 }
 
 // FactoidPlugin provides the necessary plugin-wide needs
 type FactoidPlugin struct {
 	Bot      *bot.Bot
-	Coll     *mgo.Collection
 	NotFound []string
-	LastFact *Factoid
+	LastFact *factoid
+	db       *sql.DB
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
 func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 	p := &FactoidPlugin{
-		Bot:  botInst,
-		Coll: nil,
+		Bot: botInst,
 		NotFound: []string{
 			"I don't know.",
 			"NONONONO",
@@ -56,8 +209,23 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 			"NOPE! NOPE! NOPE!",
 			"One time, I learned how to jump rope.",
 		},
+		db: botInst.DB,
 	}
-	p.LoadData()
+
+	_, err := p.db.Exec(`create table if not exists factoid (
+			id integer primary key,
+			fact string,
+			tidbit string,
+			verb string,
+			owner string,
+			created integer,
+			accessed integer,
+			count integer
+		);`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	for _, channel := range botInst.Config.Channels {
 		go p.factTimer(channel)
 
@@ -67,7 +235,7 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 			if ok, fact := p.findTrigger(p.Bot.Config.StartupFact); ok {
 				p.sayFact(bot.Message{
 					Channel: channel,
-					Body:    "speed test",
+					Body:    "speed test", // BUG: This is defined in the config too
 					Command: true,
 					Action:  false,
 				}, *fact)
@@ -99,93 +267,82 @@ func findAction(message string) string {
 
 // learnFact assumes we have a learning situation and inserts a new fact
 // into the database
-func (p *FactoidPlugin) learnFact(message bot.Message, trigger, operator, fact string) bool {
-	// if it's an action, we only want the fact part of it in the fulltext
-	full := fact
-	if operator != "action" && operator != "reply" {
-		full = fmt.Sprintf("%s %s %s", trigger, operator, fact)
-	}
-	trigger = strings.ToLower(trigger)
+func (p *FactoidPlugin) learnFact(message bot.Message, fact, verb, tidbit string) bool {
+	verb = strings.ToLower(verb)
 
-	q := p.Coll.Find(bson.M{"trigger": trigger, "operator": operator, "fulltext": full})
-	if n, _ := q.Count(); n != 0 {
+	var count sql.NullInt64
+	err := p.db.QueryRow(`select count(*) from factoid
+		where fact=? and verb=? and tidbit=?`,
+		fact, verb, tidbit).Scan(&count)
+	if err != nil {
+		log.Println("Error counting facts: ", err)
+		return false
+	} else if count.Valid && count.Int64 != 0 {
+		log.Println("User tried to relearn a fact.")
 		return false
 	}
 
-	// definite error here if no func setup
-	// let's just aggregate
-	var count map[string]interface{}
-	query := []bson.M{{
-		"$group": bson.M{
-			"_id": nil,
-			"idx": bson.M{
-				"$max": "$idx",
-			},
-		},
-	}}
-	pipe := p.Coll.Pipe(query)
-	err := pipe.One(&count)
+	n := factoid{
+		fact:     fact,
+		tidbit:   tidbit,
+		verb:     verb,
+		owner:    message.User.Name,
+		created:  time.Now(),
+		accessed: time.Now(),
+		count:    0,
+	}
+	p.LastFact = &n
+	err = n.save(p.db)
 	if err != nil {
-		panic(err)
+		log.Println("Error inserting fact: ", err)
+		return false
 	}
-	id := count["idx"].(int) + 1
 
-	newfact := Factoid{
-		Id:        bson.NewObjectId(),
-		Idx:       id,
-		Trigger:   trigger,
-		Operator:  operator,
-		FullText:  full,
-		Action:    fact,
-		CreatedBy: message.User.Name,
-	}
-	p.Coll.Insert(newfact)
-	p.LastFact = &newfact
 	return true
 }
 
 // findTrigger checks to see if a given string is a trigger or not
-func (p *FactoidPlugin) findTrigger(message string) (bool, *Factoid) {
-	var results []Factoid
-	iter := p.Coll.Find(bson.M{"trigger": strings.ToLower(message)}).Iter()
-	err := iter.All(&results)
+func (p *FactoidPlugin) findTrigger(fact string) (bool, *factoid) {
+	fact = strings.ToLower(fact) // TODO: make sure this needs to be lowered here
+
+	f, err := getSingleFact(p.db, fact)
 	if err != nil {
+		log.Printf("Looking for trigger '%s', got err: %s", fact, err)
 		return false, nil
 	}
-
-	nfacts := len(results)
-	if nfacts == 0 {
-		return false, nil
-	}
-
-	fact := results[rand.Intn(nfacts)]
-	return true, &fact
+	return true, f
 }
 
 // sayFact spits out a fact to the channel and updates the fact in the database
 // with new time and count information
-func (p *FactoidPlugin) sayFact(message bot.Message, fact Factoid) {
-	msg := p.Bot.Filter(message, fact.FullText)
+func (p *FactoidPlugin) sayFact(message bot.Message, fact factoid) {
+	msg := p.Bot.Filter(message, fact.tidbit)
+	full := p.Bot.Filter(message, fmt.Sprintf("%s %s %s",
+		fact.fact, fact.verb, fact.tidbit,
+	))
 	for i, m := 0, strings.Split(msg, "$and"); i < len(m) && i < 4; i++ {
 		msg := strings.TrimSpace(m[i])
 		if len(msg) == 0 {
 			continue
 		}
 
-		if fact.Operator == "action" {
+		if fact.verb == "action" {
 			p.Bot.SendAction(message.Channel, msg)
-		} else {
+		} else if fact.verb == "reply" {
 			p.Bot.SendMessage(message.Channel, msg)
+		} else {
+			p.Bot.SendMessage(message.Channel, full)
 		}
 	}
 
 	// update fact tracking
-	fact.LastAccessed = time.Now()
-	fact.AccessCount += 1
-	err := p.Coll.UpdateId(fact.Id, fact)
+	fact.accessed = time.Now()
+	fact.count += 1
+	err := fact.save(p.db)
 	if err != nil {
-		fmt.Printf("Could not update fact.\n")
-		fmt.Printf("%#v\n", fact)
+		log.Printf("Could not update fact.\n")
+		log.Printf("%#v\n", fact)
+		log.Println(err)
 	}
 	p.LastFact = &fact
 }
@@ -217,7 +374,7 @@ func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
 		msg = "Nope."
 	} else {
 		msg = fmt.Sprintf("That was (#%d) '%s <%s> %s'",
-			fact.Idx, fact.Trigger, fact.Operator, fact.Action)
+			fact.id, fact.fact, fact.verb, fact.tidbit)
 	}
 	p.Bot.SendMessage(message.Channel, msg)
 	return true
@@ -274,13 +431,13 @@ func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
 	}
-	if message.User.Admin || message.User.Name == p.LastFact.CreatedBy {
-		err := p.Coll.Remove(bson.M{"_id": p.LastFact.Id})
+	if message.User.Admin || message.User.Name == p.LastFact.owner {
+		err := p.LastFact.delete(p.db)
 		if err != nil {
-			panic(err)
+			log.Println("Error removing fact: ", p.LastFact, err)
 		}
-		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.Idx, p.LastFact.Trigger,
-			p.LastFact.Operator, p.LastFact.Action)
+		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id, p.LastFact.fact,
+			p.LastFact.verb, p.LastFact.tidbit)
 		p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
 		p.LastFact = nil
 	} else {
@@ -307,14 +464,13 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 		replace := parts[2]
 
 		// replacement
-		var result []Factoid
-		iter := p.Coll.Find(bson.M{"trigger": trigger})
-		if message.User.Admin && userexp[len(userexp)-1] == 'g' {
-			iter.All(&result)
-		} else {
-			result = make([]Factoid, 1)
-			iter.One(&result[0])
-			if result[0].CreatedBy != message.User.Name && !message.User.Admin {
+		result, err := getFacts(p.db, trigger)
+		if err != nil {
+			log.Println("Error getting facts: ", trigger, err)
+		}
+		if !(message.User.Admin && userexp[len(userexp)-1] == 'g') {
+			result = result[:1]
+			if result[0].owner != message.User.Name && !message.User.Admin {
 				p.Bot.SendMessage(message.Channel, "That's not your fact to edit.")
 				return true
 			}
@@ -328,29 +484,26 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 			return false
 		}
 		for _, fact := range result {
-			fact.FullText = reg.ReplaceAllString(fact.FullText, replace)
-			fact.Trigger = reg.ReplaceAllString(fact.Trigger, replace)
-			fact.Trigger = strings.ToLower(fact.Trigger)
-			fact.Operator = reg.ReplaceAllString(fact.Operator, replace)
-			fact.Action = reg.ReplaceAllString(fact.Action, replace)
-			fact.AccessCount += 1
-			fact.LastAccessed = time.Now()
-			fact.Updated = time.Now()
-			p.Coll.UpdateId(fact.Id, fact)
+			fact.fact = reg.ReplaceAllString(fact.fact, replace)
+			fact.fact = strings.ToLower(fact.fact)
+			fact.verb = reg.ReplaceAllString(fact.verb, replace)
+			fact.tidbit = reg.ReplaceAllString(fact.tidbit, replace)
+			fact.count += 1
+			fact.accessed = time.Now()
+			fact.save(p.db)
 		}
 	} else if len(parts) == 3 {
 		// search for a factoid and print it
-		var result []Factoid
-		iter := p.Coll.Find(bson.M{"trigger": trigger,
-			"fulltext": bson.M{"$regex": parts[1]}})
-		count, _ := iter.Count()
+		result, err := getFacts(p.db, trigger)
+		if err != nil {
+			log.Println("Error getting facts: ", trigger, err)
+		}
+		count := len(result)
 		if parts[2] == "g" {
 			// summarize
-			iter.Limit(4).All(&result)
+			result = result[:4]
 		} else {
-			result = make([]Factoid, 1)
-			iter.One(&result[0])
-			p.sayFact(message, result[0])
+			p.sayFact(message, *result[0])
 			return true
 		}
 		msg := fmt.Sprintf("%s ", trigger)
@@ -358,7 +511,7 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 			if i != 0 {
 				msg = fmt.Sprintf("%s |", msg)
 			}
-			msg = fmt.Sprintf("%s <%s> %s", msg, fact.Operator, fact.Action)
+			msg = fmt.Sprintf("%s <%s> %s", msg, fact.verb, fact.tidbit)
 		}
 		if count > 4 {
 			msg = fmt.Sprintf("%s | ...and %d others", msg, count)
@@ -416,16 +569,6 @@ func (p *FactoidPlugin) Message(message bot.Message) bool {
 	return true
 }
 
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
-func (p *FactoidPlugin) LoadData() {
-	// Mongo is removed, this plugin will crash if started
-	log.Fatal("The Factoid plugin has not been upgraded to SQL yet.")
-	// p.Coll = p.Bot.Db.C("factoid")
-	rand.Seed(time.Now().Unix())
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *FactoidPlugin) Help(channel string, parts []string) {
 	p.Bot.SendMessage(channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
@@ -438,20 +581,13 @@ func (p *FactoidPlugin) Event(kind string, message bot.Message) bool {
 }
 
 // Pull a fact at random from the database
-func (p *FactoidPlugin) randomFact() *Factoid {
-	var fact Factoid
-
-	nFacts, err := p.Coll.Count()
+func (p *FactoidPlugin) randomFact() *factoid {
+	f, err := getSingle(p.db)
 	if err != nil {
+		fmt.Println("Error getting a fact: ", err)
 		return nil
 	}
-
-	// Possible bug here with no db
-	if err := p.Coll.Find(nil).Skip(rand.Intn(nFacts)).One(&fact); err != nil {
-		log.Println("Couldn't get next...")
-	}
-
-	return &fact
+	return f
 }
 
 // factTimer spits out a fact at a given interval and with given probability
@@ -518,8 +654,9 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 		"linkify": linkify,
 	}
 	if e := r.FormValue("entry"); e != "" {
-		var entries []Factoid
-		p.Coll.Find(bson.M{"trigger": bson.M{"$regex": strings.ToLower(e)}}).All(&entries)
+		var entries []factoid
+		// TODO: Fix the web interface with text search?
+		// p.Coll.Find(bson.M{"trigger": bson.M{"$regex": strings.ToLower(e)}}).All(&entries)
 		context["Count"] = fmt.Sprintf("%d", len(entries))
 		context["Entries"] = entries
 		context["Search"] = e
