@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/velour/irc"
 	"github.com/velour/catbase/config"
+	"github.com/velour/velour/irc"
 
 	_ "github.com/mattn/go-sqlite3"
 )

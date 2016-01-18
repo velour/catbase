@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"code.google.com/p/velour/irc"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/plugins"
+	"github.com/velour/velour/irc"
 )
 
 const (
@@ -45,10 +45,13 @@ func main() {
 
 	Config = config.Readconfig(Version, *cfile)
 
-	Client, err = irc.DialServer(Config.Server,
+	Client, err = irc.DialSSL(
+		Config.Server,
 		Config.Nick,
 		Config.FullName,
-		Config.Pass)
+		Config.Pass,
+		true,
+	)
 
 	if err != nil {
 		log.Fatal(err)

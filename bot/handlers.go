@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/velour/irc"
+	"github.com/velour/velour/irc"
 )
 
 // Handles incomming PRIVMSG requests
