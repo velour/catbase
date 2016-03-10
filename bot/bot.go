@@ -11,14 +11,9 @@ import (
 	"time"
 
 	"github.com/velour/catbase/config"
-	"github.com/velour/velour/irc"
 
 	_ "github.com/mattn/go-sqlite3"
 )
-
-const actionPrefix = "\x01ACTION"
-
-var throttle <-chan time.Time
 
 // Bot type provides storage for bot-wide information, configs, and database connections
 type Bot struct {
@@ -32,10 +27,9 @@ type Bot struct {
 	// Represents the bot
 	Me User
 
-	// Conn allows us to send messages and modify our connection state
-	Client *irc.Client
-
 	Config *config.Config
+
+	Conn Connector
 
 	// SQL DB
 	// TODO: I think it'd be nice to use https://github.com/jmoiron/sqlx so that
@@ -103,8 +97,8 @@ type Variable struct {
 }
 
 // NewBot creates a Bot for a given connection and set of handlers.
-func NewBot(config *config.Config, c *irc.Client) *Bot {
-	sqlDB, err := sql.Open("sqlite3", config.DbFile)
+func NewBot(config *config.Config, connector Connector) *Bot {
+	sqlDB, err := sql.Open("sqlite3", config.DB.File)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -124,9 +118,9 @@ func NewBot(config *config.Config, c *irc.Client) *Bot {
 		Config:         config,
 		Plugins:        make(map[string]Handler),
 		PluginOrdering: make([]string, 0),
+		Conn:           connector,
 		Users:          users,
 		Me:             users[0],
-		Client:         c,
 		DB:             sqlDB,
 		logIn:          logIn,
 		logOut:         logOut,
@@ -141,6 +135,9 @@ func NewBot(config *config.Config, c *irc.Client) *Bot {
 		config.HttpAddr = "127.0.0.1:1337"
 	}
 	go http.ListenAndServe(config.HttpAddr, nil)
+
+	connector.RegisterMessageRecieved(bot.MsgRecieved)
+	connector.RegisterEventRecieved(bot.EventRecieved)
 
 	return bot
 }
@@ -195,45 +192,6 @@ func (b *Bot) AddHandler(name string, h Handler) {
 	if entry := h.RegisterWeb(); entry != nil {
 		b.httpEndPoints[name] = *entry
 	}
-}
-
-func (b *Bot) SendMessage(channel, message string) {
-	if !strings.HasPrefix(message, actionPrefix) {
-		b.selfSaid(channel, message, false)
-	}
-	for len(message) > 0 {
-		m := irc.Msg{
-			Cmd:  "PRIVMSG",
-			Args: []string{channel, message},
-		}
-		_, err := m.RawString()
-		if err != nil {
-			mtl := err.(irc.MsgTooLong)
-			m.Args[1] = message[:mtl.NTrunc]
-			message = message[mtl.NTrunc:]
-		} else {
-			message = ""
-		}
-
-		if throttle == nil {
-			ratePerSec := b.Config.RatePerSec
-			throttle = time.Tick(time.Second / time.Duration(ratePerSec))
-		}
-
-		<-throttle
-
-		b.Client.Out <- m
-	}
-}
-
-// Sends action to channel
-func (b *Bot) SendAction(channel, message string) {
-	// Notify plugins that we've said something
-	b.selfSaid(channel, message, true)
-
-	message = actionPrefix + " " + message + "\x01"
-
-	b.SendMessage(channel, message)
 }
 
 func (b *Bot) Who(channel string) []User {

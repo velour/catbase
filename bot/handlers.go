@@ -12,18 +12,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/velour/velour/irc"
 )
 
 // Handles incomming PRIVMSG requests
-func (b *Bot) MsgRecieved(client *irc.Client, inMsg irc.Msg) {
-	log.Println("Recieved message: ", inMsg)
-	if inMsg.User == "" {
-		return
-	}
+func (b *Bot) MsgRecieved(msg Message) {
+	log.Println("Recieved message: ", msg)
 
-	msg := b.buildMessage(client, inMsg)
+	// msg := b.buildMessage(client, inMsg)
+	// do need to look up user and fix it
 
 	if strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
@@ -44,27 +40,23 @@ RET:
 }
 
 // Handle incoming events
-func (b *Bot) EventRecieved(conn *irc.Client, inMsg irc.Msg) {
-	log.Println("Recieved event: ", inMsg)
-	if inMsg.User == "" {
-		return
-	}
-	msg := b.buildMessage(conn, inMsg)
+func (b *Bot) EventRecieved(msg Message) {
+	log.Println("Recieved event: ", msg)
+	//msg := b.buildMessage(conn, inMsg)
 	for _, name := range b.PluginOrdering {
 		p := b.Plugins[name]
-		if p.Event(inMsg.Cmd, msg) {
+		if p.Event(msg.Body, msg) { // TODO: could get rid of msg.Body
 			break
 		}
 	}
 }
 
-// Interface used for compatibility with the Plugin interface
-type Handler interface {
-	Message(message Message) bool
-	Event(kind string, message Message) bool
-	BotMessage(message Message) bool
-	Help(channel string, parts []string)
-	RegisterWeb() *string
+func (b *Bot) SendMessage(channel, message string) {
+	b.Conn.SendMessage(channel, message)
+}
+
+func (b *Bot) SendAction(channel, message string) {
+	b.Conn.SendAction(channel, message)
 }
 
 // Checks to see if the user is asking for help, returns true if so and handles the situation.
@@ -94,79 +86,6 @@ func (b *Bot) checkHelp(channel string, parts []string) {
 			b.SendMessage(channel, msg)
 		}
 	}
-}
-
-// Checks if message is a command and returns its curtailed version
-func (b *Bot) isCmd(message string) (bool, string) {
-	cmdc := b.Config.CommandChar
-	botnick := strings.ToLower(b.Config.Nick)
-	iscmd := false
-	lowerMessage := strings.ToLower(message)
-
-	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
-		iscmd = true
-		message = message[len(cmdc):]
-		// } else if match, _ := regexp.MatchString(rex, lowerMessage); match {
-	} else if strings.HasPrefix(lowerMessage, botnick) &&
-		len(lowerMessage) > len(botnick) &&
-		(lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
-
-		iscmd = true
-		message = message[len(botnick):]
-
-		// trim off the customary addressing punctuation
-		if message[0] == ':' || message[0] == ',' {
-			message = message[1:]
-		}
-	}
-
-	// trim off any whitespace left on the message
-	message = strings.TrimSpace(message)
-
-	return iscmd, message
-}
-
-// Builds our internal message type out of a Conn & Line from irc
-func (b *Bot) buildMessage(conn *irc.Client, inMsg irc.Msg) Message {
-	// Check for the user
-	user := b.GetUser(inMsg.Origin)
-
-	channel := inMsg.Args[0]
-	if channel == b.Config.Nick {
-		channel = inMsg.Args[0]
-	}
-
-	isAction := false
-	var message string
-	if len(inMsg.Args) > 1 {
-		message = inMsg.Args[1]
-
-		isAction = strings.HasPrefix(message, actionPrefix)
-		if isAction {
-			message = strings.TrimRight(message[len(actionPrefix):], "\x01")
-			message = strings.TrimSpace(message)
-		}
-
-	}
-
-	iscmd := false
-	filteredMessage := message
-	if !isAction {
-		iscmd, filteredMessage = b.isCmd(message)
-	}
-
-	msg := Message{
-		User:    user,
-		Channel: channel,
-		Body:    filteredMessage,
-		Raw:     message,
-		Command: iscmd,
-		Action:  isAction,
-		Time:    time.Now(),
-		Host:    inMsg.Host,
-	}
-
-	return msg
 }
 
 func (b *Bot) LastMessage(channel string) (Message, error) {
