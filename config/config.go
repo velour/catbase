@@ -24,19 +24,21 @@ type Config struct {
 	Slack struct {
 		Token string
 	}
-	Nick                  string
-	FullName              string
-	Version               string
-	CommandChar           string
-	RatePerSec            float64
-	QuoteChance           float64
-	QuoteTime             int
-	LogLength             int
-	Admins                []string
-	HttpAddr              string
-	UntappdToken          string
-	UntappdFreq           int
-	UntappdChannels       []string
+	Nick        string
+	FullName    string
+	Version     string
+	CommandChar string
+	RatePerSec  float64
+	QuoteChance float64
+	QuoteTime   int
+	LogLength   int
+	Admins      []string
+	HttpAddr    string
+	Untappd     struct {
+		Token    string
+		Freq     int
+		Channels []string
+	}
 	EnforceNicks          bool
 	WelcomeMsgs           []string
 	TwitterConsumerKey    string
