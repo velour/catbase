@@ -1,8 +1,8 @@
 package bot
 
 type Connector interface {
-	RegisterEventRecieved(func(message Message))
-	RegisterMessageRecieved(func(message Message))
+	RegisterEventReceived(func(message Message))
+	RegisterMessageReceived(func(message Message))
 
 	SendMessage(channel, message string)
 	SendAction(channel, message string)

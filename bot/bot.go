@@ -136,8 +136,8 @@ func NewBot(config *config.Config, connector Connector) *Bot {
 	}
 	go http.ListenAndServe(config.HttpAddr, nil)
 
-	connector.RegisterMessageRecieved(bot.MsgRecieved)
-	connector.RegisterEventRecieved(bot.EventRecieved)
+	connector.RegisterMessageReceived(bot.MsgReceived)
+	connector.RegisterEventReceived(bot.EventReceived)
 
 	return bot
 }
@@ -242,4 +242,34 @@ func (b *Bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 	t.Execute(w, context)
+}
+
+// Checks if message is a command and returns its curtailed version
+func IsCmd(c *config.Config, message string) (bool, string) {
+	cmdc := c.CommandChar
+	botnick := strings.ToLower(c.Nick)
+	iscmd := false
+	lowerMessage := strings.ToLower(message)
+
+	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
+		iscmd = true
+		message = message[len(cmdc):]
+		// } else if match, _ := regexp.MatchString(rex, lowerMessage); match {
+	} else if strings.HasPrefix(lowerMessage, botnick) &&
+		len(lowerMessage) > len(botnick) &&
+		(lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
+
+		iscmd = true
+		message = message[len(botnick):]
+
+		// trim off the customary addressing punctuation
+		if message[0] == ':' || message[0] == ',' {
+			message = message[1:]
+		}
+	}
+
+	// trim off any whitespace left on the message
+	message = strings.TrimSpace(message)
+
+	return iscmd, message
 }

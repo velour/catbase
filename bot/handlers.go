@@ -15,8 +15,8 @@ import (
 )
 
 // Handles incomming PRIVMSG requests
-func (b *Bot) MsgRecieved(msg Message) {
-	log.Println("Recieved message: ", msg)
+func (b *Bot) MsgReceived(msg Message) {
+	log.Println("Received message: ", msg)
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
@@ -40,8 +40,8 @@ RET:
 }
 
 // Handle incoming events
-func (b *Bot) EventRecieved(msg Message) {
-	log.Println("Recieved event: ", msg)
+func (b *Bot) EventReceived(msg Message) {
+	log.Println("Received event: ", msg)
 	//msg := b.buildMessage(conn, inMsg)
 	for _, name := range b.PluginOrdering {
 		p := b.Plugins[name]
@@ -157,7 +157,7 @@ func (b *Bot) Filter(message Message, input string) string {
 
 func (b *Bot) getVar(varName string) (string, error) {
 	var text string
-	err := b.DB.QueryRow("select v.value from variables as va inner join values as v on va.id = va.id = v.varId order by random() limit 1").Scan(&text)
+	err := b.DB.QueryRow(`select v.value from variables as va inner join "values" as v on va.id = va.id = v.varId order by random() limit 1`).Scan(&text)
 	switch {
 	case err == sql.ErrNoRows:
 		return "", fmt.Errorf("No factoid found")

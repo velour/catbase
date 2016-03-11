@@ -21,6 +21,9 @@ type Config struct {
 	Irc         struct {
 		Server, Pass string
 	}
+	Slack struct {
+		Token string
+	}
 	Nick                  string
 	FullName              string
 	Version               string

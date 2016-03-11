@@ -37,8 +37,8 @@ type Irc struct {
 	config *config.Config
 	quit   chan bool
 
-	eventRecieved   func(bot.Message)
-	messageRecieved func(bot.Message)
+	eventReceived   func(bot.Message)
+	messageReceived func(bot.Message)
 }
 
 func New(c *config.Config) *Irc {
@@ -48,12 +48,12 @@ func New(c *config.Config) *Irc {
 	return &i
 }
 
-func (i *Irc) RegisterEventRecieved(f func(bot.Message)) {
-	i.eventRecieved = f
+func (i *Irc) RegisterEventReceived(f func(bot.Message)) {
+	i.eventReceived = f
 }
 
-func (i *Irc) RegisterMessageRecieved(f func(bot.Message)) {
-	i.messageRecieved = f
+func (i *Irc) RegisterMessageReceived(f func(bot.Message)) {
+	i.messageReceived = f
 }
 
 func (i *Irc) JoinChannel(channel string) {
@@ -95,7 +95,7 @@ func (i *Irc) SendAction(channel, message string) {
 }
 
 func (i *Irc) Serve() {
-	if i.eventRecieved == nil || i.messageRecieved == nil {
+	if i.eventReceived == nil || i.messageReceived == nil {
 		log.Fatal("Missing an event handler")
 	}
 
@@ -173,52 +173,52 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 		// OK, ignore
 
 	case irc.ERR_NOSUCHNICK:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.ERR_NOSUCHCHANNEL:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.RPL_MOTD:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.RPL_NAMREPLY:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.RPL_TOPIC:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.KICK:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.TOPIC:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.MODE:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.JOIN:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.PART:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.QUIT:
 		os.Exit(1)
 
 	case irc.NOTICE:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.PRIVMSG:
-		i.messageRecieved(botMsg)
+		i.messageReceived(botMsg)
 
 	case irc.NICK:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.RPL_WHOREPLY:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	case irc.RPL_ENDOFWHO:
-		i.eventRecieved(botMsg)
+		i.eventReceived(botMsg)
 
 	default:
 		cmd := irc.CmdNames[msg.Cmd]
@@ -254,7 +254,7 @@ func (i *Irc) buildMessage(inMsg irc.Msg) bot.Message {
 	iscmd := false
 	filteredMessage := message
 	if !isAction {
-		iscmd, filteredMessage = i.isCmd(message)
+		iscmd, filteredMessage = bot.IsCmd(i.config, message)
 	}
 
 	msg := bot.Message{
@@ -269,34 +269,4 @@ func (i *Irc) buildMessage(inMsg irc.Msg) bot.Message {
 	}
 
 	return msg
-}
-
-// Checks if message is a command and returns its curtailed version
-func (i *Irc) isCmd(message string) (bool, string) {
-	cmdc := i.config.CommandChar
-	botnick := strings.ToLower(i.config.Nick)
-	iscmd := false
-	lowerMessage := strings.ToLower(message)
-
-	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
-		iscmd = true
-		message = message[len(cmdc):]
-		// } else if match, _ := regexp.MatchString(rex, lowerMessage); match {
-	} else if strings.HasPrefix(lowerMessage, botnick) &&
-		len(lowerMessage) > len(botnick) &&
-		(lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
-
-		iscmd = true
-		message = message[len(botnick):]
-
-		// trim off the customary addressing punctuation
-		if message[0] == ':' || message[0] == ',' {
-			message = message[1:]
-		}
-	}
-
-	// trim off any whitespace left on the message
-	message = strings.TrimSpace(message)
-
-	return iscmd, message
 }

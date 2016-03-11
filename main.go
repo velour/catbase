@@ -10,6 +10,7 @@ import (
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/irc"
 	"github.com/velour/catbase/plugins"
+	"github.com/velour/catbase/slack"
 )
 
 func main() {
@@ -23,6 +24,8 @@ func main() {
 	switch c.Type {
 	case "irc":
 		client = irc.New(c)
+	case "slack":
+		client = slack.New(c)
 	default:
 		log.Fatalf("Unknown connection type: %s", c.Type)
 	}
@@ -31,7 +34,7 @@ func main() {
 
 	// b.AddHandler(plugins.NewTestPlugin(b))
 	b.AddHandler("admin", plugins.NewAdminPlugin(b))
-	b.AddHandler("first", plugins.NewFirstPlugin(b))
+	// b.AddHandler("first", plugins.NewFirstPlugin(b))
 	b.AddHandler("downtime", plugins.NewDowntimePlugin(b))
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("dice", plugins.NewDicePlugin(b))
