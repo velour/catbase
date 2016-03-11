@@ -24,9 +24,11 @@
 	"Admins": ["<Admin Nick>"],
 	"HttpAddr": "127.0.0.1:1337",
 
-	"UntappdToken": "<Your Token>",
-	"UntappdFreq": 3600,
-	"UntappdChannels": [],
+	"Untappd": {
+		"Token": "<Your Token>",
+		"Freq": 3600,
+		"Channels": []
+	},
 
 	"TwitterConsumerKey": "<Consumer Key>",
 	"TwitterConsumerSecret": "<Consumer Secret>",

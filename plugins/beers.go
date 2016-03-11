@@ -48,16 +48,16 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 			id integer primary key,
 			nick string,
 			count integer,
-			lastDrunk datetime
+			lastDrunk integer
 		);`); err != nil {
 			log.Fatal(err)
 		}
 
 		if _, err := bot.DB.Exec(`create table if not exists untappd (
 			id integer primary key,
-			untappdUser string
-			channel string
-			lastCheckin datetime
+			untappdUser string,
+			channel string,
+			lastCheckin integer,
 			chanNick string
 		);`); err != nil {
 			log.Fatal(err)
@@ -68,7 +68,7 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 		db:  bot.DB,
 	}
 	p.LoadData()
-	for _, channel := range bot.Config.UntappdChannels {
+	for _, channel := range bot.Config.Untappd.Channels {
 		go p.untappdLoop(channel)
 	}
 	return &p
@@ -243,7 +243,12 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 			channel,
 			lastCheckin,
 			chanNick
-		) values (?, ?, ?, ?);`)
+		) values (?, ?, ?, ?);`,
+			u.untappdUser,
+			u.channel,
+			0,
+			u.chanNick,
+		)
 		if err != nil {
 			log.Println("Error registering untappd: ", err)
 			p.Bot.SendMessage(channel, "I can't see.")
@@ -258,6 +263,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 	}
 
 	if message.Command && parts[0] == "checkuntappd" {
+		log.Println("Checking untappd at request of user.")
 		p.checkUntappd(channel)
 		return true
 	}
@@ -368,65 +374,66 @@ type Beers struct {
 }
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
-	access_token := "?access_token=" + p.Bot.Config.UntappdToken
+	access_token := "?access_token=" + p.Bot.Config.Untappd.Token
 	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
 
 	resp, err := http.Get(url)
-	if err != nil {
-		panic(err)
-	}
-	if resp.StatusCode == 500 {
-		return []checkin{}, errors.New(resp.Status)
-	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return []checkin{}, err
+	}
+
+	if resp.StatusCode == 500 {
+		log.Printf("Error querying untappd: %s, %s", resp.Status, body)
+		return []checkin{}, errors.New(resp.Status)
 	}
 
 	var beers Beers
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
 		log.Println(err)
-		return []checkin{}, errors.New("Unable to parse JSON")
+		return []checkin{}, err
 	}
 	return beers.Response.Checkins.Items, nil
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
-	if p.Bot.Config.UntappdToken == "<Your Token>" {
+	if p.Bot.Config.Untappd.Token == "<Your Token>" {
 		log.Println("No Untappd token, cannot enable plugin.")
 		return
 	}
 
-	var users []untappdUser
-	rows, err := p.db.Query(`select *from untappd`)
+	userMap := make(map[string]untappdUser)
+	rows, err := p.db.Query(`select id, untappdUser, channel, lastCheckin, chanNick from untappd;`)
 	if err != nil {
 		log.Println("Error getting untappd users: ", err)
 		return
 	}
 	for rows.Next() {
 		u := untappdUser{}
-		rows.Scan(&u.id, &u.untappdUser, &u.channel, &u.lastCheckin, &u.chanNick)
-		users = append(users, u)
-	}
-
-	userMap := make(map[string]untappdUser)
-	for _, u := range users {
+		err := rows.Scan(&u.id, &u.untappdUser, &u.channel, &u.lastCheckin, &u.chanNick)
+		if err != nil {
+			log.Fatal(err)
+		}
 		userMap[u.untappdUser] = u
+		log.Printf("Found untappd user: %#v", u)
+		if u.chanNick == "" {
+			log.Fatal("Empty chanNick for no good reason.")
+		}
 	}
 
 	chks, err := p.pullUntappd()
+	if err != nil {
+		log.Println("Untappd ERROR: ", err)
+	}
 	for i := len(chks); i > 0; i-- {
 		checkin := chks[i-1]
 
-		if err != nil {
-			log.Println("ERROR!:", err)
-			continue
-		}
-
 		if checkin.Checkin_id <= userMap[checkin.User.User_name].lastCheckin {
+			log.Printf("User %s already check in >%d", checkin.User.User_name, checkin.Checkin_id)
 			continue
 		}
 
@@ -441,6 +448,8 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		if !ok {
 			continue
 		}
+		log.Printf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
+			user.chanNick, user.untappdUser, checkin.User.User_name)
 		p.addBeers(user.chanNick)
 		drunken := p.getBeers(user.chanNick)
 
@@ -465,7 +474,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 }
 
 func (p *BeersPlugin) untappdLoop(channel string) {
-	frequency := p.Bot.Config.UntappdFreq
+	frequency := p.Bot.Config.Untappd.Freq
 
 	log.Println("Checking every ", frequency, " seconds")
 

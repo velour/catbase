@@ -93,10 +93,12 @@ func (s *Slack) SendMessageType(channel, messageType, subType, message string) e
 }
 
 func (s *Slack) SendMessage(channel, message string) {
+	log.Printf("Sending message to %s: %s", channel, message)
 	s.SendMessageType(channel, "message", "", message)
 }
 
 func (s *Slack) SendAction(channel, message string) {
+	log.Printf("Sending action to %s: %s", channel, message)
 	s.SendMessageType(channel, "message", "me_message", "_"+message+"_")
 }
 
