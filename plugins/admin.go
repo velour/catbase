@@ -64,10 +64,10 @@ func (p *AdminPlugin) handleVariables(message bot.Message) bool {
 
 	var count int64
 	var varId int64
-	err := p.DB.QueryRow(`select count(*), varId from variables vs inner join values v on vs.id = v.varId where vs.name = ? and v.value = ?`, variable, value).Scan(&count)
+	err := p.DB.QueryRow(`select count(*), varId from variables vs inner join "values" v on vs.id = v.varId where vs.name = ? and v.value = ?`, variable, value).Scan(&count)
 	switch {
 	case err == sql.ErrNoRows:
-		_, err := p.DB.Exec(`insert into values (varId, value) values (?, ?)`, varId, value)
+		_, err := p.DB.Exec(`insert into "values" (varId, value) values (?, ?)`, varId, value)
 		if err != nil {
 			log.Println(err)
 		}

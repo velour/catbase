@@ -9,13 +9,22 @@ import "io/ioutil"
 // Config stores any system-wide startup information that cannot be easily configured via
 // the database
 type Config struct {
-	DbFile                string
-	DbName                string
-	DbServer              string
-	Channels              []string
-	MainChannel           string
-	Plugins               []string
-	Nick, Server, Pass    string
+	DB struct {
+		File   string
+		Name   string
+		Server string
+	}
+	Channels    []string
+	MainChannel string
+	Plugins     []string
+	Type        string
+	Irc         struct {
+		Server, Pass string
+	}
+	Slack struct {
+		Token string
+	}
+	Nick                  string
 	FullName              string
 	Version               string
 	CommandChar           string
@@ -57,6 +66,10 @@ func Readconfig(version, cfile string) *Config {
 		panic(err)
 	}
 	c.Version = version
+
+	if c.Type == "" {
+		c.Type = "irc"
+	}
 
 	fmt.Printf("godeepintir version %s running.\n", c.Version)
 

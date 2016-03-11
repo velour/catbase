@@ -1,12 +1,20 @@
 {
-	"DFile": "catbase.db",
-	"Dbserver": "127.0.0.1",
+	"DB": {
+		"File": "catbase.db",
+		"Server": "127.0.0.1"
+	},
 	"Channels": ["#CatBaseTest"],
 	"MainChannel": "#CatBaseTest",
 	"Plugins": [],
-	"Server": "127.0.0.1:6666",
+	"Type": "slack",
+	"Irc": {
+		"Server": "ircserver:6697",
+		"Pass": "CatBaseTest:test"
+	},
+	"Slack": {
+		"Token": "<your slack token>"
+	},
 	"Nick": "CatBaseTest",
-	"Pass": "CatBaseTest:test",
 	"FullName": "CatBase",
 	"CommandChar": "!",
 	"RatePerSec": 10.0,
