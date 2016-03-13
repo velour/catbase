@@ -66,8 +66,9 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 			subject = parts[1]
 		}
 
+		log.Printf("Getting counter for %s", subject)
 		// pull all of the items associated with "subject"
-		rows, err := p.DB.Query(`select * from counter where nick = ?`, subject)
+		rows, err := p.DB.Query(`select nick, item, count from counter where nick = ?`, subject)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -77,7 +78,10 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		for rows.Next() {
 			count += 1
 			var it Item
-			rows.Scan(&it.Nick, &it.Item, &it.Count)
+			err := rows.Scan(&it.Nick, &it.Item, &it.Count)
+			if err != nil {
+				log.Printf("Error getting counter: %s", err)
+			}
 
 			if count > 1 {
 				resp = fmt.Sprintf("%s, ", resp)
