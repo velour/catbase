@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -22,7 +23,7 @@ import (
 
 type BeersPlugin struct {
 	Bot *bot.Bot
-	db  *sql.DB
+	db  *sqlx.DB
 }
 
 type userBeers struct {
@@ -74,7 +75,7 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 	return &p
 }
 
-func (u *userBeers) Save(db *sql.DB) error {
+func (u *userBeers) Save(db *sqlx.DB) error {
 	if !u.saved {
 		res, err := db.Exec(`insert into beers (
 			nick,
@@ -102,7 +103,7 @@ func (u *userBeers) Save(db *sql.DB) error {
 	return nil
 }
 
-func getUserBeers(db *sql.DB, nick string) *userBeers {
+func getUserBeers(db *sqlx.DB, nick string) *userBeers {
 	ub := userBeers{saved: true}
 	err := db.QueryRow(`select id, nick, count, lastDrunk from beers
 		where nick = ?`, nick).Scan(
@@ -401,7 +402,8 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
-	if p.Bot.Config.Untappd.Token == "<Your Token>" {
+	token := p.Bot.Config.Untappd.Token
+	if token == "" || token == "<Your Token>" {
 		log.Println("No Untappd token, cannot enable plugin.")
 		return
 	}

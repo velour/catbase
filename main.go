@@ -10,6 +10,7 @@ import (
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/irc"
 	"github.com/velour/catbase/plugins"
+	"github.com/velour/catbase/plugins/counter"
 	"github.com/velour/catbase/slack"
 )
 
@@ -39,7 +40,7 @@ func main() {
 	b.AddHandler("talker", plugins.NewTalkerPlugin(b))
 	b.AddHandler("dice", plugins.NewDicePlugin(b))
 	b.AddHandler("beers", plugins.NewBeersPlugin(b))
-	b.AddHandler("counter", plugins.NewCounterPlugin(b))
+	b.AddHandler("counter", counter.NewCounterPlugin(b))
 	b.AddHandler("remember", plugins.NewRememberPlugin(b))
 	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
 	b.AddHandler("your", plugins.NewYourPlugin(b))

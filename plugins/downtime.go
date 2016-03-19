@@ -5,6 +5,7 @@ package plugins
 import (
 	"database/sql"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -20,7 +21,7 @@ import (
 
 type DowntimePlugin struct {
 	Bot *bot.Bot
-	db  *sql.DB
+	db  *sqlx.DB
 }
 
 type idleEntry struct {
@@ -29,7 +30,7 @@ type idleEntry struct {
 	lastSeen time.Time
 }
 
-func (entry idleEntry) saveIdleEntry(db *sql.DB) error {
+func (entry idleEntry) saveIdleEntry(db *sqlx.DB) error {
 	var err error
 	if entry.id.Valid {
 		log.Println("Updating downtime for: ", entry)
@@ -44,7 +45,7 @@ func (entry idleEntry) saveIdleEntry(db *sql.DB) error {
 	return err
 }
 
-func getIdleEntryByNick(db *sql.DB, nick string) (idleEntry, error) {
+func getIdleEntryByNick(db *sqlx.DB, nick string) (idleEntry, error) {
 	var id sql.NullInt64
 	var lastSeen sql.NullInt64
 	err := db.QueryRow(`select id, max(lastSeen) from downtime
@@ -66,7 +67,7 @@ func getIdleEntryByNick(db *sql.DB, nick string) (idleEntry, error) {
 	}, nil
 }
 
-func getAllIdleEntries(db *sql.DB) (idleEntries, error) {
+func getAllIdleEntries(db *sqlx.DB) (idleEntries, error) {
 	rows, err := db.Query(`select id, nick, max(lastSeen) from downtime
 	group by nick`)
 	if err != nil {

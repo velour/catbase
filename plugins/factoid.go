@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -31,7 +32,7 @@ type factoid struct {
 	count    int
 }
 
-func (f *factoid) save(db *sql.DB) error {
+func (f *factoid) save(db *sqlx.DB) error {
 	var err error
 	if f.id.Valid {
 		// update
@@ -82,7 +83,7 @@ func (f *factoid) save(db *sql.DB) error {
 	return err
 }
 
-func (f *factoid) delete(db *sql.DB) error {
+func (f *factoid) delete(db *sqlx.DB) error {
 	var err error
 	if f.id.Valid {
 		_, err = db.Exec(`delete from factoid where id=?`, f.id)
@@ -91,7 +92,7 @@ func (f *factoid) delete(db *sql.DB) error {
 	return err
 }
 
-func getFacts(db *sql.DB, fact string) ([]*factoid, error) {
+func getFacts(db *sqlx.DB, fact string) ([]*factoid, error) {
 	var fs []*factoid
 	rows, err := db.Query(`select
 			id,
@@ -129,7 +130,7 @@ func getFacts(db *sql.DB, fact string) ([]*factoid, error) {
 	return fs, err
 }
 
-func getSingle(db *sql.DB) (*factoid, error) {
+func getSingle(db *sqlx.DB) (*factoid, error) {
 	var f factoid
 	var tmpCreated int64
 	var tmpAccessed int64
@@ -158,7 +159,7 @@ func getSingle(db *sql.DB) (*factoid, error) {
 	return &f, err
 }
 
-func getSingleFact(db *sql.DB, fact string) (*factoid, error) {
+func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 	var f factoid
 	var tmpCreated int64
 	var tmpAccessed int64
@@ -194,7 +195,7 @@ type FactoidPlugin struct {
 	Bot      *bot.Bot
 	NotFound []string
 	LastFact *factoid
-	db       *sql.DB
+	db       *sqlx.DB
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
@@ -229,7 +230,7 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 	for _, channel := range botInst.Config.Channels {
 		go p.factTimer(channel)
 
-		go func(ch) {
+		go func(ch string) {
 			// Some random time to start up
 			time.Sleep(time.Duration(15) * time.Second)
 			if ok, fact := p.findTrigger(p.Bot.Config.StartupFact); ok {

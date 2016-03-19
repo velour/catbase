@@ -3,13 +3,13 @@
 package plugins
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -19,7 +19,7 @@ import (
 type RememberPlugin struct {
 	Bot *bot.Bot
 	Log map[string][]bot.Message
-	db  *sql.DB
+	db  *sqlx.DB
 }
 
 // NewRememberPlugin creates a new RememberPlugin with the Plugin interface
