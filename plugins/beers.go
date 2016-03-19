@@ -3,7 +3,6 @@
 package plugins
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/plugins/counter"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
@@ -24,14 +24,6 @@ import (
 type BeersPlugin struct {
 	Bot *bot.Bot
 	db  *sqlx.DB
-}
-
-type userBeers struct {
-	id        int64
-	nick      string
-	count     int
-	lastDrunk time.Time
-	saved     bool
 }
 
 type untappdUser struct {
@@ -75,58 +67,6 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 	return &p
 }
 
-func (u *userBeers) Save(db *sqlx.DB) error {
-	if !u.saved {
-		res, err := db.Exec(`insert into beers (
-			nick,
-			count,
-			lastDrunk
-		) values (?, ?, ?)`, u.nick, u.count, u.lastDrunk)
-		if err != nil {
-			return err
-		}
-		id, err := res.LastInsertId()
-		if err != nil {
-			return err
-		}
-		u.id = id
-	} else {
-		_, err := db.Exec(`update beers set
-			count = ?,
-			lastDrunk = ?
-		where id = ?;`, u.count, time.Now(), u.id)
-		if err != nil {
-			log.Println("Error updating beers: ", err)
-			return err
-		}
-	}
-	return nil
-}
-
-func getUserBeers(db *sqlx.DB, nick string) *userBeers {
-	ub := userBeers{saved: true}
-	err := db.QueryRow(`select id, nick, count, lastDrunk from beers
-		where nick = ?`, nick).Scan(
-		&ub.id,
-		&ub.nick,
-		&ub.count,
-		&ub.lastDrunk,
-	)
-	if err == sql.ErrNoRows {
-		log.Println("DIDN'T FIND THAT USER: ", err)
-		return &userBeers{
-			nick:  nick,
-			count: 0,
-		}
-	}
-	if err != nil && err != sql.ErrNoRows {
-		log.Println("Error finding beers: ", err)
-		return nil
-	}
-
-	return &ub
-}
-
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
@@ -160,7 +100,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 				return true
 			}
 			if parts[1] == "+=" {
-				p.setBeers(nick, p.getBeers(nick)+count)
+				p.addBeers(nick, count)
 				p.randomReply(channel)
 			} else if parts[1] == "=" {
 				if count == 0 {
@@ -186,16 +126,15 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 		// no matter what, if we're in here, then we've responded
 		return true
 	} else if parts[0] == "beers--" {
-		p.setBeers(nick, p.getBeers(nick)-1)
+		p.addBeers(nick, -1)
 		p.Bot.SendAction(channel, "flushes")
 		return true
 	} else if parts[0] == "beers++" {
-		p.addBeers(nick)
+		p.addBeers(nick, 1)
 		p.randomReply(channel)
 		return true
 	} else if parts[0] == "bourbon++" {
-		p.addBeers(nick)
-		p.addBeers(nick)
+		p.addBeers(nick, 2)
 		p.randomReply(channel)
 		return true
 	} else if parts[0] == "puke" {
@@ -204,7 +143,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 	}
 
 	if message.Command && parts[0] == "imbibe" {
-		p.addBeers(nick)
+		p.addBeers(nick, 1)
 		p.randomReply(channel)
 		return true
 	}
@@ -292,22 +231,30 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 	p.Bot.SendMessage(channel, msg)
 }
 
+func getUserBeers(db *sqlx.DB, user string) counter.Item {
+	booze, _ := counter.GetItem(db, user, "booze")
+	return booze
+}
+
 func (p *BeersPlugin) setBeers(user string, amount int) {
 	ub := getUserBeers(p.db, user)
-	ub.count = amount
-	ub.lastDrunk = time.Now()
-	if err := ub.Save(p.db); err != nil {
+	err := ub.Update(amount)
+	if err != nil {
 		log.Println("Error saving beers: ", err)
 	}
 }
 
-func (p *BeersPlugin) addBeers(user string) {
-	p.setBeers(user, p.getBeers(user)+1)
+func (p *BeersPlugin) addBeers(user string, delta int) {
+	ub := getUserBeers(p.db, user)
+	err := ub.UpdateDelta(delta)
+	if err != nil {
+		log.Println("Error saving beers: ", err)
+	}
 }
 
 func (p *BeersPlugin) getBeers(nick string) int {
 	ub := getUserBeers(p.db, nick)
-	return ub.count
+	return ub.Count
 }
 
 func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
@@ -452,7 +399,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		}
 		log.Printf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
 			user.chanNick, user.untappdUser, checkin.User.User_name)
-		p.addBeers(user.chanNick)
+		p.addBeers(user.chanNick, 1)
 		drunken := p.getBeers(user.chanNick)
 
 		msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",

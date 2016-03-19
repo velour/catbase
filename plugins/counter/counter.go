@@ -28,6 +28,7 @@ type Item struct {
 	Count int
 }
 
+// GetItems returns all counters for a subject
 func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
 	var items []Item
 	err := db.Select(&items, `select * from counter where nick = ?`, nick)
@@ -41,6 +42,7 @@ func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
 	return items, nil
 }
 
+// GetItem returns a specific counter for a subject
 func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	var item Item
 	item.DB = db
@@ -60,6 +62,7 @@ func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	return item, nil
 }
 
+// Create saves a counter
 func (i *Item) Create() error {
 	res, err := i.Exec(`insert into counter (nick, item, count) values (?, ?, ?);`,
 		i.Nick, i.Item, i.Count)
@@ -69,19 +72,29 @@ func (i *Item) Create() error {
 	return err
 }
 
-func (i *Item) Update(delta int) error {
-	i.Count += delta
+// UpdateDelta sets a value
+// This will create or delete the item if necessary
+func (i *Item) Update(value int) error {
+	i.Count = value
 	if i.Count == 0 && i.ID != -1 {
 		return i.Delete()
 	}
 	if i.ID == -1 {
 		i.Create()
 	}
-	log.Printf("Updating item: %#v, delta: %d", i, delta)
+	log.Printf("Updating item: %#v, value: %d", i, value)
 	_, err := i.Exec(`update counter set count = ? where id = ?`, i.Count, i.ID)
 	return err
 }
 
+// UpdateDelta changes a value according to some delta
+// This will create or delete the item if necessary
+func (i *Item) UpdateDelta(delta int) error {
+	i.Count += delta
+	return i.Update(i.Count)
+}
+
+// Delete removes a counter from the database
 func (i *Item) Delete() error {
 	_, err := i.Exec(`delete from counter where id = ?`, i.ID)
 	i.ID = -1
@@ -235,7 +248,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 				return false
 			}
 			log.Printf("About to update item: %#v", item)
-			item.Update(1)
+			item.UpdateDelta(1)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
@@ -247,7 +260,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 				// Item ain't there, I guess
 				return false
 			}
-			item.Update(-1)
+			item.UpdateDelta(-1)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
