@@ -37,15 +37,6 @@ type untappdUser struct {
 // NewBeersPlugin creates a new BeersPlugin with the Plugin interface
 func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 	if bot.DBVersion == 1 {
-		if _, err := bot.DB.Exec(`create table if not exists beers (
-			id integer primary key,
-			nick string,
-			count integer,
-			lastDrunk integer
-		);`); err != nil {
-			log.Fatal(err)
-		}
-
 		if _, err := bot.DB.Exec(`create table if not exists untappd (
 			id integer primary key,
 			untappdUser string,
