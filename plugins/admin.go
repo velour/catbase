@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -17,7 +18,7 @@ import (
 
 type AdminPlugin struct {
 	Bot *bot.Bot
-	DB  *sql.DB
+	DB  *sqlx.DB
 }
 
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface

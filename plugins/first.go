@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -18,7 +19,7 @@ import (
 type FirstPlugin struct {
 	First *FirstEntry
 	Bot   *bot.Bot
-	db    *sql.DB
+	db    *sqlx.DB
 }
 
 type FirstEntry struct {
@@ -31,7 +32,7 @@ type FirstEntry struct {
 }
 
 // Insert or update the first entry
-func (fe *FirstEntry) save(db *sql.DB) error {
+func (fe *FirstEntry) save(db *sqlx.DB) error {
 	if _, err := db.Exec(`insert into first (day, time, body, nick)
 		values (?, ?, ?, ?)`,
 		fe.day.Unix(),
@@ -73,7 +74,7 @@ func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
 	}
 }
 
-func getLastFirst(db *sql.DB) (*FirstEntry, error) {
+func getLastFirst(db *sqlx.DB) (*FirstEntry, error) {
 	// Get last first entry
 	var id sql.NullInt64
 	var day sql.NullInt64

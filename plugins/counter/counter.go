@@ -1,6 +1,6 @@
 // © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
-package plugins
+package counter
 
 import (
 	"database/sql"
@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
 
@@ -15,14 +16,89 @@ import (
 
 type CounterPlugin struct {
 	Bot *bot.Bot
-	DB  *sql.DB
+	DB  *sqlx.DB
 }
 
 type Item struct {
+	*sqlx.DB
+
 	ID    int64
 	Nick  string
 	Item  string
 	Count int
+}
+
+// GetItems returns all counters for a subject
+func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
+	var items []Item
+	err := db.Select(&items, `select * from counter where nick = ?`, nick)
+	if err != nil {
+		return nil, err
+	}
+	// Don't forget to embed the DB into all of that shiz
+	for _, i := range items {
+		i.DB = db
+	}
+	return items, nil
+}
+
+// GetItem returns a specific counter for a subject
+func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
+	var item Item
+	item.DB = db
+	log.Printf("GetItem db: %#v", db)
+	err := db.Get(&item, `select * from counter where nick = ? and item= ?`,
+		nick, itemName)
+	switch err {
+	case sql.ErrNoRows:
+		item.ID = -1
+		item.Nick = nick
+		item.Item = itemName
+	case nil:
+	default:
+		return Item{}, err
+	}
+	log.Printf("Got item %s.%s: %#v", nick, itemName, item)
+	return item, nil
+}
+
+// Create saves a counter
+func (i *Item) Create() error {
+	res, err := i.Exec(`insert into counter (nick, item, count) values (?, ?, ?);`,
+		i.Nick, i.Item, i.Count)
+	id, _ := res.LastInsertId()
+	// hackhackhack?
+	i.ID = id
+	return err
+}
+
+// UpdateDelta sets a value
+// This will create or delete the item if necessary
+func (i *Item) Update(value int) error {
+	i.Count = value
+	if i.Count == 0 && i.ID != -1 {
+		return i.Delete()
+	}
+	if i.ID == -1 {
+		i.Create()
+	}
+	log.Printf("Updating item: %#v, value: %d", i, value)
+	_, err := i.Exec(`update counter set count = ? where id = ?`, i.Count, i.ID)
+	return err
+}
+
+// UpdateDelta changes a value according to some delta
+// This will create or delete the item if necessary
+func (i *Item) UpdateDelta(delta int) error {
+	i.Count += delta
+	return i.Update(i.Count)
+}
+
+// Delete removes a counter from the database
+func (i *Item) Delete() error {
+	_, err := i.Exec(`delete from counter where id = ?`, i.ID)
+	i.ID = -1
+	return err
 }
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
@@ -63,36 +139,32 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		if parts[1] == "me" {
 			subject = strings.ToLower(nick)
 		} else {
-			subject = parts[1]
+			subject = strings.ToLower(parts[1])
 		}
 
 		log.Printf("Getting counter for %s", subject)
 		// pull all of the items associated with "subject"
-		rows, err := p.DB.Query(`select nick, item, count from counter where nick = ?`, subject)
+		items, err := GetItems(p.DB, subject)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Error retrieving items for %s: %s", subject, err)
+			p.Bot.SendMessage(channel, "Something went wrong finding that counter;")
+			return true
 		}
 
 		resp := fmt.Sprintf("%s has the following counters:", subject)
 		count := 0
-		for rows.Next() {
+		for _, it := range items {
 			count += 1
-			var it Item
-			err := rows.Scan(&it.Nick, &it.Item, &it.Count)
-			if err != nil {
-				log.Printf("Error getting counter: %s", err)
-			}
-
 			if count > 1 {
-				resp = fmt.Sprintf("%s, ", resp)
+				resp += ", "
 			}
-			resp = fmt.Sprintf("%s %s: %d", resp, it.Item, it.Count)
+			resp += fmt.Sprintf(" %s: %d", it.Item, it.Count)
 			if count > 20 {
-				fmt.Sprintf("%s, and a few others", resp)
+				resp += ", and a few others"
 				break
 			}
 		}
-		resp = fmt.Sprintf("%s.", resp)
+		resp += "."
 
 		if count == 0 {
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has no counters.", subject))
@@ -105,7 +177,15 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		subject := strings.ToLower(nick)
 		itemName := strings.ToLower(parts[1])
 
-		if _, err := p.DB.Exec(`delete from counter where nick = ? and item = ?`, subject, itemName); err != nil {
+		it, err := GetItem(p.DB, subject, itemName)
+		if err != nil {
+			log.Printf("Error getting item to remove %s.%s: %s", subject, itemName, err)
+			p.Bot.SendMessage(channel, "Something went wrong removing that counter;")
+			return true
+		}
+		err = it.Delete()
+		if err != nil {
+			log.Printf("Error removing item %s.%s: %s", subject, itemName, err)
 			p.Bot.SendMessage(channel, "Something went wrong removing that counter;")
 			return true
 		}
@@ -130,17 +210,15 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		}
 
 		var item Item
-		err := p.DB.QueryRow(`select nick, item, count from counter
-			where nick = ? and item = ?`, subject, itemName).Scan(
-			&item.Nick, &item.Item, &item.Count,
-		)
+		item, err := GetItem(p.DB, subject, itemName)
 		switch {
 		case err == sql.ErrNoRows:
 			p.Bot.SendMessage(channel, fmt.Sprintf("I don't think %s has any %s.",
 				subject, itemName))
 			return true
 		case err != nil:
-			log.Println(err)
+			log.Printf("Error retrieving item count for %s.%s: %s",
+				subject, itemName, err)
 			return true
 		}
 
@@ -149,6 +227,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 
 		return true
 	} else if len(parts) == 1 {
+		// Need to have at least 3 characters to ++ or --
 		if len(parts[0]) < 3 {
 			return false
 		}
@@ -163,13 +242,26 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 
 		if strings.HasSuffix(parts[0], "++") {
 			// ++ those fuckers
-			item := p.update(subject, itemName, 1)
+			item, err := GetItem(p.DB, subject, itemName)
+			if err != nil {
+				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				// Item ain't there, I guess
+				return false
+			}
+			log.Printf("About to update item: %#v", item)
+			item.UpdateDelta(1)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		} else if strings.HasSuffix(parts[0], "--") {
 			// -- those fuckers
-			item := p.update(subject, itemName, -1)
+			item, err := GetItem(p.DB, subject, itemName)
+			if err != nil {
+				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				// Item ain't there, I guess
+				return false
+			}
+			item.UpdateDelta(-1)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
@@ -177,35 +269,6 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 	}
 
 	return false
-}
-
-func (p *CounterPlugin) update(subject, itemName string, delta int) Item {
-	var item Item
-	err := p.DB.QueryRow(`select id, nick, item, count from counter
-		where nick = ? and item = ?;`, subject, itemName).Scan(
-		&item.ID, &item.Nick, &item.Item, &item.Count,
-	)
-	switch {
-	case err == sql.ErrNoRows:
-		// insert it
-		res, err := p.DB.Exec(`insert into counter (nick, item, count)
-			values (?, ?, ?)`, subject, itemName, delta)
-		if err != nil {
-			log.Println(err)
-		}
-		id, err := res.LastInsertId()
-		return Item{id, subject, itemName, delta}
-	case err != nil:
-		log.Println(err)
-		return item
-	default:
-		item.Count += delta
-		_, err := p.DB.Exec(`update counter set count = ? where id = ?`, item.Count, item.ID)
-		if err != nil {
-			log.Println(err)
-		}
-		return item
-	}
 }
 
 // LoadData imports any configuration data into the plugin. This is not

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/config"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -35,7 +36,7 @@ type Bot struct {
 	// TODO: I think it'd be nice to use https://github.com/jmoiron/sqlx so that
 	//       the select/update/etc statements could be simplified with struct
 	//       marshalling.
-	DB        *sql.DB
+	DB        *sqlx.DB
 	DBVersion int64
 
 	logIn  chan Message
@@ -98,7 +99,7 @@ type Variable struct {
 
 // NewBot creates a Bot for a given connection and set of handlers.
 func NewBot(config *config.Config, connector Connector) *Bot {
-	sqlDB, err := sql.Open("sqlite3", config.DB.File)
+	sqlDB, err := sqlx.Open("sqlite3", config.DB.File)
 	if err != nil {
 		log.Fatal(err)
 	}
