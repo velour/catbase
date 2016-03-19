@@ -229,18 +229,18 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 	for _, channel := range botInst.Config.Channels {
 		go p.factTimer(channel)
 
-		go func() {
+		go func(ch) {
 			// Some random time to start up
 			time.Sleep(time.Duration(15) * time.Second)
 			if ok, fact := p.findTrigger(p.Bot.Config.StartupFact); ok {
 				p.sayFact(bot.Message{
-					Channel: channel,
+					Channel: ch,
 					Body:    "speed test", // BUG: This is defined in the config too
 					Command: true,
 					Action:  false,
 				}, *fact)
 			}
-		}()
+		}(channel)
 	}
 
 	return p
@@ -373,7 +373,7 @@ func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
 		msg = "Nope."
 	} else {
 		msg = fmt.Sprintf("That was (#%d) '%s <%s> %s'",
-			fact.id, fact.fact, fact.verb, fact.tidbit)
+			fact.id.Int64, fact.fact, fact.verb, fact.tidbit)
 	}
 	p.Bot.SendMessage(message.Channel, msg)
 	return true
@@ -435,7 +435,7 @@ func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 		if err != nil {
 			log.Println("Error removing fact: ", p.LastFact, err)
 		}
-		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id, p.LastFact.fact,
+		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.fact,
 			p.LastFact.verb, p.LastFact.tidbit)
 		p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
 		p.LastFact = nil

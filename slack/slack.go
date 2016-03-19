@@ -1,4 +1,4 @@
-// Package to connect to slack service
+// Package slack connects to slack service
 package slack
 
 import (
@@ -113,7 +113,7 @@ func (s *Slack) Serve() {
 	for {
 		msg, err := s.receiveMessage()
 		if err != nil {
-			log.Printf("Slack API error: ", err)
+			log.Fatalf("Slack API error: %s", err)
 		}
 		switch msg.Type {
 		case "message":
@@ -134,7 +134,7 @@ func (s *Slack) Serve() {
 
 // Convert a slackMessage to a bot.Message
 func (s *Slack) buildMessage(msg slackMessage) bot.Message {
-	log.Println("DEBUG: msg: %%#v", msg)
+	log.Printf("DEBUG: msg: %#v", msg)
 	text := html.UnescapeString(msg.Text)
 
 	isCmd, text := bot.IsCmd(s.config, text)

@@ -84,7 +84,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 			}
 			resp = fmt.Sprintf("%s %s: %d", resp, it.Item, it.Count)
 			if count > 20 {
-				fmt.Sprintf("%s, and a few others", resp)
+				resp = fmt.Sprintf("%s, and a few others", resp)
 				break
 			}
 		}
