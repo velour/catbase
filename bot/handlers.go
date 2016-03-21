@@ -21,7 +21,7 @@ func (b *Bot) MsgReceived(msg Message) {
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
 
-	if strings.HasPrefix(msg.Body, "help") && msg.Command {
+	if strings.HasPrefix(msg.Body, "help ") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
 		goto RET
