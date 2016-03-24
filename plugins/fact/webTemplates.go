@@ -1,6 +1,6 @@
 // © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
 
-package plugins
+package fact
 
 // I hate this, but I'm creating strings of the templates to avoid having to
 // track where templates reside.
