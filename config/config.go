@@ -52,6 +52,11 @@ type Config struct {
 		Nicks []string
 		Hosts []string
 	}
+	Your struct {
+		YourChance    float64
+		FuckingChance float64
+		MaxLength     int
+	}
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

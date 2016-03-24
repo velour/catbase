@@ -12,14 +12,14 @@ import (
 )
 
 type YourPlugin struct {
-	Bot *bot.Bot
+	bot *bot.Bot
 }
 
 // NewYourPlugin creates a new YourPlugin with the Plugin interface
 func NewYourPlugin(bot *bot.Bot) *YourPlugin {
 	rand.Seed(time.Now().Unix())
 	return &YourPlugin{
-		Bot: bot,
+		bot: bot,
 	}
 }
 
@@ -28,22 +28,27 @@ func NewYourPlugin(bot *bot.Bot) *YourPlugin {
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *YourPlugin) Message(message bot.Message) bool {
 	lower := strings.ToLower(message.Body)
+	config := p.bot.Config.Your
+	if len(message.Body) > config.MaxLength {
+		return false
+	}
+
 	if strings.Contains(message.Body, "the fucking") { // let's not mess with case
 		log.Println("Found a fucking")
-		if rand.Float64() < 0.2 {
+		if rand.Float64() < config.FuckingChance {
 			log.Println("Replacing a fucking")
 			r := strings.NewReplacer("the fucking", "fucking the")
 			msg := r.Replace(message.Body)
-			p.Bot.SendMessage(message.Channel, msg)
+			p.bot.SendMessage(message.Channel, msg)
 			return true
 		}
 	}
 	if strings.Contains(lower, "your") || strings.Contains(lower, "you're") {
-		if rand.Float64() < 0.15 {
+		if rand.Float64() < config.YourChance {
 			r := strings.NewReplacer("Your", "You're", "your", "you're", "You're",
 				"Your", "you're", "your", "Youre", "Your", "youre", "your")
 			msg := r.Replace(message.Body)
-			p.Bot.SendMessage(message.Channel, msg)
+			p.bot.SendMessage(message.Channel, msg)
 			return true
 		}
 	}
@@ -52,7 +57,7 @@ func (p *YourPlugin) Message(message bot.Message) bool {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *YourPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Your corrects people's grammar.")
+	p.bot.SendMessage(channel, "Your corrects people's grammar.")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

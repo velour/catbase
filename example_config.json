@@ -47,5 +47,10 @@
 		"Msgs": [],
 		"Nicks": [],
 		"Hosts": []
+	},
+	"Your": {
+		"YourChance": 0.4,
+		"FuckingChance": 0.15,
+		"MaxLength": 140
 	}
 }
