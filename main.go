@@ -46,7 +46,7 @@ func main() {
 	// b.AddHandler("first", plugins.NewFirstPlugin(b))
 	b.AddHandler("leftpad", leftpad.New(b))
 	b.AddHandler("downtime", downtime.NewDowntimePlugin(b))
-	b.AddHandler("talker", talker.NewTalkerPlugin(b))
+	b.AddHandler("talker", talker.New(b))
 	b.AddHandler("dice", dice.NewDicePlugin(b))
 	b.AddHandler("beers", beers.NewBeersPlugin(b))
 	b.AddHandler("counter", counter.NewCounterPlugin(b))

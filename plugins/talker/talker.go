@@ -12,7 +12,7 @@ import (
 )
 
 var goatse []string = []string{
-	"* g o a t s e x * g o a t s e x * g o a t s e x *",
+	"```* g o a t s e x * g o a t s e x * g o a t s e x *",
 	"g                                               g",
 	"o /     \\             \\            /    \\       o",
 	"a|       |             \\          |      |      a",
@@ -36,7 +36,7 @@ var goatse []string = []string{
 	"s   |         / /      \\__/\\___/    |          |s",
 	"e  |           /        |    |       |         |e",
 	"x  |          |         |    |       |         |x",
-	"* g o a t s e x * g o a t s e x * g o a t s e x *",
+	"* g o a t s e x * g o a t s e x * g o a t s e x *```",
 }
 
 type TalkerPlugin struct {
@@ -44,7 +44,7 @@ type TalkerPlugin struct {
 	enforceNicks bool
 }
 
-func NewTalkerPlugin(bot *bot.Bot) *TalkerPlugin {
+func New(bot *bot.Bot) *TalkerPlugin {
 	return &TalkerPlugin{
 		Bot:          bot,
 		enforceNicks: bot.Config.EnforceNicks,
@@ -69,11 +69,13 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 			nick = parts[1]
 		}
 
+		output := ""
 		for _, line := range goatse {
 			nick = fmt.Sprintf("%9.9s", nick)
 			line = strings.Replace(line, "{nick}", nick, 1)
-			p.Bot.SendMessage(channel, line)
+			output += line + "\n"
 		}
+		p.Bot.SendMessage(channel, output)
 		return true
 	}
 
