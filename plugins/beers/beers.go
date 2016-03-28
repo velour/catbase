@@ -368,6 +368,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 	chks, err := p.pullUntappd()
 	if err != nil {
 		log.Println("Untappd ERROR: ", err)
+		return
 	}
 	for i := len(chks); i > 0; i-- {
 		checkin := chks[i-1]
