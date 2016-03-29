@@ -89,10 +89,10 @@ var factoidIndex string = `
 			<tbody>
 				{{range .Entries}}
 				<tr>
-					<td>{{.Trigger}}</td>
-					<td>{{linkify .FullText}}</td>
-					<td>{{.CreatedBy}}</td>
-					<td>{{.AccessCount}}</td>
+					<td>{{linkify .Fact}}</td>
+					<td>{{linkify .Tidbit}}</td>
+					<td>{{linkify .Owner}}</td>
+					<td>{{.Count}}</td>
 				</tr>
 				{{end}}
 			</tbody>

@@ -319,6 +319,9 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	url := baseUrl + access_token + "&limit=25"
 
 	resp, err := http.Get(url)
+	if err != nil {
+		return []checkin{}, err
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

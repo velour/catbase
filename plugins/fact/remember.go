@@ -92,13 +92,13 @@ func (p *RememberPlugin) Message(message bot.Message) bool {
 			msg := strings.Join(msgs, "$and")
 
 			fact := factoid{
-				fact:     strings.ToLower(trigger),
-				verb:     "reply",
-				tidbit:   msg,
-				owner:    user.Name,
+				Fact:     strings.ToLower(trigger),
+				Verb:     "reply",
+				Tidbit:   msg,
+				Owner:    user.Name,
 				created:  time.Now(),
 				accessed: time.Now(),
-				count:    0,
+				Count:    0,
 			}
 			if err := fact.save(p.db); err != nil {
 				log.Println("ERROR!!!!:", err)
@@ -145,13 +145,13 @@ func (p *RememberPlugin) randQuote() string {
 	err := p.db.QueryRow(`select * from factoid where fact like '%quotes'
 		order by random() limit 1;`).Scan(
 		&f.id,
-		&f.fact,
-		&f.tidbit,
-		&f.verb,
-		&f.owner,
+		&f.Fact,
+		&f.Tidbit,
+		&f.Verb,
+		&f.Owner,
 		&tmpCreated,
 		&tmpAccessed,
-		&f.count,
+		&f.Count,
 	)
 	if err != nil {
 		log.Println("Error getting quotes: ", err)
@@ -160,7 +160,7 @@ func (p *RememberPlugin) randQuote() string {
 	f.created = time.Unix(tmpCreated, 0)
 	f.accessed = time.Unix(tmpAccessed, 0)
 
-	return f.tidbit
+	return f.Tidbit
 }
 
 func (p *RememberPlugin) quoteTimer(channel string) {

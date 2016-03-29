@@ -23,13 +23,13 @@ import (
 // factoid stores info about our factoid for lookup and later interaction
 type factoid struct {
 	id       sql.NullInt64
-	fact     string
-	tidbit   string
-	verb     string
-	owner    string
+	Fact     string
+	Tidbit   string
+	Verb     string
+	Owner    string
 	created  time.Time
 	accessed time.Time
-	count    int
+	Count    int
 }
 
 func (f *factoid) save(db *sqlx.DB) error {
@@ -44,12 +44,12 @@ func (f *factoid) save(db *sqlx.DB) error {
 			accessed=?,
 			count=?
 		where id=?`,
-			f.fact,
-			f.tidbit,
-			f.verb,
-			f.owner,
+			f.Fact,
+			f.Tidbit,
+			f.Verb,
+			f.Owner,
 			f.accessed.Unix(),
-			f.count,
+			f.Count,
 			f.id.Int64)
 	} else {
 		f.created = time.Now()
@@ -64,13 +64,13 @@ func (f *factoid) save(db *sqlx.DB) error {
 			accessed,
 			count
 		) values (?, ?, ?, ?, ?, ?, ?);`,
-			f.fact,
-			f.tidbit,
-			f.verb,
-			f.owner,
+			f.Fact,
+			f.Tidbit,
+			f.Verb,
+			f.Owner,
 			f.created.Unix(),
 			f.accessed.Unix(),
-			f.count,
+			f.Count,
 		)
 		if err != nil {
 			return err
@@ -105,20 +105,20 @@ func getFacts(db *sqlx.DB, fact string) ([]*factoid, error) {
 			count
 		from factoid
 		where fact like ?;`,
-		fact)
+		fmt.Sprintf("%%%s%%", fact))
 	for rows.Next() {
 		var f factoid
 		var tmpCreated int64
 		var tmpAccessed int64
 		err := rows.Scan(
 			&f.id,
-			&f.fact,
-			&f.tidbit,
-			&f.verb,
-			&f.owner,
+			&f.Fact,
+			&f.Tidbit,
+			&f.Verb,
+			&f.Owner,
 			&tmpCreated,
 			&tmpAccessed,
-			&f.count,
+			&f.Count,
 		)
 		if err != nil {
 			return nil, err
@@ -146,13 +146,13 @@ func getSingle(db *sqlx.DB) (*factoid, error) {
 		from factoid
 		order by random() limit 1;`).Scan(
 		&f.id,
-		&f.fact,
-		&f.tidbit,
-		&f.verb,
-		&f.owner,
+		&f.Fact,
+		&f.Tidbit,
+		&f.Verb,
+		&f.Owner,
 		&tmpCreated,
 		&tmpAccessed,
-		&f.count,
+		&f.Count,
 	)
 	f.created = time.Unix(tmpCreated, 0)
 	f.accessed = time.Unix(tmpAccessed, 0)
@@ -177,13 +177,13 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 		order by random() limit 1;`,
 		fact).Scan(
 		&f.id,
-		&f.fact,
-		&f.tidbit,
-		&f.verb,
-		&f.owner,
+		&f.Fact,
+		&f.Tidbit,
+		&f.Verb,
+		&f.Owner,
 		&tmpCreated,
 		&tmpAccessed,
-		&f.count,
+		&f.Count,
 	)
 	f.created = time.Unix(tmpCreated, 0)
 	f.accessed = time.Unix(tmpAccessed, 0)
@@ -284,13 +284,13 @@ func (p *FactoidPlugin) learnFact(message bot.Message, fact, verb, tidbit string
 	}
 
 	n := factoid{
-		fact:     fact,
-		tidbit:   tidbit,
-		verb:     verb,
-		owner:    message.User.Name,
+		Fact:     fact,
+		Tidbit:   tidbit,
+		Verb:     verb,
+		Owner:    message.User.Name,
 		created:  time.Now(),
 		accessed: time.Now(),
-		count:    0,
+		Count:    0,
 	}
 	p.LastFact = &n
 	err = n.save(p.db)
@@ -316,9 +316,9 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *factoid) {
 // sayFact spits out a fact to the channel and updates the fact in the database
 // with new time and count information
 func (p *FactoidPlugin) sayFact(message bot.Message, fact factoid) {
-	msg := p.Bot.Filter(message, fact.tidbit)
+	msg := p.Bot.Filter(message, fact.Tidbit)
 	full := p.Bot.Filter(message, fmt.Sprintf("%s %s %s",
-		fact.fact, fact.verb, fact.tidbit,
+		fact.Fact, fact.Verb, fact.Tidbit,
 	))
 	for i, m := 0, strings.Split(msg, "$and"); i < len(m) && i < 4; i++ {
 		msg := strings.TrimSpace(m[i])
@@ -326,9 +326,9 @@ func (p *FactoidPlugin) sayFact(message bot.Message, fact factoid) {
 			continue
 		}
 
-		if fact.verb == "action" {
+		if fact.Verb == "action" {
 			p.Bot.SendAction(message.Channel, msg)
-		} else if fact.verb == "reply" {
+		} else if fact.Verb == "reply" {
 			p.Bot.SendMessage(message.Channel, msg)
 		} else {
 			p.Bot.SendMessage(message.Channel, full)
@@ -337,7 +337,7 @@ func (p *FactoidPlugin) sayFact(message bot.Message, fact factoid) {
 
 	// update fact tracking
 	fact.accessed = time.Now()
-	fact.count += 1
+	fact.Count += 1
 	err := fact.save(p.db)
 	if err != nil {
 		log.Printf("Could not update fact.\n")
@@ -374,7 +374,7 @@ func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
 		msg = "Nope."
 	} else {
 		msg = fmt.Sprintf("That was (#%d) '%s <%s> %s'",
-			fact.id.Int64, fact.fact, fact.verb, fact.tidbit)
+			fact.id.Int64, fact.Fact, fact.Verb, fact.Tidbit)
 	}
 	p.Bot.SendMessage(message.Channel, msg)
 	return true
@@ -431,13 +431,13 @@ func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
 	}
-	if message.User.Admin || message.User.Name == p.LastFact.owner {
+	if message.User.Admin || message.User.Name == p.LastFact.Owner {
 		err := p.LastFact.delete(p.db)
 		if err != nil {
 			log.Println("Error removing fact: ", p.LastFact, err)
 		}
-		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.fact,
-			p.LastFact.verb, p.LastFact.tidbit)
+		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.Fact,
+			p.LastFact.Verb, p.LastFact.Tidbit)
 		p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
 		p.LastFact = nil
 	} else {
@@ -470,7 +470,7 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 		}
 		if !(message.User.Admin && userexp[len(userexp)-1] == 'g') {
 			result = result[:1]
-			if result[0].owner != message.User.Name && !message.User.Admin {
+			if result[0].Owner != message.User.Name && !message.User.Admin {
 				p.Bot.SendMessage(message.Channel, "That's not your fact to edit.")
 				return true
 			}
@@ -484,11 +484,11 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 			return false
 		}
 		for _, fact := range result {
-			fact.fact = reg.ReplaceAllString(fact.fact, replace)
-			fact.fact = strings.ToLower(fact.fact)
-			fact.verb = reg.ReplaceAllString(fact.verb, replace)
-			fact.tidbit = reg.ReplaceAllString(fact.tidbit, replace)
-			fact.count += 1
+			fact.Fact = reg.ReplaceAllString(fact.Fact, replace)
+			fact.Fact = strings.ToLower(fact.Fact)
+			fact.Verb = reg.ReplaceAllString(fact.Verb, replace)
+			fact.Tidbit = reg.ReplaceAllString(fact.Tidbit, replace)
+			fact.Count += 1
 			fact.accessed = time.Now()
 			fact.save(p.db)
 		}
@@ -511,7 +511,7 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 			if i != 0 {
 				msg = fmt.Sprintf("%s |", msg)
 			}
-			msg = fmt.Sprintf("%s <%s> %s", msg, fact.verb, fact.tidbit)
+			msg = fmt.Sprintf("%s <%s> %s", msg, fact.Verb, fact.Tidbit)
 		}
 		if count > 4 {
 			msg = fmt.Sprintf("%s | ...and %d others", msg, count)
@@ -666,5 +666,8 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	t.Execute(w, context)
+	err = t.Execute(w, context)
+	if err != nil {
+		log.Println(err)
+	}
 }
