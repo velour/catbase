@@ -104,8 +104,12 @@ func getFacts(db *sqlx.DB, fact string) ([]*factoid, error) {
 			accessed,
 			count
 		from factoid
-		where fact like ?;`,
-		fmt.Sprintf("%%%s%%", fact))
+		where fact regexp ?;`,
+		fact)
+	if err != nil {
+		log.Printf("Error regexping for facts: %s", err)
+		return nil, err
+	}
 	for rows.Next() {
 		var f factoid
 		var tmpCreated int64

@@ -7,13 +7,13 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/mattn/go-sqlite3"
 	"github.com/velour/catbase/config"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // Bot type provides storage for bot-wide information, configs, and database connections
@@ -97,9 +97,21 @@ type Variable struct {
 	Variable, Value string
 }
 
+func init() {
+	regex := func(re, s string) (bool, error) {
+		return regexp.MatchString(re, s)
+	}
+	sql.Register("sqlite3_custom",
+		&sqlite3.SQLiteDriver{
+			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				return conn.RegisterFunc("REGEXP", regex, true)
+			},
+		})
+}
+
 // NewBot creates a Bot for a given connection and set of handlers.
 func NewBot(config *config.Config, connector Connector) *Bot {
-	sqlDB, err := sqlx.Open("sqlite3", config.DB.File)
+	sqlDB, err := sqlx.Open("sqlite3_custom", config.DB.File)
 	if err != nil {
 		log.Fatal(err)
 	}
