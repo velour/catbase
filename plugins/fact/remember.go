@@ -17,17 +17,17 @@ import (
 // plugins.
 
 type RememberPlugin struct {
-	Bot *bot.Bot
+	Bot bot.Bot
 	Log map[string][]bot.Message
 	db  *sqlx.DB
 }
 
 // NewRememberPlugin creates a new RememberPlugin with the Plugin interface
-func NewRememberPlugin(b *bot.Bot) *RememberPlugin {
+func NewRemember(b bot.Bot) *RememberPlugin {
 	p := RememberPlugin{
 		Bot: b,
 		Log: make(map[string][]bot.Message),
-		db:  b.DB,
+		db:  b.DB(),
 	}
 	return &p
 }
@@ -167,8 +167,8 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 	for {
 		// this pisses me off: You can't multiply int * time.Duration so it
 		// has to look ugly as shit.
-		time.Sleep(time.Duration(p.Bot.Config.QuoteTime) * time.Minute)
-		chance := 1.0 / p.Bot.Config.QuoteChance
+		time.Sleep(time.Duration(p.Bot.Config().QuoteTime) * time.Minute)
+		chance := 1.0 / p.Bot.Config().QuoteChance
 		if rand.Intn(int(chance)) == 0 {
 			msg := p.randQuote()
 			p.Bot.SendMessage(channel, msg)

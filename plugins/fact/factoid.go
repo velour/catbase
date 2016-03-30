@@ -196,14 +196,14 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 
 // FactoidPlugin provides the necessary plugin-wide needs
 type FactoidPlugin struct {
-	Bot      *bot.Bot
+	Bot      bot.Bot
 	NotFound []string
 	LastFact *factoid
 	db       *sqlx.DB
 }
 
 // NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
-func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
+func New(botInst bot.Bot) *FactoidPlugin {
 	p := &FactoidPlugin{
 		Bot: botInst,
 		NotFound: []string{
@@ -214,7 +214,7 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 			"NOPE! NOPE! NOPE!",
 			"One time, I learned how to jump rope.",
 		},
-		db: botInst.DB,
+		db: botInst.DB(),
 	}
 
 	_, err := p.db.Exec(`create table if not exists factoid (
@@ -231,13 +231,13 @@ func NewFactoidPlugin(botInst *bot.Bot) *FactoidPlugin {
 		log.Fatal(err)
 	}
 
-	for _, channel := range botInst.Config.Channels {
+	for _, channel := range botInst.Config().Channels {
 		go p.factTimer(channel)
 
 		go func(ch string) {
 			// Some random time to start up
 			time.Sleep(time.Duration(15) * time.Second)
-			if ok, fact := p.findTrigger(p.Bot.Config.StartupFact); ok {
+			if ok, fact := p.findTrigger(p.Bot.Config().StartupFact); ok {
 				p.sayFact(bot.Message{
 					Channel: ch,
 					Body:    "speed test", // BUG: This is defined in the config too
@@ -596,7 +596,7 @@ func (p *FactoidPlugin) randomFact() *factoid {
 
 // factTimer spits out a fact at a given interval and with given probability
 func (p *FactoidPlugin) factTimer(channel string) {
-	duration := time.Duration(p.Bot.Config.QuoteTime) * time.Minute
+	duration := time.Duration(p.Bot.Config().QuoteTime) * time.Minute
 	myLastMsg := time.Now()
 	for {
 		time.Sleep(time.Duration(5) * time.Second)
@@ -609,7 +609,7 @@ func (p *FactoidPlugin) factTimer(channel string) {
 		tdelta := time.Since(lastmsg.Time)
 		earlier := time.Since(myLastMsg) > tdelta
 		chance := rand.Float64()
-		success := chance < p.Bot.Config.QuoteChance
+		success := chance < p.Bot.Config().QuoteChance
 
 		if success && tdelta > duration && earlier {
 			fact := p.randomFact()
@@ -617,9 +617,11 @@ func (p *FactoidPlugin) factTimer(channel string) {
 				continue
 			}
 
+			users := p.Bot.Who(channel)
+
 			// we need to fabricate a message so that bot.Filter can operate
 			message := bot.Message{
-				User:    &p.Bot.Users[rand.Intn(len(p.Bot.Users))],
+				User:    &users[rand.Intn(len(users))],
 				Channel: channel,
 			}
 			p.sayFact(message, *fact)

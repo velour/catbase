@@ -16,33 +16,33 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-// Bot type provides storage for bot-wide information, configs, and database connections
-type Bot struct {
+// bot type provides storage for bot-wide information, configs, and database connections
+type bot struct {
 	// Each plugin must be registered in our plugins handler. To come: a map so that this
 	// will allow plugins to respond to specific kinds of events
-	Plugins        map[string]Handler
-	PluginOrdering []string
+	plugins        map[string]Handler
+	pluginOrdering []string
 
 	// Users holds information about all of our friends
-	Users []User
+	users []User
 	// Represents the bot
-	Me User
+	me User
 
-	Config *config.Config
+	config *config.Config
 
-	Conn Connector
+	conn Connector
 
 	// SQL DB
 	// TODO: I think it'd be nice to use https://github.com/jmoiron/sqlx so that
 	//       the select/update/etc statements could be simplified with struct
 	//       marshalling.
-	DB        *sqlx.DB
-	DBVersion int64
+	db        *sqlx.DB
+	dbVersion int64
 
 	logIn  chan Message
 	logOut chan Messages
 
-	Version string
+	version string
 
 	// The entries to the bot's HTTP interface
 	httpEndPoints map[string]string
@@ -109,8 +109,8 @@ func init() {
 		})
 }
 
-// NewBot creates a Bot for a given connection and set of handlers.
-func NewBot(config *config.Config, connector Connector) *Bot {
+// Newbot creates a bot for a given connection and set of handlers.
+func New(config *config.Config, connector Connector) Bot {
 	sqlDB, err := sqlx.Open("sqlite3_custom", config.DB.File)
 	if err != nil {
 		log.Fatal(err)
@@ -127,17 +127,17 @@ func NewBot(config *config.Config, connector Connector) *Bot {
 		},
 	}
 
-	bot := &Bot{
-		Config:         config,
-		Plugins:        make(map[string]Handler),
-		PluginOrdering: make([]string, 0),
-		Conn:           connector,
-		Users:          users,
-		Me:             users[0],
-		DB:             sqlDB,
+	bot := &bot{
+		config:         config,
+		plugins:        make(map[string]Handler),
+		pluginOrdering: make([]string, 0),
+		conn:           connector,
+		users:          users,
+		me:             users[0],
+		db:             sqlDB,
 		logIn:          logIn,
 		logOut:         logOut,
-		Version:        config.Version,
+		version:        config.Version,
 		httpEndPoints:  make(map[string]string),
 	}
 
@@ -155,32 +155,45 @@ func NewBot(config *config.Config, connector Connector) *Bot {
 	return bot
 }
 
+// Config gets the configuration that the bot is using
+func (b *bot) Config() *config.Config {
+	return b.config
+}
+
+func (b *bot) DBVersion() int64 {
+	return b.dbVersion
+}
+
+func (b *bot) DB() *sqlx.DB {
+	return b.db
+}
+
 // Create any tables if necessary based on version of DB
 // Plugins should create their own tables, these are only for official bot stuff
 // Note: This does not return an error. Database issues are all fatal at this stage.
-func (b *Bot) migrateDB() {
-	_, err := b.DB.Exec(`create table if not exists version (version integer);`)
+func (b *bot) migrateDB() {
+	_, err := b.db.Exec(`create table if not exists version (version integer);`)
 	if err != nil {
 		log.Fatal("Initial DB migration create version table: ", err)
 	}
 	var version sql.NullInt64
-	err = b.DB.QueryRow("select max(version) from version").Scan(&version)
+	err = b.db.QueryRow("select max(version) from version").Scan(&version)
 	if err != nil {
 		log.Fatal("Initial DB migration get version: ", err)
 	}
 	if version.Valid {
-		b.DBVersion = version.Int64
-		log.Printf("Database version: %v\n", b.DBVersion)
+		b.dbVersion = version.Int64
+		log.Printf("Database version: %v\n", b.dbVersion)
 	} else {
 		log.Printf("No versions, we're the first!.")
-		_, err := b.DB.Exec(`insert into version (version) values (1)`)
+		_, err := b.db.Exec(`insert into version (version) values (1)`)
 		if err != nil {
 			log.Fatal("Initial DB migration insert: ", err)
 		}
 	}
 
-	if b.DBVersion == 1 {
-		if _, err := b.DB.Exec(`create table if not exists variables (
+	if b.dbVersion == 1 {
+		if _, err := b.db.Exec(`create table if not exists variables (
 			id integer primary key,
 			name string,
 			perms string,
@@ -188,7 +201,7 @@ func (b *Bot) migrateDB() {
 		);`); err != nil {
 			log.Fatal("Initial DB migration create variables table: ", err)
 		}
-		if _, err := b.DB.Exec(`create table if not exists 'values' (
+		if _, err := b.db.Exec(`create table if not exists 'values' (
 			id integer primary key,
 			varId integer,
 			value string
@@ -199,18 +212,18 @@ func (b *Bot) migrateDB() {
 }
 
 // Adds a constructed handler to the bots handlers list
-func (b *Bot) AddHandler(name string, h Handler) {
-	b.Plugins[strings.ToLower(name)] = h
-	b.PluginOrdering = append(b.PluginOrdering, name)
+func (b *bot) AddHandler(name string, h Handler) {
+	b.plugins[strings.ToLower(name)] = h
+	b.pluginOrdering = append(b.pluginOrdering, name)
 	if entry := h.RegisterWeb(); entry != nil {
 		b.httpEndPoints[name] = *entry
 	}
 }
 
-func (b *Bot) Who(channel string) []User {
+func (b *bot) Who(channel string) []User {
 	out := []User{}
-	for _, u := range b.Users {
-		if u.Name != b.Config.Nick {
+	for _, u := range b.users {
+		if u.Name != b.Config().Nick {
 			out = append(out, u)
 		}
 	}
@@ -247,7 +260,7 @@ var rootIndex string = `
 </html>
 `
 
-func (b *Bot) serveRoot(w http.ResponseWriter, r *http.Request) {
+func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 	context := make(map[string]interface{})
 	context["EndPoints"] = b.httpEndPoints
 	t, err := template.New("rootIndex").Parse(rootIndex)

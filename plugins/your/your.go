@@ -12,11 +12,11 @@ import (
 )
 
 type YourPlugin struct {
-	bot *bot.Bot
+	bot bot.Bot
 }
 
 // NewYourPlugin creates a new YourPlugin with the Plugin interface
-func NewYourPlugin(bot *bot.Bot) *YourPlugin {
+func New(bot bot.Bot) *YourPlugin {
 	rand.Seed(time.Now().Unix())
 	return &YourPlugin{
 		bot: bot,
@@ -28,7 +28,7 @@ func NewYourPlugin(bot *bot.Bot) *YourPlugin {
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *YourPlugin) Message(message bot.Message) bool {
 	lower := strings.ToLower(message.Body)
-	config := p.bot.Config.Your
+	config := p.bot.Config().Your
 	if len(message.Body) > config.MaxLength {
 		return false
 	}

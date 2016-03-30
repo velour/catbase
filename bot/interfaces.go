@@ -2,6 +2,25 @@
 
 package bot
 
+import (
+	"github.com/jmoiron/sqlx"
+	"github.com/velour/catbase/config"
+)
+
+type Bot interface {
+	Config() *config.Config
+	DBVersion() int64
+	DB() *sqlx.DB
+	Who(string) []User
+	AddHandler(string, Handler)
+	SendMessage(string, string)
+	SendAction(string, string)
+	MsgReceived(Message)
+	EventReceived(Message)
+	Filter(Message, string) string
+	LastMessage(string) (Message, error)
+}
+
 type Connector interface {
 	RegisterEventReceived(func(message Message))
 	RegisterMessageReceived(func(message Message))

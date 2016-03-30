@@ -9,10 +9,8 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/irc"
-	"github.com/velour/catbase/plugins"
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/beers"
-	"github.com/velour/catbase/plugins/counter"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/downtime"
 	"github.com/velour/catbase/plugins/fact"
@@ -39,22 +37,20 @@ func main() {
 		log.Fatalf("Unknown connection type: %s", c.Type)
 	}
 
-	b := bot.NewBot(c, client)
+	b := bot.New(c, client)
 
 	// b.AddHandler(plugins.NewTestPlugin(b))
-	b.AddHandler("admin", admin.NewAdminPlugin(b))
+	b.AddHandler("admin", admin.New(b))
 	// b.AddHandler("first", plugins.NewFirstPlugin(b))
 	b.AddHandler("leftpad", leftpad.New(b))
-	b.AddHandler("downtime", downtime.NewDowntimePlugin(b))
+	b.AddHandler("downtime", downtime.New(b))
 	b.AddHandler("talker", talker.New(b))
-	b.AddHandler("dice", dice.NewDicePlugin(b))
-	b.AddHandler("beers", beers.NewBeersPlugin(b))
-	b.AddHandler("counter", counter.NewCounterPlugin(b))
-	b.AddHandler("remember", fact.NewRememberPlugin(b))
-	b.AddHandler("skeleton", plugins.NewSkeletonPlugin(b))
-	b.AddHandler("your", your.NewYourPlugin(b))
+	b.AddHandler("dice", dice.New(b))
+	b.AddHandler("beers", beers.New(b))
+	b.AddHandler("remember", fact.NewRemember(b))
+	b.AddHandler("your", your.New(b))
 	// catches anything left, will always return true
-	b.AddHandler("factoid", fact.NewFactoidPlugin(b))
+	b.AddHandler("factoid", fact.New(b))
 
 	client.Serve()
 }

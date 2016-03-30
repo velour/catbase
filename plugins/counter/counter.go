@@ -15,7 +15,7 @@ import (
 // This is a counter plugin to count arbitrary things.
 
 type CounterPlugin struct {
-	Bot *bot.Bot
+	Bot bot.Bot
 	DB  *sqlx.DB
 }
 
@@ -102,9 +102,9 @@ func (i *Item) Delete() error {
 }
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
-func NewCounterPlugin(bot *bot.Bot) *CounterPlugin {
-	if bot.DBVersion == 1 {
-		if _, err := bot.DB.Exec(`create table if not exists counter (
+func New(bot bot.Bot) *CounterPlugin {
+	if bot.DBVersion() == 1 {
+		if _, err := bot.DB().Exec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
@@ -115,7 +115,7 @@ func NewCounterPlugin(bot *bot.Bot) *CounterPlugin {
 	}
 	return &CounterPlugin{
 		Bot: bot,
-		DB:  bot.DB,
+		DB:  bot.DB(),
 	}
 }
 
@@ -156,7 +156,7 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 		for _, it := range items {
 			count += 1
 			if count > 1 {
-				resp += ", "
+				resp += ","
 			}
 			resp += fmt.Sprintf(" %s: %d", it.Item, it.Count)
 			if count > 20 {
@@ -269,13 +269,6 @@ func (p *CounterPlugin) Message(message bot.Message) bool {
 	}
 
 	return false
-}
-
-// LoadData imports any configuration data into the plugin. This is not
-// strictly necessary other than the fact that the Plugin interface demands it
-// exist. This may be deprecated at a later date.
-func (p *CounterPlugin) LoadData() {
-	// This bot has no data to load
 }
 
 // Help responds to help requests. Every plugin must implement a help function.

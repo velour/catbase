@@ -22,7 +22,7 @@ import (
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 
 type BeersPlugin struct {
-	Bot *bot.Bot
+	Bot bot.Bot
 	db  *sqlx.DB
 }
 
@@ -35,9 +35,9 @@ type untappdUser struct {
 }
 
 // NewBeersPlugin creates a new BeersPlugin with the Plugin interface
-func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
-	if bot.DBVersion == 1 {
-		if _, err := bot.DB.Exec(`create table if not exists untappd (
+func New(bot bot.Bot) *BeersPlugin {
+	if bot.DBVersion() == 1 {
+		if _, err := bot.DB().Exec(`create table if not exists untappd (
 			id integer primary key,
 			untappdUser string,
 			channel string,
@@ -49,10 +49,10 @@ func NewBeersPlugin(bot *bot.Bot) *BeersPlugin {
 	}
 	p := BeersPlugin{
 		Bot: bot,
-		db:  bot.DB,
+		db:  bot.DB(),
 	}
 	p.LoadData()
-	for _, channel := range bot.Config.Untappd.Channels {
+	for _, channel := range bot.Config().Untappd.Channels {
 		go p.untappdLoop(channel)
 	}
 	return &p
@@ -313,7 +313,7 @@ type Beers struct {
 }
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
-	access_token := "?access_token=" + p.Bot.Config.Untappd.Token
+	access_token := "?access_token=" + p.Bot.Config().Untappd.Token
 	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
@@ -343,7 +343,7 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
-	token := p.Bot.Config.Untappd.Token
+	token := p.Bot.Config().Untappd.Token
 	if token == "" || token == "<Your Token>" {
 		log.Println("No Untappd token, cannot enable plugin.")
 		return
@@ -418,7 +418,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 }
 
 func (p *BeersPlugin) untappdLoop(channel string) {
-	frequency := p.Bot.Config.Untappd.Freq
+	frequency := p.Bot.Config().Untappd.Freq
 
 	log.Println("Checking every ", frequency, " seconds")
 

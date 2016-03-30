@@ -15,11 +15,11 @@ import (
 // This is a dice plugin to serve as an example and quick copy/paste for new plugins.
 
 type DicePlugin struct {
-	Bot *bot.Bot
+	Bot bot.Bot
 }
 
 // NewDicePlugin creates a new DicePlugin with the Plugin interface
-func NewDicePlugin(bot *bot.Bot) *DicePlugin {
+func New(bot bot.Bot) *DicePlugin {
 	return &DicePlugin{
 		Bot: bot,
 	}

@@ -18,7 +18,7 @@ import (
 
 type FirstPlugin struct {
 	First *FirstEntry
-	Bot   *bot.Bot
+	Bot   bot.Bot
 	db    *sqlx.DB
 }
 
@@ -46,9 +46,9 @@ func (fe *FirstEntry) save(db *sqlx.DB) error {
 }
 
 // NewFirstPlugin creates a new FirstPlugin with the Plugin interface
-func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
-	if b.DBVersion == 1 {
-		_, err := b.DB.Exec(`create table if not exists first (
+func New(b bot.Bot) *FirstPlugin {
+	if b.DBVersion() == 1 {
+		_, err := b.DB().Exec(`create table if not exists first (
 			id integer primary key,
 			day integer,
 			time integer,
@@ -62,14 +62,14 @@ func NewFirstPlugin(b *bot.Bot) *FirstPlugin {
 
 	log.Println("First plugin initialized with day:", midnight(time.Now()))
 
-	first, err := getLastFirst(b.DB)
+	first, err := getLastFirst(b.DB())
 	if err != nil {
 		log.Fatal("Could not initialize first plugin: ", err)
 	}
 
 	return &FirstPlugin{
 		Bot:   b,
-		db:    b.DB,
+		db:    b.DB(),
 		First: first,
 	}
 }
@@ -151,7 +151,7 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 }
 
 func (p *FirstPlugin) allowed(message bot.Message) bool {
-	for _, msg := range p.Bot.Config.Bad.Msgs {
+	for _, msg := range p.Bot.Config().Bad.Msgs {
 		match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
 		if err != nil {
 			log.Println("Bad regexp: ", err)
@@ -161,13 +161,13 @@ func (p *FirstPlugin) allowed(message bot.Message) bool {
 			return false
 		}
 	}
-	for _, host := range p.Bot.Config.Bad.Hosts {
+	for _, host := range p.Bot.Config().Bad.Hosts {
 		if host == message.Host {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
 		}
 	}
-	for _, nick := range p.Bot.Config.Bad.Nicks {
+	for _, nick := range p.Bot.Config().Bad.Nicks {
 		if nick == message.User.Name {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false

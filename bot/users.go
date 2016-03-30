@@ -16,12 +16,12 @@ type User struct {
 
 	Admin bool
 
-	//bot *Bot
+	//bot *bot
 }
 
 var users = map[string]*User{}
 
-func (b *Bot) GetUser(nick string) *User {
+func (b *bot) GetUser(nick string) *User {
 	if _, ok := users[nick]; !ok {
 		users[nick] = &User{
 			Name:  nick,
@@ -31,15 +31,15 @@ func (b *Bot) GetUser(nick string) *User {
 	return users[nick]
 }
 
-func (b *Bot) NewUser(nick string) *User {
+func (b *bot) NewUser(nick string) *User {
 	return &User{
 		Name:  nick,
 		Admin: b.checkAdmin(nick),
 	}
 }
 
-func (b *Bot) checkAdmin(nick string) bool {
-	for _, u := range b.Config.Admins {
+func (b *bot) checkAdmin(nick string) bool {
+	for _, u := range b.Config().Admins {
 		if nick == u {
 			return true
 		}

@@ -15,11 +15,11 @@ import (
 )
 
 type LeftpadPlugin struct {
-	bot *bot.Bot
+	bot bot.Bot
 }
 
 // New creates a new LeftpadPlugin with the Plugin interface
-func New(bot *bot.Bot) *LeftpadPlugin {
+func New(bot bot.Bot) *LeftpadPlugin {
 	p := LeftpadPlugin{
 		bot: bot,
 	}

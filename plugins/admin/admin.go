@@ -17,15 +17,15 @@ import (
 // This is a admin plugin to serve as an example and quick copy/paste for new plugins.
 
 type AdminPlugin struct {
-	Bot *bot.Bot
+	Bot bot.Bot
 	DB  *sqlx.DB
 }
 
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface
-func NewAdminPlugin(bot *bot.Bot) *AdminPlugin {
+func New(bot bot.Bot) *AdminPlugin {
 	p := &AdminPlugin{
 		Bot: bot,
-		DB:  bot.DB,
+		DB:  bot.DB(),
 	}
 	p.LoadData()
 	return p

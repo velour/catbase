@@ -20,7 +20,7 @@ import (
 // This is a downtime plugin to monitor how much our users suck
 
 type DowntimePlugin struct {
-	Bot *bot.Bot
+	Bot bot.Bot
 	db  *sqlx.DB
 }
 
@@ -100,13 +100,13 @@ func (ie idleEntries) Swap(i, j int) {
 }
 
 // NewDowntimePlugin creates a new DowntimePlugin with the Plugin interface
-func NewDowntimePlugin(bot *bot.Bot) *DowntimePlugin {
+func New(bot bot.Bot) *DowntimePlugin {
 	p := DowntimePlugin{
 		Bot: bot,
-		db:  bot.DB,
+		db:  bot.DB(),
 	}
 
-	if bot.DBVersion == 1 {
+	if bot.DBVersion() == 1 {
 		_, err := p.db.Exec(`create table if not exists downtime (
 			id integer primary key,
 			nick string,
@@ -160,7 +160,7 @@ func (p *DowntimePlugin) Message(message bot.Message) bool {
 		for _, e := range entries {
 
 			// filter out ZNC entries and ourself
-			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config.Nick) == e.nick {
+			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config().Nick) == e.nick {
 				p.remove(e.nick)
 			} else {
 				tops = fmt.Sprintf("%s%s: %s ", tops, e.nick, time.Now().Sub(e.lastSeen))
@@ -204,7 +204,7 @@ func (p *DowntimePlugin) Help(channel string, parts []string) {
 // Empty event handler because this plugin does not do anything on event recv
 func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 	log.Println(kind, "\t", message)
-	if kind != "PART" && message.User.Name != p.Bot.Config.Nick {
+	if kind != "PART" && message.User.Name != p.Bot.Config().Nick {
 		// user joined, let's nail them for it
 		if kind == "NICK" {
 			p.record(strings.ToLower(message.Channel))
