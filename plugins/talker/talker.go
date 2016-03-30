@@ -42,12 +42,15 @@ var goatse []string = []string{
 type TalkerPlugin struct {
 	Bot          bot.Bot
 	enforceNicks bool
+	sayings      []string
 }
 
 func New(bot bot.Bot) *TalkerPlugin {
+	rand.Seed(time.Now().Unix())
 	return &TalkerPlugin{
 		Bot:          bot,
 		enforceNicks: bot.Config().EnforceNicks,
+		sayings:      bot.Config().WelcomeMsgs,
 	}
 }
 
@@ -57,13 +60,13 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 	lowermessage := strings.ToLower(body)
 
 	// TODO: This ought to be space split afterwards to remove any punctuation
-	if strings.HasPrefix(lowermessage, "say") {
+	if message.Command && strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
 		p.Bot.SendMessage(channel, msg)
 		return true
 	}
 
-	if strings.HasPrefix(lowermessage, "goatse") {
+	if message.Command && strings.HasPrefix(lowermessage, "goatse") {
 		nick := message.User.Name
 		if parts := strings.Split(message.Body, " "); len(parts) > 1 {
 			nick = parts[1]
@@ -86,17 +89,7 @@ func (p *TalkerPlugin) Message(message bot.Message) bool {
 		return true
 	}
 
-	if strings.Contains(lowermessage, "felps") || strings.Contains(lowermessage, "fredfelps") {
-		outmsg := p.Bot.Filter(message, "GOD HATES $NICK")
-		p.Bot.SendMessage(channel, outmsg)
-		return true
-	}
-
 	return false
-}
-
-func (p *TalkerPlugin) LoadData() {
-	rand.Seed(time.Now().Unix())
 }
 
 func (p *TalkerPlugin) Help(channel string, parts []string) {
@@ -105,12 +98,11 @@ func (p *TalkerPlugin) Help(channel string, parts []string) {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
-	sayings := p.Bot.Config().WelcomeMsgs
-	if len(sayings) == 0 {
-		return false
-	}
 	if kind == "JOIN" && strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Nick) {
-		msg := fmt.Sprintf(sayings[rand.Intn(len(sayings))], message.User.Name)
+		if len(p.sayings) == 0 {
+			return false
+		}
+		msg := fmt.Sprintf(p.sayings[rand.Intn(len(p.sayings))], message.User.Name)
 		p.Bot.SendMessage(message.Channel, msg)
 		return true
 	}
