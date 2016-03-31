@@ -4,13 +4,10 @@
 package leftpad
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/url"
+	"strconv"
 	"strings"
 
+	"github.com/jamescun/leftpad"
 	"github.com/velour/catbase/bot"
 )
 
@@ -38,36 +35,16 @@ func (p *LeftpadPlugin) Message(message bot.Message) bool {
 	parts := strings.Split(message.Body, " ")
 	if len(parts) > 3 && parts[0] == "leftpad" {
 		padchar := parts[1]
-		length := parts[2]
+		length, err := strconv.Atoi(parts[2])
+		if err != nil {
+			p.bot.SendMessage(message.Channel, "Invalid padding number")
+			return true
+		}
 		text := strings.Join(parts[3:], " ")
-		url, _ := url.Parse("https://api.left-pad.io")
-		q := url.Query()
-		q.Set("str", text)
-		q.Set("len", length)
-		q.Set("ch", padchar)
-		url.RawQuery = q.Encode()
 
-		log.Printf("Requesting leftpad url: %s", url)
-		resp, err := http.Get(url.String())
-		if err != nil {
-			p.bot.SendMessage(message.Channel, err.Error())
-			return true
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			p.bot.SendMessage(message.Channel, "I can't leftpad right now :(")
-			log.Printf("Error decoding leftpad: %s", err)
-			return true
-		}
-		r := leftpadResp{}
-		err = json.Unmarshal(body, &r)
-		if err != nil {
-			p.bot.SendMessage(message.Channel, "I can't leftpad right now :(")
-			log.Printf("Error decoding leftpad: %s", err)
-			return true
-		}
-		p.bot.SendMessage(message.Channel, r.Str)
+		res := leftpad.LeftPad(text, length, padchar)
+
+		p.bot.SendMessage(message.Channel, res)
 		return true
 	}
 
@@ -80,9 +57,6 @@ func (p *LeftpadPlugin) Event(e string, message bot.Message) bool {
 
 func (p *LeftpadPlugin) BotMessage(message bot.Message) bool {
 	return false
-}
-
-func (p *LeftpadPlugin) LoadData() {
 }
 
 func (p *LeftpadPlugin) Help(e string, m []string) {
