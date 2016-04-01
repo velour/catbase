@@ -12,10 +12,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/velour/catbase/bot/msg"
 )
 
 // Handles incomming PRIVMSG requests
-func (b *bot) MsgReceived(msg Message) {
+func (b *bot) MsgReceived(msg msg.Message) {
 	log.Println("Received message: ", msg)
 
 	// msg := b.buildMessage(client, inMsg)
@@ -40,7 +42,7 @@ RET:
 }
 
 // Handle incoming events
-func (b *bot) EventReceived(msg Message) {
+func (b *bot) EventReceived(msg msg.Message) {
 	log.Println("Received event: ", msg)
 	//msg := b.buildMessage(conn, inMsg)
 	for _, name := range b.pluginOrdering {
@@ -88,10 +90,10 @@ func (b *bot) checkHelp(channel string, parts []string) {
 	}
 }
 
-func (b *bot) LastMessage(channel string) (Message, error) {
+func (b *bot) LastMessage(channel string) (msg.Message, error) {
 	log := <-b.logOut
 	if len(log) == 0 {
-		return Message{}, errors.New("No messages found.")
+		return msg.Message{}, errors.New("No messages found.")
 	}
 	for i := len(log) - 1; i >= 0; i-- {
 		msg := log[i]
@@ -99,11 +101,11 @@ func (b *bot) LastMessage(channel string) (Message, error) {
 			return msg, nil
 		}
 	}
-	return Message{}, errors.New("No messages found.")
+	return msg.Message{}, errors.New("No messages found.")
 }
 
 // Take an input string and mutate it based on $vars in the string
-func (b *bot) Filter(message Message, input string) string {
+func (b *bot) Filter(message msg.Message, input string) string {
 	rand.Seed(time.Now().Unix())
 
 	if strings.Contains(input, "$NICK") {
@@ -194,7 +196,7 @@ func (b *bot) Help(channel string, parts []string) {
 
 // Send our own musings to the plugins
 func (b *bot) selfSaid(channel, message string, action bool) {
-	msg := Message{
+	msg := msg.Message{
 		User:    &b.me, // hack
 		Channel: channel,
 		Body:    message,

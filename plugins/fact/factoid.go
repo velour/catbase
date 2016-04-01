@@ -15,6 +15,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 // The factoid plugin provides a learning system to the bot so that it can
@@ -238,7 +239,7 @@ func New(botInst bot.Bot) *FactoidPlugin {
 			// Some random time to start up
 			time.Sleep(time.Duration(15) * time.Second)
 			if ok, fact := p.findTrigger(p.Bot.Config().StartupFact); ok {
-				p.sayFact(bot.Message{
+				p.sayFact(msg.Message{
 					Channel: ch,
 					Body:    "speed test", // BUG: This is defined in the config too
 					Command: true,
@@ -272,7 +273,7 @@ func findAction(message string) string {
 
 // learnFact assumes we have a learning situation and inserts a new fact
 // into the database
-func (p *FactoidPlugin) learnFact(message bot.Message, fact, verb, tidbit string) bool {
+func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string) bool {
 	verb = strings.ToLower(verb)
 
 	var count sql.NullInt64
@@ -319,7 +320,7 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *factoid) {
 
 // sayFact spits out a fact to the channel and updates the fact in the database
 // with new time and count information
-func (p *FactoidPlugin) sayFact(message bot.Message, fact factoid) {
+func (p *FactoidPlugin) sayFact(message msg.Message, fact factoid) {
 	msg := p.Bot.Filter(message, fact.Tidbit)
 	full := p.Bot.Filter(message, fmt.Sprintf("%s %s %s",
 		fact.Fact, fact.Verb, fact.Tidbit,
@@ -353,7 +354,7 @@ func (p *FactoidPlugin) sayFact(message bot.Message, fact factoid) {
 
 // trigger checks the message for its fitness to be a factoid and then hauls
 // the message off to sayFact for processing if it is in fact a trigger
-func (p *FactoidPlugin) trigger(message bot.Message) bool {
+func (p *FactoidPlugin) trigger(message msg.Message) bool {
 	if len(message.Body) > 4 || message.Command || message.Body == "..." {
 		if ok, fact := p.findTrigger(message.Body); ok {
 			p.sayFact(message, *fact)
@@ -371,7 +372,7 @@ func (p *FactoidPlugin) trigger(message bot.Message) bool {
 }
 
 // tellThemWhatThatWas is a hilarious name for a function.
-func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
+func (p *FactoidPlugin) tellThemWhatThatWas(message msg.Message) bool {
 	fact := p.LastFact
 	var msg string
 	if fact == nil {
@@ -384,7 +385,7 @@ func (p *FactoidPlugin) tellThemWhatThatWas(message bot.Message) bool {
 	return true
 }
 
-func (p *FactoidPlugin) learnAction(message bot.Message, action string) bool {
+func (p *FactoidPlugin) learnAction(message msg.Message, action string) bool {
 	body := message.Body
 
 	parts := strings.SplitN(body, action, 2)
@@ -430,7 +431,7 @@ func changeOperator(body string) string {
 
 // If the user requesting forget is either the owner of the last learned fact or
 // an admin, it may be deleted
-func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
+func (p *FactoidPlugin) forgetLastFact(message msg.Message) bool {
 	if p.LastFact == nil {
 		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
@@ -452,7 +453,7 @@ func (p *FactoidPlugin) forgetLastFact(message bot.Message) bool {
 }
 
 // Allow users to change facts with a simple regexp
-func (p *FactoidPlugin) changeFact(message bot.Message) bool {
+func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 	oper := changeOperator(message.Body)
 	parts := strings.SplitN(message.Body, oper, 2)
 	userexp := strings.TrimSpace(parts[1])
@@ -530,7 +531,7 @@ func (p *FactoidPlugin) changeFact(message bot.Message) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FactoidPlugin) Message(message bot.Message) bool {
+func (p *FactoidPlugin) Message(message msg.Message) bool {
 	if strings.ToLower(message.Body) == "what was that?" {
 		return p.tellThemWhatThatWas(message)
 	}
@@ -580,7 +581,7 @@ func (p *FactoidPlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *FactoidPlugin) Event(kind string, message bot.Message) bool {
+func (p *FactoidPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
@@ -620,7 +621,7 @@ func (p *FactoidPlugin) factTimer(channel string) {
 			users := p.Bot.Who(channel)
 
 			// we need to fabricate a message so that bot.Filter can operate
-			message := bot.Message{
+			message := msg.Message{
 				User:    &users[rand.Intn(len(users))],
 				Channel: channel,
 			}
@@ -631,7 +632,7 @@ func (p *FactoidPlugin) factTimer(channel string) {
 }
 
 // Handler for bot's own messages
-func (p *FactoidPlugin) BotMessage(message bot.Message) bool {
+func (p *FactoidPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

@@ -7,6 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/mock"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
 )
 
@@ -21,7 +23,7 @@ type MockBot struct {
 func (mb *MockBot) Config() *config.Config            { return &config.Config{} }
 func (mb *MockBot) DBVersion() int64                  { return 1 }
 func (mb *MockBot) DB() *sqlx.DB                      { return mb.db }
-func (mb *MockBot) Who(string) []User                 { return []User{} }
+func (mb *MockBot) Who(string) []user.User            { return []user.User{} }
 func (mb *MockBot) AddHandler(name string, f Handler) {}
 func (mb *MockBot) SendMessage(ch string, msg string) {
 	mb.Messages = append(mb.Messages, msg)
@@ -29,10 +31,11 @@ func (mb *MockBot) SendMessage(ch string, msg string) {
 func (mb *MockBot) SendAction(ch string, msg string) {
 	mb.Actions = append(mb.Actions, msg)
 }
-func (mb *MockBot) MsgReceived(msg Message)                {}
-func (mb *MockBot) EventReceived(msg Message)              {}
-func (mb *MockBot) Filter(msg Message, s string) string    { return "" }
-func (mb *MockBot) LastMessage(ch string) (Message, error) { return Message{}, nil }
+func (mb *MockBot) MsgReceived(msg msg.Message)                {}
+func (mb *MockBot) EventReceived(msg msg.Message)              {}
+func (mb *MockBot) Filter(msg msg.Message, s string) string    { return "" }
+func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
+func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
 
 func NewMockBot() *MockBot {
 	db, err := sqlx.Open("sqlite3_custom", ":memory:")

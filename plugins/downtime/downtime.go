@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 import (
@@ -123,7 +124,7 @@ func New(bot bot.Bot) *DowntimePlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *DowntimePlugin) Message(message bot.Message) bool {
+func (p *DowntimePlugin) Message(message msg.Message) bool {
 	// If it's a command and the payload is idle <nick>, give it. Log everything.
 
 	parts := strings.Fields(strings.ToLower(message.Body))
@@ -202,7 +203,7 @@ func (p *DowntimePlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
+func (p *DowntimePlugin) Event(kind string, message msg.Message) bool {
 	log.Println(kind, "\t", message)
 	if kind != "PART" && message.User.Name != p.Bot.Config().Nick {
 		// user joined, let's nail them for it
@@ -222,7 +223,7 @@ func (p *DowntimePlugin) Event(kind string, message bot.Message) bool {
 }
 
 // Handler for bot's own messages
-func (p *DowntimePlugin) BotMessage(message bot.Message) bool {
+func (p *DowntimePlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
 	"golang.org/x/net/websocket"
 )
@@ -28,8 +30,8 @@ type Slack struct {
 
 	users map[string]string
 
-	eventReceived   func(bot.Message)
-	messageReceived func(bot.Message)
+	eventReceived   func(msg.Message)
+	messageReceived func(msg.Message)
 }
 
 var idCounter uint64
@@ -71,11 +73,11 @@ func New(c *config.Config) *Slack {
 	}
 }
 
-func (s *Slack) RegisterEventReceived(f func(bot.Message)) {
+func (s *Slack) RegisterEventReceived(f func(msg.Message)) {
 	s.eventReceived = f
 }
 
-func (s *Slack) RegisterMessageReceived(f func(bot.Message)) {
+func (s *Slack) RegisterMessageReceived(f func(msg.Message)) {
 	s.messageReceived = f
 }
 
@@ -134,10 +136,10 @@ func (s *Slack) Serve() {
 	}
 }
 
-// Convert a slackMessage to a bot.Message
-func (s *Slack) buildMessage(msg slackMessage) bot.Message {
-	log.Printf("DEBUG: msg: %#v", msg)
-	text := html.UnescapeString(msg.Text)
+// Convert a slackMessage to a msg.Message
+func (s *Slack) buildMessage(m slackMessage) msg.Message {
+	log.Printf("DEBUG: msg: %#v", m)
+	text := html.UnescapeString(m.Text)
 
 	isCmd, text := bot.IsCmd(s.config, text)
 
@@ -146,18 +148,18 @@ func (s *Slack) buildMessage(msg slackMessage) bot.Message {
 		text = text[3:]
 	}
 
-	user := s.getUser(msg.User)
+	u := s.getUser(m.User)
 
-	return bot.Message{
-		User: &bot.User{
-			Name: user,
+	return msg.Message{
+		User: &user.User{
+			Name: u,
 		},
 		Body:    text,
-		Raw:     msg.Text,
-		Channel: msg.Channel,
+		Raw:     m.Text,
+		Channel: m.Channel,
 		Command: isCmd,
 		Action:  isAction,
-		Host:    string(msg.Id),
+		Host:    string(m.Id),
 	}
 }
 

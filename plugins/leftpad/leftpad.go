@@ -9,6 +9,7 @@ import (
 
 	"github.com/jamescun/leftpad"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 type LeftpadPlugin struct {
@@ -27,7 +28,7 @@ type leftpadResp struct {
 	Str string
 }
 
-func (p *LeftpadPlugin) Message(message bot.Message) bool {
+func (p *LeftpadPlugin) Message(message msg.Message) bool {
 	if !message.Command {
 		return false
 	}
@@ -51,11 +52,11 @@ func (p *LeftpadPlugin) Message(message bot.Message) bool {
 	return false
 }
 
-func (p *LeftpadPlugin) Event(e string, message bot.Message) bool {
+func (p *LeftpadPlugin) Event(e string, message msg.Message) bool {
 	return false
 }
 
-func (p *LeftpadPlugin) BotMessage(message bot.Message) bool {
+func (p *LeftpadPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

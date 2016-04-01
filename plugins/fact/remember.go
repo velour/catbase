@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new
@@ -18,7 +19,7 @@ import (
 
 type RememberPlugin struct {
 	Bot bot.Bot
-	Log map[string][]bot.Message
+	Log map[string][]msg.Message
 	db  *sqlx.DB
 }
 
@@ -26,7 +27,7 @@ type RememberPlugin struct {
 func NewRemember(b bot.Bot) *RememberPlugin {
 	p := RememberPlugin{
 		Bot: b,
-		Log: make(map[string][]bot.Message),
+		Log: make(map[string][]msg.Message),
 		db:  b.DB(),
 	}
 	return &p
@@ -36,7 +37,7 @@ func NewRemember(b bot.Bot) *RememberPlugin {
 // This function returns true if the plugin responds in a meaningful way to the
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
-func (p *RememberPlugin) Message(message bot.Message) bool {
+func (p *RememberPlugin) Message(message msg.Message) bool {
 
 	if strings.ToLower(message.Body) == "quote" && message.Command {
 		q := p.randQuote()
@@ -177,12 +178,12 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *RememberPlugin) Event(kind string, message bot.Message) bool {
+func (p *RememberPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Record what the bot says in the log
-func (p *RememberPlugin) BotMessage(message bot.Message) bool {
+func (p *RememberPlugin) BotMessage(message msg.Message) bool {
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 	return false
 }

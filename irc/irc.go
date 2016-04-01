@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
 	"github.com/velour/velour/irc"
 )
@@ -39,8 +41,8 @@ type Irc struct {
 	config *config.Config
 	quit   chan bool
 
-	eventReceived   func(bot.Message)
-	messageReceived func(bot.Message)
+	eventReceived   func(msg.Message)
+	messageReceived func(msg.Message)
 }
 
 func New(c *config.Config) *Irc {
@@ -50,11 +52,11 @@ func New(c *config.Config) *Irc {
 	return &i
 }
 
-func (i *Irc) RegisterEventReceived(f func(bot.Message)) {
+func (i *Irc) RegisterEventReceived(f func(msg.Message)) {
 	i.eventReceived = f
 }
 
-func (i *Irc) RegisterMessageReceived(f func(bot.Message)) {
+func (i *Irc) RegisterMessageReceived(f func(msg.Message)) {
 	i.messageReceived = f
 }
 
@@ -229,9 +231,9 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 }
 
 // Builds our internal message type out of a Conn & Line from irc
-func (i *Irc) buildMessage(inMsg irc.Msg) bot.Message {
+func (i *Irc) buildMessage(inMsg irc.Msg) msg.Message {
 	// Check for the user
-	user := bot.User{
+	u := user.User{
 		Name: inMsg.Origin,
 	}
 
@@ -259,8 +261,8 @@ func (i *Irc) buildMessage(inMsg irc.Msg) bot.Message {
 		iscmd, filteredMessage = bot.IsCmd(i.config, message)
 	}
 
-	msg := bot.Message{
-		User:    &user,
+	msg := msg.Message{
+		User:    &u,
 		Channel: channel,
 		Body:    filteredMessage,
 		Raw:     message,

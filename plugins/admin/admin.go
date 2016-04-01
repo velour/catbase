@@ -12,6 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 // This is a admin plugin to serve as an example and quick copy/paste for new plugins.
@@ -34,7 +35,7 @@ func New(bot bot.Bot) *AdminPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *AdminPlugin) Message(message bot.Message) bool {
+func (p *AdminPlugin) Message(message msg.Message) bool {
 	// This bot does not reply to anything
 
 	if !message.User.Admin {
@@ -54,7 +55,7 @@ func (p *AdminPlugin) Message(message bot.Message) bool {
 	return false
 }
 
-func (p *AdminPlugin) handleVariables(message bot.Message) bool {
+func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 	parts := strings.SplitN(message.Body, "=", 2)
 	if len(parts) != 2 {
 		return false
@@ -98,12 +99,12 @@ func (p *AdminPlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *AdminPlugin) Event(kind string, message bot.Message) bool {
+func (p *AdminPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Handler for bot's own messages
-func (p *AdminPlugin) BotMessage(message bot.Message) bool {
+func (p *AdminPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

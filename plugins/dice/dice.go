@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 import (
@@ -37,7 +38,7 @@ func rollDie(sides int) int {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *DicePlugin) Message(message bot.Message) bool {
+func (p *DicePlugin) Message(message msg.Message) bool {
 	channel := message.Channel
 	parts := strings.Fields(message.Body)
 
@@ -86,12 +87,12 @@ func (p *DicePlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *DicePlugin) Event(kind string, message bot.Message) bool {
+func (p *DicePlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Handler for bot's own messages
-func (p *DicePlugin) BotMessage(message bot.Message) bool {
+func (p *DicePlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

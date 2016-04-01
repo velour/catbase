@@ -16,6 +16,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/plugins/counter"
 )
 
@@ -61,7 +62,7 @@ func New(bot bot.Bot) *BeersPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *BeersPlugin) Message(message bot.Message) bool {
+func (p *BeersPlugin) Message(message msg.Message) bool {
 	parts := strings.Fields(message.Body)
 
 	if len(parts) == 0 {
@@ -203,7 +204,7 @@ func (p *BeersPlugin) Message(message bot.Message) bool {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *BeersPlugin) Event(kind string, message bot.Message) bool {
+func (p *BeersPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
@@ -429,7 +430,7 @@ func (p *BeersPlugin) untappdLoop(channel string) {
 }
 
 // Handler for bot's own messages
-func (p *BeersPlugin) BotMessage(message bot.Message) bool {
+func (p *BeersPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

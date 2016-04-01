@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 type YourPlugin struct {
@@ -26,7 +27,7 @@ func New(bot bot.Bot) *YourPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *YourPlugin) Message(message bot.Message) bool {
+func (p *YourPlugin) Message(message msg.Message) bool {
 	lower := strings.ToLower(message.Body)
 	config := p.bot.Config().Your
 	if len(message.Body) > config.MaxLength {
@@ -61,12 +62,12 @@ func (p *YourPlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *YourPlugin) Event(kind string, message bot.Message) bool {
+func (p *YourPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Handler for bot's own messages
-func (p *YourPlugin) BotMessage(message bot.Message) bool {
+func (p *YourPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

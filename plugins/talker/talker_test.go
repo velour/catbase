@@ -8,15 +8,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) bot.Message {
+func makeMessage(payload string) msg.Message {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return bot.Message{
-		User:    &bot.User{Name: "tester"},
+	return msg.Message{
+		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
 		Command: isCmd,

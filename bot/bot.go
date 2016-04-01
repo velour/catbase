@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/mattn/go-sqlite3"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/msglog"
+	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
 )
 
@@ -24,9 +26,9 @@ type bot struct {
 	pluginOrdering []string
 
 	// Users holds information about all of our friends
-	users []User
+	users []user.User
 	// Represents the bot
-	me User
+	me user.User
 
 	config *config.Config
 
@@ -39,58 +41,13 @@ type bot struct {
 	db        *sqlx.DB
 	dbVersion int64
 
-	logIn  chan Message
-	logOut chan Messages
+	logIn  chan msg.Message
+	logOut chan msg.Messages
 
 	version string
 
 	// The entries to the bot's HTTP interface
 	httpEndPoints map[string]string
-}
-
-// Log provides a slice of messages in order
-type Log Messages
-type Messages []Message
-
-type Logger struct {
-	in      <-chan Message
-	out     chan<- Messages
-	entries Messages
-}
-
-func NewLogger(in chan Message, out chan Messages) *Logger {
-	return &Logger{in, out, make(Messages, 0)}
-}
-
-func RunNewLogger(in chan Message, out chan Messages) {
-	logger := NewLogger(in, out)
-	go logger.Run()
-}
-
-func (l *Logger) sendEntries() {
-	l.out <- l.entries
-}
-
-func (l *Logger) Run() {
-	var msg Message
-	for {
-		select {
-		case msg = <-l.in:
-			l.entries = append(l.entries, msg)
-		case l.out <- l.entries:
-			go l.sendEntries()
-		}
-	}
-}
-
-type Message struct {
-	User          *User
-	Channel, Body string
-	Raw           string
-	Command       bool
-	Action        bool
-	Time          time.Time
-	Host          string
 }
 
 type Variable struct {
@@ -116,13 +73,13 @@ func New(config *config.Config, connector Connector) Bot {
 		log.Fatal(err)
 	}
 
-	logIn := make(chan Message)
-	logOut := make(chan Messages)
+	logIn := make(chan msg.Message)
+	logOut := make(chan msg.Messages)
 
-	RunNewLogger(logIn, logOut)
+	msglog.RunNew(logIn, logOut)
 
-	users := []User{
-		User{
+	users := []user.User{
+		user.User{
 			Name: config.Nick,
 		},
 	}
@@ -220,8 +177,8 @@ func (b *bot) AddHandler(name string, h Handler) {
 	}
 }
 
-func (b *bot) Who(channel string) []User {
-	out := []User{}
+func (b *bot) Who(channel string) []user.User {
+	out := []user.User{}
 	for _, u := range b.users {
 		if u.Name != b.Config().Nick {
 			out = append(out, u)
@@ -298,4 +255,41 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 	message = strings.TrimSpace(message)
 
 	return iscmd, message
+}
+
+func (b *bot) CheckAdmin(nick string) bool {
+	for _, u := range b.Config().Admins {
+		if nick == u {
+			return true
+		}
+	}
+	return false
+}
+
+var users = map[string]*user.User{}
+
+func (b *bot) GetUser(nick string) *user.User {
+	if _, ok := users[nick]; !ok {
+		users[nick] = &user.User{
+			Name:  nick,
+			Admin: b.checkAdmin(nick),
+		}
+	}
+	return users[nick]
+}
+
+func (b *bot) NewUser(nick string) *user.User {
+	return &user.User{
+		Name:  nick,
+		Admin: b.checkAdmin(nick),
+	}
+}
+
+func (b *bot) checkAdmin(nick string) bool {
+	for _, u := range b.Config().Admins {
+		if nick == u {
+			return true
+		}
+	}
+	return false
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 // This is a counter plugin to count arbitrary things.
@@ -123,7 +124,7 @@ func New(bot bot.Bot) *CounterPlugin {
 // This function returns true if the plugin responds in a meaningful way to the
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
-func (p *CounterPlugin) Message(message bot.Message) bool {
+func (p *CounterPlugin) Message(message msg.Message) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
 	channel := message.Channel
@@ -280,12 +281,12 @@ func (p *CounterPlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *CounterPlugin) Event(kind string, message bot.Message) bool {
+func (p *CounterPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Handler for bot's own messages
-func (p *CounterPlugin) BotMessage(message bot.Message) bool {
+func (p *CounterPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

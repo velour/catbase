@@ -12,6 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 // This is a first plugin to serve as an example and quick copy/paste for new plugins.
@@ -124,7 +125,7 @@ func isToday(t time.Time) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FirstPlugin) Message(message bot.Message) bool {
+func (p *FirstPlugin) Message(message msg.Message) bool {
 	// This bot does not reply to anything
 
 	if p.First == nil && p.allowed(message) {
@@ -150,7 +151,7 @@ func (p *FirstPlugin) Message(message bot.Message) bool {
 	return false
 }
 
-func (p *FirstPlugin) allowed(message bot.Message) bool {
+func (p *FirstPlugin) allowed(message msg.Message) bool {
 	for _, msg := range p.Bot.Config().Bad.Msgs {
 		match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
 		if err != nil {
@@ -176,7 +177,7 @@ func (p *FirstPlugin) allowed(message bot.Message) bool {
 	return true
 }
 
-func (p *FirstPlugin) recordFirst(message bot.Message) {
+func (p *FirstPlugin) recordFirst(message msg.Message) {
 	log.Println("Recording first: ", message.User.Name, ":", message.Body)
 	p.First = &FirstEntry{
 		day:  midnight(time.Now()),
@@ -192,7 +193,7 @@ func (p *FirstPlugin) recordFirst(message bot.Message) {
 	p.announceFirst(message)
 }
 
-func (p *FirstPlugin) announceFirst(message bot.Message) {
+func (p *FirstPlugin) announceFirst(message msg.Message) {
 	c := message.Channel
 	if p.First != nil {
 		p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
@@ -213,12 +214,12 @@ func (p *FirstPlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *FirstPlugin) Event(kind string, message bot.Message) bool {
+func (p *FirstPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Handler for bot's own messages
-func (p *FirstPlugin) BotMessage(message bot.Message) bool {
+func (p *FirstPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 

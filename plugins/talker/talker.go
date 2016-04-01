@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 var goatse []string = []string{
@@ -54,7 +55,7 @@ func New(bot bot.Bot) *TalkerPlugin {
 	}
 }
 
-func (p *TalkerPlugin) Message(message bot.Message) bool {
+func (p *TalkerPlugin) Message(message msg.Message) bool {
 	channel := message.Channel
 	body := message.Body
 	lowermessage := strings.ToLower(body)
@@ -97,7 +98,7 @@ func (p *TalkerPlugin) Help(channel string, parts []string) {
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
+func (p *TalkerPlugin) Event(kind string, message msg.Message) bool {
 	if kind == "JOIN" && strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Nick) {
 		if len(p.sayings) == 0 {
 			return false
@@ -110,7 +111,7 @@ func (p *TalkerPlugin) Event(kind string, message bot.Message) bool {
 }
 
 // Handler for bot's own messages
-func (p *TalkerPlugin) BotMessage(message bot.Message) bool {
+func (p *TalkerPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 
