@@ -54,6 +54,29 @@ func TestNotCommand(t *testing.T) {
 	assert.Len(t, mb.Messages, 0)
 }
 
+func TestNoMaxLen(t *testing.T) {
+	p, mb := makePlugin(t)
+	p.Message(makeMessage("!leftpad dicks 100 dicks"))
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "dicks")
+}
+
+func Test50Padding(t *testing.T) {
+	p, mb := makePlugin(t)
+	p.config.LeftPad.MaxLen = 50
+	p.Message(makeMessage("!leftpad dicks 100 dicks"))
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "kill me")
+}
+
+func TestUnder50Padding(t *testing.T) {
+	p, mb := makePlugin(t)
+	p.config.LeftPad.MaxLen = 50
+	p.Message(makeMessage("!leftpad dicks 49 dicks"))
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "dicks")
+}
+
 func TestNotPadding(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.Message(makeMessage("!lololol"))

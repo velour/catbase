@@ -4,22 +4,26 @@
 package leftpad
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/jamescun/leftpad"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
 type LeftpadPlugin struct {
-	bot bot.Bot
+	bot    bot.Bot
+	config *config.Config
 }
 
 // New creates a new LeftpadPlugin with the Plugin interface
 func New(bot bot.Bot) *LeftpadPlugin {
 	p := LeftpadPlugin{
-		bot: bot,
+		bot:    bot,
+		config: bot.Config(),
 	}
 	return &p
 }
@@ -39,6 +43,11 @@ func (p *LeftpadPlugin) Message(message msg.Message) bool {
 		length, err := strconv.Atoi(parts[2])
 		if err != nil {
 			p.bot.SendMessage(message.Channel, "Invalid padding number")
+			return true
+		}
+		if length > p.config.LeftPad.MaxLen && p.config.LeftPad.MaxLen > 0 {
+			msg := fmt.Sprintf("%s would kill me if I did that.", p.config.LeftPad.Who)
+			p.bot.SendMessage(message.Channel, msg)
 			return true
 		}
 		text := strings.Join(parts[3:], " ")

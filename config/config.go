@@ -57,6 +57,10 @@ type Config struct {
 		FuckingChance float64
 		MaxLength     int
 	}
+	LeftPad struct {
+		MaxLen int
+		Who    string
+	}
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
