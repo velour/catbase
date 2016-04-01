@@ -18,8 +18,6 @@
 	"FullName": "CatBase",
 	"CommandChar": "!",
 	"RatePerSec": 10.0,
-	"QuoteChance": 0.99,
-	"QuoteTime": 1,
 	"LogLength": 50,
 	"Admins": ["<Admin Nick>"],
 	"HttpAddr": "127.0.0.1:1337",
@@ -34,8 +32,6 @@
 	"TwitterConsumerSecret": "<Consumer Secret>",
 	"TwitterUserKey": "<User Key>",
 	"TwitterUserSecret": "<User Secret>",
-
-	"StartupFact": "speed test",
 
 	"WelcomeMsgs": [
 			"Real men use screen, %s.",
@@ -56,5 +52,11 @@
 	"LeftPad": {
 		"MaxLen": 50,
 		"Who": "person"
+	},
+	"Factoid": {
+		"QuoteChance": 0.99,
+		"QuoteTime": 1,
+		"StartupFact": "speed test",
+		"MinLen": 5
 	}
 }

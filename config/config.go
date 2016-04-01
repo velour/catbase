@@ -29,8 +29,6 @@ type Config struct {
 	Version     string
 	CommandChar string
 	RatePerSec  float64
-	QuoteChance float64
-	QuoteTime   int
 	LogLength   int
 	Admins      []string
 	HttpAddr    string
@@ -45,7 +43,6 @@ type Config struct {
 	TwitterConsumerSecret string
 	TwitterUserKey        string
 	TwitterUserSecret     string
-	StartupFact           string
 	BadMsgs               []string
 	Bad                   struct {
 		Msgs  []string
@@ -60,6 +57,12 @@ type Config struct {
 	LeftPad struct {
 		MaxLen int
 		Who    string
+	}
+	Factoid struct {
+		MinLen      int
+		QuoteChance float64
+		QuoteTime   int
+		StartupFact string
 	}
 }
 

@@ -168,8 +168,8 @@ func (p *RememberPlugin) quoteTimer(channel string) {
 	for {
 		// this pisses me off: You can't multiply int * time.Duration so it
 		// has to look ugly as shit.
-		time.Sleep(time.Duration(p.Bot.Config().QuoteTime) * time.Minute)
-		chance := 1.0 / p.Bot.Config().QuoteChance
+		time.Sleep(time.Duration(p.Bot.Config().Factoid.QuoteTime) * time.Minute)
+		chance := 1.0 / p.Bot.Config().Factoid.QuoteChance
 		if rand.Intn(int(chance)) == 0 {
 			msg := p.randQuote()
 			p.Bot.SendMessage(channel, msg)
