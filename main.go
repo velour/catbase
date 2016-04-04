@@ -11,6 +11,7 @@ import (
 	"github.com/velour/catbase/irc"
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/beers"
+	"github.com/velour/catbase/plugins/counter"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/downtime"
 	"github.com/velour/catbase/plugins/fact"
@@ -49,6 +50,7 @@ func main() {
 	b.AddHandler("beers", beers.New(b))
 	b.AddHandler("remember", fact.NewRemember(b))
 	b.AddHandler("your", your.New(b))
+	b.AddHandler("counter", counter.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 
