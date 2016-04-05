@@ -93,7 +93,7 @@ func (f *factoid) delete(db *sqlx.DB) error {
 	return err
 }
 
-func getFacts(db *sqlx.DB, fact string) ([]*factoid, error) {
+func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*factoid, error) {
 	var fs []*factoid
 	rows, err := db.Query(`select
 			id,
@@ -105,8 +105,9 @@ func getFacts(db *sqlx.DB, fact string) ([]*factoid, error) {
 			accessed,
 			count
 		from factoid
-		where fact regexp ?;`,
-		fact)
+		where fact regexp ?
+		and tidbit regexp ?;`,
+		fact, tidbit)
 	if err != nil {
 		log.Printf("Error regexping for facts: %s", err)
 		return nil, err
@@ -178,7 +179,7 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 			accessed,
 			count
 		from factoid
-		where fact like ?
+		where fact regexp ?
 		order by random() limit 1;`,
 		fact).Scan(
 		&f.id,
@@ -461,6 +462,9 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 	trigger := strings.TrimSpace(parts[0])
 
 	parts = strings.Split(userexp, "/")
+
+	log.Printf("changeFact: %s %s %#v", trigger, userexp, parts)
+
 	if len(parts) == 4 {
 		// replacement
 		if parts[0] != "s" {
@@ -470,7 +474,7 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 		replace := parts[2]
 
 		// replacement
-		result, err := getFacts(p.db, trigger)
+		result, err := getFacts(p.db, trigger, parts[1])
 		if err != nil {
 			log.Println("Error getting facts: ", trigger, err)
 		}
@@ -500,12 +504,18 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 		}
 	} else if len(parts) == 3 {
 		// search for a factoid and print it
-		result, err := getFacts(p.db, trigger)
+		result, err := getFacts(p.db, trigger, parts[1])
 		if err != nil {
 			log.Println("Error getting facts: ", trigger, err)
+			p.Bot.SendMessage(message.Channel, "bzzzt")
+			return true
 		}
 		count := len(result)
-		if parts[2] == "g" {
+		if count == 0 {
+			p.Bot.SendMessage(message.Channel, "I didn't find any facts like that.")
+			return true
+		}
+		if parts[2] == "g" && len(result) > 4 {
 			// summarize
 			result = result[:4]
 		} else {
@@ -662,7 +672,7 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 		"linkify": linkify,
 	}
 	if e := r.FormValue("entry"); e != "" {
-		entries, err := getFacts(p.db, e)
+		entries, err := getFacts(p.db, e, ".*")
 		if err != nil {
 			log.Println("Web error searching: ", err)
 		}
