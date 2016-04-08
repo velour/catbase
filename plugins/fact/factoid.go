@@ -179,7 +179,7 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 			accessed,
 			count
 		from factoid
-		where fact regexp ?
+		where fact like ?
 		order by random() limit 1;`,
 		fact).Scan(
 		&f.id,
@@ -196,17 +196,17 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 	return &f, err
 }
 
-// FactoidPlugin provides the necessary plugin-wide needs
-type FactoidPlugin struct {
+// Factoid provides the necessary plugin-wide needs
+type Factoid struct {
 	Bot      bot.Bot
 	NotFound []string
 	LastFact *factoid
 	db       *sqlx.DB
 }
 
-// NewFactoidPlugin creates a new FactoidPlugin with the Plugin interface
-func New(botInst bot.Bot) *FactoidPlugin {
-	p := &FactoidPlugin{
+// NewFactoid creates a new Factoid with the Plugin interface
+func New(botInst bot.Bot) *Factoid {
+	p := &Factoid{
 		Bot: botInst,
 		NotFound: []string{
 			"I don't know.",
@@ -274,7 +274,7 @@ func findAction(message string) string {
 
 // learnFact assumes we have a learning situation and inserts a new fact
 // into the database
-func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string) bool {
+func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) bool {
 	verb = strings.ToLower(verb)
 
 	var count sql.NullInt64
@@ -309,7 +309,7 @@ func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string
 }
 
 // findTrigger checks to see if a given string is a trigger or not
-func (p *FactoidPlugin) findTrigger(fact string) (bool, *factoid) {
+func (p *Factoid) findTrigger(fact string) (bool, *factoid) {
 	fact = strings.ToLower(fact) // TODO: make sure this needs to be lowered here
 
 	f, err := getSingleFact(p.db, fact)
@@ -321,7 +321,7 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *factoid) {
 
 // sayFact spits out a fact to the channel and updates the fact in the database
 // with new time and count information
-func (p *FactoidPlugin) sayFact(message msg.Message, fact factoid) {
+func (p *Factoid) sayFact(message msg.Message, fact factoid) {
 	msg := p.Bot.Filter(message, fact.Tidbit)
 	full := p.Bot.Filter(message, fmt.Sprintf("%s %s %s",
 		fact.Fact, fact.Verb, fact.Tidbit,
@@ -355,7 +355,7 @@ func (p *FactoidPlugin) sayFact(message msg.Message, fact factoid) {
 
 // trigger checks the message for its fitness to be a factoid and then hauls
 // the message off to sayFact for processing if it is in fact a trigger
-func (p *FactoidPlugin) trigger(message msg.Message) bool {
+func (p *Factoid) trigger(message msg.Message) bool {
 	minLen := p.Bot.Config().Factoid.MinLen
 	if len(message.Body) > minLen || message.Command || message.Body == "..." {
 		if ok, fact := p.findTrigger(message.Body); ok {
@@ -374,7 +374,7 @@ func (p *FactoidPlugin) trigger(message msg.Message) bool {
 }
 
 // tellThemWhatThatWas is a hilarious name for a function.
-func (p *FactoidPlugin) tellThemWhatThatWas(message msg.Message) bool {
+func (p *Factoid) tellThemWhatThatWas(message msg.Message) bool {
 	fact := p.LastFact
 	var msg string
 	if fact == nil {
@@ -387,7 +387,7 @@ func (p *FactoidPlugin) tellThemWhatThatWas(message msg.Message) bool {
 	return true
 }
 
-func (p *FactoidPlugin) learnAction(message msg.Message, action string) bool {
+func (p *Factoid) learnAction(message msg.Message, action string) bool {
 	body := message.Body
 
 	parts := strings.SplitN(body, action, 2)
@@ -433,7 +433,7 @@ func changeOperator(body string) string {
 
 // If the user requesting forget is either the owner of the last learned fact or
 // an admin, it may be deleted
-func (p *FactoidPlugin) forgetLastFact(message msg.Message) bool {
+func (p *Factoid) forgetLastFact(message msg.Message) bool {
 	if p.LastFact == nil {
 		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
@@ -455,7 +455,7 @@ func (p *FactoidPlugin) forgetLastFact(message msg.Message) bool {
 }
 
 // Allow users to change facts with a simple regexp
-func (p *FactoidPlugin) changeFact(message msg.Message) bool {
+func (p *Factoid) changeFact(message msg.Message) bool {
 	oper := changeOperator(message.Body)
 	parts := strings.SplitN(message.Body, oper, 2)
 	userexp := strings.TrimSpace(parts[1])
@@ -542,7 +542,7 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FactoidPlugin) Message(message msg.Message) bool {
+func (p *Factoid) Message(message msg.Message) bool {
 	if strings.ToLower(message.Body) == "what was that?" {
 		return p.tellThemWhatThatWas(message)
 	}
@@ -586,18 +586,18 @@ func (p *FactoidPlugin) Message(message msg.Message) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *FactoidPlugin) Help(channel string, parts []string) {
+func (p *Factoid) Help(channel string, parts []string) {
 	p.Bot.SendMessage(channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
 	p.Bot.SendMessage(channel, "I can also figure out some variables including: $nonzero, $digit, $nick, and $someone.")
 }
 
 // Empty event handler because this plugin does not do anything on event recv
-func (p *FactoidPlugin) Event(kind string, message msg.Message) bool {
+func (p *Factoid) Event(kind string, message msg.Message) bool {
 	return false
 }
 
 // Pull a fact at random from the database
-func (p *FactoidPlugin) randomFact() *factoid {
+func (p *Factoid) randomFact() *factoid {
 	f, err := getSingle(p.db)
 	if err != nil {
 		fmt.Println("Error getting a fact: ", err)
@@ -607,7 +607,7 @@ func (p *FactoidPlugin) randomFact() *factoid {
 }
 
 // factTimer spits out a fact at a given interval and with given probability
-func (p *FactoidPlugin) factTimer(channel string) {
+func (p *Factoid) factTimer(channel string) {
 	duration := time.Duration(p.Bot.Config().Factoid.QuoteTime) * time.Minute
 	myLastMsg := time.Now()
 	for {
@@ -643,12 +643,12 @@ func (p *FactoidPlugin) factTimer(channel string) {
 }
 
 // Handler for bot's own messages
-func (p *FactoidPlugin) BotMessage(message msg.Message) bool {
+func (p *Factoid) BotMessage(message msg.Message) bool {
 	return false
 }
 
 // Register any web URLs desired
-func (p *FactoidPlugin) RegisterWeb() *string {
+func (p *Factoid) RegisterWeb() *string {
 	http.HandleFunc("/factoid/req", p.serveQuery)
 	http.HandleFunc("/factoid", p.serveQuery)
 	tmp := "/factoid"
@@ -665,7 +665,7 @@ func linkify(text string) template.HTML {
 	return template.HTML(strings.Join(parts, " "))
 }
 
-func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
+func (p *Factoid) serveQuery(w http.ResponseWriter, r *http.Request) {
 	context := make(map[string]interface{})
 	funcMap := template.FuncMap{
 		// The name "title" is what the function will be called in the template text.
