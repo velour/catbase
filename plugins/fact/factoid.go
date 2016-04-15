@@ -95,7 +95,7 @@ func (f *factoid) delete(db *sqlx.DB) error {
 
 func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*factoid, error) {
 	var fs []*factoid
-	rows, err := db.Query(`select
+	query := `select
 			id,
 			fact,
 			tidbit,
@@ -105,9 +105,10 @@ func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*factoid, error) {
 			accessed,
 			count
 		from factoid
-		where fact regexp ?
-		and tidbit regexp ?;`,
-		fact, tidbit)
+		where fact like ?
+		and tidbit like ?;`
+	rows, err := db.Query(query,
+		"%"+fact+"%", "%"+tidbit+"%")
 	if err != nil {
 		log.Printf("Error regexping for facts: %s", err)
 		return nil, err
@@ -672,7 +673,7 @@ func (p *Factoid) serveQuery(w http.ResponseWriter, r *http.Request) {
 		"linkify": linkify,
 	}
 	if e := r.FormValue("entry"); e != "" {
-		entries, err := getFacts(p.db, e, ".*")
+		entries, err := getFacts(p.db, e, "")
 		if err != nil {
 			log.Println("Web error searching: ", err)
 		}
