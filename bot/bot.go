@@ -178,13 +178,12 @@ func (b *bot) AddHandler(name string, h Handler) {
 }
 
 func (b *bot) Who(channel string) []user.User {
-	out := []user.User{}
-	for _, u := range b.users {
-		if u.Name != b.Config().Nick {
-			out = append(out, u)
-		}
+	names := b.conn.Who(channel)
+	users := []user.User{}
+	for _, n := range names {
+		users = append(users, user.New(n))
 	}
-	return out
+	return users
 }
 
 var rootIndex string = `

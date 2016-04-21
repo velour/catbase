@@ -31,6 +31,8 @@ type Connector interface {
 	SendMessage(channel, message string)
 	SendAction(channel, message string)
 	Serve()
+
+	Who(string) []string
 }
 
 // Interface used for compatibility with the Plugin interface

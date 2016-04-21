@@ -609,13 +609,14 @@ func (p *Factoid) randomFact() *factoid {
 
 // factTimer spits out a fact at a given interval and with given probability
 func (p *Factoid) factTimer(channel string) {
-	duration := time.Duration(p.Bot.Config().Factoid.QuoteTime) * time.Minute
+	duration := time.Duration(p.Bot.Config().Factoid.QuoteTime) * time.Second
 	myLastMsg := time.Now()
 	for {
-		time.Sleep(time.Duration(5) * time.Second)
+		time.Sleep(time.Duration(5) * time.Second) // why 5?
 
 		lastmsg, err := p.Bot.LastMessage(channel)
 		if err != nil {
+			// Probably no previous message to time off of
 			continue
 		}
 
@@ -627,6 +628,7 @@ func (p *Factoid) factTimer(channel string) {
 		if success && tdelta > duration && earlier {
 			fact := p.randomFact()
 			if fact == nil {
+				log.Println("Didn't find a random fact to say")
 				continue
 			}
 

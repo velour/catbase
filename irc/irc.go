@@ -274,3 +274,7 @@ func (i *Irc) buildMessage(inMsg irc.Msg) msg.Message {
 
 	return msg
 }
+
+func (i Irc) Who(channel string) []string {
+	return []string{}
+}

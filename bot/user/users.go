@@ -6,15 +6,12 @@ package user
 // session
 type User struct {
 	// Current nickname known
-	Name string
-
-	// LastSeen	DateTime
-
-	// Alternative nicknames seen
-	Alts   []string
-	Parent string
-
+	Name  string
 	Admin bool
+}
 
-	//bot *bot
+func New(name string) User {
+	return User{
+		Name: name,
+	}
 }

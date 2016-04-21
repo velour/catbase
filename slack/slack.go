@@ -11,8 +11,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -44,6 +46,25 @@ type slackUserInfoResp struct {
 	} `json:"user"`
 }
 
+type slackChannelInfoResp struct {
+	Ok      bool `json:"ok"`
+	Channel struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+
+		Created int64  `json:"created"`
+		Creator string `json:"creator"`
+
+		Members []string `json:"members"`
+
+		Topic struct {
+			Value   string `json:"value"`
+			Creator string `json:"creator"`
+			LastSet int64  `json:"last_set"`
+		} `json:"topic"`
+	} `json:"channel"`
+}
+
 type slackMessage struct {
 	Id      uint64 `json:"id"`
 	Type    string `json:"type"`
@@ -51,6 +72,7 @@ type slackMessage struct {
 	Channel string `json:"channel"`
 	Text    string `json:"text"`
 	User    string `json:"user"`
+	Ts      string `json:"ts"`
 	Error   struct {
 		Code uint64 `json:"code"`
 		Msg  string `json:"msg"`
@@ -150,6 +172,12 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 
 	u := s.getUser(m.User)
 
+	// I think it's horseshit that I have to do this
+	ts := strings.Split(m.Ts, ".")
+	sec, _ := strconv.ParseInt(ts[0], 10, 64)
+	nsec, _ := strconv.ParseInt(ts[1], 10, 64)
+	tstamp := time.Unix(sec, nsec)
+
 	return msg.Message{
 		User: &user.User{
 			Name: u,
@@ -160,6 +188,7 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 		Command: isCmd,
 		Action:  isAction,
 		Host:    string(m.Id),
+		Time:    tstamp,
 	}
 }
 
@@ -212,6 +241,7 @@ func (s *Slack) getUser(id string) string {
 			resp.StatusCode, err)
 		return "UNKNOWN"
 	}
+	defer resp.Body.Close()
 	var userInfo slackUserInfoResp
 	err = json.NewDecoder(resp.Body).Decode(&userInfo)
 	if err != nil {
@@ -220,4 +250,33 @@ func (s *Slack) getUser(id string) string {
 	}
 	s.users[id] = userInfo.User.Name
 	return s.users[id]
+}
+
+// Who gets usernames out of a channel
+func (s *Slack) Who(id string) []string {
+	log.Println("Who is queried for ", id)
+	u := s.url + "channels.info"
+	resp, err := http.PostForm(u,
+		url.Values{"token": {s.config.Slack.Token}, "channel": {id}})
+	if err != nil || resp.StatusCode != 200 {
+		log.Printf("Error posting user info request: %d %s",
+			resp.StatusCode, err)
+		return []string{}
+	}
+	defer resp.Body.Close()
+	var chanInfo slackChannelInfoResp
+	err = json.NewDecoder(resp.Body).Decode(&chanInfo)
+	if err != nil || !chanInfo.Ok {
+		log.Println("Error decoding response: ", err)
+		return []string{}
+	}
+
+	log.Printf("%#v", chanInfo.Channel)
+
+	handles := []string{}
+	for _, member := range chanInfo.Channel.Members {
+		handles = append(handles, s.getUser(member))
+	}
+	log.Printf("Returning %d handles", len(handles))
+	return handles
 }
