@@ -5,7 +5,6 @@ package fact
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -55,72 +54,59 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 		// we have a remember!
 		// look through the logs and find parts[1] as a user, if not,
 		// fuck this hoser
-		snips := strings.Split(strings.Join(parts[1:], " "), "$and")
-		var msgs []string
-		var trigger string
+		nick := parts[1]
+		snip := strings.Join(parts[2:], " ")
+		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
+			entry := p.Log[message.Channel][i]
+			log.Printf("Comparing %s:%s with %s:%s",
+				entry.User.Name, entry.Body, nick, snip)
+			if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
+				strings.Contains(
+					strings.ToLower(entry.Body),
+					strings.ToLower(snip),
+				) {
+				log.Printf("Found!")
 
-		for _, snip := range snips {
-			snip = strings.TrimSpace(snip)
-			snipParts := strings.Split(snip, " ")
-			nick := snipParts[0]
-			snip := strings.Join(snipParts[1:], " ")
-
-			for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
-				entry := p.Log[message.Channel][i]
-
-				if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
-					strings.Contains(
-						strings.ToLower(entry.Body),
-						strings.ToLower(snip),
-					) {
-
-					// check if it's an action
-					if entry.Action {
-						msgs = append(msgs, fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body))
-					} else {
-						msgs = append(msgs, fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body))
-					}
-
-					if trigger == "" {
-						trigger = fmt.Sprintf("%s quotes", entry.User.Name)
-					}
-
+				var msg string
+				if entry.Action {
+					msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body)
+				} else {
+					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body)
 				}
+
+				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
+
+				fact := factoid{
+					Fact:     strings.ToLower(trigger),
+					Verb:     "reply",
+					Tidbit:   msg,
+					Owner:    user.Name,
+					created:  time.Now(),
+					accessed: time.Now(),
+					Count:    0,
+				}
+				if err := fact.save(p.db); err != nil {
+					log.Println("ERROR!!!!:", err)
+					p.Bot.SendMessage(message.Channel, "Tell somebody I'm broke.")
+				}
+
+				log.Println("Remembering factoid:", msg)
+
+				// sorry, not creative with names so we're reusing msg
+				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
+					message.User.Name, msg)
+				p.Bot.SendMessage(message.Channel, msg)
+				p.recordMsg(message)
+				return true
+
 			}
-		}
-
-		if len(msgs) == len(snips) {
-			msg := strings.Join(msgs, "$and")
-
-			fact := factoid{
-				Fact:     strings.ToLower(trigger),
-				Verb:     "reply",
-				Tidbit:   msg,
-				Owner:    user.Name,
-				created:  time.Now(),
-				accessed: time.Now(),
-				Count:    0,
-			}
-			if err := fact.save(p.db); err != nil {
-				log.Println("ERROR!!!!:", err)
-				p.Bot.SendMessage(message.Channel, "Tell somebody I'm broke.")
-			}
-
-			log.Println("Remembering factoid:", msg)
-
-			// sorry, not creative with names so we're reusing msg
-			msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
-				message.User.Name, msg)
-			p.Bot.SendMessage(message.Channel, msg)
-			p.Log[message.Channel] = append(p.Log[message.Channel], message)
-			return true
 		}
 
 		p.Bot.SendMessage(message.Channel, "Sorry, I don't know that phrase.")
-		p.Log[message.Channel] = append(p.Log[message.Channel], message)
+		p.recordMsg(message)
 		return true
 	}
-	p.Log[message.Channel] = append(p.Log[message.Channel], message)
+	p.recordMsg(message)
 	return false
 }
 
@@ -164,19 +150,6 @@ func (p *RememberPlugin) randQuote() string {
 	return f.Tidbit
 }
 
-func (p *RememberPlugin) quoteTimer(channel string) {
-	for {
-		// this pisses me off: You can't multiply int * time.Duration so it
-		// has to look ugly as shit.
-		time.Sleep(time.Duration(p.Bot.Config().Factoid.QuoteTime) * time.Minute)
-		chance := 1.0 / p.Bot.Config().Factoid.QuoteChance
-		if rand.Intn(int(chance)) == 0 {
-			msg := p.randQuote()
-			p.Bot.SendMessage(channel, msg)
-		}
-	}
-}
-
 // Empty event handler because this plugin does not do anything on event recv
 func (p *RememberPlugin) Event(kind string, message msg.Message) bool {
 	return false
@@ -184,11 +157,16 @@ func (p *RememberPlugin) Event(kind string, message msg.Message) bool {
 
 // Record what the bot says in the log
 func (p *RememberPlugin) BotMessage(message msg.Message) bool {
-	p.Log[message.Channel] = append(p.Log[message.Channel], message)
+	p.recordMsg(message)
 	return false
 }
 
 // Register any web URLs desired
 func (p *RememberPlugin) RegisterWeb() *string {
 	return nil
+}
+
+func (p *RememberPlugin) recordMsg(message msg.Message) {
+	log.Printf("Logging message: %s: %s", message.User.Name, message.Body)
+	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 }
