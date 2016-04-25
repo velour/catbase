@@ -287,11 +287,11 @@ type checkin struct {
 	Checkin_id      int
 	Created_at      string
 	Checkin_comment string
-	// Rating_score    int // Apparently Untappd makes this a string when not present. :(
-	Beer    map[string]interface{}
-	Brewery map[string]interface{}
-	Venue   interface{}
-	User    mrUntappd
+	Rating_score    float64
+	Beer            map[string]interface{}
+	Brewery         map[string]interface{}
+	Venue           interface{}
+	User            mrUntappd
 }
 
 type mrUntappd struct {
@@ -400,6 +400,9 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 
 		msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
 			user.chanNick, beerName, breweryName, venue, drunken)
+		if checkin.Rating_score > 0 {
+			msg = fmt.Sprintf("%s. Rating: %.2f", msg, checkin.Rating_score)
+		}
 		if checkin.Checkin_comment != "" {
 			msg = fmt.Sprintf("%s -- %s",
 				msg, checkin.Checkin_comment)
