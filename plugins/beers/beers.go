@@ -292,6 +292,15 @@ type checkin struct {
 	Brewery         map[string]interface{}
 	Venue           interface{}
 	User            mrUntappd
+	Media           struct {
+		Count int
+		Items []struct {
+			Photo_id int
+			Photo    struct {
+				Photo_img_og string
+			}
+		}
+	}
 }
 
 type mrUntappd struct {
@@ -408,6 +417,11 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 				msg, checkin.Checkin_comment)
 		}
 
+		msg2 := ""
+		if checkin.Media.Count > 0 {
+			msg2 = "Here's a photo: " + checkin.Media.Items[0].Photo.Photo_img_og
+		}
+
 		user.lastCheckin = checkin.Checkin_id
 		_, err := p.db.Exec(`update untappd set
 			lastCheckin = ?
@@ -418,6 +432,9 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 
 		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
 		p.Bot.SendMessage(channel, msg)
+		if msg2 != "" {
+			p.Bot.SendMessage(channel, msg2)
+		}
 	}
 }
 
