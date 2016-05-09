@@ -91,7 +91,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 
 	parts := strings.Fields(message.Body)
 
-	if len(parts) > 5 {
+	if len(parts) >= 5 {
 		if strings.ToLower(parts[0]) == "remind" {
 			who := parts[1]
 			dur, err := time.ParseDuration(parts[3])
