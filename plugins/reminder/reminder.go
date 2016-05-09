@@ -61,10 +61,6 @@ func New(bot bot.Bot) *ReminderPlugin {
 func reminderer(p *ReminderPlugin) {
 	//welcome to the reminderererererererererer
 	for {
-		fmt.Println()
-		fmt.Println("waiting...")
-		fmt.Println()
-
 		<-p.timer.C
 
 		p.mutex.Lock()
