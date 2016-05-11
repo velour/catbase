@@ -61,10 +61,6 @@ func New(bot bot.Bot) *ReminderPlugin {
 func reminderer(p *ReminderPlugin) {
 	//welcome to the reminderererererererererer
 	for {
-		fmt.Println()
-		fmt.Println("waiting...")
-		fmt.Println()
-
 		<-p.timer.C
 
 		p.mutex.Lock()
@@ -91,7 +87,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 
 	parts := strings.Fields(message.Body)
 
-	if len(parts) > 5 {
+	if len(parts) >= 5 {
 		if strings.ToLower(parts[0]) == "remind" {
 			who := parts[1]
 			dur, err := time.ParseDuration(parts[3])
