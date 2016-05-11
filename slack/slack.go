@@ -258,9 +258,14 @@ func (s *Slack) Who(id string) []string {
 	u := s.url + "channels.info"
 	resp, err := http.PostForm(u,
 		url.Values{"token": {s.config.Slack.Token}, "channel": {id}})
-	if err != nil || resp.StatusCode != 200 {
-		log.Printf("Error posting user info request: %d %s",
-			resp.StatusCode, err)
+	if err != nil {
+		log.Printf("Error posting user info request: %s",
+			err)
+		return []string{}
+	}
+	if resp.StatusCode != 200 {
+		log.Printf("Error posting user info request: %d",
+			resp.StatusCode)
 		return []string{}
 	}
 	defer resp.Body.Close()

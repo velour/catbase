@@ -64,6 +64,9 @@ type Config struct {
 		QuoteTime   int
 		StartupFact string
 	}
+	Babbler struct {
+		DefaultUsers []string
+	}
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

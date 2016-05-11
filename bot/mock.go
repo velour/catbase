@@ -16,11 +16,13 @@ type MockBot struct {
 	mock.Mock
 	db *sqlx.DB
 
+	Cfg config.Config
+
 	Messages []string
 	Actions  []string
 }
 
-func (mb *MockBot) Config() *config.Config            { return &config.Config{} }
+func (mb *MockBot) Config() *config.Config            { return &mb.Cfg }
 func (mb *MockBot) DBVersion() int64                  { return 1 }
 func (mb *MockBot) DB() *sqlx.DB                      { return mb.db }
 func (mb *MockBot) Who(string) []user.User            { return []user.User{} }

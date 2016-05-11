@@ -58,5 +58,10 @@
 		"QuoteTime": 1,
 		"StartupFact": "speed test",
 		"MinLen": 5
+	},
+	"Babbler": {
+		"DefaultUsers": [
+			"seabass"
+		]
 	}
 }
