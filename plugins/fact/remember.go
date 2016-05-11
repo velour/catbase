@@ -47,7 +47,7 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 	}
 
 	user := message.User
-	parts := strings.Split(message.Body, " ")
+	parts := strings.Fields(message.Body)
 	if message.Command && len(parts) >= 3 &&
 		strings.ToLower(parts[0]) == "remember" {
 

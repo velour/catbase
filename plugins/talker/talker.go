@@ -69,7 +69,7 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 
 	if message.Command && strings.HasPrefix(lowermessage, "goatse") {
 		nick := message.User.Name
-		if parts := strings.Split(message.Body, " "); len(parts) > 1 {
+		if parts := strings.Fields(message.Body); len(parts) > 1 {
 			nick = parts[1]
 		}
 
