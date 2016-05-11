@@ -659,7 +659,7 @@ func (p *Factoid) RegisterWeb() *string {
 }
 
 func linkify(text string) template.HTML {
-	parts := strings.Split(text, " ")
+	parts := strings.Fields(text)
 	for i, word := range parts {
 		if strings.HasPrefix(word, "http") {
 			parts[i] = fmt.Sprintf("<a href=\"%s\">%s</a>", word, word)

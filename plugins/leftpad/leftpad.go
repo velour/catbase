@@ -37,7 +37,7 @@ func (p *LeftpadPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	parts := strings.Split(message.Body, " ")
+	parts := strings.Fields(message.Body)
 	if len(parts) > 3 && parts[0] == "leftpad" {
 		padchar := parts[1]
 		length, err := strconv.Atoi(parts[2])
