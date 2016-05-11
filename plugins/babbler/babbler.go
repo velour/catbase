@@ -8,59 +8,79 @@ import (
 	"math/rand"
 	"strings"
 
-
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
+	"github.com/velour/catbase/config"
 )
 
 type BabblerPlugin struct {
-	Bot bot.Bot
-	db  *sqlx.DB
+	Bot      bot.Bot
+	db       *sqlx.DB
+	config   *config.Config
 	babblers map[string]*babbler
 }
 
 type babbler struct {
-	start *node
-	end *node
+	start  *node
+	end    *node
 	lookup map[string]*node
 }
 
 type node struct {
 	wordFrequency int
-	arcs map[string]*arc
+	arcs          map[string]*arc
 }
 
 type arc struct {
 	transitionFrequency int
-	next *node
+	next                *node
 }
 
 func New(bot bot.Bot) *BabblerPlugin {
 	plugin := &BabblerPlugin{
-		Bot: bot,
-		db: bot.DB(),
+		Bot:      bot,
+		db:       bot.DB(),
+		config:   bot.Config(),
 		babblers: map[string]*babbler{},
-	}
-
-	// this who string isn't escaped, just sooo, you know.
-	babbler, err := getMarkovChain(plugin.db, "seabass")
-	if err == nil {
-		plugin.babblers["seabass"] = babbler
-	} else {
-		plugin.babblers["seabass"] = newBabbler()
 	}
 
 	return plugin
 }
 
+func (p *BabblerPlugin) makeBabbler(newUser user.User) {
+	name := newUser.Name
+	babbler, err := getMarkovChain(p.db, name)
+	if err == nil {
+		p.babblers[name] = babbler
+	} else {
+		p.babblers[name] = newBabbler()
+	}
+}
+
+func (p *BabblerPlugin) makeBabblers(newUser user.User) {
+	users := p.Bot.Who(p.config.MainChannel)
+	users = append(users, newUser)
+	for _, name := range p.config.Babbler.DefaultUsers {
+		users = append(users, user.New(name))
+	}
+	for _, u := range users {
+		p.makeBabbler(u)
+	}
+}
+
 func (p *BabblerPlugin) Message(message msg.Message) bool {
+	if len(p.babblers) == 0 {
+		p.makeBabblers(*message.User)
+	} else if _, ok := p.babblers[message.User.Name]; !ok {
+		p.makeBabbler(*message.User)
+	}
+
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 
-	if _, ok := p.babblers[message.User.Name]; ok {
-		addToMarkovChain(p.babblers[message.User.Name], lowercase)
-	}
+	addToMarkovChain(p.babblers[message.User.Name], lowercase)
 
 	if len(tokens) == 4 && strings.Contains(lowercase, "initialize babbler for ") {
 		who := tokens[len(tokens)-1]
@@ -71,20 +91,24 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 			} else {
 				p.babblers[who] = newBabbler()
 			}
+			p.Bot.SendMessage(message.Channel, "Okay.")
+			return true
 		}
 	}
 
 	if len(tokens) == 2 && tokens[1] == "says" {
-		if _, ok := p.babblers[tokens[0]]; ok {
-			p.Bot.SendMessage(message.Channel, p.babble(tokens[0]))
-			return true
+		saying := p.babble(tokens[0])
+		if saying == "" {
+			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
 		}
+		p.Bot.SendMessage(message.Channel, saying)
+		return true
 	}
 	return false
 }
 
 func (p *BabblerPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "seabass says")
+	p.Bot.SendMessage(channel, "initialize babbler for seabass\n\nseabass says")
 }
 
 func (p *BabblerPlugin) Event(kind string, message msg.Message) bool {
@@ -109,7 +133,7 @@ func addToMarkovChain(babble *babbler, phrase string) {
 		if _, ok := babble.lookup[words[i]]; !ok {
 			babble.lookup[words[i]] = &node{
 				wordFrequency: 1,
-				arcs: map[string]*arc{},
+				arcs:          map[string]*arc{},
 			}
 		} else {
 			babble.lookup[words[i]].wordFrequency++
@@ -119,7 +143,7 @@ func addToMarkovChain(babble *babbler, phrase string) {
 		if _, ok := prev.arcs[words[i]]; !ok {
 			prev.arcs[words[i]] = &arc{
 				transitionFrequency: 1,
-				next: babble.lookup[words[i]],
+				next:                babble.lookup[words[i]],
 			}
 		} else {
 			prev.arcs[words[i]].transitionFrequency++
@@ -131,7 +155,7 @@ func addToMarkovChain(babble *babbler, phrase string) {
 	if _, ok := prev.arcs[""]; !ok {
 		prev.arcs[""] = &arc{
 			transitionFrequency: 1,
-			next: babble.end,
+			next:                babble.end,
 		}
 	} else {
 		prev.arcs[""].transitionFrequency++
@@ -139,15 +163,15 @@ func addToMarkovChain(babble *babbler, phrase string) {
 }
 
 func newBabbler() *babbler {
-	return &babbler {
-		start: &node {
-					wordFrequency: 0,
-					arcs: map[string]*arc{},
-				},
-		end: &node {
-					wordFrequency: 0,
-					arcs: map[string]*arc{},
-				},
+	return &babbler{
+		start: &node{
+			wordFrequency: 0,
+			arcs:          map[string]*arc{},
+		},
+		end: &node{
+			wordFrequency: 0,
+			arcs:          map[string]*arc{},
+		},
 		lookup: map[string]*node{},
 	}
 }

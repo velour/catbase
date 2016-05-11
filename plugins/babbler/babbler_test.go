@@ -28,10 +28,12 @@ func makeMessage(payload string) msg.Message {
 func TestBabbler(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, c)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
+	assert.Len(t, c.babblers, 1)
 	seabass.Body = "This is another message"
 	res = c.Message(seabass)
 	seabass.Body = "This is a long message"
