@@ -80,9 +80,14 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 
-	addToMarkovChain(p.babblers[message.User.Name], lowercase)
-
-	if len(tokens) == 4 && strings.Contains(lowercase, "initialize babbler for ") {
+	if len(tokens) == 2 && tokens[1] == "says" {
+		saying := p.babble(tokens[0])
+		if saying == "" {
+			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
+		}
+		p.Bot.SendMessage(message.Channel, saying)
+		return true
+	} else if len(tokens) == 4 && strings.Contains(lowercase, "initialize babbler for ") {
 		who := tokens[len(tokens)-1]
 		if _, ok := p.babblers[who]; !ok {
 			babbler, err := getMarkovChain(p.db, who)
@@ -94,16 +99,11 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 			p.Bot.SendMessage(message.Channel, "Okay.")
 			return true
 		}
+	} else {
+		addToMarkovChain(p.babblers[message.User.Name], lowercase)
 	}
 
-	if len(tokens) == 2 && tokens[1] == "says" {
-		saying := p.babble(tokens[0])
-		if saying == "" {
-			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
-		}
-		p.Bot.SendMessage(message.Channel, saying)
-		return true
-	}
+	
 	return false
 }
 
