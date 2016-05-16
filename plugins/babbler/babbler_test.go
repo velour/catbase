@@ -45,6 +45,22 @@ func TestBabbler(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "message")
 }
 
+func TestBabblerBatch(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("batch learn for seabass This is a message! This is another message. This is not a long message? This is not a message! This is not another message. This is a long message?")
+	res := c.Message(seabass)
+	assert.Len(t, c.babblers, 2)
+	assert.Len(t, mb.Messages, 1)
+	res = c.Message(makeMessage("!seabass says"))
+	assert.Len(t, mb.Messages, 2)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[1], "this is")
+	assert.Contains(t, mb.Messages[1], "message")
+}
+
 func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)

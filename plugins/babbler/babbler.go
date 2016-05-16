@@ -3,7 +3,6 @@
 package babbler
 
 import (
-	// "database/sql"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -80,10 +79,15 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 
-	addToMarkovChain(p.babblers[message.User.Name], lowercase)
-
-	if len(tokens) == 4 && strings.Contains(lowercase, "initialize babbler for ") {
-		who := tokens[len(tokens)-1]
+	if len(tokens) == 2 && tokens[1] == "says" {
+		saying := p.babble(tokens[0])
+		if saying == "" {
+			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
+		}
+		p.Bot.SendMessage(message.Channel, saying)
+		return true
+	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
+		who := tokens[3]
 		if _, ok := p.babblers[who]; !ok {
 			babbler, err := getMarkovChain(p.db, who)
 			if err == nil {
@@ -94,16 +98,35 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 			p.Bot.SendMessage(message.Channel, "Okay.")
 			return true
 		}
+	} else if strings.Index(lowercase, "batch learn for ") == 0 {
+		who := tokens[3]
+		if _, ok := p.babblers[who]; !ok {
+			p.babblers[who] = newBabbler()
+		}
+
+		body := strings.Join(tokens[4:], " ")
+		body = strings.ToLower(body)
+
+		for _, a := range strings.Split(body, ".") {
+			for _, b := range strings.Split(a, "!") {
+				for _, c := range strings.Split(b, "?") {
+					for _, d := range strings.Split(c, "\n") {
+						trimmed := strings.TrimSpace(d)
+						if trimmed != "" {
+							addToMarkovChain(p.babblers[who], trimmed)
+						}
+					}
+				}
+			}
+		}
+
+		p.Bot.SendMessage(message.Channel, "Phew that was tiring.")
+		return true
+	} else {
+		addToMarkovChain(p.babblers[message.User.Name], lowercase)
 	}
 
-	if len(tokens) == 2 && tokens[1] == "says" {
-		saying := p.babble(tokens[0])
-		if saying == "" {
-			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
-		}
-		p.Bot.SendMessage(message.Channel, saying)
-		return true
-	}
+	
 	return false
 }
 
