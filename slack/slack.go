@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -158,10 +159,15 @@ func (s *Slack) Serve() {
 	}
 }
 
+var urlDetector = regexp.MustCompile(`<(.+)://([^|^>]+).*>`)
+
 // Convert a slackMessage to a msg.Message
 func (s *Slack) buildMessage(m slackMessage) msg.Message {
 	log.Printf("DEBUG: msg: %#v", m)
 	text := html.UnescapeString(m.Text)
+
+	// remove <> from URLs, URLs may also be <url|description>
+	text = urlDetector.ReplaceAllString(text, "${1}://${2}")
 
 	isCmd, text := bot.IsCmd(s.config, text)
 
