@@ -159,7 +159,7 @@ func (b *bot) Filter(message msg.Message, input string) string {
 
 func (b *bot) getVar(varName string) (string, error) {
 	var text string
-	err := b.db.QueryRow(`select v.value from variables as va inner join "values" as v on va.id = va.id = v.varId order by random() limit 1`).Scan(&text)
+	err := b.db.Get(&text, `select value from variables where name=? order by random() limit 1`, varName)
 	switch {
 	case err == sql.ErrNoRows:
 		return "", fmt.Errorf("No factoid found")
@@ -170,19 +170,14 @@ func (b *bot) getVar(varName string) (string, error) {
 }
 
 func (b *bot) listVars(channel string, parts []string) {
-	rows, err := b.db.Query(`select name from variables`)
+	var variables []string
+	err := b.db.Select(&variables, `select name from variables group by name`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	msg := "I know: $who, $someone, $digit, $nonzero"
-	for rows.Next() {
-		var variable string
-		err := rows.Scan(&variable)
-		if err != nil {
-			log.Println("Error scanning variable.")
-			continue
-		}
-		msg = fmt.Sprintf("%s, %s", msg, variable)
+	if len(variables) > 0 {
+		msg += ", " + strings.Join(variables, ", ")
 	}
 	b.SendMessage(channel, msg)
 }

@@ -149,22 +149,12 @@ func (b *bot) migrateDB() {
 		}
 	}
 
-	if b.dbVersion == 1 {
-		if _, err := b.db.Exec(`create table if not exists variables (
+	if _, err := b.db.Exec(`create table if not exists variables (
 			id integer primary key,
 			name string,
-			perms string,
-			type string
-		);`); err != nil {
-			log.Fatal("Initial DB migration create variables table: ", err)
-		}
-		if _, err := b.db.Exec(`create table if not exists 'values' (
-			id integer primary key,
-			varId integer,
 			value string
 		);`); err != nil {
-			log.Fatal("Initial DB migration create values table: ", err)
-		}
+		log.Fatal("Initial DB migration create variables table: ", err)
 	}
 }
 
