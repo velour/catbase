@@ -36,7 +36,7 @@ func New(bot bot.Bot) *AdminPlugin {
 func (p *AdminPlugin) Message(message msg.Message) bool {
 	body := message.Body
 
-	if body[0] == '$' {
+	if len(body) > 0 && body[0] == '$' {
 		return p.handleVariables(message)
 	}
 
