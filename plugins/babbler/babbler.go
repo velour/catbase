@@ -122,11 +122,48 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 
 		p.Bot.SendMessage(message.Channel, "Phew that was tiring.")
 		return true
+	} else if len(tokens) == 5 && strings.Index(lowercase, "merge babbler") == 0 {
+		if tokens[3] != "into" {
+			p.Bot.SendMessage(message.Channel, "try using 'merge babbler [x] into [y]'")
+			return true
+		}
+
+		who := tokens[2]
+		into := tokens[4]
+
+		if who == into {
+			p.Bot.SendMessage(message.Channel, "Fuck off")
+			return true
+		}
+
+		var whoBabbler *babbler
+		ok := false
+		if whoBabbler, ok = p.babblers[who]; !ok {
+			babbler, err := getMarkovChain(p.db, who)
+			if err == nil {
+				whoBabbler = babbler
+			} else {
+				whoBabbler = newBabbler()
+			}
+		}
+
+		if _, ok := p.babblers[into]; !ok {
+			babbler, err := getMarkovChain(p.db, into)
+			if err == nil {
+				p.babblers[into] = babbler
+			} else {
+				p.babblers[into] = newBabbler()
+			}
+		}
+
+		p.babblers[into].merge(whoBabbler, into, who)
+
+		p.Bot.SendMessage(message.Channel, "mooooiggged")
+		return true
 	} else {
 		addToMarkovChain(p.babblers[message.User.Name], lowercase)
 	}
 
-	
 	return false
 }
 
@@ -246,4 +283,76 @@ func (p *BabblerPlugin) babble(who string) string {
 	}
 
 	return fmt.Sprintf("could not find babbler: %s", who)
+}
+
+func (into *babbler) merge(other *babbler, intoName, otherName string) {
+	intoID := "<" + intoName + ">"
+	otherID := "<" + otherName + ">"
+
+	for nodeWord, myNode := range other.lookup {
+		if nodeWord == otherID {
+			nodeWord = intoID
+		}
+
+		//does this nodeWord exist yet?
+		if _, ok := into.lookup[nodeWord]; !ok {
+			into.lookup[nodeWord] = &node{
+				wordFrequency: myNode.wordFrequency,
+				arcs:          map[string]*arc{},
+			}
+		} else {
+			into.lookup[nodeWord].wordFrequency += myNode.wordFrequency
+		}
+
+		for arcWord, myArc := range myNode.arcs {
+			if arcWord == otherID {
+				arcWord = intoID
+			}
+
+			if myArc.next == other.end {
+				if _, ok := into.lookup[nodeWord].arcs[arcWord]; !ok {
+					into.lookup[nodeWord].arcs[arcWord] = &arc{
+						transitionFrequency: myArc.transitionFrequency,
+						next:                into.end,
+					}
+				} else {
+					into.lookup[nodeWord].arcs[arcWord].transitionFrequency += myArc.transitionFrequency
+				}
+				continue
+			}
+
+			//does the arcWord exist yet?
+			if _, ok := into.lookup[arcWord]; !ok {
+				into.lookup[arcWord] = &node{
+					wordFrequency: 0,
+					arcs:          map[string]*arc{},
+				}
+			}
+
+			if _, ok := into.lookup[nodeWord].arcs[arcWord]; !ok {
+				into.lookup[nodeWord].arcs[arcWord] = &arc{
+					transitionFrequency: myArc.transitionFrequency,
+					next:                into.lookup[arcWord],
+				}
+			} else {
+				into.lookup[nodeWord].arcs[arcWord].transitionFrequency += myArc.transitionFrequency
+			}
+		}
+	}
+
+	into.start.wordFrequency += other.start.wordFrequency
+
+	for startWord, startArc := range other.start.arcs {
+		if startWord == otherID {
+			startWord = intoID
+		}
+		if _, ok := into.start.arcs[startWord]; !ok {
+			into.start.arcs[startWord] = &arc{
+				transitionFrequency: startArc.transitionFrequency,
+				next:                into.lookup[startWord],
+			}
+		} else {
+			into.start.arcs[startWord].transitionFrequency += startArc.transitionFrequency
+		}
+	}
 }
