@@ -61,6 +61,37 @@ func TestBabblerBatch(t *testing.T) {
 	assert.Contains(t, mb.Messages[1], "message")
 }
 
+func TestBabblerMerge(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+
+	seabass := makeMessage("<seabass> This is a message")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	assert.Len(t, c.babblers, 1)
+	assert.Len(t, mb.Messages, 0)
+
+	seabass.Body = "<seabass> This is another message"
+	res = c.Message(seabass)
+
+	seabass.Body = "<seabass> This is a long message"
+	res = c.Message(seabass)
+
+	res = c.Message(makeMessage("!merge babbler seabass into seabass2"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "mooooiggged")
+
+	res = c.Message(makeMessage("!seabass2 says"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 2)
+
+	assert.Contains(t, mb.Messages[1], "<seabass2> this is")
+	assert.Contains(t, mb.Messages[1], "message")
+}
+
 func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
