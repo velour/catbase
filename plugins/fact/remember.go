@@ -54,7 +54,8 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 		// we have a remember!
 		// look through the logs and find parts[1] as a user, if not,
 		// fuck this hoser
-		nick := parts[1]
+		// some people use @nick instead of just nick
+		nick := strings.TrimPrefix(parts[1], "@")
 		snip := strings.Join(parts[2:], " ")
 		for i := len(p.Log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.Log[message.Channel][i]
