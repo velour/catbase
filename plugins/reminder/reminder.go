@@ -74,6 +74,10 @@ func reminderer(p *ReminderPlugin) {
 		}
 
 		p.mutex.Unlock()
+		
+		if reminder.from == reminder.who {
+			reminder.from = "you"
+		}
 
 		message := fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
 		p.Bot.SendMessage(reminder.channel, message)
@@ -90,6 +94,9 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 	if len(parts) >= 5 {
 		if strings.ToLower(parts[0]) == "remind" {
 			who := parts[1]
+			if who == "me" {
+				who = from
+			}
 			dur, err := time.ParseDuration(parts[3])
 			if err != nil {
 				p.Bot.SendMessage(channel, "Easy cowboy, not sure I can parse that duration.")
