@@ -37,6 +37,10 @@ type Config struct {
 		Freq     int
 		Channels []string
 	}
+	Twitch       struct {
+		Freq     int
+		Users    map[string][]string //channel -> usernames
+	}
 	EnforceNicks          bool
 	WelcomeMsgs           []string
 	TwitterConsumerKey    string
