@@ -37,9 +37,9 @@ type Config struct {
 		Freq     int
 		Channels []string
 	}
-	Twitch       struct {
-		Freq     int
-		Users    map[string][]string //channel -> usernames
+	Twitch struct {
+		Freq  int
+		Users map[string][]string //channel -> usernames
 	}
 	EnforceNicks          bool
 	WelcomeMsgs           []string
@@ -56,6 +56,7 @@ type Config struct {
 	Your struct {
 		YourChance    float64
 		FuckingChance float64
+		DuckingChance float64
 		MaxLength     int
 	}
 	LeftPad struct {

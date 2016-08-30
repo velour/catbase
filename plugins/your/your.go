@@ -44,6 +44,16 @@ func (p *YourPlugin) Message(message msg.Message) bool {
 			return true
 		}
 	}
+	if strings.Contains(message.Body, "ducking") || strings.Contains(message.Body, "fucking") { // let's not mess with case
+		log.Println("Found a fucking|ducking")
+		if rand.Float64() < config.DuckingChance {
+			log.Println("Replacing a ducking")
+			r := strings.NewReplacer("fucking", "ducking", "ducking", "fucking")
+			msg := r.Replace(message.Body)
+			p.bot.SendMessage(message.Channel, msg)
+			return true
+		}
+	}
 	if strings.Contains(lower, "your") || strings.Contains(lower, "you're") {
 		if rand.Float64() < config.YourChance {
 			r := strings.NewReplacer("Your", "You're", "your", "you're", "You're",
