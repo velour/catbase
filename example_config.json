@@ -16,7 +16,7 @@
 	},
 	"Nick": "CatBaseTest",
 	"FullName": "CatBase",
-	"CommandChar": "!",
+	"CommandChar": ["!", "¡"],
 	"RatePerSec": 10.0,
 	"LogLength": 50,
 	"Admins": ["<Admin Nick>"],
