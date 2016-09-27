@@ -27,7 +27,7 @@ type Config struct {
 	Nick        string
 	FullName    string
 	Version     string
-	CommandChar string
+	CommandChar []string
 	RatePerSec  float64
 	LogLength   int
 	Admins      []string

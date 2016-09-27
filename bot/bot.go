@@ -218,16 +218,12 @@ func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 
 // Checks if message is a command and returns its curtailed version
 func IsCmd(c *config.Config, message string) (bool, string) {
-	cmdc := c.CommandChar
+	cmdcs := c.CommandChar
 	botnick := strings.ToLower(c.Nick)
 	iscmd := false
 	lowerMessage := strings.ToLower(message)
 
-	if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
-		iscmd = true
-		message = message[len(cmdc):]
-		// } else if match, _ := regexp.MatchString(rex, lowerMessage); match {
-	} else if strings.HasPrefix(lowerMessage, botnick) &&
+	if strings.HasPrefix(lowerMessage, botnick) &&
 		len(lowerMessage) > len(botnick) &&
 		(lowerMessage[len(botnick)] == ',' || lowerMessage[len(botnick)] == ':') {
 
@@ -237,6 +233,14 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 		// trim off the customary addressing punctuation
 		if message[0] == ':' || message[0] == ',' {
 			message = message[1:]
+		}
+	} else {
+		for _, cmdc := range cmdcs {
+			if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
+				iscmd = true
+				message = message[len(cmdc):]
+				break
+			}
 		}
 	}
 
