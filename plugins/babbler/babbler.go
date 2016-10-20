@@ -78,13 +78,25 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
+	numTokens := len(tokens)
 
-	if len(tokens) == 2 && tokens[1] == "says" {
-		saying := p.babble(tokens[0])
+	if numTokens >= 2 && tokens[1] == "says" {
+		if numTokens > 3 {
+			p.Bot.SendMessage(message.Channel, "try seabass says [seed-token]")
+			return true
+		}
+
+		var saying string
+		if len(tokens) == 2 {
+			saying = p.babble(tokens[0])
+		} else {
+			saying = p.babbleSeed(tokens[0], tokens[2])
+		}
 		if saying == "" {
 			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
+		} else {
+			p.Bot.SendMessage(message.Channel, saying)
 		}
-		p.Bot.SendMessage(message.Channel, saying)
 		return true
 	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
 		who := tokens[3]
@@ -223,16 +235,17 @@ func addToMarkovChain(babble *babbler, phrase string) {
 }
 
 func newBabbler() *babbler {
+	start := &node{
+		wordFrequency: 0,
+		arcs:          map[string]*arc{},
+	}
 	return &babbler{
-		start: &node{
-			wordFrequency: 0,
-			arcs:          map[string]*arc{},
-		},
+		start: start,
 		end: &node{
 			wordFrequency: 0,
 			arcs:          map[string]*arc{},
 		},
-		lookup: map[string]*node{},
+		lookup: map[string]*node{"": start},
 	}
 }
 
@@ -260,12 +273,19 @@ func getMarkovChain(db *sqlx.DB, who string) (*babbler, error) {
 }
 
 func (p *BabblerPlugin) babble(who string) string {
+	return p.babbleSeed(who, "")
+}
+
+func (p *BabblerPlugin) babbleSeed(who, seed string) string {
 	if babbler, ok := p.babblers[who]; ok {
 		if len(babbler.start.arcs) == 0 {
 			return ""
 		}
-		words := []string{}
-		cur := babbler.start
+		words := []string{seed}
+		var cur *node
+		if cur, ok = babbler.lookup[seed]; !ok {
+			return fmt.Sprintf("%s hasn't used the word '%s'", who, seed)
+		}
 		for cur != babbler.end {
 			which := rand.Intn(cur.wordFrequency)
 			sum := 0
@@ -279,7 +299,7 @@ func (p *BabblerPlugin) babble(who string) string {
 			}
 		}
 
-		return strings.Join(words, " ")
+		return strings.TrimSpace(strings.Join(words, " "))
 	}
 
 	return fmt.Sprintf("could not find babbler: %s", who)
