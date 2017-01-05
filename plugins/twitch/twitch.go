@@ -160,7 +160,6 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	}
 }
 
-
 // func (p *TwitchPlugin) getTwitchStreams(channel string) bool {
 // 	token := p.Bot.config.Twitch.Token
 // 	if token == "" || token == "<Your Token>" {

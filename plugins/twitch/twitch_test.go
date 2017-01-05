@@ -28,7 +28,7 @@ func makeMessage(payload string) msg.Message {
 func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
-	c.config.Twitch.Users = map[string][]string{ "test" : []string{"drseabass"}}
+	c.config.Twitch.Users = map[string][]string{"test": []string{"drseabass"}}
 	assert.NotNil(t, c)
 
 	c.twitchList["drseabass"] = &Twitcher{

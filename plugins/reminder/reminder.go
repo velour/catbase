@@ -74,7 +74,7 @@ func reminderer(p *ReminderPlugin) {
 		}
 
 		p.mutex.Unlock()
-		
+
 		if reminder.from == reminder.who {
 			reminder.from = "you"
 		}
