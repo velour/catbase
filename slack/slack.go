@@ -185,6 +185,11 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 		text = text[3:]
 	}
 
+	u := s.getUser(m.User)
+	if m.Username != "" {
+		u = m.Username
+	}
+
 	// I think it's horseshit that I have to do this
 	ts := strings.Split(m.Ts, ".")
 	sec, _ := strconv.ParseInt(ts[0], 10, 64)
@@ -194,7 +199,7 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 	return msg.Message{
 		User: &user.User{
 			ID:   m.User,
-			Name: m.Username,
+			Name: u,
 		},
 		Body:    text,
 		Raw:     m.Text,
