@@ -6,6 +6,7 @@ package user
 // session
 type User struct {
 	// Current nickname known
+	ID    string
 	Name  string
 	Admin bool
 }

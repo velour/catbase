@@ -42,7 +42,7 @@ var idCounter uint64
 type slackUserInfoResp struct {
 	Ok   bool `json:"ok"`
 	User struct {
-		Id   string `json:"id"`
+		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"user"`
 }
@@ -67,14 +67,15 @@ type slackChannelInfoResp struct {
 }
 
 type slackMessage struct {
-	Id      uint64 `json:"id"`
-	Type    string `json:"type"`
-	SubType string `json:"subtype"`
-	Channel string `json:"channel"`
-	Text    string `json:"text"`
-	User    string `json:"user"`
-	Ts      string `json:"ts"`
-	Error   struct {
+	Id       uint64 `json:"id"`
+	Type     string `json:"type"`
+	SubType  string `json:"subtype"`
+	Channel  string `json:"channel"`
+	Text     string `json:"text"`
+	User     string `json:"user"`
+	Username string `json:"username"`
+	Ts       string `json:"ts"`
+	Error    struct {
 		Code uint64 `json:"code"`
 		Msg  string `json:"msg"`
 	} `json:"error"`
@@ -130,9 +131,17 @@ func (s *Slack) SendAction(channel, message string) {
 }
 
 func (s *Slack) receiveMessage() (slackMessage, error) {
+	var msg []byte
 	m := slackMessage{}
-	err := websocket.JSON.Receive(s.ws, &m)
-	return m, err
+	//err := websocket.JSON.Receive(s.ws, &m)
+	err := websocket.Message.Receive(s.ws, &msg)
+	if err != nil {
+		log.Println("Error decoding WS message")
+		return m, err
+	}
+	log.Printf("Raw response from Slack: %s", msg)
+	err2 := json.Unmarshal(msg, &m)
+	return m, err2
 }
 
 func (s *Slack) Serve() {
@@ -176,8 +185,6 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 		text = text[3:]
 	}
 
-	u := s.getUser(m.User)
-
 	// I think it's horseshit that I have to do this
 	ts := strings.Split(m.Ts, ".")
 	sec, _ := strconv.ParseInt(ts[0], 10, 64)
@@ -186,7 +193,8 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 
 	return msg.Message{
 		User: &user.User{
-			Name: u,
+			ID:   m.User,
+			Name: m.Username,
 		},
 		Body:    text,
 		Raw:     m.Text,
