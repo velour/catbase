@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -263,6 +264,49 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 				return false
 			}
 			item.UpdateDelta(-1)
+			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+				item.Count, item.Item))
+			return true
+		}
+	} else if len(parts) == 3 {
+		// Need to have at least 3 characters to ++ or --
+		if len(parts[0]) < 3 {
+			return false
+		}
+
+		subject := strings.ToLower(nick)
+		itemName := strings.ToLower(parts[0])
+
+		if nameParts := strings.SplitN(itemName, ".", 2); len(nameParts) == 2 {
+			subject = nameParts[0]
+			itemName = nameParts[1]
+		}
+
+		if parts[1] == "+=" {
+			// += those fuckers
+			item, err := GetItem(p.DB, subject, itemName)
+			if err != nil {
+				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				// Item ain't there, I guess
+				return false
+			}
+			n, _ := strconv.Atoi(parts[2])
+			log.Printf("About to update item by %d: %#v", n, item)
+			item.UpdateDelta(n)
+			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+				item.Count, item.Item))
+			return true
+		} else if parts[1] == "-=" {
+			// -= those fuckers
+			item, err := GetItem(p.DB, subject, itemName)
+			if err != nil {
+				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				// Item ain't there, I guess
+				return false
+			}
+			n, _ := strconv.Atoi(parts[2])
+			log.Printf("About to update item by -%d: %#v", n, item)
+			item.UpdateDelta(-n)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
