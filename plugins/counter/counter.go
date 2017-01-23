@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -274,7 +275,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		}
 
 		subject := strings.ToLower(nick)
-		itemName := strings.ToLower(parts[0])[:len(parts[0])-2]
+		itemName := strings.ToLower(parts[0])
 
 		if nameParts := strings.SplitN(itemName, ".", 2); len(nameParts) == 2 {
 			subject = nameParts[0]
@@ -289,7 +290,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 				// Item ain't there, I guess
 				return false
 			}
-			n := strconv.Atoi(parts[2])
+			n, _ := strconv.Atoi(parts[2])
 			log.Printf("About to update item by %d: %#v", n, item)
 			item.UpdateDelta(n)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
@@ -303,7 +304,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 				// Item ain't there, I guess
 				return false
 			}
-			n := strconv.Atoi(parts[2])
+			n, _ := strconv.Atoi(parts[2])
 			log.Printf("About to update item by -%d: %#v", n, item)
 			item.UpdateDelta(-n)
 			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
