@@ -38,8 +38,8 @@ func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
 		return nil, err
 	}
 	// Don't forget to embed the DB into all of that shiz
-	for _, i := range items {
-		i.DB = db
+	for i := range items {
+		items[i].DB = db
 	}
 	return items, nil
 }
@@ -135,7 +135,20 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	if message.Command && parts[0] == "inspect" && len(parts) == 2 {
+	if message.Command && message.Body == "reset me" {
+		items, err := GetItems(p.DB, strings.ToLower(nick))
+		if err != nil {
+			log.Printf("Error getting items to reset %s: %s", nick, err)
+			p.Bot.SendMessage(channel, "Something is technically wrong with your counters.")
+			return true
+		}
+		log.Printf("Items: %+v", items)
+		for _, item := range items {
+			item.Delete()
+		}
+		p.Bot.SendMessage(channel, fmt.Sprintf("%s, you are as new, my son.", nick))
+		return true
+	} else if message.Command && parts[0] == "inspect" && len(parts) == 2 {
 		var subject string
 
 		if parts[1] == "me" {
