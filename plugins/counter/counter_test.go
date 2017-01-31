@@ -26,6 +26,17 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
+func TestTeaEarlGreyHot(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("Tea. Earl Grey. Hot."))
+	c.Message(makeMessage("Tea. Earl Grey. Hot."))
+	item, err := GetItem(mb.DB(), "tester", "🍵")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, item.Count)
+}
+
 func TestResetMe(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)

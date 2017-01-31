@@ -135,7 +135,19 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	if message.Command && message.Body == "reset me" {
+	if strings.ToLower(message.Body) == "tea. earl grey. hot." {
+		item, err := GetItem(p.DB, nick, "🍵")
+		if err != nil {
+			log.Printf("Error finding item %s.%s: %s.", nick, "🍵", err)
+			// Item ain't there, I guess
+			return false
+		}
+		log.Printf("About to update item: %#v", item)
+		item.UpdateDelta(1)
+		p.Bot.SendMessage(channel, fmt.Sprintf("bleep-bloop-blop... %s has %d 🍵",
+			nick, item.Count))
+		return true
+	} else if message.Command && message.Body == "reset me" {
 		items, err := GetItems(p.DB, strings.ToLower(nick))
 		if err != nil {
 			log.Printf("Error getting items to reset %s: %s", nick, err)
