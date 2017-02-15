@@ -37,6 +37,29 @@ func TestTeaEarlGreyHot(t *testing.T) {
 	assert.Equal(t, 2, item.Count)
 }
 
+func TestTeaGreenHot(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("Tea. Green. Hot."))
+	c.Message(makeMessage("Tea. Green. Hot"))
+	c.Message(makeMessage("Tea. Green. Iced."))
+	item, err := GetItem(mb.DB(), "tester", "🍵")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, item.Count)
+}
+
+func TestTeaUnrelated(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("Tea."))
+	c.Message(makeMessage("Tea. It's great."))
+	item, err := GetItem(mb.DB(), "tester", "🍵")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, item.Count)
+}
+
 func TestResetMe(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
