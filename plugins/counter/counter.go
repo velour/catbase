@@ -137,15 +137,15 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 	}
 
 	if tea, _ := regexp.MatchString("(?i)^tea\\. [0-9A-Za-z_ ]*\\. (hot)|(iced)\\.?$", message.Body); tea {
-		item, err := GetItem(p.DB, nick, "🍵")
+		item, err := GetItem(p.DB, nick, ":tea:")
 		if err != nil {
-			log.Printf("Error finding item %s.%s: %s.", nick, "🍵", err)
+			log.Printf("Error finding item %s.%s: %s.", nick, ":tea:", err)
 			// Item ain't there, I guess
 			return false
 		}
 		log.Printf("About to update item: %#v", item)
 		item.UpdateDelta(1)
-		p.Bot.SendMessage(channel, fmt.Sprintf("bleep-bloop-blop... %s has %d 🍵",
+		p.Bot.SendMessage(channel, fmt.Sprintf("bleep-bloop-blop... %s has %d :tea:",
 			nick, item.Count))
 		return true
 	} else if message.Command && message.Body == "reset me" {
