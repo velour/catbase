@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -135,7 +136,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	if strings.ToLower(message.Body) == "tea. earl grey. hot." {
+	if tea, _ := regexp.MatchString("(?i)^tea\\. [0-9A-Za-z_ ]*\\. (hot)|(iced)\\.?$", message.Body); tea {
 		item, err := GetItem(p.DB, nick, "🍵")
 		if err != nil {
 			log.Printf("Error finding item %s.%s: %s.", nick, "🍵", err)
