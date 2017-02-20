@@ -60,6 +60,16 @@ func TestTeaUnrelated(t *testing.T) {
 	assert.Equal(t, 0, item.Count)
 }
 
+func TestTeaSkieselQuote(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed"))
+	item, err := GetItem(mb.DB(), "tester", "🍵")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, item.Count)
+}
+
 func TestResetMe(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
