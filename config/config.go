@@ -57,6 +57,7 @@ type Config struct {
 		YourChance    float64
 		FuckingChance float64
 		DuckingChance float64
+		NegativeChance float64
 		MaxLength     int
 	}
 	LeftPad struct {
