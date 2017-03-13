@@ -54,11 +54,8 @@ type Config struct {
 		Hosts []string
 	}
 	Your struct {
-		YourChance    float64
-		FuckingChance float64
-		DuckingChance float64
-		NegativeChance float64
 		MaxLength     int
+		Replacements []Replacement
 	}
 	LeftPad struct {
 		MaxLen int
@@ -73,6 +70,12 @@ type Config struct {
 	Babbler struct {
 		DefaultUsers []string
 	}
+}
+
+type Replacement struct {
+	This string
+	That string
+	Frequency float64
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
