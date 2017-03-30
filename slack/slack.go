@@ -149,7 +149,8 @@ func (s *Slack) Serve() {
 	for {
 		msg, err := s.receiveMessage()
 		if err != nil {
-			log.Fatalf("Slack API error: %s", err)
+			log.Printf("Slack API error: %s", err)
+			continue
 		}
 		switch msg.Type {
 		case "message":
