@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -148,7 +149,9 @@ func (s *Slack) Serve() {
 	s.connect()
 	for {
 		msg, err := s.receiveMessage()
-		if err != nil {
+		if err != nil && err == io.EOF {
+			log.Fatalf("Slack API EOF")
+		} else if err != nil {
 			log.Printf("Slack API error: %s", err)
 			continue
 		}
