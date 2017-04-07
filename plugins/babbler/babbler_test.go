@@ -86,6 +86,44 @@ func TestBabblerSeed(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "long message")
 }
 
+func TestBabblerMultiSeed(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("This is a message")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	assert.Len(t, c.babblers, 1)
+	seabass.Body = "This is another message"
+	res = c.Message(seabass)
+	seabass.Body = "This is a long message"
+	res = c.Message(seabass)
+	res = c.Message(makeMessage("!seabass says This is a long"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "this is a long message")
+}
+
+func TestBabblerMultiSeed2(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("This is a message")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	assert.Len(t, c.babblers, 1)
+	seabass.Body = "This is another message"
+	res = c.Message(seabass)
+	seabass.Body = "This is a long message"
+	res = c.Message(seabass)
+	res = c.Message(makeMessage("!seabass says is a long"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "is a long message")
+}
+
 func TestBabblerBadSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
@@ -99,10 +137,29 @@ func TestBabblerBadSeed(t *testing.T) {
 	res = c.Message(seabass)
 	seabass.Body = "This is a long message"
 	res = c.Message(seabass)
-	res = c.Message(makeMessage("!seabass says long message"))
+	res = c.Message(makeMessage("!seabass says noooo this is bad"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "try seabass says [seed-token]")
+	assert.Contains(t, mb.Messages[0], "seabass hasn't used the phrase 'noooo this is bad'")
+}
+
+func TestBabblerBadSeed2(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("This is a message")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	assert.Len(t, c.babblers, 1)
+	seabass.Body = "This is another message"
+	res = c.Message(seabass)
+	seabass.Body = "This is a long message"
+	res = c.Message(seabass)
+	res = c.Message(makeMessage("!seabass says This is a really"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "seabass hasn't used the phrase 'this is a really'")
 }
 
 func TestBabblerBatch(t *testing.T) {
