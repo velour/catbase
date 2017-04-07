@@ -81,16 +81,11 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	numTokens := len(tokens)
 
 	if numTokens >= 2 && tokens[1] == "says" {
-		if numTokens > 3 {
-			p.Bot.SendMessage(message.Channel, "try seabass says [seed-token]")
-			return true
-		}
-
 		var saying string
 		if len(tokens) == 2 {
 			saying = p.babble(tokens[0])
 		} else {
-			saying = p.babbleSeed(tokens[0], tokens[2])
+			saying = p.babbleSeed(tokens[0], tokens[2:])
 		}
 		if saying == "" {
 			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
@@ -273,19 +268,37 @@ func getMarkovChain(db *sqlx.DB, who string) (*babbler, error) {
 }
 
 func (p *BabblerPlugin) babble(who string) string {
-	return p.babbleSeed(who, "")
+	return p.babbleSeed(who, []string{""})
 }
 
-func (p *BabblerPlugin) babbleSeed(who, seed string) string {
+func (p *BabblerPlugin) babbleSeed(who string, seed []string) string {
 	if babbler, ok := p.babblers[who]; ok {
 		if len(babbler.start.arcs) == 0 {
 			return ""
 		}
-		words := []string{seed}
+
+		words := seed
 		var cur *node
-		if cur, ok = babbler.lookup[seed]; !ok {
-			return fmt.Sprintf("%s hasn't used the word '%s'", who, seed)
+		if cur, ok = babbler.lookup[words[0]]; !ok {
+			if len(words) == 1 {
+				return fmt.Sprintf("%s hasn't used the word '%s'", who, words[0])
+			} else {
+				return fmt.Sprintf("%s hasn't used the phrase '%s'", who, strings.Join(words, " "))
+			}
 		}
+
+		for i := 1; i < len(words); i++ {
+			if arc, ok := cur.arcs[words[i]]; !ok {
+				if len(words) == 1 {
+					return fmt.Sprintf("%s hasn't used the word '%s'", who, words[0])
+				} else {
+					return fmt.Sprintf("%s hasn't used the phrase '%s'", who, strings.Join(words, " "))
+				}
+			} else {
+				cur = arc.next
+			}
+		}
+
 		for cur != babbler.end {
 			which := rand.Intn(cur.wordFrequency)
 			sum := 0
