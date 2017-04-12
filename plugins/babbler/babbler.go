@@ -87,9 +87,7 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 		} else {
 			saying = p.babbleSeed(tokens[0], tokens[2:])
 		}
-		if saying == "" {
-			p.Bot.SendMessage(message.Channel, "Ze ain't said nothin'")
-		} else {
+		if saying != "" {
 			p.Bot.SendMessage(message.Channel, saying)
 		}
 		return true
@@ -315,7 +313,7 @@ func (p *BabblerPlugin) babbleSeed(who string, seed []string) string {
 		return strings.TrimSpace(strings.Join(words, " "))
 	}
 
-	return fmt.Sprintf("could not find babbler: %s", who)
+	return ""
 }
 
 func (into *babbler) merge(other *babbler, intoName, otherName string) {
