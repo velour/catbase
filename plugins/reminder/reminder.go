@@ -129,6 +129,23 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 
 			return true
 		}
+	} else if len(parts) == 2 && strings.ToLower(parts[0]) == "list" && strings.ToLower(parts[1]) == "reminders" {
+		var response string
+		p.mutex.Lock()
+		if len(p.reminders) == 0 {
+			response = "no pending reminders"
+		} else {
+			counter := 1
+			for _, reminder := range p.reminders {
+				if reminder.channel == channel {
+					response += fmt.Sprintf("%d) %s -> %s :: %s @ %s\n", counter, reminder.from, reminder.who, reminder.what, reminder.when)
+					counter++
+				}
+			}
+		}
+		p.mutex.Unlock()
+		p.Bot.SendMessage(channel, response)
+		return true
 	}
 
 	return false

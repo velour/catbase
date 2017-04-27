@@ -64,6 +64,32 @@ func TestReminderParse(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "Easy cowboy, not sure I can parse that duration.")
 }
 
+func TestEmptyList(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("!list reminders"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "no pending reminders")
+}
+
+func TestList(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("!remind testuser in 5m don't fail this test 1"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!remind testuser in 5m don't fail this test 2"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!list reminders"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 3)
+	assert.Contains(t, mb.Messages[2], "1) tester -> testuser :: don't fail this test 1 @ ")
+	assert.Contains(t, mb.Messages[2], "2) tester -> testuser :: don't fail this test 2 @ ")
+}
+
+
 func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
