@@ -72,6 +72,9 @@ type Config struct {
 	Babbler struct {
 		DefaultUsers []string
 	}
+	Reminder struct {
+		MaxBatchAdd int
+	}
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile

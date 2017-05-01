@@ -11,6 +11,7 @@ import (
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
 type ReminderPlugin struct {
@@ -18,6 +19,7 @@ type ReminderPlugin struct {
 	reminders []*Reminder
 	mutex     *sync.Mutex
 	timer     *time.Timer
+	config    *config.Config
 }
 
 type Reminder struct {
@@ -52,6 +54,7 @@ func New(bot bot.Bot) *ReminderPlugin {
 		reminders: []*Reminder{},
 		mutex:     &sync.Mutex{},
 		timer:     timer,
+		config:    bot.Config(),
 	}
 	go reminderer(plugin)
 
@@ -97,33 +100,83 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 			if who == "me" {
 				who = from
 			}
+
 			dur, err := time.ParseDuration(parts[3])
 			if err != nil {
 				p.Bot.SendMessage(channel, "Easy cowboy, not sure I can parse that duration.")
 				return true
 			}
-			when := time.Now().Add(dur)
 
-			what := strings.Join(parts[4:], " ")
+			reminders := []*Reminder{}
 
-			response := fmt.Sprintf("Sure %s, I'll remind %s.", from, who)
-			p.Bot.SendMessage(channel, response)
+			operator := strings.ToLower(parts[2])
+
+			doConfirm := true
+
+			if operator == "in" {
+				//one off reminder
+				//remind who in dur blah
+				when := time.Now().Add(dur)
+				what := strings.Join(parts[4:], " ")
+
+				reminders = append(reminders, &Reminder{
+					from:    from,
+					who:     who,
+					what:    what,
+					when:    when,
+					channel: channel,
+				})
+			} else if operator == "every" && strings.ToLower(parts[4]) == "for" {
+				//batch add, especially for reminding msherms to buy a kit
+				//remind who every dur for dur2 blah
+				dur2, err := time.ParseDuration(parts[5])
+				if err != nil {
+					p.Bot.SendMessage(channel, "Easy cowboy, not sure I can parse that duration.")
+					return true
+				}
+
+				when := time.Now().Add(dur)
+				endTime := time.Now().Add(dur2)
+				what := strings.Join(parts[6:], " ")
+
+				for i := 0; when.Before(endTime); i++ {
+					if i >= p.config.Reminder.MaxBatchAdd {
+						p.Bot.SendMessage(channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
+						doConfirm = false
+						break
+					}
+
+					reminders = append(reminders, &Reminder{
+						from:    from,
+						who:     who,
+						what:    what,
+						when:    when,
+						channel: channel,
+					})
+
+					when = when.Add(dur)
+				}
+			} else {
+				p.Bot.SendMessage(channel, "Easy cowboy, not sure I comprehend what you're asking.")
+				return true
+			}
+
+			if doConfirm {
+				response := fmt.Sprintf("Sure %s, I'll remind %s.", from, who)
+				p.Bot.SendMessage(channel, response)
+			}
 
 			p.mutex.Lock()
 
 			p.timer.Stop()
 
-			p.reminders = append(p.reminders, &Reminder{
-				from:    from,
-				who:     who,
-				what:    what,
-				when:    when,
-				channel: channel,
-			})
+			p.reminders = append(p.reminders, reminders...)
 
 			sort.Sort(reminderSlice(p.reminders))
 
-			p.timer.Reset(p.reminders[0].when.Sub(time.Now()))
+			if len(p.reminders) > 0 {
+				p.timer.Reset(p.reminders[0].when.Sub(time.Now()))
+			}
 
 			p.mutex.Unlock()
 
