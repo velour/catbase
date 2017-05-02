@@ -64,5 +64,8 @@
 		"DefaultUsers": [
 			"seabass"
 		]
+	},
+	"Reminder": {
+		"MaxBatchAdd" : 10
 	}
 }
