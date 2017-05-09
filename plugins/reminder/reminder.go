@@ -5,6 +5,7 @@ package reminder
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,14 +16,16 @@ import (
 )
 
 type ReminderPlugin struct {
-	Bot       bot.Bot
-	reminders []*Reminder
-	mutex     *sync.Mutex
-	timer     *time.Timer
-	config    *config.Config
+	Bot            bot.Bot
+	reminders      []*Reminder
+	mutex          *sync.Mutex
+	timer          *time.Timer
+	config         *config.Config
+	nextReminderId int
 }
 
 type Reminder struct {
+	id      int
 	from    string
 	who     string
 	what    string
@@ -50,11 +53,12 @@ func New(bot bot.Bot) *ReminderPlugin {
 	timer.Stop()
 
 	plugin := &ReminderPlugin{
-		Bot:       bot,
-		reminders: []*Reminder{},
-		mutex:     &sync.Mutex{},
-		timer:     timer,
-		config:    bot.Config(),
+		Bot:            bot,
+		reminders:      []*Reminder{},
+		mutex:          &sync.Mutex{},
+		timer:          timer,
+		config:         bot.Config(),
+		nextReminderId: 0,
 	}
 	go reminderer(plugin)
 
@@ -119,7 +123,11 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				when := time.Now().Add(dur)
 				what := strings.Join(parts[4:], " ")
 
+				id := p.nextReminderId
+				p.nextReminderId++
+
 				reminders = append(reminders, &Reminder{
+					id:      id,
 					from:    from,
 					who:     who,
 					what:    what,
@@ -146,7 +154,11 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 						break
 					}
 
+					id := p.nextReminderId
+					p.nextReminderId++
+
 					reminders = append(reminders, &Reminder{
+						id:      id,
 						from:    from,
 						who:     who,
 						what:    what,
@@ -191,13 +203,39 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 			counter := 1
 			for _, reminder := range p.reminders {
 				if reminder.channel == channel {
-					response += fmt.Sprintf("%d) %s -> %s :: %s @ %s\n", counter, reminder.from, reminder.who, reminder.what, reminder.when)
+					response += fmt.Sprintf("%d) %s -> %s :: %s @ %s (id=%d)\n", counter, reminder.from, reminder.who, reminder.what, reminder.when, reminder.id)
 					counter++
 				}
 			}
 		}
 		p.mutex.Unlock()
 		p.Bot.SendMessage(channel, response)
+		return true
+	} else if len(parts) == 3 && strings.ToLower(parts[0]) == "cancel" && strings.ToLower(parts[1]) == "reminder" {
+		id, err := strconv.Atoi(parts[2])
+		if err != nil {
+			p.Bot.SendMessage(channel, fmt.Sprintf("couldn't parse id: %s", parts[2]))
+
+		} else {
+			p.mutex.Lock()
+			deleted := false
+			for i, reminder := range p.reminders {
+				if reminder.id == id {
+					copy(p.reminders[i:], p.reminders[i+1:])
+					p.reminders[len(p.reminders)-1] = nil
+					p.reminders = p.reminders[:len(p.reminders)-1]
+					deleted = true
+					break
+				}
+			}
+			p.mutex.Unlock()
+
+			if deleted {
+				p.Bot.SendMessage(channel, fmt.Sprintf("successfully canceled reminder: %s", parts[2]))
+			} else {
+				p.Bot.SendMessage(channel, fmt.Sprintf("failed to find and cancel reminder: %s", parts[2]))
+			}
+		}
 		return true
 	}
 
