@@ -122,6 +122,32 @@ func TestBatchMax(t *testing.T) {
 	}
 }
 
+func TestCancel(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("!remind testuser in 1m don't fail this test"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!cancel reminder 0"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!list reminders"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 3)
+	assert.Contains(t, mb.Messages[0], "Sure tester, I'll remind testuser.")
+	assert.Contains(t, mb.Messages[1], "successfully canceled reminder: 0")
+	assert.Contains(t, mb.Messages[2], "no pending reminders")
+}
+
+func TestCancelMiss(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("!cancel reminder 0"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "failed to find and cancel reminder: 0")
+}
+
 func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
