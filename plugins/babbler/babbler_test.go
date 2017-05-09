@@ -40,9 +40,8 @@ func TestBabblerNothingSaid(t *testing.T) {
 	c := New(mb)
 	c.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!seabass says"))
+	c.Message(makeMessage("!seabass says"))
 	assert.Len(t, mb.Messages, 0)
-	assert.True(t, res)
 }
 
 func TestBabbler(t *testing.T) {
@@ -53,7 +52,6 @@ func TestBabbler(t *testing.T) {
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
 	seabass.Body = "This is another message"
 	res = c.Message(seabass)
 	seabass.Body = "This is a long message"
@@ -73,7 +71,6 @@ func TestBabblerSeed(t *testing.T) {
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
 	seabass.Body = "This is another message"
 	res = c.Message(seabass)
 	seabass.Body = "This is a long message"
@@ -92,7 +89,6 @@ func TestBabblerMultiSeed(t *testing.T) {
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
 	seabass.Body = "This is another message"
 	res = c.Message(seabass)
 	seabass.Body = "This is a long message"
@@ -111,7 +107,6 @@ func TestBabblerMultiSeed2(t *testing.T) {
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
 	seabass.Body = "This is another message"
 	res = c.Message(seabass)
 	seabass.Body = "This is a long message"
@@ -129,16 +124,13 @@ func TestBabblerBadSeed(t *testing.T) {
 	assert.NotNil(t, c)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
-	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
+	c.Message(seabass)
 	seabass.Body = "This is another message"
-	res = c.Message(seabass)
+	c.Message(seabass)
 	seabass.Body = "This is a long message"
-	res = c.Message(seabass)
-	res = c.Message(makeMessage("!seabass says noooo this is bad"))
-	assert.Len(t, mb.Messages, 1)
-	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "seabass hasn't used the phrase 'noooo this is bad'")
+	c.Message(seabass)
+	c.Message(makeMessage("!seabass says noooo this is bad"))
+	assert.Len(t, mb.Messages, 0)
 }
 
 func TestBabblerBadSeed2(t *testing.T) {
@@ -148,16 +140,13 @@ func TestBabblerBadSeed2(t *testing.T) {
 	assert.NotNil(t, c)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
-	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
+	c.Message(seabass)
 	seabass.Body = "This is another message"
-	res = c.Message(seabass)
+	c.Message(seabass)
 	seabass.Body = "This is a long message"
-	res = c.Message(seabass)
-	res = c.Message(makeMessage("!seabass says This is a really"))
-	assert.Len(t, mb.Messages, 1)
-	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "seabass hasn't used the phrase 'this is a really'")
+	c.Message(seabass)
+	c.Message(makeMessage("!seabass says This is a really"))
+	assert.Len(t, mb.Messages, 0)
 }
 
 func TestBabblerBatch(t *testing.T) {
@@ -167,7 +156,6 @@ func TestBabblerBatch(t *testing.T) {
 	assert.NotNil(t, c)
 	seabass := makeMessage("batch learn for seabass This is a message! This is another message. This is not a long message? This is not a message! This is not another message. This is a long message?")
 	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 2)
 	assert.Len(t, mb.Messages, 1)
 	res = c.Message(makeMessage("!seabass says"))
 	assert.Len(t, mb.Messages, 2)
@@ -185,7 +173,6 @@ func TestBabblerMerge(t *testing.T) {
 	seabass := makeMessage("<seabass> This is a message")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	assert.Len(t, c.babblers, 1)
 	assert.Len(t, mb.Messages, 0)
 
 	seabass.Body = "<seabass> This is another message"

@@ -3,110 +3,102 @@
 package babbler
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
 )
 
 type BabblerPlugin struct {
-	Bot      bot.Bot
-	db       *sqlx.DB
-	config   *config.Config
-	babblers map[string]*babbler
-}
-
-type babbler struct {
-	start  *node
-	end    *node
-	lookup map[string]*node
-}
-
-type node struct {
-	wordFrequency int
-	arcs          map[string]*arc
-}
-
-type arc struct {
-	transitionFrequency int
-	next                *node
+	Bot    bot.Bot
+	db     *sqlx.DB
+	config *config.Config
 }
 
 func New(bot bot.Bot) *BabblerPlugin {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	if bot.DBVersion() == 1 {
+		if _, err := bot.DB().Exec(`create table if not exists babblers (
+			id integer primary key,
+			babbler string
+		);`); err != nil {
+			log.Fatal(err)
+		}
+		if _, err := bot.DB().Exec(`create table if not exists babblerWords (
+			id integer primary key,
+			babblerId integer,
+			word string,
+			root integer,
+			rootFrequency integer
+		);`); err != nil {
+			log.Fatal(err)
+		}
+
+		if _, err := bot.DB().Exec(`create table if not exists babblerArcs (
+			id integer primary key,
+			fromWordId integer,
+			toWordId interger,
+			frequency integer
+		);`); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	plugin := &BabblerPlugin{
-		Bot:      bot,
-		db:       bot.DB(),
-		config:   bot.Config(),
-		babblers: map[string]*babbler{},
+		Bot:    bot,
+		db:     bot.DB(),
+		config: bot.Config(),
 	}
 
 	return plugin
 }
 
-func (p *BabblerPlugin) makeBabbler(newUser user.User) {
-	name := newUser.Name
-	babbler, err := getMarkovChain(p.db, name)
-	if err == nil {
-		p.babblers[name] = babbler
-	} else {
-		p.babblers[name] = newBabbler()
-	}
-}
-
-func (p *BabblerPlugin) makeBabblers(newUser user.User) {
-	users := p.Bot.Who(p.config.MainChannel)
-	users = append(users, newUser)
-	for _, name := range p.config.Babbler.DefaultUsers {
-		users = append(users, user.New(name))
-	}
-	for _, u := range users {
-		p.makeBabbler(u)
-	}
-}
-
 func (p *BabblerPlugin) Message(message msg.Message) bool {
-	if len(p.babblers) == 0 {
-		p.makeBabblers(*message.User)
-	} else if _, ok := p.babblers[message.User.Name]; !ok {
-		p.makeBabbler(*message.User)
-	}
-
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 	numTokens := len(tokens)
 
 	if numTokens >= 2 && tokens[1] == "says" {
+		who := tokens[0]
+		_, err := p.getBabbler(who)
+
+		if err != nil {
+			return false
+		}
+
 		var saying string
 		if len(tokens) == 2 {
-			saying = p.babble(tokens[0])
+			saying, _ = p.babble(who)
 		} else {
-			saying = p.babbleSeed(tokens[0], tokens[2:])
+			saying, _ = p.babbleSeed(who, tokens[2:])
 		}
+
 		if saying != "" {
 			p.Bot.SendMessage(message.Channel, saying)
-		}
-		return true
-	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
-		who := tokens[3]
-		if _, ok := p.babblers[who]; !ok {
-			babbler, err := getMarkovChain(p.db, who)
-			if err == nil {
-				p.babblers[who] = babbler
-			} else {
-				p.babblers[who] = newBabbler()
-			}
-			p.Bot.SendMessage(message.Channel, "Okay.")
 			return true
 		}
+	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
+		who := tokens[3]
+		_, err := p.getOrCreateBabbler(who)
+		if err != nil {
+			p.Bot.SendMessage(message.Channel, "babbler initialization failed.")
+			return true
+		}
+		p.Bot.SendMessage(message.Channel, "Okay.")
+		return true
 	} else if strings.Index(lowercase, "batch learn for ") == 0 {
 		who := tokens[3]
-		if _, ok := p.babblers[who]; !ok {
-			p.babblers[who] = newBabbler()
+		babblerId, err := p.getOrCreateBabbler(who)
+		if err != nil {
+			p.Bot.SendMessage(message.Channel, "batch learn failed.")
+			return true
 		}
 
 		body := strings.Join(tokens[4:], " ")
@@ -118,14 +110,14 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 					for _, d := range strings.Split(c, "\n") {
 						trimmed := strings.TrimSpace(d)
 						if trimmed != "" {
-							addToMarkovChain(p.babblers[who], trimmed)
+							p.addToMarkovChain(babblerId, trimmed)
 						}
 					}
 				}
 			}
 		}
 
-		p.Bot.SendMessage(message.Channel, "Phew that was tiring.")
+		p.Bot.SendMessage(message.Channel, "phew that was tiring.")
 		return true
 	} else if len(tokens) == 5 && strings.Index(lowercase, "merge babbler") == 0 {
 		if tokens[3] != "into" {
@@ -137,36 +129,30 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 		into := tokens[4]
 
 		if who == into {
-			p.Bot.SendMessage(message.Channel, "Fuck off")
+			p.Bot.SendMessage(message.Channel, "that's annoying. stop it.")
 			return true
 		}
 
-		var whoBabbler *babbler
-		ok := false
-		if whoBabbler, ok = p.babblers[who]; !ok {
-			babbler, err := getMarkovChain(p.db, who)
-			if err == nil {
-				whoBabbler = babbler
-			} else {
-				whoBabbler = newBabbler()
-			}
+		whoBabbler, err := p.getBabbler(who)
+		if err != nil {
+			p.Bot.SendMessage(message.Channel, "merge failed.")
+			return true
+		}
+		intoBabbler, err := p.getOrCreateBabbler(into)
+		if err != nil {
+			p.Bot.SendMessage(message.Channel, "merge failed.")
+			return true
 		}
 
-		if _, ok := p.babblers[into]; !ok {
-			babbler, err := getMarkovChain(p.db, into)
-			if err == nil {
-				p.babblers[into] = babbler
-			} else {
-				p.babblers[into] = newBabbler()
-			}
-		}
-
-		p.babblers[into].merge(whoBabbler, into, who)
+		p.merge(intoBabbler, whoBabbler, into, who)
 
 		p.Bot.SendMessage(message.Channel, "mooooiggged")
 		return true
 	} else {
-		addToMarkovChain(p.babblers[message.User.Name], lowercase)
+		babblerId, err := p.getOrCreateBabbler(message.User.Name)
+		if err == nil {
+			p.addToMarkovChain(babblerId, lowercase)
+		}
 	}
 
 	return false
@@ -188,202 +174,391 @@ func (p *BabblerPlugin) RegisterWeb() *string {
 	return nil
 }
 
-func addToMarkovChain(babble *babbler, phrase string) {
+func (p *BabblerPlugin) makeBabbler(babbler string) (int64, error) {
+	res, err := p.db.Exec(`insert into babblers (babbler) values (?);`, babbler)
+	if err == nil {
+		id, _ := res.LastInsertId()
+		return id, nil
+	}
+	return -1, err
+}
+
+func (p *BabblerPlugin) getBabbler(babbler string) (int64, error) {
+	id := int64(-1)
+	err := p.db.Get(&id, `select id from babblers where babbler = ?`, babbler)
+	if err != nil {
+	}
+	return id, err
+}
+
+func (p *BabblerPlugin) getOrCreateBabbler(babbler string) (int64, error) {
+	id, err := p.getBabbler(babbler)
+	if err != nil {
+		id, err = p.makeBabbler(babbler)
+		if err != nil {
+			return id, err
+		}
+		query := fmt.Sprintf(`select tidbit from factoid where fact like '%s quotes';`, babbler)
+		rows, err := p.db.Query(query)
+		if err != nil {
+			//we'll just ignore this but the actual creation succeeded previously
+			return id, nil
+		}
+		for rows.Next() {
+			var tidbit string
+			err := rows.Scan(&tidbit)
+			if err != nil {
+				return id, err
+			}
+			p.addToMarkovChain(id, tidbit)
+		}
+
+	}
+	return id, err
+}
+
+func (p *BabblerPlugin) getWordId(babblerId int64, word string) (int64, error) {
+	id := int64(-1)
+	err := p.db.Get(&id, `select id from babblerWords where babblerId = ? and word = ?`, babblerId, word)
+	return id, err
+}
+
+func (p *BabblerPlugin) createNewWord(babblerId int64, word string) (int64, error) {
+	res, err := p.db.Exec(`insert into babblerWords (babblerId, word, root, rootFrequency) values (?, ?, 0, 0);`, babblerId, word)
+	if err != nil {
+		return -1, err
+	}
+	id, _ := res.LastInsertId()
+	return id, nil
+}
+
+func (p *BabblerPlugin) getOrCreateWord(babblerId int64, word string) (int64, error) {
+	id, err := p.getWordId(babblerId, word)
+	if err != nil {
+		return p.createNewWord(babblerId, word)
+	}
+	return id, err
+}
+
+func (p *BabblerPlugin) incrementRootWordFrequency(babblerId int64, word string) (int64, error) {
+	id, err := p.getOrCreateWord(babblerId, word)
+	if err != nil {
+		return -1, err
+	}
+	_, err = p.db.Exec(`update babblerWords set rootFrequency = rootFrequency + 1, root = 1 where id = ?;`, id)
+	if err != nil {
+		return -1, err
+	}
+	return id, nil
+}
+
+func (p *BabblerPlugin) getWordArcHelper(fromWordId, toWordId int64) (int64, error) {
+	id := int64(-1)
+	err := p.db.Get(&id, `select id from babblerArcs where fromWordId = ? and toWordId = ?`, fromWordId, toWordId)
+	return id, err
+}
+
+func (p *BabblerPlugin) incrementWordArc(fromWordId, toWordId int64) (int64, error) {
+	res, err := p.db.Exec(`update babblerArcs set frequency = frequency + 1 where fromWordId = ? and toWordId = ?`, fromWordId, toWordId)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows, _ = res.RowsAffected()
+	}
+
+	if err != nil || affectedRows == 0 {
+		res, err = p.db.Exec(`insert into babblerArcs (fromWordId, toWordId, frequency) values (?, ?, 1);`, fromWordId, toWordId)
+		if err != nil {
+
+			return -1, err
+		}
+	}
+	id, _ := res.LastInsertId()
+	return id, nil
+}
+
+func (p *BabblerPlugin) incrementFinalWordArcHelper(wordId int64) (int64, error) {
+	return p.incrementWordArc(wordId, -1)
+}
+
+func (p *BabblerPlugin) incrementWordArcHelper(babblerId, fromWordId int64, toWord string) (int64, error) {
+	toWordId, err := p.getOrCreateWord(babblerId, toWord)
+	if err != nil {
+		return -1, err
+	}
+	_, err = p.incrementWordArc(fromWordId, toWordId)
+	if err != nil {
+		return -1, err
+	}
+	return toWordId, nil
+}
+
+func (p *BabblerPlugin) addToMarkovChain(babblerId int64, phrase string) {
 	words := strings.Fields(strings.ToLower(phrase))
 
-	prev := babble.start
-	prev.wordFrequency++
-	for i := range words {
-		// has this word been seen before
-		if _, ok := babble.lookup[words[i]]; !ok {
-			babble.lookup[words[i]] = &node{
-				wordFrequency: 1,
-				arcs:          map[string]*arc{},
-			}
-		} else {
-			babble.lookup[words[i]].wordFrequency++
-		}
-
-		// has this word been seen after the previous word before
-		if _, ok := prev.arcs[words[i]]; !ok {
-			prev.arcs[words[i]] = &arc{
-				transitionFrequency: 1,
-				next:                babble.lookup[words[i]],
-			}
-		} else {
-			prev.arcs[words[i]].transitionFrequency++
-		}
-		prev = babble.lookup[words[i]]
-	}
-
-	// has this word ended a fact before
-	if _, ok := prev.arcs[""]; !ok {
-		prev.arcs[""] = &arc{
-			transitionFrequency: 1,
-			next:                babble.end,
-		}
-	} else {
-		prev.arcs[""].transitionFrequency++
-	}
-}
-
-func newBabbler() *babbler {
-	start := &node{
-		wordFrequency: 0,
-		arcs:          map[string]*arc{},
-	}
-	return &babbler{
-		start: start,
-		end: &node{
-			wordFrequency: 0,
-			arcs:          map[string]*arc{},
-		},
-		lookup: map[string]*node{"": start},
-	}
-}
-
-// this who string isn't escaped, just sooo, you know.
-func getMarkovChain(db *sqlx.DB, who string) (*babbler, error) {
-	query := fmt.Sprintf(`select tidbit from factoid where fact like '%s quotes';`, who)
-	rows, err := db.Query(query)
+	id, err := p.incrementRootWordFrequency(babblerId, words[0])
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	babble := newBabbler()
+	for i := 1; i < len(words); i++ {
+		id, err = p.incrementWordArcHelper(babblerId, id, words[i])
+		if err != nil {
+			return
+		}
+	}
+
+	_, err = p.incrementFinalWordArcHelper(id)
+}
+
+func (p *BabblerPlugin) getWeightedRootWord(babblerId int64) (int64, string, error) {
+	query := fmt.Sprintf("select id, word, rootFrequency from babblerWords where babblerId = %d and root = 1", babblerId)
+	rows, err := p.db.Query(query)
+	if err != nil {
+		return -1, "", err
+	}
+	defer rows.Close()
+
+	idToWord := map[int64]string{}
+	idToFreq := map[int64]int64{}
+	total := int64(0)
 
 	for rows.Next() {
-
-		var tidbit string
-		err := rows.Scan(&tidbit)
+		var id int64
+		var word string
+		var rootFrequency int64
+		err = rows.Scan(&id, &word, &rootFrequency)
 		if err != nil {
-			return nil, err
+			return -1, "", err
 		}
 
-		addToMarkovChain(babble, tidbit)
-	}
-	return babble, nil
-}
-
-func (p *BabblerPlugin) babble(who string) string {
-	return p.babbleSeed(who, []string{""})
-}
-
-func (p *BabblerPlugin) babbleSeed(who string, seed []string) string {
-	if babbler, ok := p.babblers[who]; ok {
-		if len(babbler.start.arcs) == 0 {
-			return ""
-		}
-
-		words := seed
-		var cur *node
-		if cur, ok = babbler.lookup[words[0]]; !ok {
-			if len(words) == 1 {
-				return fmt.Sprintf("%s hasn't used the word '%s'", who, words[0])
-			} else {
-				return fmt.Sprintf("%s hasn't used the phrase '%s'", who, strings.Join(words, " "))
-			}
-		}
-
-		for i := 1; i < len(words); i++ {
-			if arc, ok := cur.arcs[words[i]]; !ok {
-				if len(words) == 1 {
-					return fmt.Sprintf("%s hasn't used the word '%s'", who, words[0])
-				} else {
-					return fmt.Sprintf("%s hasn't used the phrase '%s'", who, strings.Join(words, " "))
-				}
-			} else {
-				cur = arc.next
-			}
-		}
-
-		for cur != babbler.end {
-			which := rand.Intn(cur.wordFrequency)
-			sum := 0
-			for word, arc := range cur.arcs {
-				sum += arc.transitionFrequency
-				if sum > which {
-					words = append(words, word)
-					cur = arc.next
-					break
-				}
-			}
-		}
-
-		return strings.TrimSpace(strings.Join(words, " "))
+		total += rootFrequency
+		idToFreq[id] = rootFrequency
+		idToWord[id] = word
 	}
 
-	return ""
+	which := rand.Int63n(total)
+	total = 0
+	for id, freq := range idToFreq {
+		if total+freq >= which {
+			return id, idToWord[id], nil
+		}
+		total += freq
+	}
+	log.Fatalf("shouldn't happen")
+	return -1, "", errors.New("failed to find weighted root word")
 }
 
-func (into *babbler) merge(other *babbler, intoName, otherName string) {
-	intoID := "<" + intoName + ">"
-	otherID := "<" + otherName + ">"
+func (p *BabblerPlugin) getWeightedNextWord(fromWordId int64) (int64, string, error) {
+	query := fmt.Sprintf("select toWordId, frequency from babblerArcs where fromWordId = %d;", fromWordId)
+	rows, err := p.db.Query(query)
+	if err != nil {
+		return -1, "", err
+	}
+	defer rows.Close()
 
-	for nodeWord, myNode := range other.lookup {
-		if nodeWord == otherID {
-			nodeWord = intoID
+	idToFreq := map[int64]int64{}
+	total := int64(0)
+
+	for rows.Next() {
+		var toWordId int64
+		var frequency int64
+		err = rows.Scan(&toWordId, &frequency)
+		if err != nil {
+			return -1, "", err
+		}
+		total += frequency
+		idToFreq[toWordId] = frequency
+	}
+
+	which := rand.Int63n(total)
+	total = 0
+	for id, freq := range idToFreq {
+		if total+freq >= which {
+			if id < 0 {
+				return -1, "", nil
+			}
+
+			var word string
+			err := p.db.Get(&word, `select word from babblerWords where id = ?`, id)
+			if err != nil {
+				return -1, "", err
+			}
+			return id, word, nil
+		}
+		total +=freq
+	}
+	log.Fatalf("shouldn't happen")
+	return -1, "", errors.New("failed to find weighted next word")
+}
+
+func (p *BabblerPlugin) babble(who string) (string, error) {
+	return p.babbleSeed(who, []string{})
+}
+
+func (p *BabblerPlugin) babbleSeed(babbler string, seed []string) (string, error) {
+	babblerId, err := p.getBabbler(babbler)
+	if err != nil {
+		return "", nil
+	}
+
+	words := seed
+
+	var curWordId int64
+	if len(seed) == 0 {
+		id, word, err := p.getWeightedRootWord(babblerId)
+		if err != nil {
+			return "", err
+		}
+		curWordId = id
+		words = append(words, word)
+	} else {
+		id, err := p.getWordId(babblerId, seed[0])
+		if err != nil {
+			return "", err
+		}
+		curWordId = id
+		for i := 1; i < len(seed); i++ {
+			nextWordId, err := p.getWordId(babblerId, seed[i])
+			if err != nil {
+				return "", err
+			}
+			_, err = p.getWordArcHelper(curWordId, nextWordId)
+			if err != nil {
+				return "", err
+			}
+			curWordId = nextWordId
+		}
+	}
+
+	for {
+		id, word, err := p.getWeightedNextWord(curWordId)
+		if err != nil {
+			return "", err
+		}
+		if id < 0 {
+			break
+		}
+		words = append(words, word)
+		curWordId = id
+	}
+
+	return strings.TrimSpace(strings.Join(words, " ")), nil
+}
+
+func (p *BabblerPlugin) merge(intoId, otherId int64, intoName, otherName string) error {
+	intoString := "<" + intoName + ">"
+	otherString := "<" + otherName + ">"
+
+	mapping := map[int64]int64{}
+
+	query := fmt.Sprintf("select id, word, root, rootFrequency from babblerWords where babblerId = %d;", otherId)
+	rows, err := p.db.Query(query)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type Word struct {
+		Id int64
+		Word string
+		Root int64
+		RootFrequency int64
+	}
+
+	words := []Word{}
+
+	for rows.Next() {
+		word := Word{}
+		err = rows.Scan(&word.Id, &word.Word, &word.Root, &word.RootFrequency)
+		if err != nil {
+			return err
+		}
+		words = append(words, word)
+	}
+
+	for _, word := range words {
+
+		if word.Word == otherString {
+			word.Word = intoString
 		}
 
-		//does this nodeWord exist yet?
-		if _, ok := into.lookup[nodeWord]; !ok {
-			into.lookup[nodeWord] = &node{
-				wordFrequency: myNode.wordFrequency,
-				arcs:          map[string]*arc{},
+		doInsert := false
+		wordId := int64(-1)
+		if word.Root > 0 {
+			res, err := p.db.Exec(`update babblerWords set rootFrequency = rootFrequency + ?, root = 1 where babblerId = ? and word = ? output id	;`, word.RootFrequency, intoId, word.Word)
+			rowsAffected := int64(0)
+			if err == nil {
+				rowsAffected, _ = res.RowsAffected()
+			}
+			if err != nil || rowsAffected == 0 {
+				doInsert = true
+			} else {
+				wordId, _ = res.LastInsertId()
 			}
 		} else {
-			into.lookup[nodeWord].wordFrequency += myNode.wordFrequency
-		}
-
-		for arcWord, myArc := range myNode.arcs {
-			if arcWord == otherID {
-				arcWord = intoID
-			}
-
-			if myArc.next == other.end {
-				if _, ok := into.lookup[nodeWord].arcs[arcWord]; !ok {
-					into.lookup[nodeWord].arcs[arcWord] = &arc{
-						transitionFrequency: myArc.transitionFrequency,
-						next:                into.end,
-					}
-				} else {
-					into.lookup[nodeWord].arcs[arcWord].transitionFrequency += myArc.transitionFrequency
-				}
-				continue
-			}
-
-			//does the arcWord exist yet?
-			if _, ok := into.lookup[arcWord]; !ok {
-				into.lookup[arcWord] = &node{
-					wordFrequency: 0,
-					arcs:          map[string]*arc{},
-				}
-			}
-
-			if _, ok := into.lookup[nodeWord].arcs[arcWord]; !ok {
-				into.lookup[nodeWord].arcs[arcWord] = &arc{
-					transitionFrequency: myArc.transitionFrequency,
-					next:                into.lookup[arcWord],
-				}
+			res, err := p.db.Exec(`update babblerWords set rootFrequency = rootFrequency + ? where babblerId = ? and word = ? output id;`, word.RootFrequency, intoId, word.Word)
+			if err != nil {
+				doInsert = true
 			} else {
-				into.lookup[nodeWord].arcs[arcWord].transitionFrequency += myArc.transitionFrequency
+				wordId, _ = res.LastInsertId()
+			}
+		}
+
+		if doInsert {
+			res, err := p.db.Exec(`insert into babblerWords (babblerId, word, root, rootFrequency) values (?,?,?,?) ;`, intoId, word.Word, word.Root, word.RootFrequency)
+			if err != nil {
+				return err
+			}
+			wordId, _ = res.LastInsertId()
+		}
+
+		log.Printf("%s %d -> %d\n", word.Word, word.Id, wordId)
+
+		mapping[word.Id] = wordId
+	}
+
+	type Arc struct {
+		ToWordId int64
+		Frequency int64
+	}
+
+	for lookup, newArcStart := range mapping {
+		query = fmt.Sprintf("select toWordId, frequency from babblerArcs where fromWordId = %d;", lookup)
+		rows, err := p.db.Query(query)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		arcs := []Arc{}
+
+		for rows.Next() {
+			var arc Arc
+			err = rows.Scan(&arc.ToWordId, &arc.Frequency)
+			if err != nil {
+				return err
+			}
+			arcs = append(arcs, arc)
+		}
+
+		for _, arc := range arcs {
+			newArcEnd := int64(-1) //handle end arcs
+			if arc.ToWordId >= 0 {
+				newArcEnd = mapping[arc.ToWordId]
+			}
+
+			res, err := p.db.Exec(`update babblerArcs set frequency = frequency + ? where fromWordId = ? and toWordId = ?`, arc.Frequency, newArcStart, newArcEnd)
+			rowsAffected := int64(0)
+			if err == nil {
+				rowsAffected, _ = res.RowsAffected()
+			}
+			if err != nil || rowsAffected == 0 {
+				_, err = p.db.Exec(`insert into babblerArcs (fromWordId, toWordId, frequency) values (?, ?, ?);`, newArcStart, newArcEnd, arc.Frequency)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
-
-	into.start.wordFrequency += other.start.wordFrequency
-
-	for startWord, startArc := range other.start.arcs {
-		if startWord == otherID {
-			startWord = intoID
-		}
-		if _, ok := into.start.arcs[startWord]; !ok {
-			into.start.arcs[startWord] = &arc{
-				transitionFrequency: startArc.transitionFrequency,
-				next:                into.lookup[startWord],
-			}
-		} else {
-			into.start.arcs[startWord].transitionFrequency += startArc.transitionFrequency
-		}
-	}
+	return nil
 }
