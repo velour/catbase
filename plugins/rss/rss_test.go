@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -32,13 +33,26 @@ func TestRSS(t *testing.T) {
 	assert.True(t, res)
 }
 
-func TestRSSCache(t *testing.T) {
+func TestRSSPaging(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
-	assert.True(t, res)
-	res = c.Message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
-	assert.Len(t, mb.Messages, 2)
-	assert.True(t, res)
+	for i := 0; i < 20; i++ {
+		res := c.Message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
+		assert.True(t, res)
+	}
+
+	assert.Len(t, mb.Messages, 20)
+
+	for i := 0; i < len(mb.Messages); i++ {
+		if i > 0 && strings.Contains(mb.Messages[i], "CNN.com - RSS Channel - Intl Homepage - News") {
+			fmt.Println("----------------")
+			fmt.Println(mb.Messages[i])
+			fmt.Println("----------------")
+			break
+		}
+		fmt.Println("----------------")
+		fmt.Println(mb.Messages[i])
+		fmt.Println("----------------")
+	}
 }

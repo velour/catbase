@@ -2,7 +2,6 @@ package rss
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -16,12 +15,38 @@ type RSSPlugin struct {
 	Bot       bot.Bot
 	cache     map[string]*cacheItem
 	shelfLife time.Duration
+	maxLines  int
 }
 
 type cacheItem struct {
-	key        string
-	data       string
-	expiration time.Time
+	key         string
+	data        []string
+	currentLine int
+	expiration  time.Time
+}
+
+func (c *cacheItem) getCurrentPage(maxLines int) string {
+	if len(c.data) <= maxLines {
+		return strings.Join(c.data, "\n")
+	}
+
+	start := c.currentLine
+	end := start + maxLines
+	if end > len(c.data) {
+		end = len(c.data)
+	}
+
+	page := strings.Join(c.data[start:end], "\n")
+
+	if end - start == maxLines {
+		c.currentLine = end
+	} else {
+		c.currentLine = maxLines-(end-start)
+		page += "\n"
+		page += strings.Join(c.data[0:c.currentLine], "\n")
+	}
+
+	return page
 }
 
 func New(bot bot.Bot) *RSSPlugin {
@@ -29,6 +54,7 @@ func New(bot bot.Bot) *RSSPlugin {
 		Bot:       bot,
 		cache:     map[string]*cacheItem{},
 		shelfLife: time.Minute * 20,
+		maxLines:  5,
 	}
 }
 
@@ -37,9 +63,8 @@ func (p *RSSPlugin) Message(message msg.Message) bool {
 	numTokens := len(tokens)
 
 	if numTokens == 2 && strings.ToLower(tokens[0]) == "rss" {
-		if data, ok := p.cache[strings.ToLower(tokens[1])]; ok && time.Now().Before(data.expiration) {
-			log.Printf("rss cache hit")
-			p.Bot.SendMessage(message.Channel, data.data)
+		if item, ok := p.cache[strings.ToLower(tokens[1])]; ok && time.Now().Before(item.expiration) {
+			p.Bot.SendMessage(message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		} else {
 			fp := gofeed.NewParser()
@@ -48,18 +73,20 @@ func (p *RSSPlugin) Message(message msg.Message) bool {
 				p.Bot.SendMessage(message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
 				return true
 			}
-			response := feed.Title
-			for _, item := range feed.Items {
-				response += fmt.Sprintf("\n%s", item.Title)
+			item := &cacheItem{
+				key:         strings.ToLower(tokens[1]),
+				data:        []string{feed.Title},
+				expiration:  time.Now().Add(p.shelfLife),
+				currentLine: 0,
 			}
 
-			p.cache[strings.ToLower(tokens[1])] = &cacheItem{
-				key:        strings.ToLower(tokens[1]),
-				data:       response,
-				expiration: time.Now().Add(p.shelfLife),
+			for _, feedItem := range feed.Items {
+				item.data = append(item.data, feedItem.Title)
 			}
 
-			p.Bot.SendMessage(message.Channel, response)
+			p.cache[strings.ToLower(tokens[1])] = item
+
+			p.Bot.SendMessage(message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		}
 	}
