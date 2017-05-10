@@ -19,6 +19,7 @@ import (
 var (
 	NO_BABBLER = errors.New("babbler not found")
 	SAID_NOTHING = errors.New("hasn't said anything yet")
+	NEVER_SAID = errors.New("never said that")
 )
 
 
@@ -122,7 +123,7 @@ func (p *BabblerPlugin) makeBabbler(babbler string) (int64, error) {
 func (p *BabblerPlugin) getBabbler(babbler string) (int64, error) {
 	id := int64(-1)
 	err := p.db.Get(&id, `select id from babblers where babbler = ?`, babbler)
-	if err != nil && err == sql.ErrNoRows {
+	if err == sql.ErrNoRows {
 		return -1, NO_BABBLER
 	}
 	return id, err
@@ -164,6 +165,9 @@ func (p *BabblerPlugin) getOrCreateBabbler(babbler string) (int64, error) {
 func (p *BabblerPlugin) getWordId(babblerId int64, word string) (int64, error) {
 	id := int64(-1)
 	err := p.db.Get(&id, `select id from babblerWords where babblerId = ? and word = ?`, babblerId, word)
+	if err == sql.ErrNoRows {
+		return -1, NEVER_SAID
+	}
 	return id, err
 }
 
@@ -199,6 +203,9 @@ func (p *BabblerPlugin) incrementRootWordFrequency(babblerId int64, word string)
 func (p *BabblerPlugin) getWordArcHelper(fromWordId, toWordId int64) (int64, error) {
 	id := int64(-1)
 	err := p.db.Get(&id, `select id from babblerArcs where fromWordId = ? and toWordId = ?`, fromWordId, toWordId)
+	if err == sql.ErrNoRows {
+		return -1, NEVER_SAID
+	}
 	return id, err
 }
 

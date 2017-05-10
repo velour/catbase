@@ -136,7 +136,8 @@ func TestBabblerBadSeed(t *testing.T) {
 	seabass.Body = "This is a long message"
 	c.Message(seabass)
 	c.Message(makeMessage("!seabass says noooo this is bad"))
-	assert.Len(t, mb.Messages, 0)
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "seabass never said 'noooo this is bad'")
 }
 
 func TestBabblerBadSeed2(t *testing.T) {
@@ -152,7 +153,8 @@ func TestBabblerBadSeed2(t *testing.T) {
 	seabass.Body = "This is a long message"
 	c.Message(seabass)
 	c.Message(makeMessage("!seabass says This is a really"))
-	assert.Len(t, mb.Messages, 0)
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "seabass never said 'this is a really'")
 }
 
 func TestBabblerBatch(t *testing.T) {

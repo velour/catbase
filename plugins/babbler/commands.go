@@ -42,6 +42,8 @@ func (p *BabblerPlugin) getBabble(tokens []string) (string, bool) {
 		if err != nil {
 			if err == SAID_NOTHING {
 				return fmt.Sprintf("%s hasn't said anything yet.", who), true
+			} else if err == NEVER_SAID {
+				return fmt.Sprintf("%s never said '%s'", who, strings.Join(tokens[2:], " ")), true
 			}
 		} else if saying != "" {
 			return saying, true
