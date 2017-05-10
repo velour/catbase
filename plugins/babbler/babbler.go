@@ -141,13 +141,19 @@ func (p *BabblerPlugin) getOrCreateBabbler(babbler string) (int64, error) {
 			//we'll just ignore this but the actual creation succeeded previously
 			return id, nil
 		}
+		defer rows.Close()
 
+		tidbits := []string{}
 		for rows.Next() {
 			var tidbit string
 			err := rows.Scan(&tidbit)
 			if err != nil {
 				return id, err
 			}
+			tidbits = append(tidbits, tidbit)
+		}
+
+		for _, tidbit := range tidbits {
 			p.addToMarkovChain(id, tidbit)
 		}
 
