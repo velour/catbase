@@ -31,8 +31,9 @@ func TestBabblerNoBabbler(t *testing.T) {
 	c.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, c)
 	c.Message(makeMessage("!seabass2 says"))
-	res := assert.Len(t, mb.Messages, 0)
+	res := assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "seabass2 babbler not found")
 }
 
 func TestBabblerNothingSaid(t *testing.T) {
@@ -40,8 +41,13 @@ func TestBabblerNothingSaid(t *testing.T) {
 	c := New(mb)
 	c.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, c)
-	c.Message(makeMessage("!seabass says"))
-	assert.Len(t, mb.Messages, 0)
+	res := c.Message(makeMessage("initialize babbler for seabass"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!seabass says"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 2)
+	assert.Contains(t, mb.Messages[0], "okay.")
+	assert.Contains(t, mb.Messages[1], "seabass hasn't said anything yet.")
 }
 
 func TestBabbler(t *testing.T) {
