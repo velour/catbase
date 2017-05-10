@@ -101,7 +101,10 @@ func (p *BabblerPlugin) merge(tokens []string) (string, bool) {
 		return "merge failed.", true
 	}
 
-	p.mergeBabblers(intoBabbler, whoBabbler, into, who)
+	err = p.mergeBabblers(intoBabbler, whoBabbler, into, who)
+	if err != nil {
+		return "merge failed.", true
+	}
 
 	return "mooooiggged", true
 }
