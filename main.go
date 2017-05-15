@@ -18,6 +18,7 @@ import (
 	"github.com/velour/catbase/plugins/fact"
 	"github.com/velour/catbase/plugins/leftpad"
 	"github.com/velour/catbase/plugins/reminder"
+	"github.com/velour/catbase/plugins/rss"
 	"github.com/velour/catbase/plugins/talker"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
@@ -57,6 +58,7 @@ func main() {
 	b.AddHandler("reminder", reminder.New(b))
 	b.AddHandler("babbler", babbler.New(b))
 	b.AddHandler("zork", zork.New(b))
+	b.AddHandler("rss", rss.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 
