@@ -546,6 +546,10 @@ func (p *BabblerPlugin) babbleSeed(babblerName string, seed []string) (string, e
 			break
 		}
 		words = append(words, curWord.Word)
+
+		if len(words) >= 250 {
+			break
+		}
 	}
 
 	return strings.TrimSpace(strings.Join(words, " ")), nil
