@@ -52,6 +52,31 @@ func (p *BabblerPlugin) getBabble(tokens []string) (string, bool) {
 	return "", false
 }
 
+func (p *BabblerPlugin) getBabbleWithSuffix(tokens []string) (string, bool) {
+	who := tokens[0]
+	_, err := p.getBabbler(who)
+
+	if err != nil {
+		if err == NO_BABBLER {
+			return fmt.Sprintf("%s babbler not found.", who), true
+		}
+	} else {
+
+		saying, err := p.babbleSeedSuffix(who, tokens[2:])
+
+		if err != nil {
+			if err == SAID_NOTHING {
+				return fmt.Sprintf("%s hasn't said anything yet.", who), true
+			} else if err == NEVER_SAID {
+				return fmt.Sprintf("%s never said '%s'", who, strings.Join(tokens[2:], " ")), true
+			}
+		} else if saying != "" {
+			return saying, true
+		}
+	}
+	return "", false
+}
+
 func (p *BabblerPlugin) batchLearn(tokens []string) (string, bool) {
 	who := tokens[3]
 	babblerId, err := p.getOrCreateBabbler(who)
