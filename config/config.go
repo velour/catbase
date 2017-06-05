@@ -75,6 +75,10 @@ type Config struct {
 	Reminder struct {
 		MaxBatchAdd int
 	}
+	Stats struct {
+		DBPath    string
+		Sightings []string
+	}
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
