@@ -217,6 +217,7 @@ func (p *StatsPlugin) Help(e string, m []string) {
 
 func (p *StatsPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	f, err := os.Open(p.bot.Config().Stats.DBPath)
+	defer f.Close()
 	if err != nil {
 		log.Printf("Error opening DB for web service: %s", err)
 		fmt.Fprintf(w, "Error opening DB")
