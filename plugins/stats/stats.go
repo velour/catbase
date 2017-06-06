@@ -18,6 +18,8 @@ import (
 	"github.com/velour/catbase/config"
 )
 
+const DayFormat = "2006-01-02"
+
 type StatsPlugin struct {
 	bot    bot.Bot
 	config *config.Config
@@ -34,7 +36,7 @@ func New(bot bot.Bot) *StatsPlugin {
 }
 
 type stat struct {
-	// date formatted: "2006-01-02"
+	// date formatted: DayFormat
 	day string
 	// category
 	bucket string
@@ -44,7 +46,7 @@ type stat struct {
 }
 
 func mkDay() string {
-	return time.Now().Format("2006-01-02")
+	return time.Now().Format(DayFormat)
 }
 
 // The value type is here in the future growth case that we might want to put a
@@ -65,7 +67,7 @@ func valueFromBytes(b []byte) (value, error) {
 type stats []stat
 
 // mkStat converts raw data to a stat struct
-// Expected a string representation of the date formatted: "2006-01-02"
+// Expected a string representation of the date formatted: DayFormat
 func mkStat(day string, bucket, key, val []byte) (stat, error) {
 	v, err := valueFromBytes(val)
 	if err != nil {
@@ -86,7 +88,7 @@ func (v value) add(other value) value {
 }
 
 // statFromDB takes a location specification and returns the data at that path
-// Expected a string representation of the date formatted: "2006-01-02"
+// Expected a string representation of the date formatted: DayFormat
 func statFromDB(path, day, bucket, key string) (stat, error) {
 	db, err := bolt.Open(path, 0600, &bolt.Options{
 		Timeout: 1 * time.Second,
@@ -238,7 +240,7 @@ func (p *StatsPlugin) mkUserStat(message msg.Message) stats {
 
 func (p *StatsPlugin) mkHourStat(message msg.Message) stats {
 	hr := time.Now().Hour()
-	return stats{stat{mkDay(), "user", string(hr), 1}}
+	return stats{stat{mkDay(), "hour", string(hr), 1}}
 }
 
 func (p *StatsPlugin) mkSightingStat(message msg.Message) stats {
