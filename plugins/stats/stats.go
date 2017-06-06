@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,7 +19,13 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-const DayFormat = "2006-01-02"
+const (
+	DayFormat      = "2006-01-02"
+	HourFormat     = "2006-01-02-15"
+	HourBucket     = "hour"
+	UserBucket     = "user"
+	SightingBucket = "sighting"
+)
 
 type StatsPlugin struct {
 	bot    bot.Bot
@@ -87,19 +94,27 @@ func (v value) add(other value) value {
 	return v + other
 }
 
-// statFromDB takes a location specification and returns the data at that path
-// Expected a string representation of the date formatted: DayFormat
-func statFromDB(path, day, bucket, key string) (stat, error) {
+func openDB(path string) (*bolt.DB, error) {
 	db, err := bolt.Open(path, 0600, &bolt.Options{
 		Timeout: 1 * time.Second,
 	})
-	buk := []byte(bucket)
-	k := []byte(key)
 	if err != nil {
 		log.Printf("Couldn't open BoltDB for stats (%s): %s", path, err)
+		return nil, err
+	}
+	return db, err
+}
+
+// statFromDB takes a location specification and returns the data at that path
+// Expected a string representation of the date formatted: DayFormat
+func statFromDB(path, day, bucket, key string) (stat, error) {
+	db, err := openDB(path)
+	if err != nil {
 		return stat{}, err
 	}
 	defer db.Close()
+	buk := []byte(bucket)
+	k := []byte(key)
 
 	tx, err := db.Begin(true)
 	if err != nil {
@@ -135,9 +150,8 @@ func statFromDB(path, day, bucket, key string) (stat, error) {
 
 // toDB takes a stat and records it, adding to the value in the DB if necessary
 func (s stats) toDB(path string) error {
-	db, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := openDB(path)
 	if err != nil {
-		log.Printf("Couldn't open BoltDB for stats (%s): %s", path, err)
 		return err
 	}
 	defer db.Close()
@@ -169,6 +183,10 @@ func (s stats) toDB(path string) error {
 			if err != nil {
 				return err
 			}
+			if stat.key == "" {
+				log.Fatal("Keys should not be empty")
+			}
+			log.Printf("Putting value in: '%s' %b, %+v", stat.key, []byte(stat.key), stat)
 			err = b.Put([]byte(stat.key), v)
 			return err
 		})
@@ -235,19 +253,19 @@ func (p *StatsPlugin) RegisterWeb() *string {
 }
 
 func (p *StatsPlugin) mkUserStat(message msg.Message) stats {
-	return stats{stat{mkDay(), "user", message.User.Name, 1}}
+	return stats{stat{mkDay(), UserBucket, message.User.Name, 1}}
 }
 
 func (p *StatsPlugin) mkHourStat(message msg.Message) stats {
 	hr := time.Now().Hour()
-	return stats{stat{mkDay(), "hour", string(hr), 1}}
+	return stats{stat{mkDay(), HourBucket, strconv.Itoa(hr), 1}}
 }
 
 func (p *StatsPlugin) mkSightingStat(message msg.Message) stats {
 	stats := stats{}
 	for _, name := range p.bot.Config().Stats.Sightings {
 		if strings.Contains(message.Body, name+" sighting") {
-			stats = append(stats, stat{mkDay(), "sighting", name, 1})
+			stats = append(stats, stat{mkDay(), SightingBucket, name, 1})
 		}
 	}
 	return stats
