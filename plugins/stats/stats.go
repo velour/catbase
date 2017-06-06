@@ -107,6 +107,10 @@ func statFromDB(path, bucket, key string) (stat, error) {
 		return stat{}, err
 	}
 
+	if v == nil {
+		return stat{bucket, key, 0}, nil
+	}
+
 	return mkStat(buk, k, v)
 }
 
