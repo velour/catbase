@@ -47,10 +47,12 @@ func TestWithDB(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestDBReadWrite", func(t *testing.T) {
+		day := mkDay()
 		bucket := "testBucket"
 		key := "testKey"
 
 		expected := stats{stat{
+			day,
 			bucket,
 			key,
 			1,
@@ -59,7 +61,7 @@ func TestWithDB(t *testing.T) {
 		err := expected.toDB(dbPath)
 		assert.Nil(t, err)
 
-		actual, err := statFromDB(dbPath, bucket, key)
+		actual, err := statFromDB(dbPath, day, bucket, key)
 		assert.Nil(t, err)
 
 		assert.Equal(t, actual, expected[0])
@@ -69,11 +71,13 @@ func TestWithDB(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestDBAddStatInLoop", func(t *testing.T) {
+		day := mkDay()
 		bucket := "testBucket"
 		key := "testKey"
 		expected := value(25)
 
 		statPack := stats{stat{
+			day,
 			bucket,
 			key,
 			5,
@@ -84,7 +88,7 @@ func TestWithDB(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		actual, err := statFromDB(dbPath, bucket, key)
+		actual, err := statFromDB(dbPath, day, bucket, key)
 		assert.Nil(t, err)
 
 		assert.Equal(t, actual.val, expected)
@@ -93,42 +97,25 @@ func TestWithDB(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestDBAddStats", func(t *testing.T) {
+		day := mkDay()
 		bucket := "testBucket"
 		key := "testKey"
 		expected := value(5)
 
-		statPack := stats{
-			stat{
+		statPack := stats{}
+		for i := 0; i < 5; i++ {
+			statPack = append(statPack, stat{
+				day,
 				bucket,
 				key,
 				1,
-			},
-			stat{
-				bucket,
-				key,
-				1,
-			},
-			stat{
-				bucket,
-				key,
-				1,
-			},
-			stat{
-				bucket,
-				key,
-				1,
-			},
-			stat{
-				bucket,
-				key,
-				1,
-			},
+			})
 		}
 
 		err := statPack.toDB(dbPath)
 		assert.Nil(t, err)
 
-		actual, err := statFromDB(dbPath, bucket, key)
+		actual, err := statFromDB(dbPath, day, bucket, key)
 		assert.Nil(t, err)
 
 		assert.Equal(t, actual.val, expected)
@@ -151,6 +138,7 @@ func makeMessage(payload string) msg.Message {
 }
 
 func testUserCounter(t *testing.T, count int) {
+	day := mkDay()
 	expected := value(count)
 	mb := bot.NewMockBot()
 	mb.Cfg.Stats.DBPath = dbPath
@@ -164,7 +152,7 @@ func testUserCounter(t *testing.T, count int) {
 	_, err := os.Stat(dbPath)
 	assert.Nil(t, err)
 
-	stat, err := statFromDB(mb.Config().Stats.DBPath, "user", "tester")
+	stat, err := statFromDB(mb.Config().Stats.DBPath, day, "user", "tester")
 	assert.Nil(t, err)
 	actual := stat.val
 	assert.Equal(t, actual, expected)
@@ -175,6 +163,7 @@ func TestMessages(t *testing.T) {
 	assert.NotNil(t, err)
 
 	t.Run("TestOneUserCounter", func(t *testing.T) {
+		day := mkDay()
 		count := 5
 		expected := value(count)
 		mb := bot.NewMockBot()
@@ -189,7 +178,7 @@ func TestMessages(t *testing.T) {
 		_, err := os.Stat(dbPath)
 		assert.Nil(t, err)
 
-		stat, err := statFromDB(mb.Config().Stats.DBPath, "user", "tester")
+		stat, err := statFromDB(mb.Config().Stats.DBPath, day, "user", "tester")
 		assert.Nil(t, err)
 		actual := stat.val
 		assert.Equal(t, actual, expected)
@@ -198,6 +187,7 @@ func TestMessages(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestTenUserCounter", func(t *testing.T) {
+		day := mkDay()
 		count := 5
 		expected := value(count)
 		mb := bot.NewMockBot()
@@ -212,7 +202,7 @@ func TestMessages(t *testing.T) {
 		_, err := os.Stat(dbPath)
 		assert.Nil(t, err)
 
-		stat, err := statFromDB(mb.Config().Stats.DBPath, "user", "tester")
+		stat, err := statFromDB(mb.Config().Stats.DBPath, day, "user", "tester")
 		assert.Nil(t, err)
 		actual := stat.val
 		assert.Equal(t, actual, expected)
@@ -221,6 +211,7 @@ func TestMessages(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestChannelCounter", func(t *testing.T) {
+		day := mkDay()
 		count := 5
 		expected := value(count)
 		mb := bot.NewMockBot()
@@ -235,7 +226,7 @@ func TestMessages(t *testing.T) {
 		_, err := os.Stat(dbPath)
 		assert.Nil(t, err)
 
-		stat, err := statFromDB(mb.Config().Stats.DBPath, "channel", "test")
+		stat, err := statFromDB(mb.Config().Stats.DBPath, day, "channel", "test")
 		assert.Nil(t, err)
 		actual := stat.val
 		assert.Equal(t, actual, expected)
@@ -244,6 +235,7 @@ func TestMessages(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestSightingCounter", func(t *testing.T) {
+		day := mkDay()
 		count := 5
 		expected := value(count)
 		mb := bot.NewMockBot()
@@ -261,7 +253,7 @@ func TestMessages(t *testing.T) {
 		_, err := os.Stat(dbPath)
 		assert.Nil(t, err)
 
-		stat, err := statFromDB(mb.Config().Stats.DBPath, "sighting", "user")
+		stat, err := statFromDB(mb.Config().Stats.DBPath, day, "sighting", "user")
 		assert.Nil(t, err)
 		actual := stat.val
 		assert.Equal(t, actual, expected)
@@ -270,6 +262,7 @@ func TestMessages(t *testing.T) {
 	rmDB(t)
 
 	t.Run("TestSightingCounterNoResults", func(t *testing.T) {
+		day := mkDay()
 		count := 5
 		expected := value(0)
 		mb := bot.NewMockBot()
@@ -287,7 +280,7 @@ func TestMessages(t *testing.T) {
 		_, err := os.Stat(dbPath)
 		assert.Nil(t, err)
 
-		stat, err := statFromDB(mb.Config().Stats.DBPath, "sighting", "user")
+		stat, err := statFromDB(mb.Config().Stats.DBPath, day, "sighting", "user")
 		assert.Nil(t, err)
 		actual := stat.val
 		assert.Equal(t, actual, expected)

@@ -31,9 +31,17 @@ func New(bot bot.Bot) *StatsPlugin {
 }
 
 type stat struct {
+	// date formatted: "2006-01-02"
+	day string
+	// category
 	bucket string
-	key    string
-	val    value
+	// specific unique individual
+	key string
+	val value
+}
+
+func mkDay() string {
+	return time.Now().Format("2006-01-02")
 }
 
 // The value type is here in the future growth case that we might want to put a
@@ -53,13 +61,16 @@ func valueFromBytes(b []byte) (value, error) {
 
 type stats []stat
 
-func mkStat(bucket, key, val []byte) (stat, error) {
+// mkStat converts raw data to a stat struct
+// Expected a string representation of the date formatted: "2006-01-02"
+func mkStat(day string, bucket, key, val []byte) (stat, error) {
 	v, err := valueFromBytes(val)
 	if err != nil {
 		log.Printf("mkStat: error getting value from bytes: %s", err)
 		return stat{}, err
 	}
 	return stat{
+		day:    day,
 		bucket: string(bucket),
 		key:    string(key),
 		val:    v,
@@ -71,7 +82,9 @@ func (v value) add(other value) value {
 	return v + other
 }
 
-func statFromDB(path, bucket, key string) (stat, error) {
+// statFromDB takes a location specification and returns the data at that path
+// Expected a string representation of the date formatted: "2006-01-02"
+func statFromDB(path, day, bucket, key string) (stat, error) {
 	db, err := bolt.Open(path, 0600, &bolt.Options{
 		Timeout: 1 * time.Second,
 	})
@@ -90,11 +103,17 @@ func statFromDB(path, bucket, key string) (stat, error) {
 	}
 	defer tx.Rollback()
 
-	b, err := tx.CreateBucketIfNotExists(buk)
+	d, err := tx.CreateBucketIfNotExists([]byte(day))
 	if err != nil {
 		log.Println("statFromDB: Error creating the bucket")
 		return stat{}, err
 	}
+	b, err := d.CreateBucketIfNotExists(buk)
+	if err != nil {
+		log.Println("statFromDB: Error creating the bucket")
+		return stat{}, err
+	}
+
 	v := b.Get(k)
 
 	if err := tx.Commit(); err != nil {
@@ -103,12 +122,13 @@ func statFromDB(path, bucket, key string) (stat, error) {
 	}
 
 	if v == nil {
-		return stat{bucket, key, 0}, nil
+		return stat{day, bucket, key, 0}, nil
 	}
 
-	return mkStat(buk, k, v)
+	return mkStat(day, buk, k, v)
 }
 
+// toDB takes a stat and records it, adding to the value in the DB if necessary
 func (s stats) toDB(path string) error {
 	db, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
@@ -119,7 +139,12 @@ func (s stats) toDB(path string) error {
 
 	for _, stat := range s {
 		err = db.Update(func(tx *bolt.Tx) error {
-			b, err := tx.CreateBucketIfNotExists([]byte(stat.bucket))
+			d, err := tx.CreateBucketIfNotExists([]byte(stat.day))
+			if err != nil {
+				log.Println("toDB: Error creating bucket")
+				return err
+			}
+			b, err := d.CreateBucketIfNotExists([]byte(stat.bucket))
 			if err != nil {
 				log.Println("toDB: Error creating bucket")
 				return err
@@ -192,24 +217,24 @@ func (p *StatsPlugin) RegisterWeb() *string {
 }
 
 func (p *StatsPlugin) mkUserStat(message msg.Message) stats {
-	return stats{stat{"user", message.User.Name, 1}}
+	return stats{stat{mkDay(), "user", message.User.Name, 1}}
 }
 
 func (p *StatsPlugin) mkHourStat(message msg.Message) stats {
 	hr := time.Now().Hour()
-	return stats{stat{"user", string(hr), 1}}
+	return stats{stat{mkDay(), "user", string(hr), 1}}
 }
 
 func (p *StatsPlugin) mkSightingStat(message msg.Message) stats {
 	stats := stats{}
 	for _, name := range p.bot.Config().Stats.Sightings {
 		if strings.Contains(message.Body, name+" sighting") {
-			stats = append(stats, stat{"sighting", name, 1})
+			stats = append(stats, stat{mkDay(), "sighting", name, 1})
 		}
 	}
 	return stats
 }
 
 func (p *StatsPlugin) mkChannelStat(message msg.Message) stats {
-	return stats{stat{"channel", message.Channel, 1}}
+	return stats{stat{mkDay(), "channel", message.Channel, 1}}
 }
