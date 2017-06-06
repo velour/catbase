@@ -157,6 +157,44 @@ func TestBabblerBadSeed2(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "seabass never said 'this is a really'")
 }
 
+func TestBabblerSuffixSeed(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("This is message one")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	seabass.Body = "It's easier to test with unique messages"
+	res = c.Message(seabass)
+	seabass.Body = "hi there"
+	res = c.Message(seabass)
+	res = c.Message(makeMessage("!seabass syas message one"))
+	res = c.Message(makeMessage("!seabass syas with unique"))
+	assert.Len(t, mb.Messages, 2)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "this is message one")
+	assert.Contains(t, mb.Messages[1], "it's easier to test with unique")
+}
+
+func TestBabblerBadSuffixSeed(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("This is message one")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	seabass.Body = "It's easier to test with unique messages"
+	res = c.Message(seabass)
+	seabass.Body = "hi there"
+	res = c.Message(seabass)
+	res = c.Message(makeMessage("!seabass syas anything true"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "seabass never said 'anything true'")
+}
+
 func TestBabblerBatch(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
