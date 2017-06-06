@@ -5,7 +5,10 @@ package stats
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -91,7 +94,7 @@ func statFromDB(path, day, bucket, key string) (stat, error) {
 	buk := []byte(bucket)
 	k := []byte(key)
 	if err != nil {
-		log.Printf("Couldn't open BoltDB for stats: %s", err)
+		log.Printf("Couldn't open BoltDB for stats (%s): %s", path, err)
 		return stat{}, err
 	}
 	defer db.Close()
@@ -132,7 +135,7 @@ func statFromDB(path, day, bucket, key string) (stat, error) {
 func (s stats) toDB(path string) error {
 	db, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		log.Printf("Couldn't open BoltDB for stats: %s", err)
+		log.Printf("Couldn't open BoltDB for stats (%s): %s", path, err)
 		return err
 	}
 	defer db.Close()
@@ -212,8 +215,20 @@ func (p *StatsPlugin) BotMessage(message msg.Message) bool {
 func (p *StatsPlugin) Help(e string, m []string) {
 }
 
+func (p *StatsPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
+	f, err := os.Open(p.bot.Config().Stats.DBPath)
+	if err != nil {
+		log.Printf("Error opening DB for web service: %s", err)
+		fmt.Fprintf(w, "Error opening DB")
+		return
+	}
+	http.ServeContent(w, r, "stats.db", time.Now(), f)
+}
+
 func (p *StatsPlugin) RegisterWeb() *string {
-	return nil
+	http.HandleFunc("/stats", p.serveQuery)
+	tmp := "/stats"
+	return &tmp
 }
 
 func (p *StatsPlugin) mkUserStat(message msg.Message) stats {
