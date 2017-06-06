@@ -4,8 +4,7 @@
 package stats
 
 import (
-	"bytes"
-	"encoding/gob"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -42,17 +41,13 @@ type stat struct {
 type value int
 
 func (v value) Bytes() ([]byte, error) {
-	var b bytes.Buffer
-	enc := gob.NewEncoder(&b)
-	err := enc.Encode(v)
-	return b.Bytes(), err
+	b, err := json.Marshal(v)
+	return b, err
 }
 
 func valueFromBytes(b []byte) (value, error) {
 	var v value
-	buf := bytes.NewReader(b)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(&v)
+	err := json.Unmarshal(b, &v)
 	return v, err
 }
 
