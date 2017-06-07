@@ -476,13 +476,6 @@ func (p *Factoid) changeFact(message msg.Message) bool {
 		if err != nil {
 			log.Println("Error getting facts: ", trigger, err)
 		}
-		if !(message.User.Admin && userexp[len(userexp)-1] == 'g') {
-			result = result[:1]
-			if result[0].Owner != message.User.Name && !message.User.Admin {
-				p.Bot.SendMessage(message.Channel, "That's not your fact to edit.")
-				return true
-			}
-		}
 		// make the changes
 		msg := fmt.Sprintf("Changing %d facts.", len(result))
 		p.Bot.SendMessage(message.Channel, msg)
