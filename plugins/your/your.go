@@ -63,6 +63,26 @@ func (p *YourPlugin) Message(message msg.Message) bool {
 			return true
 		}
 	}
+	if strings.Contains(message.Body, " is ") {
+		log.Println("Found an is")
+		if rand.Float64() < config.NegativeChance {
+			log.Println("Replacing an is")
+			r := strings.NewReplacer(" is ", " is not ")
+			msg := r.Replace(message.Body)
+			p.bot.SendMessage(message.Channel, msg)
+			return true
+		}
+	}
+	if strings.Contains(message.Body, " are ") {
+		log.Println("Found an are")
+		if rand.Float64() < config.NegativeChance {
+			log.Println("Replacing an are")
+			r := strings.NewReplacer(" are ", " are not ")
+			msg := r.Replace(message.Body)
+			p.bot.SendMessage(message.Channel, msg)
+			return true
+		}
+	}
 	return false
 }
 

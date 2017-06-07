@@ -48,6 +48,7 @@
 		"YourChance": 0.4,
 		"FuckingChance": 0.15,
 		"DuckingChance": 0.5,
+		"NegativeChance": 0.5,
 		"MaxLength": 140
 	},
 	"LeftPad": {
