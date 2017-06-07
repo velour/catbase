@@ -439,18 +439,15 @@ func (p *Factoid) forgetLastFact(message msg.Message) bool {
 		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
 	}
-	if message.User.Admin || message.User.Name == p.LastFact.Owner {
-		err := p.LastFact.delete(p.db)
-		if err != nil {
-			log.Println("Error removing fact: ", p.LastFact, err)
-		}
-		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.Fact,
-			p.LastFact.Verb, p.LastFact.Tidbit)
-		p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
-		p.LastFact = nil
-	} else {
-		p.Bot.SendMessage(message.Channel, "You don't own that fact.")
+
+	err := p.LastFact.delete(p.db)
+	if err != nil {
+		log.Println("Error removing fact: ", p.LastFact, err)
 	}
+	fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.Fact,
+		p.LastFact.Verb, p.LastFact.Tidbit)
+	p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
+	p.LastFact = nil
 
 	return true
 }
