@@ -119,7 +119,14 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 		saidWhat, saidSomething = p.getBabble(tokens)
 	} else if numTokens > 2 && tokens[1] == "says-tail" {
 		saidWhat, saidSomething = p.getBabbleWithSuffix(tokens)
-	}else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
+	} else if numTokens >= 2 && tokens[1] == "says-middle-out" {
+			saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
+			saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
+			saidSomething = saidSomethingStart && saidSomethingEnd
+			if saidSomething {
+				saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
+			}
+	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
 		saidWhat, saidSomething = p.initializeBabbler(tokens)
 	} else if strings.Index(lowercase, "batch learn for ") == 0 {
 		saidWhat, saidSomething = p.batchLearn(tokens)
@@ -142,6 +149,7 @@ func (p *BabblerPlugin) Help(channel string, parts []string) {
 		"merge babbler drseabass into seabass",
 		"seabass says ...",
 		"seabass says-tail ...",
+		"seabass says-middle-out ...",
 		"seabass says-bridge ... | ...",
 	}
 	p.Bot.SendMessage(channel, strings.Join(commands, "\n\n"))
