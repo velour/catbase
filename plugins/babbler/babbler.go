@@ -862,7 +862,7 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 	closed := map[int64]*searchNode{ startWordNode.NodeId : open[0] }
 	goalNodeId := int64(-1)
 
-	for i := 0; i < len(open) && i < 250; i++ {
+	for i := 0; i < len(open) && i < 1000; i++ {
 		cur := open[i]
 
 		arcs, err := p.getNextArcs(cur.babblerNodeId)
@@ -880,7 +880,10 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 
 				if arc.ToNodeId == endWordNode.NodeId {
 					goalNodeId = cur.babblerNodeId
-					break
+					//add a little randomization in through maybe searching beyond this solution?
+					if rand.Intn(4) == 0 {
+						break
+					}
 				}
 			}
 		}
