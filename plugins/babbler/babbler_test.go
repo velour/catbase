@@ -169,8 +169,8 @@ func TestBabblerSuffixSeed(t *testing.T) {
 	res = c.Message(seabass)
 	seabass.Body = "hi there"
 	res = c.Message(seabass)
-	res = c.Message(makeMessage("!seabass syas message one"))
-	res = c.Message(makeMessage("!seabass syas with unique"))
+	res = c.Message(makeMessage("!seabass says-tail message one"))
+	res = c.Message(makeMessage("!seabass says-tail with unique"))
 	assert.Len(t, mb.Messages, 2)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "this is message one")
@@ -189,7 +189,7 @@ func TestBabblerBadSuffixSeed(t *testing.T) {
 	res = c.Message(seabass)
 	seabass.Body = "hi there"
 	res = c.Message(seabass)
-	res = c.Message(makeMessage("!seabass syas anything true"))
+	res = c.Message(makeMessage("!seabass says-tail anything true"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "seabass never said 'anything true'")
@@ -203,7 +203,7 @@ func TestBabblerBookendSeed(t *testing.T) {
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	res = c.Message(makeMessage("!seabass says It's easier syas unique messages"))
+	res = c.Message(makeMessage("!seabass says-bridge It's easier | unique messages"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "it's easier to test with unique messages")
@@ -217,7 +217,7 @@ func TestBabblerBookendSeedShort(t *testing.T) {
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	res = c.Message(makeMessage("!seabass says It's easier to test with syas unique messages"))
+	res = c.Message(makeMessage("!seabass says-bridge It's easier to test with | unique messages"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "it's easier to test with unique messages")
@@ -231,7 +231,7 @@ func TestBabblerBadBookendSeed(t *testing.T) {
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
 	res := c.Message(seabass)
-	res = c.Message(makeMessage("!seabass says It's easier syas not unique messages"))
+	res = c.Message(makeMessage("!seabass says-bridge It's easier | not unique messages"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "seabass never said 'it's easier ... not unique messages'")
