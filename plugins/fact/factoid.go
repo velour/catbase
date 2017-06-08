@@ -476,7 +476,7 @@ func (p *Factoid) changeFact(message msg.Message) bool {
 		if err != nil {
 			log.Println("Error getting facts: ", trigger, err)
 		}
-		if !userexp[len(userexp)-1] == 'g' {
+		if userexp[len(userexp)-1] != 'g' {
 			result = result[:1]
 		}
 		// make the changes
