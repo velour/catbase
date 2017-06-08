@@ -110,15 +110,22 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	saidSomething := false
 	saidWhat := ""
 
-	if numTokens > 2 && tokens[1] == "says" && strings.Contains(lowercase, "syas") {
-		split := strings.Split(lowercase, "syas")
+	if numTokens > 2 && tokens[1] == "says-bridge" && strings.Contains(lowercase, "|") {
+		split := strings.Split(lowercase, "|")
 		start := strings.Fields(split[0])
 		end := strings.Fields(split[1])
 		saidWhat, saidSomething = p.getBabbleWithBookends(start, end)
 	} else if numTokens >= 2 && tokens[1] == "says" {
 		saidWhat, saidSomething = p.getBabble(tokens)
-	} else if numTokens > 2 && tokens[1] == "syas" {
+	} else if numTokens > 2 && tokens[1] == "says-tail" {
 		saidWhat, saidSomething = p.getBabbleWithSuffix(tokens)
+	} else if numTokens >= 2 && tokens[1] == "says-middle-out" {
+			saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
+			saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
+			saidSomething = saidSomethingStart && saidSomethingEnd
+			if saidSomething {
+				saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
+			}
 	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
 		saidWhat, saidSomething = p.initializeBabbler(tokens)
 	} else if strings.Index(lowercase, "batch learn for ") == 0 {
@@ -137,7 +144,15 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 }
 
 func (p *BabblerPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "initialize babbler for seabass\n\nseabass says")
+	commands := []string{
+		"initialize babbler for seabass",
+		"merge babbler drseabass into seabass",
+		"seabass says ...",
+		"seabass says-tail ...",
+		"seabass says-middle-out ...",
+		"seabass says-bridge ... | ...",
+	}
+	p.Bot.SendMessage(channel, strings.Join(commands, "\n\n"))
 }
 
 func (p *BabblerPlugin) Event(kind string, message msg.Message) bool {
@@ -847,7 +862,7 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 	closed := map[int64]*searchNode{ startWordNode.NodeId : open[0] }
 	goalNodeId := int64(-1)
 
-	for i := 0; i < len(open) && i < 250; i++ {
+	for i := 0; i < len(open) && i < 1000; i++ {
 		cur := open[i]
 
 		arcs, err := p.getNextArcs(cur.babblerNodeId)
@@ -865,7 +880,10 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 
 				if arc.ToNodeId == endWordNode.NodeId {
 					goalNodeId = cur.babblerNodeId
-					break
+					//add a little randomization in through maybe searching beyond this solution?
+					if rand.Intn(4) == 0 {
+						break
+					}
 				}
 			}
 		}
