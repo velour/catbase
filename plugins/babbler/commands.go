@@ -28,7 +28,8 @@ func (p *BabblerPlugin) getBabble(tokens []string) (string, bool) {
 
 	if err != nil {
 		if err == NO_BABBLER {
-			return fmt.Sprintf("%s babbler not found.", who), true
+			// return fmt.Sprintf("%s babbler not found.", who), true
+			return "", false
 		}
 	} else {
 
@@ -58,7 +59,8 @@ func (p *BabblerPlugin) getBabbleWithSuffix(tokens []string) (string, bool) {
 
 	if err != nil {
 		if err == NO_BABBLER {
-			return fmt.Sprintf("%s babbler not found.", who), true
+			// return fmt.Sprintf("%s babbler not found.", who), true
+			return "", false
 		}
 	} else {
 
@@ -83,7 +85,8 @@ func (p *BabblerPlugin) getBabbleWithBookends(start, end []string) (string, bool
 
 	if err != nil {
 		if err == NO_BABBLER {
-			return fmt.Sprintf("%s babbler not found.", who), true
+			// return fmt.Sprintf("%s babbler not found.", who), true
+			return "", false
 		}
 	} else {
 
