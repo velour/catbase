@@ -31,9 +31,9 @@ func TestBabblerNoBabbler(t *testing.T) {
 	c.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, c)
 	c.Message(makeMessage("!seabass2 says"))
-	res := assert.Len(t, mb.Messages, 1)
+	res := assert.Len(t, mb.Messages, 0)
 	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "seabass2 babbler not found")
+	// assert.Contains(t, mb.Messages[0], "seabass2 babbler not found")
 }
 
 func TestBabblerNothingSaid(t *testing.T) {
@@ -250,6 +250,21 @@ func TestBabblerMiddleOutSeed(t *testing.T) {
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "it's easier to test with unique messages")
 }
+
+func TestBabblerBadMiddleOutSeed(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	c.config.Babbler.DefaultUsers = []string{"seabass"}
+	assert.NotNil(t, c)
+	seabass := makeMessage("It's easier to test with unique messages")
+	seabass.User = &user.User{Name: "seabass"}
+	res := c.Message(seabass)
+	res = c.Message(makeMessage("!seabass says-middle-out anything true"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "seabass never said 'anything true'")
+}
+
 
 func TestBabblerBatch(t *testing.T) {
 	mb := bot.NewMockBot()

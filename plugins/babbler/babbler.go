@@ -121,10 +121,15 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 		saidWhat, saidSomething = p.getBabbleWithSuffix(tokens)
 	} else if numTokens >= 2 && tokens[1] == "says-middle-out" {
 			saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
-			saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
-			saidSomething = saidSomethingStart && saidSomethingEnd
-			if saidSomething {
-				saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
+			if !saidSomethingStart || saidWhatStart == strings.Join(tokens[2:], " ") {
+				saidSomething = saidSomethingStart
+				saidWhat = saidWhatStart
+			} else {
+				saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
+				saidSomething = saidSomethingStart && saidSomethingEnd
+				if saidSomething {
+					saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
+				}
 			}
 	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
 		saidWhat, saidSomething = p.initializeBabbler(tokens)
