@@ -262,7 +262,7 @@ func TestBabblerBadMiddleOutSeed(t *testing.T) {
 	res = c.Message(makeMessage("!seabass says-middle-out anything true"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "seabass never said 'anything true'")
+	assert.Equal(t, mb.Messages[0], "seabass never said 'anything true'")
 }
 
 

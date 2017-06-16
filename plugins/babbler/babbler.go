@@ -121,7 +121,8 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 		saidWhat, saidSomething = p.getBabbleWithSuffix(tokens)
 	} else if numTokens >= 2 && tokens[1] == "says-middle-out" {
 			saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
-			if !saidSomethingStart || saidWhatStart == strings.Join(tokens[2:], " ") {
+			neverSaidLooksLike := fmt.Sprintf("%s never said '%s'", tokens[0], strings.Join(tokens[2:], " "))
+			if !saidSomethingStart || saidWhatStart == neverSaidLooksLike {
 				saidSomething = saidSomethingStart
 				saidWhat = saidWhatStart
 			} else {
