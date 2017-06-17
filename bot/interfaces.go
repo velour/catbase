@@ -17,6 +17,7 @@ type Bot interface {
 	AddHandler(string, Handler)
 	SendMessage(string, string)
 	SendAction(string, string)
+	React(string, string, msg.Message)
 	MsgReceived(msg.Message)
 	EventReceived(msg.Message)
 	Filter(msg.Message, string) string
@@ -30,6 +31,7 @@ type Connector interface {
 
 	SendMessage(channel, message string)
 	SendAction(channel, message string)
+	React(string, string, msg.Message)
 	Serve()
 
 	Who(string) []string

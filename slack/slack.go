@@ -82,6 +82,12 @@ type slackMessage struct {
 	} `json:"error"`
 }
 
+type slackReaction struct {
+	Reaction string `json:"name"`
+	Channel  string `json:"channel"`
+	Timestamp  float64 `json:"timestamp"`
+}
+
 type rtmStart struct {
 	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
@@ -129,6 +135,19 @@ func (s *Slack) SendMessage(channel, message string) {
 func (s *Slack) SendAction(channel, message string) {
 	log.Printf("Sending action to %s: %s", channel, message)
 	s.SendMessageType(channel, "message", "me_message", "_"+message+"_")
+}
+
+func (s *Slack) React(channel, reaction string, message msg.Message) {
+	log.Printf("Reacting in %s: %s", channel, reaction)
+	resp, err := http.PostForm("https://slack.com/api/reactions.add",
+		url.Values{ "token": {s.config.Slack.Token},
+								"name": {reaction},
+								"channel": {channel},
+								"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
+	if err != nil {
+		log.Printf("Error sending Slack reaction: %s", err)
+	}
+	log.Print(resp)
 }
 
 func (s *Slack) receiveMessage() (slackMessage, error) {
@@ -212,6 +231,9 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 		Action:  isAction,
 		Host:    string(m.Id),
 		Time:    tstamp,
+		AdditionalData: map[string]string{
+			"RAW_SLACK_TIMESTAMP": m.Ts,
+		},
 	}
 }
 
