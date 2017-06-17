@@ -19,4 +19,5 @@ type Message struct {
 	Action        bool
 	Time          time.Time
 	Host          string
+	AdditionalData map[string]string
 }

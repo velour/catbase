@@ -98,6 +98,10 @@ func (i *Irc) SendAction(channel, message string) {
 	i.SendMessage(channel, message)
 }
 
+func (i *Irc) React(channel, reaction string, message msg.Message) {
+	//we're not goign to do anything because it's IRC
+}
+
 func (i *Irc) Serve() {
 	if i.eventReceived == nil || i.messageReceived == nil {
 		log.Fatal("Missing an event handler")
