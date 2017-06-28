@@ -29,12 +29,14 @@ func (b *bot) MsgReceived(msg msg.Message) {
 		goto RET
 	}
 
-	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.Message(msg) {
-			break
+	go (func() {
+		for _, name := range b.pluginOrdering {
+			p := b.plugins[name]
+			if p.Message(msg) {
+				break
+			}
 		}
-	}
+	})()
 
 RET:
 	b.logIn <- msg
