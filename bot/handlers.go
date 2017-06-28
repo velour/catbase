@@ -30,11 +30,23 @@ func (b *bot) MsgReceived(msg msg.Message) {
 	}
 
 	go (func() {
-		for _, name := range b.pluginOrdering {
-			p := b.plugins[name]
-			if p.Message(msg) {
-				break
+		done := make(chan bool, 1)
+		go (func() {
+			for _, name := range b.pluginOrdering {
+				p := b.plugins[name]
+				if p.Message(msg) {
+					break
+				}
 			}
+			done <- true
+		})()
+		select {
+		case <-done:
+			break
+		case <-time.After(5 * time.Second):
+			failMsg := fmt.Sprintf("I thought about it for a really long time, but ultimately I couldn't really comprehend the magnitude of this message...\n```%+v```\nI'm going to take a forever nap now. I'm so sorry that you won't know what great things could have come from that message. It was a really good message..", msg)
+			b.SendMessage(msg.Channel, failMsg)
+			log.Fatal(failMsg)
 		}
 	})()
 

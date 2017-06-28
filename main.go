@@ -13,6 +13,7 @@ import (
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
 	"github.com/velour/catbase/plugins/counter"
+	"github.com/velour/catbase/plugins/crash"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/fact"
 	"github.com/velour/catbase/plugins/leftpad"
@@ -62,6 +63,7 @@ func main() {
 	b.AddHandler("zork", zork.New(b))
 	b.AddHandler("rss", rss.New(b))
 	b.AddHandler("reaction", reaction.New(b))
+	b.AddHandler("crash", crash.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 
