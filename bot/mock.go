@@ -38,6 +38,7 @@ func (mb *MockBot) EventReceived(msg msg.Message)              {}
 func (mb *MockBot) Filter(msg msg.Message, s string) string    { return "" }
 func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
 func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
+func (mb *MockBot) React(string, string, msg.Message)          {}
 
 func NewMockBot() *MockBot {
 	db, err := sqlx.Open("sqlite3_custom", ":memory:")
