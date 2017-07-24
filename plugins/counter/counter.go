@@ -136,7 +136,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	if tea, _ := regexp.MatchString("(?i)^tea\\. [0-9A-Za-z_ ]*\\. ((hot)|(iced))\\.?$", message.Body); tea {
+	if tea, _ := regexp.MatchString("(?i)^tea\\. [^.]*\\. ((hot)|(iced))\\.?$", message.Body); tea {
 		item, err := GetItem(p.DB, nick, ":tea:")
 		if err != nil {
 			log.Printf("Error finding item %s.%s: %s.", nick, ":tea:", err)

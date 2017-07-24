@@ -69,6 +69,15 @@ func TestTeaSkieselQuote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
 }
+func TestTeaUnicodeJapanese(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("Tea. おちや. Hot."))
+	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, item.Count)
+}
 
 func TestResetMe(t *testing.T) {
 	mb := bot.NewMockBot()
