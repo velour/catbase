@@ -34,6 +34,8 @@ type Slack struct {
 
 	users map[string]string
 
+	emoji map[string]string
+
 	eventReceived   func(msg.Message)
 	messageReceived func(msg.Message)
 }
@@ -100,7 +102,8 @@ type rtmStart struct {
 func New(c *config.Config) *Slack {
 	return &Slack{
 		config: c,
-		users:  make(map[string]string),
+		users: make(map[string]string),
+		emoji: make(map[string]string),
 	}
 }
 
@@ -150,6 +153,37 @@ func (s *Slack) React(channel, reaction string, message msg.Message) {
 	log.Print(resp)
 }
 
+func (s *Slack) GetEmojiList() map[string]string {
+	return s.emoji
+}
+
+func (s *Slack) populateEmojiList() {
+	resp, err := http.PostForm("https://slack.com/api/emoji.list",
+		url.Values{ "token": {s.config.Slack.Token}})
+	if err != nil {
+		log.Printf("Error retrieving emoji list from Slack: %s", err)
+		return
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Fatalf("Error reading Slack API body: %s", err)
+	}
+
+	type EmojiListResponse struct {
+		OK bool `json:ok`
+		Emoji map[string]string `json:emoji`
+	}
+
+	var list EmojiListResponse
+	err = json.Unmarshal(body, &list)
+	if err != nil {
+		log.Fatalf("Error parsing emoji list: %s", err)
+	}
+	s.emoji = list.Emoji
+}
+
 func (s *Slack) receiveMessage() (slackMessage, error) {
 	var msg []byte
 	m := slackMessage{}
@@ -166,6 +200,7 @@ func (s *Slack) receiveMessage() (slackMessage, error) {
 
 func (s *Slack) Serve() {
 	s.connect()
+	s.populateEmojiList()
 	for {
 		msg, err := s.receiveMessage()
 		if err != nil && err == io.EOF {

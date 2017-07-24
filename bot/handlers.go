@@ -65,6 +65,10 @@ func (b *bot) React(channel, reaction string, message msg.Message) {
 	b.conn.React(channel, reaction, message)
 }
 
+func (b *bot) GetEmojiList() map[string]string {
+	return b.conn.GetEmojiList()
+}
+
 // Checks to see if the user is asking for help, returns true if so and handles the situation.
 func (b *bot) checkHelp(channel string, parts []string) {
 	if len(parts) == 1 {
