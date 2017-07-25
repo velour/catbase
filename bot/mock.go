@@ -42,7 +42,6 @@ func (mb *MockBot) CheckAdmin(nick string) bool                 { return false }
 func (mb *MockBot) React(channel, reaction string, message msg.Message) {}
 func (mb *MockBot) GetEmojiList() map[string]string                     { return make(map[string]string) }
 
-
 func NewMockBot() *MockBot {
 	db, err := sqlx.Open("sqlite3_custom", ":memory:")
 	if err != nil {

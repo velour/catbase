@@ -439,18 +439,15 @@ func (p *Factoid) forgetLastFact(message msg.Message) bool {
 		p.Bot.SendMessage(message.Channel, "I refuse.")
 		return true
 	}
-	if message.User.Admin || message.User.Name == p.LastFact.Owner {
-		err := p.LastFact.delete(p.db)
-		if err != nil {
-			log.Println("Error removing fact: ", p.LastFact, err)
-		}
-		fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.Fact,
-			p.LastFact.Verb, p.LastFact.Tidbit)
-		p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
-		p.LastFact = nil
-	} else {
-		p.Bot.SendMessage(message.Channel, "You don't own that fact.")
+
+	err := p.LastFact.delete(p.db)
+	if err != nil {
+		log.Println("Error removing fact: ", p.LastFact, err)
 	}
+	fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.Fact,
+		p.LastFact.Verb, p.LastFact.Tidbit)
+	p.Bot.SendAction(message.Channel, "hits himself over the head with a skillet")
+	p.LastFact = nil
 
 	return true
 }
@@ -479,12 +476,8 @@ func (p *Factoid) changeFact(message msg.Message) bool {
 		if err != nil {
 			log.Println("Error getting facts: ", trigger, err)
 		}
-		if !(message.User.Admin && userexp[len(userexp)-1] == 'g') {
+		if userexp[len(userexp)-1] != 'g' {
 			result = result[:1]
-			if result[0].Owner != message.User.Name && !message.User.Admin {
-				p.Bot.SendMessage(message.Channel, "That's not your fact to edit.")
-				return true
-			}
 		}
 		// make the changes
 		msg := fmt.Sprintf("Changing %d facts.", len(result))
