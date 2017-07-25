@@ -53,7 +53,7 @@ type slackUserInfoResp struct {
 type slackChannelInfoResp struct {
 	Ok      bool `json:"ok"`
 	Channel struct {
-		Id   string `json:"id"`
+		ID   string `json:"id"`
 		Name string `json:"name"`
 
 		Created int64  `json:"created"`
@@ -70,9 +70,10 @@ type slackChannelInfoResp struct {
 }
 
 type slackMessage struct {
-	Id       uint64 `json:"id"`
+	ID       uint64 `json:"id"`
 	Type     string `json:"type"`
 	SubType  string `json:"subtype"`
+	Hidden   bool   `json:"hidden"`
 	Channel  string `json:"channel"`
 	Text     string `json:"text"`
 	User     string `json:"user"`
@@ -85,25 +86,25 @@ type slackMessage struct {
 }
 
 type slackReaction struct {
-	Reaction string `json:"name"`
-	Channel  string `json:"channel"`
-	Timestamp  float64 `json:"timestamp"`
+	Reaction  string  `json:"name"`
+	Channel   string  `json:"channel"`
+	Timestamp float64 `json:"timestamp"`
 }
 
 type rtmStart struct {
 	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
-	Url   string `json:"url"`
+	URL   string `json:"url"`
 	Self  struct {
-		Id string `json:"id"`
+		ID string `json:"id"`
 	} `json:"self"`
 }
 
 func New(c *config.Config) *Slack {
 	return &Slack{
 		config: c,
-		users: make(map[string]string),
-		emoji: make(map[string]string),
+		users:  make(map[string]string),
+		emoji:  make(map[string]string),
 	}
 }
 
@@ -117,7 +118,7 @@ func (s *Slack) RegisterMessageReceived(f func(msg.Message)) {
 
 func (s *Slack) SendMessageType(channel, messageType, subType, message string) error {
 	m := slackMessage{
-		Id:      atomic.AddUint64(&idCounter, 1),
+		ID:      atomic.AddUint64(&idCounter, 1),
 		Type:    messageType,
 		SubType: subType,
 		Channel: channel,
@@ -143,10 +144,10 @@ func (s *Slack) SendAction(channel, message string) {
 func (s *Slack) React(channel, reaction string, message msg.Message) {
 	log.Printf("Reacting in %s: %s", channel, reaction)
 	resp, err := http.PostForm("https://slack.com/api/reactions.add",
-		url.Values{ "token": {s.config.Slack.Token},
-								"name": {reaction},
-								"channel": {channel},
-								"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
+		url.Values{"token": {s.config.Slack.Token},
+			"name":      {reaction},
+			"channel":   {channel},
+			"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
 	if err != nil {
 		log.Printf("Error sending Slack reaction: %s", err)
 	}
@@ -159,7 +160,7 @@ func (s *Slack) GetEmojiList() map[string]string {
 
 func (s *Slack) populateEmojiList() {
 	resp, err := http.PostForm("https://slack.com/api/emoji.list",
-		url.Values{ "token": {s.config.Slack.Token}})
+		url.Values{"token": {s.config.Slack.Token}})
 	if err != nil {
 		log.Printf("Error retrieving emoji list from Slack: %s", err)
 		return
@@ -172,7 +173,7 @@ func (s *Slack) populateEmojiList() {
 	}
 
 	type EmojiListResponse struct {
-		OK bool `json:ok`
+		OK    bool              `json:ok`
 		Emoji map[string]string `json:emoji`
 	}
 
@@ -211,7 +212,12 @@ func (s *Slack) Serve() {
 		}
 		switch msg.Type {
 		case "message":
-			s.messageReceived(s.buildMessage(msg))
+			log.Printf("msg: %+v", msg)
+			if !msg.Hidden {
+				s.messageReceived(s.buildMessage(msg))
+			} else {
+				log.Printf("THAT MESSAGE WAS HIDDEN: %+v", msg.ID)
+			}
 		case "error":
 			log.Printf("Slack error, code: %d, message: %s", msg.Error.Code, msg.Error.Msg)
 		case "": // what even is this?
@@ -264,7 +270,7 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 		Channel: m.Channel,
 		Command: isCmd,
 		Action:  isAction,
-		Host:    string(m.Id),
+		Host:    string(m.ID),
 		Time:    tstamp,
 		AdditionalData: map[string]string{
 			"RAW_SLACK_TIMESTAMP": m.Ts,
@@ -298,9 +304,9 @@ func (s *Slack) connect() {
 	}
 
 	s.url = "https://slack.com/api/"
-	s.id = rtm.Self.Id
+	s.id = rtm.Self.ID
 
-	s.ws, err = websocket.Dial(rtm.Url, "", s.url)
+	s.ws, err = websocket.Dial(rtm.URL, "", s.url)
 	if err != nil {
 		log.Fatal(err)
 	}
