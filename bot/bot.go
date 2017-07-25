@@ -7,11 +7,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/mattn/go-sqlite3"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/msglog"
 	"github.com/velour/catbase/bot/user"
@@ -54,25 +52,8 @@ type Variable struct {
 	Variable, Value string
 }
 
-func init() {
-	regex := func(re, s string) (bool, error) {
-		return regexp.MatchString(re, s)
-	}
-	sql.Register("sqlite3_custom",
-		&sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("REGEXP", regex, true)
-			},
-		})
-}
-
 // Newbot creates a bot for a given connection and set of handlers.
 func New(config *config.Config, connector Connector) Bot {
-	sqlDB, err := sqlx.Open("sqlite3_custom", config.DB.File)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	logIn := make(chan msg.Message)
 	logOut := make(chan msg.Messages)
 
@@ -91,7 +72,7 @@ func New(config *config.Config, connector Connector) Bot {
 		conn:           connector,
 		users:          users,
 		me:             users[0],
-		db:             sqlDB,
+		db:             config.DBConn,
 		logIn:          logIn,
 		logOut:         logOut,
 		version:        config.Version,

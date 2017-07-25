@@ -2,13 +2,23 @@
 
 package config
 
-import "encoding/json"
-import "fmt"
-import "io/ioutil"
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"regexp"
+
+	"github.com/jmoiron/sqlx"
+	sqlite3 "github.com/mattn/go-sqlite3"
+)
 
 // Config stores any system-wide startup information that cannot be easily configured via
 // the database
 type Config struct {
+	DBConn *sqlx.DB
+
 	DB struct {
 		File   string
 		Name   string
@@ -81,6 +91,18 @@ type Config struct {
 	}
 }
 
+func init() {
+	regex := func(re, s string) (bool, error) {
+		return regexp.MatchString(re, s)
+	}
+	sql.Register("sqlite3_custom",
+		&sqlite3.SQLiteDriver{
+			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				return conn.RegisterFunc("REGEXP", regex, true)
+			},
+		})
+}
+
 // Readconfig loads the config data out of a JSON file located in cfile
 func Readconfig(version, cfile string) *Config {
 	fmt.Printf("Using %s as config file.\n", cfile)
@@ -101,6 +123,12 @@ func Readconfig(version, cfile string) *Config {
 	}
 
 	fmt.Printf("godeepintir version %s running.\n", c.Version)
+
+	sqlDB, err := sqlx.Open("sqlite3_custom", c.DB.File)
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.DBConn = sqlDB
 
 	return &c
 }
