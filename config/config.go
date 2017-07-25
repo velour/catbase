@@ -89,6 +89,9 @@ type Config struct {
 		DBPath    string
 		Sightings []string
 	}
+	Emojify struct {
+		Chance float64
+	}
 }
 
 func init() {

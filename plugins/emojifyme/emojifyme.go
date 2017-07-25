@@ -67,7 +67,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	if rand.Intn(10) == 0 {
+	if rand.Float64() <= p.Bot.Config().Emojify.Chance {
 		tokens := strings.Fields(strings.ToLower(message.Body))
 		sendMessage := false
 		for i, token := range tokens {

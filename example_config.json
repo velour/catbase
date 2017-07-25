@@ -71,5 +71,8 @@
 	"Stats": {
 		"DBPath": "stats.db",
 		"Sightings": ["user"]
+	},
+	"Emojify": {
+		"Chance": 0.02
 	}
 }
