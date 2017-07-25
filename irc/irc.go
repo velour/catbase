@@ -102,6 +102,11 @@ func (i *Irc) React(channel, reaction string, message msg.Message) {
 	//we're not goign to do anything because it's IRC
 }
 
+func (i *Irc) GetEmojiList() map[string]string {
+	//we're not goign to do anything because it's IRC
+	return make(map[string]string)
+}
+
 func (i *Irc) Serve() {
 	if i.eventReceived == nil || i.messageReceived == nil {
 		log.Fatal("Missing an event handler")

@@ -23,6 +23,7 @@ type Bot interface {
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
 	CheckAdmin(string) bool
+	GetEmojiList() map[string]string
 }
 
 type Connector interface {
@@ -32,6 +33,7 @@ type Connector interface {
 	SendMessage(channel, message string)
 	SendAction(channel, message string)
 	React(string, string, msg.Message)
+	GetEmojiList() map[string]string
 	Serve()
 
 	Who(string) []string
