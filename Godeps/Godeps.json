@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/velour/catbase",
-	"GoVersion": "go1.6",
-	"GodepVersion": "v60",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
 	"Deps": [
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
