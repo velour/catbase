@@ -67,20 +67,18 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	if rand.Float64() <= p.Bot.Config().Emojify.Chance {
-		tokens := strings.Fields(strings.ToLower(message.Body))
-		sendMessage := false
-		for i, token := range tokens {
-			if _, ok := p.Emoji[token]; ok {
-				sendMessage = true
-				tokens[i] = ":" + token + ":"
-			}
+	emojied := 0.0
+	tokens := strings.Fields(strings.ToLower(message.Body))
+	for i, token := range tokens {
+		if _, ok := p.Emoji[token]; ok {
+			emojied++
+			tokens[i] = ":" + token + ":"
 		}
-		if sendMessage {
-			modified := strings.Join(tokens, " ")
-			p.Bot.SendMessage(message.Channel, modified)
-			return true
-		}
+	}
+	if emojied > 0 && rand.Float64() <= p.Bot.Config().Emojify.Chance*emojied {
+		modified := strings.Join(tokens, " ")
+		p.Bot.SendMessage(message.Channel, modified)
+		return true
 	}
 	return false
 }
