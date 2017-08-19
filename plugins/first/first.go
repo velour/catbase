@@ -129,10 +129,12 @@ func (p *FirstPlugin) Message(message msg.Message) bool {
 	// This bot does not reply to anything
 
 	if p.First == nil && p.allowed(message) {
+		log.Printf("No previous first. Recording new first: %s", message.Body)
 		p.recordFirst(message)
 		return false
 	} else if p.First != nil {
 		if isToday(p.First.time) && p.allowed(message) {
+			log.Printf("Recording first: %s - %v vs %v", message.Body, p.First.time, time.Now())
 			p.recordFirst(message)
 			return false
 		}
@@ -143,8 +145,6 @@ func (p *FirstPlugin) Message(message msg.Message) bool {
 	msg := strings.ToLower(message.Body)
 	if r.Replace(msg) == "whos on first" {
 		p.announceFirst(message)
-		log.Printf("Disallowing %s: %s from first.",
-			message.User.Name, message.Body)
 		return true
 	}
 
@@ -185,6 +185,7 @@ func (p *FirstPlugin) recordFirst(message msg.Message) {
 		body: message.Body,
 		nick: message.User.Name,
 	}
+	log.Printf("recordFirst: %+v", p.First.day)
 	err := p.First.save(p.db)
 	if err != nil {
 		log.Println("Error saving first entry: ", err)

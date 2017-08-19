@@ -16,6 +16,7 @@ import (
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/emojifyme"
 	"github.com/velour/catbase/plugins/fact"
+	"github.com/velour/catbase/plugins/first"
 	"github.com/velour/catbase/plugins/leftpad"
 	"github.com/velour/catbase/plugins/reaction"
 	"github.com/velour/catbase/plugins/reminder"
@@ -49,7 +50,7 @@ func main() {
 	// b.AddHandler(plugins.NewTestPlugin(b))
 	b.AddHandler("admin", admin.New(b))
 	b.AddHandler("stats", stats.New(b))
-	// b.AddHandler("first", plugins.NewFirstPlugin(b))
+	b.AddHandler("first", first.New(b))
 	b.AddHandler("leftpad", leftpad.New(b))
 	// b.AddHandler("downtime", downtime.New(b))
 	b.AddHandler("talker", talker.New(b))
