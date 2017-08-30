@@ -95,6 +95,7 @@ type Config struct {
 	Reaction struct {
 		GeneralChance float64
 		HarrassChance float64
+		NegativeHarrassmentMultiplier int
 		HarrassList []string
 		PositiveReactions []string
 		NegativeReactions []string

@@ -78,6 +78,7 @@
 	"Reaction" : {
 		"GeneralChance": 0.01,
 		"HarrassChance": 0.05,
+		"NegativeHarrassmentMultiplier": 2,
 		"HarrassList": ["msherms"],
 		"PositiveReactions": ["+1", "authorized", "aw_yea","joy"],
 		"NegativeReactions": ["bullshit","fake","tableflip","vomit"]

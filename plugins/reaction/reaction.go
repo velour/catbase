@@ -26,27 +26,40 @@ func New(bot bot.Bot) *ReactionPlugin {
 }
 
 func (p *ReactionPlugin) Message(message msg.Message) bool {
-	outOf := int(1. / p.Config.Reaction.GeneralChance)
-
-	for _, reaction := range p.Config.Reaction.PositiveReactions {
-		if rand.Intn(outOf) == 0 {
-			p.Bot.React(message.Channel, reaction, message)
-			return false
-		}
-	}
-
+	harrass := false
 	for _, nick := range p.Config.Reaction.HarrassList {
 		if message.User.Name == nick {
-			outOf = int(1. / p.Config.Reaction.HarrassChance)
+			harrass = true
 			break
 		}
 	}
 
-	for _, reaction := range p.Config.Reaction.NegativeReactions {
-		if rand.Intn(outOf) == 0 {
-			p.Bot.React(message.Channel, reaction, message)
-			return false
+	chance := p.Config.Reaction.GeneralChance
+	negativeWeight := 1
+	if harrass {
+		chance = p.Config.Reaction.HarrassChance
+		negativeWeight = p.Config.Reaction.NegativeHarrassmentMultiplier
+	}
+
+	if rand.Float64() < chance {
+		numPositiveReactions := len(p.Config.Reaction.PositiveReactions)
+		numNegativeReactions := len(p.Config.Reaction.NegativeReactions)
+
+		maxIndex := numPositiveReactions + numNegativeReactions * negativeWeight
+
+		index := rand.Intn(maxIndex)
+
+		reaction := ""
+
+		if index < numPositiveReactions {
+			reaction = p.Config.Reaction.PositiveReactions[index]
+		} else {
+			index -= numPositiveReactions
+			index %= numNegativeReactions
+			reaction = p.Config.Reaction.NegativeReactions[index]
 		}
+
+		p.Bot.React(message.Channel, reaction, message)
 	}
 
 	return false
