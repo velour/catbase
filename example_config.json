@@ -74,5 +74,12 @@
 	},
 	"Emojify": {
 		"Chance": 0.02
+	},
+	"Reaction" : {
+		"GeneralChance": 0.01,
+		"HarrassChance": 0.05,
+		"HarrassList": ["msherms"],
+		"PositiveReactions": ["+1", "authorized", "aw_yea","joy"],
+		"NegativeReactions": ["bullshit","fake","tableflip","vomit"]
 	}
 }

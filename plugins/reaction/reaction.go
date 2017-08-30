@@ -8,10 +8,12 @@ import (
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
 type ReactionPlugin struct {
 	Bot bot.Bot
+	Config *config.Config
 }
 
 func New(bot bot.Bot) *ReactionPlugin {
@@ -19,13 +21,34 @@ func New(bot bot.Bot) *ReactionPlugin {
 
 	return &ReactionPlugin{
 		Bot: bot,
+		Config: bot.Config(),
 	}
 }
 
 func (p *ReactionPlugin) Message(message msg.Message) bool {
-	if rand.Intn(100) == 0 {
-		p.Bot.React(message.Channel, "+1", message)
+	outOf := int(1. / p.Config.Reaction.GeneralChance)
+
+	for _, reaction := range p.Config.Reaction.PositiveReactions {
+		if rand.Intn(outOf) == 0 {
+			p.Bot.React(message.Channel, reaction, message)
+			return false
+		}
 	}
+
+	for _, nick := range p.Config.Reaction.HarrassList {
+		if message.User.Name == nick {
+			outOf = int(1. / p.Config.Reaction.HarrassChance)
+			break
+		}
+	}
+
+	for _, reaction := range p.Config.Reaction.NegativeReactions {
+		if rand.Intn(outOf) == 0 {
+			p.Bot.React(message.Channel, reaction, message)
+			return false
+		}
+	}
+
 	return false
 }
 
