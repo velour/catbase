@@ -92,6 +92,13 @@ type Config struct {
 	Emojify struct {
 		Chance float64
 	}
+	Reaction struct {
+		GeneralChance float64
+		HarrassChance float64
+		HarrassList []string
+		PositiveReactions []string
+		NegativeReactions []string
+	}
 }
 
 func init() {
