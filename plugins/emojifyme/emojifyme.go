@@ -73,6 +73,20 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		if _, ok := p.Emoji[token]; ok {
 			emojied++
 			tokens[i] = ":" + token + ":"
+		} else if strings.HasSuffix(token, "s") {
+			//Check to see if we can strip the trailing "es" off and get an emoji
+			temp := strings.TrimSuffix(token, "s")
+			if _, ok := p.Emoji[temp]; ok {
+				emojied++
+				tokens[i] = ":" + temp + ":s"
+			} else if strings.HasSuffix(token, "es") {
+				//Check to see if we can strip the trailing "es" off and get an emoji
+				temp := strings.TrimSuffix(token, "es")
+				if _, ok := p.Emoji[temp]; ok {
+					emojied++
+					tokens[i] = ":" + temp + ":es"
+				}
+			}
 		}
 	}
 	if emojied > 0 && rand.Float64() <= p.Bot.Config().Emojify.Chance*emojied {
