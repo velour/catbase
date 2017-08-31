@@ -4,14 +4,14 @@ package config
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"regexp"
 
 	"github.com/jmoiron/sqlx"
 	sqlite3 "github.com/mattn/go-sqlite3"
+	"github.com/yuin/gluamapper"
+	lua "github.com/yuin/gopher-lua"
 )
 
 // Config stores any system-wide startup information that cannot be easily configured via
@@ -64,7 +64,7 @@ type Config struct {
 		Hosts []string
 	}
 	Your struct {
-		MaxLength     int
+		MaxLength    int
 		Replacements []Replacement
 	}
 	LeftPad struct {
@@ -91,12 +91,12 @@ type Config struct {
 		Chance float64
 	}
 	Reaction struct {
-		GeneralChance float64
-		HarrassChance float64
+		GeneralChance                 float64
+		HarrassChance                 float64
 		NegativeHarrassmentMultiplier int
-		HarrassList []string
-		PositiveReactions []string
-		NegativeReactions []string
+		HarrassList                   []string
+		PositiveReactions             []string
+		NegativeReactions             []string
 	}
 }
 
@@ -113,24 +113,24 @@ func init() {
 }
 
 type Replacement struct {
-	This string
-	That string
+	This      string
+	That      string
 	Frequency float64
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
 func Readconfig(version, cfile string) *Config {
 	fmt.Printf("Using %s as config file.\n", cfile)
-	file, e := ioutil.ReadFile(cfile)
-	if e != nil {
-		panic("Couldn't read config file!")
+	L := lua.NewState()
+	if err := L.DoFile(cfile); err != nil {
+		panic(err)
 	}
 
 	var c Config
-	err := json.Unmarshal(file, &c)
-	if err != nil {
+	if err := gluamapper.Map(L.GetGlobal("config").(*lua.LTable), &c); err != nil {
 		panic(err)
 	}
+
 	c.Version = version
 
 	if c.Type == "" {
