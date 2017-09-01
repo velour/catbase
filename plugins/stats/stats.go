@@ -184,7 +184,8 @@ func (s stats) toDB(path string) error {
 				return err
 			}
 			if stat.key == "" {
-				log.Fatal("Keys should not be empty")
+				log.Println("Keys should not be empty")
+				return nil
 			}
 			log.Printf("Putting value in: '%s' %b, %+v", stat.key, []byte(stat.key), stat)
 			err = b.Put([]byte(stat.key), v)
