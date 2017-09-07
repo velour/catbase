@@ -29,8 +29,8 @@ import (
 )
 
 func main() {
-	var cfile = flag.String("config", "config.json",
-		"Config file to load. (Defaults to config.json)")
+	var cfile = flag.String("config", "config.lua",
+		"Config file to load. (Defaults to config.lua)")
 	flag.Parse() // parses the logging flags.
 
 	c := config.Readconfig(Version, *cfile)
