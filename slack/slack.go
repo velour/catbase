@@ -261,7 +261,7 @@ func slackTStoTime(t string) time.Time {
 	return time.Unix(sec, nsec)
 }
 
-func (s *Slack) Serve() {
+func (s *Slack) Serve() error {
 	s.connect()
 	s.populateEmojiList()
 	for {
@@ -269,8 +269,7 @@ func (s *Slack) Serve() {
 		if err != nil && err == io.EOF {
 			log.Fatalf("Slack API EOF")
 		} else if err != nil {
-			log.Printf("Slack API error: %s", err)
-			continue
+			return fmt.Errorf("Slack API error: %s", err)
 		}
 		switch msg.Type {
 		case "message":
