@@ -34,7 +34,7 @@ type Connector interface {
 	SendAction(channel, message string)
 	React(string, string, msg.Message)
 	GetEmojiList() map[string]string
-	Serve()
+	Serve() error
 
 	Who(string) []string
 }

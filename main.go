@@ -68,5 +68,8 @@ func main() {
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 
-	client.Serve()
+	for {
+		err := client.Serve()
+		log.Println(err)
+	}
 }

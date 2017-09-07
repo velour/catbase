@@ -3,6 +3,7 @@
 package irc
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -107,9 +108,9 @@ func (i *Irc) GetEmojiList() map[string]string {
 	return make(map[string]string)
 }
 
-func (i *Irc) Serve() {
+func (i *Irc) Serve() error {
 	if i.eventReceived == nil || i.messageReceived == nil {
-		log.Fatal("Missing an event handler")
+		return fmt.Errorf("Missing an event handler")
 	}
 
 	var err error
@@ -121,7 +122,7 @@ func (i *Irc) Serve() {
 		true,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("%s", err)
 	}
 
 	for _, c := range i.config.Channels {
@@ -131,6 +132,7 @@ func (i *Irc) Serve() {
 	i.quit = make(chan bool)
 	go i.handleConnection()
 	<-i.quit
+	return nil
 }
 
 func (i *Irc) handleConnection() {
