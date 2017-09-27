@@ -2,6 +2,8 @@ package twitch
 
 import (
 	"encoding/json"
+	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -73,7 +75,40 @@ func (p *TwitchPlugin) BotMessage(message msg.Message) bool {
 }
 
 func (p *TwitchPlugin) RegisterWeb() *string {
-	return nil
+	http.HandleFunc("/isstreaming/", p.serveStreaming)
+	tmp := "/isstreaming"
+	return &tmp
+}
+
+func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) != 3 {
+		fmt.Fprint(w, "User not found.")
+		return
+	}
+
+	twitcher := p.twitchList[pathParts[2]]
+	if twitcher == nil {
+
+		fmt.Fprint(w, "User not found.")
+		return
+	}
+
+	status := "NO."
+	if twitcher.game != "" {
+		status = "YES."
+	}
+	context := map[string]interface{}{"Name": twitcher.name, "Status": status}
+
+	t, err := template.New("streaming").Parse(page)
+	if err != nil {
+		log.Println("Could not parse template!", err)
+		return
+	}
+	err = t.Execute(w, context)
+	if err != nil {
+		log.Println("Could not execute template!", err)
+	}
 }
 
 func (p *TwitchPlugin) Message(message msg.Message) bool {
