@@ -48,8 +48,10 @@ type Config struct {
 		Channels []string
 	}
 	Twitch struct {
-		Freq  int
-		Users map[string][]string //channel -> usernames
+		Freq          int
+		Users         map[string][]string //channel -> usernames
+		ClientID      string
+		Authorization string
 	}
 	EnforceNicks          bool
 	WelcomeMsgs           []string
