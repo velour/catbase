@@ -311,10 +311,7 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 
 	isCmd, text := bot.IsCmd(s.config, text)
 
-	isAction := strings.HasPrefix(text, "/me ")
-	if isAction {
-		text = text[3:]
-	}
+	isAction := m.SubType == "me_message"
 
 	u := s.getUser(m.User)
 	if m.Username != "" {

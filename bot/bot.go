@@ -46,6 +46,9 @@ type bot struct {
 
 	// The entries to the bot's HTTP interface
 	httpEndPoints map[string]string
+
+	// filters registered by plugins
+	filters map[string]func(string) string
 }
 
 type Variable struct {
@@ -77,6 +80,7 @@ func New(config *config.Config, connector Connector) Bot {
 		logOut:         logOut,
 		version:        config.Version,
 		httpEndPoints:  make(map[string]string),
+		filters:        make(map[string]func(string) string),
 	}
 
 	bot.migrateDB()
@@ -266,4 +270,9 @@ func (b *bot) checkAdmin(nick string) bool {
 		}
 	}
 	return false
+}
+
+// Register a text filter which every outgoing message is passed through
+func (b *bot) RegisterFilter(name string, f func(string) string) {
+	b.filters[name] = f
 }

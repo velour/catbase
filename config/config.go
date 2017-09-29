@@ -100,6 +100,9 @@ type Config struct {
 		PositiveReactions             []string
 		NegativeReactions             []string
 	}
+	Inventory struct {
+		Max int
+	}
 }
 
 func init() {
