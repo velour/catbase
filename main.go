@@ -23,6 +23,7 @@ import (
 	"github.com/velour/catbase/plugins/rss"
 	"github.com/velour/catbase/plugins/stats"
 	"github.com/velour/catbase/plugins/talker"
+	"github.com/velour/catbase/plugins/twitch"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
 	"github.com/velour/catbase/slack"
@@ -65,6 +66,7 @@ func main() {
 	b.AddHandler("rss", rss.New(b))
 	b.AddHandler("reaction", reaction.New(b))
 	b.AddHandler("emojifyme", emojifyme.New(b))
+	b.AddHandler("twitch", twitch.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 

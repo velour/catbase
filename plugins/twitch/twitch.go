@@ -2,9 +2,12 @@ package twitch
 
 import (
 	"encoding/json"
+	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -24,10 +27,22 @@ type Twitcher struct {
 	game string
 }
 
-type Stream struct {
-	Stream struct {
-		Game string `json:game`
-	} `json:stream,omitempty`
+type stream struct {
+	Data []struct {
+		ID           string    `json:"id"`
+		UserID       string    `json:"user_id"`
+		GameID       string    `json:"game_id"`
+		CommunityIds []string  `json:"community_ids"`
+		Type         string    `json:"type"`
+		Title        string    `json:"title"`
+		ViewerCount  int       `json:"viewer_count"`
+		StartedAt    time.Time `json:"started_at"`
+		Language     string    `json:"language"`
+		ThumbnailURL string    `json:"thumbnail_url"`
+	} `json:"data"`
+	Pagination struct {
+		Cursor string `json:"cursor"`
+	} `json:"pagination"`
 }
 
 func New(bot bot.Bot) *TwitchPlugin {
@@ -60,7 +75,40 @@ func (p *TwitchPlugin) BotMessage(message msg.Message) bool {
 }
 
 func (p *TwitchPlugin) RegisterWeb() *string {
-	return nil
+	http.HandleFunc("/isstreaming/", p.serveStreaming)
+	tmp := "/isstreaming"
+	return &tmp
+}
+
+func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) != 3 {
+		fmt.Fprint(w, "User not found.")
+		return
+	}
+
+	twitcher := p.twitchList[pathParts[2]]
+	if twitcher == nil {
+
+		fmt.Fprint(w, "User not found.")
+		return
+	}
+
+	status := "NO."
+	if twitcher.game != "" {
+		status = "YES."
+	}
+	context := map[string]interface{}{"Name": twitcher.name, "Status": status}
+
+	t, err := template.New("streaming").Parse(page)
+	if err != nil {
+		log.Println("Could not parse template!", err)
+		return
+	}
+	err = t.Execute(w, context)
+	if err != nil {
+		log.Println("Could not execute template!", err)
+	}
 }
 
 func (p *TwitchPlugin) Message(message msg.Message) bool {
@@ -99,10 +147,6 @@ func (p *TwitchPlugin) twitchLoop(channel string) {
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
-		// auth := p.getTwitchStreams(channel)
-		// if !auth {
-		// 	p.Bot.SendMessage(channel, "OAuth for catbase twitch account has expired. Renew it!")
-		// }
 
 		for _, twitcherName := range p.config.Twitch.Users[channel] {
 			p.checkTwitch(channel, p.twitchList[twitcherName], false)
@@ -110,37 +154,66 @@ func (p *TwitchPlugin) twitchLoop(channel string) {
 	}
 }
 
-func getRequest(url string) ([]byte, bool) {
-	resp, err := http.Get(url)
+func getRequest(url, clientID, authorization string) ([]byte, bool) {
+	var body []byte
+	var resp *http.Response
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Println(err)
-		return []byte{}, false
+		goto errCase
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	req.Header.Add("Client-ID", clientID)
+	req.Header.Add("Authorization", authorization)
+
+	resp, err = client.Do(req)
 	if err != nil {
-		log.Println(err)
-		return []byte{}, false
+		goto errCase
+	}
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		goto errCase
 	}
 	return body, true
+
+errCase:
+	log.Println(err)
+	return []byte{}, false
 }
 
 func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPrintStatus bool) {
-	baseUrl := "https://api.twitch.tv/kraken/streams/"
+	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
+	if err != nil {
+		log.Println("Error parsing twitch stream URL")
+		return
+	}
 
-	body, ok := getRequest(baseUrl + twitcher.name)
+	query := baseURL.Query()
+	query.Add("user_login", twitcher.name)
+
+	baseURL.RawQuery = query.Encode()
+
+	cid := p.config.Twitch.ClientID
+	auth := p.config.Twitch.Authorization
+
+	body, ok := getRequest(baseURL.String(), cid, auth)
 	if !ok {
 		return
 	}
 
-	var stream Stream
-	err := json.Unmarshal(body, &stream)
+	var s stream
+	err = json.Unmarshal(body, &s)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	game := stream.Stream.Game
+	games := s.Data
+	game := ""
+	if len(games) > 0 {
+		game = games[0].Title
+	}
 	if alwaysPrintStatus {
 		if game == "" {
 			p.Bot.SendMessage(channel, twitcher.name+" is not streaming.")
@@ -159,37 +232,3 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		twitcher.game = game
 	}
 }
-
-// func (p *TwitchPlugin) getTwitchStreams(channel string) bool {
-// 	token := p.Bot.config.Twitch.Token
-// 	if token == "" || token == "<Your Token>" {
-// 		log.Println("No Twitch token, cannot enable plugin.")
-// 		return false
-// 	}
-
-// 	access_token := "?access_token=" + token + "&scope=user_subscriptions"
-// 	baseUrl := "https://api.twitch.tv/kraken/streams/followed"
-
-// 	body, ok := getRequest(baseUrl + access_token)
-// 	if !ok {
-// 		return false
-// 	}
-
-// 	var subscriptions Subscriptions
-// 	err := json.Unmarshal(body, &subscriptions)
-// 	if err != nil {
-// 		log.Println(err)
-// 		return false
-// 	}
-
-// 	for _, subscription := range subscriptions.Follows {
-// 		twitcherName := subscription.Channel.Name
-// 		if _, ok := p.twitchList[twitcherName]; !ok {
-// 			p.twitchList[twitcherName] = &Twitcher {
-// 				name : twitcherName,
-// 				game : "",
-// 			}
-// 		}
-// 	}
-// 	return true
-// }
