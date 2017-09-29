@@ -24,6 +24,7 @@ type Bot interface {
 	LastMessage(string) (msg.Message, error)
 	CheckAdmin(string) bool
 	GetEmojiList() map[string]string
+	RegisterFilter(string, func(string) string)
 }
 
 type Connector interface {

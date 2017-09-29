@@ -37,10 +37,11 @@ func (mb *MockBot) MsgReceived(msg msg.Message)                {}
 func (mb *MockBot) EventReceived(msg msg.Message)              {}
 func (mb *MockBot) Filter(msg msg.Message, s string) string    { return "" }
 func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
-func (mb *MockBot) CheckAdmin(nick string) bool                 { return false }
+func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
 
 func (mb *MockBot) React(channel, reaction string, message msg.Message) {}
 func (mb *MockBot) GetEmojiList() map[string]string                     { return make(map[string]string) }
+func (mb *MockBot) RegisterFilter(s string, f func(string) string)      {}
 
 func NewMockBot() *MockBot {
 	db, err := sqlx.Open("sqlite3_custom", ":memory:")

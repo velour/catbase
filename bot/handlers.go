@@ -149,6 +149,10 @@ func (b *bot) Filter(message msg.Message, input string) string {
 		panic(err)
 	}
 
+	for _, f := range b.filters {
+		input = f(input)
+	}
+
 	varname := r.FindString(input)
 	blacklist := make(map[string]bool)
 	blacklist["$and"] = true
