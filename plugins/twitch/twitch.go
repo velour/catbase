@@ -27,6 +27,12 @@ type Twitcher struct {
 	game string
 }
 
+func (t Twitcher) URL() string {
+	u, _ := url.Parse("https://twitch.tv/")
+	u2, _ := url.Parse(t.name)
+	return u.ResolveReference(u2).String()
+}
+
 type stream struct {
 	Data []struct {
 		ID           string    `json:"id"`
@@ -218,7 +224,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		if game == "" {
 			p.Bot.SendMessage(channel, twitcher.name+" is not streaming.")
 		} else {
-			p.Bot.SendMessage(channel, twitcher.name+" is streaming "+game+".")
+			p.Bot.SendMessage(channel, twitcher.name+" is streaming "+game+" at "+twitcher.URL())
 		}
 	} else if game == "" {
 		if twitcher.game != "" {
@@ -227,7 +233,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		twitcher.game = ""
 	} else {
 		if twitcher.game != game {
-			p.Bot.SendMessage(channel, twitcher.name+" just started streaming "+game+".")
+			p.Bot.SendMessage(channel, twitcher.name+" just started streaming "+game+" at "+twitcher.URL())
 		}
 		twitcher.game = game
 	}
