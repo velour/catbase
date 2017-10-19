@@ -228,8 +228,8 @@ func (s *Slack) populateEmojiList() {
 	}
 
 	type EmojiListResponse struct {
-		OK    bool              `json:ok`
-		Emoji map[string]string `json:emoji`
+		OK    bool              `json:"ok"`
+		Emoji map[string]string `json:"emoji"`
 	}
 
 	var list EmojiListResponse
