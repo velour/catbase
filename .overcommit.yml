@@ -16,7 +16,7 @@
 # Uncomment the following lines to make the configuration take effect.
 
 PreCommit:
-    vet:
+    Vet:
         enabled: true
         command: ['./vet.sh']
 
