@@ -306,14 +306,13 @@ var urlDetector = regexp.MustCompile(`<(.+)://([^|^>]+).*>`)
 func (s *Slack) buildMessage(m slackMessage) msg.Message {
 	text := html.UnescapeString(m.Text)
 
-	// remove <> from URLs, URLs may also be <url|description>
-	text = urlDetector.ReplaceAllString(text, "${1}://${2}")
+	text = fixText(s.getUser, text)
 
 	isCmd, text := bot.IsCmd(s.config, text)
 
 	isAction := m.SubType == "me_message"
 
-	u := s.getUser(m.User)
+	u, _ := s.getUser(m.User)
 	if m.Username != "" {
 		u = m.Username
 	}
@@ -460,9 +459,9 @@ func (s *Slack) connect() {
 }
 
 // Get username for Slack user ID
-func (s *Slack) getUser(id string) string {
+func (s *Slack) getUser(id string) (string, bool) {
 	if name, ok := s.users[id]; ok {
-		return name
+		return name, true
 	}
 
 	log.Printf("User %s not already found, requesting info", id)
@@ -472,17 +471,17 @@ func (s *Slack) getUser(id string) string {
 	if err != nil || resp.StatusCode != 200 {
 		log.Printf("Error posting user info request: %d %s",
 			resp.StatusCode, err)
-		return "UNKNOWN"
+		return "UNKNOWN", false
 	}
 	defer resp.Body.Close()
 	var userInfo slackUserInfoResp
 	err = json.NewDecoder(resp.Body).Decode(&userInfo)
 	if err != nil {
 		log.Println("Error decoding response: ", err)
-		return "UNKNOWN"
+		return "UNKNOWN", false
 	}
 	s.users[id] = userInfo.User.Name
-	return s.users[id]
+	return s.users[id], true
 }
 
 // Who gets usernames out of a channel
@@ -513,7 +512,8 @@ func (s *Slack) Who(id string) []string {
 
 	handles := []string{}
 	for _, member := range chanInfo.Channel.Members {
-		handles = append(handles, s.getUser(member))
+		u, _ := s.getUser(member)
+		handles = append(handles, u)
 	}
 	log.Printf("Returning %d handles", len(handles))
 	return handles
