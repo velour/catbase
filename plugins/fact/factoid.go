@@ -33,6 +33,54 @@ type factoid struct {
 	Count    int
 }
 
+type alias struct {
+	Fact string
+	Next string
+}
+
+func (a *alias) resolve(db *sqlx.DB) *factoid {
+	// perform DB query to fill the To field
+	q := `select fact, next from factoid_alias where fact=?`
+	var next alias
+	err := db.Get(&next, q, a.Next)
+	if err != nil {
+		// we hit the end of the chain, get a factoid named Next
+		fact, err := getSingleFact(db, a.Next)
+		if err != nil {
+			log.Printf("Error resolvig alias %v: %v", a, err)
+		}
+		return fact
+	}
+	return next.resolve(db)
+}
+
+func findAlias(db *sqlx.DB, fact string) (bool, *factoid) {
+	q := `select * from factoid_alias where fact=?`
+	var a alias
+	err := db.Get(&a, q, fact)
+	if err != nil {
+		return false, nil
+	}
+	return true, a.resolve(db)
+}
+
+func (a *alias) save(db *sqlx.DB) error {
+	q := `insert or replace into factoid_alias (fact, next) values (?, ?)`
+	_, err := db.Exec(q, a.Fact, a.Next)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func aliasFromStrings(from, to string) *alias {
+	return &alias{from, to}
+}
+
+func factoidFromAlias(db *sqlx.DB, a alias) *factoid {
+	return a.resolve(db)
+}
+
 func (f *factoid) save(db *sqlx.DB) error {
 	var err error
 	if f.id.Valid {
@@ -220,7 +268,7 @@ func New(botInst bot.Bot) *Factoid {
 		db: botInst.DB(),
 	}
 
-	_, err := p.db.Exec(`create table if not exists factoid (
+	if _, err := p.db.Exec(`create table if not exists factoid (
 			id integer primary key,
 			fact string,
 			tidbit string,
@@ -229,8 +277,15 @@ func New(botInst bot.Bot) *Factoid {
 			created integer,
 			accessed integer,
 			count integer
-		);`)
-	if err != nil {
+		);`); err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := p.db.Exec(`create table if not exists factoid_alias (
+			fact string,
+			next string,
+			primary key (fact, next)
+		);`); err != nil {
 		log.Fatal(err)
 	}
 
@@ -315,7 +370,7 @@ func (p *Factoid) findTrigger(fact string) (bool, *factoid) {
 
 	f, err := getSingleFact(p.db, fact)
 	if err != nil {
-		return false, nil
+		return findAlias(p.db, fact)
 	}
 	return true, f
 }
@@ -545,6 +600,20 @@ func (p *Factoid) Message(message msg.Message) bool {
 	if !message.Command {
 		// look for any triggers in the db matching this message
 		return p.trigger(message)
+	}
+
+	if strings.HasPrefix(strings.ToLower(message.Body), "alias") {
+		log.Printf("Trying to learn an alias: %s", message.Body)
+		m := strings.TrimPrefix(message.Body, "alias ")
+		parts := strings.SplitN(m, "->", 2)
+		if len(parts) != 2 {
+			p.Bot.SendMessage(message.Channel, "If you want to alias something, use: `alias this -> that`")
+			return true
+		}
+		a := aliasFromStrings(strings.TrimSpace(parts[1]), strings.TrimSpace(parts[0]))
+		a.save(p.db)
+		p.Bot.SendAction(message.Channel, "learns a new synonym")
+		return true
 	}
 
 	if strings.ToLower(message.Body) == "factoid" {
