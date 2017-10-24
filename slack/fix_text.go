@@ -56,7 +56,7 @@ func fixTag(findUser func(string) (string, bool), tag []rune) ([]rune, bool) {
 		}
 		if findUser != nil {
 			if u, ok := findUser(string(tag[1:])); ok {
-				return []rune("@" + u), true
+				return []rune(u), true
 			}
 		}
 		return tag, true
