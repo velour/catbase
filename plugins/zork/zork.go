@@ -49,7 +49,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	var w io.WriteCloser
 	cmd.Stdin, w = io.Pipe()
 
-	log.Printf("zork running %s\n", cmd)
+	log.Printf("zork running %v\n", cmd)
 	if err := cmd.Start(); err != nil {
 		w.Close()
 		return err
