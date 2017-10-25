@@ -56,39 +56,37 @@ type BabblerArc struct {
 func New(bot bot.Bot) *BabblerPlugin {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	if bot.DBVersion() == 1 {
-		if _, err := bot.DB().Exec(`create table if not exists babblers (
+	if _, err := bot.DB().Exec(`create table if not exists babblers (
 			id integer primary key,
 			babbler string
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
+	}
 
-		if _, err := bot.DB().Exec(`create table if not exists babblerWords (
+	if _, err := bot.DB().Exec(`create table if not exists babblerWords (
 			id integer primary key,
 			word string
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
+	}
 
-		if _, err := bot.DB().Exec(`create table if not exists babblerNodes (
+	if _, err := bot.DB().Exec(`create table if not exists babblerNodes (
 			id integer primary key,
 			babblerId integer,
 			wordId integer,
 			root integer,
 			rootFrequency integer
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
+	}
 
-		if _, err := bot.DB().Exec(`create table if not exists babblerArcs (
+	if _, err := bot.DB().Exec(`create table if not exists babblerArcs (
 			id integer primary key,
 			fromNodeId integer,
 			toNodeId interger,
 			frequency integer
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 
 	plugin := &BabblerPlugin{
@@ -120,18 +118,18 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	} else if numTokens > 2 && tokens[1] == "says-tail" {
 		saidWhat, saidSomething = p.getBabbleWithSuffix(tokens)
 	} else if numTokens >= 2 && tokens[1] == "says-middle-out" {
-			saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
-			neverSaidLooksLike := fmt.Sprintf("%s never said '%s'", tokens[0], strings.Join(tokens[2:], " "))
-			if !saidSomethingStart || saidWhatStart == neverSaidLooksLike {
-				saidSomething = saidSomethingStart
-				saidWhat = saidWhatStart
-			} else {
-				saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
-				saidSomething = saidSomethingStart && saidSomethingEnd
-				if saidSomething {
-					saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
-				}
+		saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
+		neverSaidLooksLike := fmt.Sprintf("%s never said '%s'", tokens[0], strings.Join(tokens[2:], " "))
+		if !saidSomethingStart || saidWhatStart == neverSaidLooksLike {
+			saidSomething = saidSomethingStart
+			saidWhat = saidWhatStart
+		} else {
+			saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
+			saidSomething = saidSomethingStart && saidSomethingEnd
+			if saidSomething {
+				saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
 			}
+		}
 	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
 		saidWhat, saidSomething = p.initializeBabbler(tokens)
 	} else if strings.Index(lowercase, "batch learn for ") == 0 {
@@ -792,8 +790,8 @@ func (p *BabblerPlugin) babbleSeedSuffix(babblerName string, seed []string) (str
 		}
 	}
 
-	for i := 0; i < len(words) / 2; i++ {
-		index := len(words)-(i+1)
+	for i := 0; i < len(words)/2; i++ {
+		index := len(words) - (i + 1)
 		words[i], words[index] = words[index], words[i]
 	}
 
@@ -834,10 +832,10 @@ func (p *BabblerPlugin) getBabblerNodeById(nodeId int64) (*BabblerNode, error) {
 }
 
 func shuffle(a []*BabblerArc) {
-    for i := range a {
-        j := rand.Intn(i + 1)
-        a[i], a[j] = a[j], a[i]
-    }
+	for i := range a {
+		j := rand.Intn(i + 1)
+		a[i], a[j] = a[j], a[i]
+	}
 }
 
 func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []string) (string, error) {
@@ -861,11 +859,11 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 
 	type searchNode struct {
 		babblerNodeId int64
-		previous *searchNode
+		previous      *searchNode
 	}
 
-	open := []*searchNode{ &searchNode{startWordNode.NodeId, nil} }
-	closed := map[int64]*searchNode{ startWordNode.NodeId : open[0] }
+	open := []*searchNode{&searchNode{startWordNode.NodeId, nil}}
+	closed := map[int64]*searchNode{startWordNode.NodeId: open[0]}
 	goalNodeId := int64(-1)
 
 	for i := 0; i < len(open) && i < 1000; i++ {
@@ -927,8 +925,8 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 		}
 	}
 
-	for i := 0; i < len(words) / 2; i++ {
-		index := len(words)-(i+1)
+	for i := 0; i < len(words)/2; i++ {
+		index := len(words) - (i + 1)
 		words[i], words[index] = words[index], words[i]
 	}
 
