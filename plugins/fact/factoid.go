@@ -67,15 +67,17 @@ func findAlias(db *sqlx.DB, fact string) (bool, *factoid) {
 }
 
 func (a *alias) save(db *sqlx.DB) error {
-	ok, _ := findAlias(db, a.Fact)
-	if ok {
+	q := `select * from factoid_alias where fact=?`
+	var offender alias
+	err := db.Get(&offender, q, a.Next)
+	if err == nil {
 		return fmt.Errorf("DANGER: an opposite alias already exists")
 	}
-	_, err := a.resolve(db)
+	_, err = a.resolve(db)
 	if err != nil {
 		return fmt.Errorf("there is no fact at that destination")
 	}
-	q := `insert or replace into factoid_alias (fact, next) values (?, ?)`
+	q = `insert or replace into factoid_alias (fact, next) values (?, ?)`
 	_, err = db.Exec(q, a.Fact, a.Next)
 	if err != nil {
 		return err
