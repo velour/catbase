@@ -48,3 +48,59 @@
 [[constraint]]
   branch = "master"
   name = "github.com/yuin/gopher-lua"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/robertkrimen/otto"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/stretchr/testify"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/PuerkitoBio/goquery"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/andybalholm/cascadia"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/davecgh/go-spew"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mmcdole/goxpp"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/pmezard/go-difflib"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/stretchr/objx"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/mapstructure"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/velour/velour"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/sys"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/text"
+
+[[constraint]]
+  branch = "master"
+  name = "gopkg.in/sourcemap.v1"
