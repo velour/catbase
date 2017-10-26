@@ -25,3 +25,7 @@ config.json
 *.db
 vendor
 **/*.swp
+
+.vscode/
+*.code-workspace
+*config.lua
