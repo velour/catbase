@@ -13,11 +13,13 @@ type Bot interface {
 	Config() *config.Config
 	DBVersion() int64
 	DB() *sqlx.DB
+	Conn() Connector
 	Who(string) []user.User
 	AddHandler(string, Handler)
 	SendMessage(string, string)
 	SendAction(string, string)
 	React(string, string, msg.Message)
+	Edit(string, string, string)
 	MsgReceived(msg.Message)
 	EventReceived(msg.Message)
 	Filter(msg.Message, string) string
@@ -34,6 +36,7 @@ type Connector interface {
 	SendMessage(channel, message string)
 	SendAction(channel, message string)
 	React(string, string, msg.Message)
+	Edit(string, string, string)
 	GetEmojiList() map[string]string
 	Serve() error
 

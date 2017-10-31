@@ -110,6 +110,10 @@ func (b *bot) DB() *sqlx.DB {
 	return b.db
 }
 
+func (b *bot) Conn() Connector {
+	return b.conn
+}
+
 // Create any tables if necessary based on version of DB
 // Plugins should create their own tables, these are only for official bot stuff
 // Note: This does not return an error. Database issues are all fatal at this stage.
@@ -145,7 +149,7 @@ func (b *bot) migrateDB() {
 
 // Adds a constructed handler to the bots handlers list
 func (b *bot) AddHandler(name string, h Handler) {
-	b.plugins[strings.ToLower(name)] = h
+	b.plugins[name] = h
 	b.pluginOrdering = append(b.pluginOrdering, name)
 	if entry := h.RegisterWeb(); entry != nil {
 		b.httpEndPoints[name] = *entry

@@ -103,6 +103,10 @@ func (i *Irc) React(channel, reaction string, message msg.Message) {
 	//we're not goign to do anything because it's IRC
 }
 
+func (i *Irc) Edit(channel, newMessage, identifier string) {
+	//we're not goign to do anything because it's IRC
+}
+
 func (i *Irc) GetEmojiList() map[string]string {
 	//we're not goign to do anything because it's IRC
 	return make(map[string]string)

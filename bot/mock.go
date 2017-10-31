@@ -25,6 +25,7 @@ type MockBot struct {
 func (mb *MockBot) Config() *config.Config            { return &mb.Cfg }
 func (mb *MockBot) DBVersion() int64                  { return 1 }
 func (mb *MockBot) DB() *sqlx.DB                      { return mb.db }
+func (mb *MockBot) Conn() Connector { return nil }
 func (mb *MockBot) Who(string) []user.User            { return []user.User{} }
 func (mb *MockBot) AddHandler(name string, f Handler) {}
 func (mb *MockBot) SendMessage(ch string, msg string) {
@@ -40,6 +41,7 @@ func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Mess
 func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
 
 func (mb *MockBot) React(channel, reaction string, message msg.Message) {}
+func (mb *MockBot) Edit(channel, newMessage, identifier string) {}
 func (mb *MockBot) GetEmojiList() map[string]string                     { return make(map[string]string) }
 func (mb *MockBot) RegisterFilter(s string, f func(string) string)      {}
 

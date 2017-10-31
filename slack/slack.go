@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	// "sync/atomic"
 	"time"
 
 	"github.com/velour/catbase/bot"
@@ -37,6 +37,8 @@ type Slack struct {
 	users map[string]string
 
 	emoji map[string]string
+
+	lastMessageId string
 
 	eventReceived   func(msg.Message)
 	messageReceived func(msg.Message)
@@ -160,6 +162,7 @@ func New(c *config.Config) *Slack {
 		lastRecieved: time.Now(),
 		users:        make(map[string]string),
 		emoji:        make(map[string]string),
+		lastMessageId: "",
 	}
 }
 
@@ -172,17 +175,47 @@ func (s *Slack) RegisterMessageReceived(f func(msg.Message)) {
 }
 
 func (s *Slack) SendMessageType(channel, messageType, subType, message string) error {
-	m := slackMessage{
-		ID:      atomic.AddUint64(&idCounter, 1),
-		Type:    messageType,
-		SubType: subType,
-		Channel: channel,
-		Text:    message,
-	}
-	err := websocket.JSON.Send(s.ws, m)
+	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
+		url.Values{"token": {s.config.Slack.Token},
+			"channel":   {channel},
+			"text": {message},
+		})
+
 	if err != nil {
-		log.Printf("Error sending Slack message: %s", err)
+		log.Printf("Error sending Slack reaction: %s", err)
 	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Fatalf("Error reading Slack API body: %s", err)
+	}
+
+	log.Println(string(body))
+
+	type MessageResponse struct {
+		OK    bool       `json:ok`
+		Channel string `json:channel`
+		Timestamp string `json:ts`
+	}
+
+	var mr MessageResponse
+	err = json.Unmarshal(body, &mr)
+	if err != nil {
+		log.Fatalf("Error parsing message response: %s", err)
+	}
+
+	bodyAsString := string(body)
+
+	//what the fuck
+	if strings.Contains(bodyAsString, "\"ts\":\"") {
+		mr.Timestamp = strings.Split(strings.Split(bodyAsString, "\"ts\":\"")[1], "\"")[0]
+	}
+
+	s.lastMessageId = mr.Timestamp
+
+	log.Println(mr)
+
 	return err
 }
 
@@ -207,6 +240,46 @@ func (s *Slack) React(channel, reaction string, message msg.Message) {
 		log.Printf("Error sending Slack reaction: %s", err)
 	}
 	log.Print(resp)
+}
+
+func (s* Slack) GetLastMessageId() string {
+	return s.lastMessageId
+}
+
+func (s* Slack) PrintHistory(channel string, howMany int) {
+	resp, err := http.PostForm("https://slack.com/api/channels.history",
+		url.Values{"token": {s.config.Slack.Token},
+			"channel":   {channel},
+			"count": {fmt.Sprintf("%d", howMany)}})
+	if err != nil {
+		log.Printf("Error getting slack history: %s", err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Fatalf("Error reading Slack API body: %s", err)
+	}
+
+	log.Println(string(body))
+}
+
+func (s *Slack) Edit(channel, newMessage, identifier string) {
+	log.Printf("Editing in (%s) %s: %s", identifier, channel, newMessage)
+	resp, err := http.PostForm("https://slack.com/api/chat.update",
+		url.Values{"token": {s.config.Slack.Token},
+			"channel":   {channel},
+			"text": {newMessage},
+			"ts": {identifier}})
+	if err != nil {
+		log.Printf("Error sending Slack reaction: %s", err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Fatalf("Error reading Slack API body: %s", err)
+	}
+
+	log.Println(string(body))
 }
 
 func (s *Slack) GetEmojiList() map[string]string {
@@ -275,6 +348,11 @@ func (s *Slack) Serve() error {
 		case "message":
 			if !msg.Hidden {
 				m := s.buildMessage(msg)
+
+				log.Println()
+				log.Println(m)
+				log.Println()
+
 				if m.Time.Before(s.lastRecieved) {
 					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
 				} else {

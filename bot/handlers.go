@@ -23,6 +23,8 @@ func (b *bot) MsgReceived(msg msg.Message) {
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
 
+	log.Println(msg.User.Name)
+
 	if strings.HasPrefix(msg.Body, "help ") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
@@ -63,6 +65,10 @@ func (b *bot) SendAction(channel, message string) {
 
 func (b *bot) React(channel, reaction string, message msg.Message) {
 	b.conn.React(channel, reaction, message)
+}
+
+func (b *bot) Edit(channel, newMessage, identifier string) {
+	b.conn.Edit(channel, newMessage, identifier)
 }
 
 func (b *bot) GetEmojiList() map[string]string {
