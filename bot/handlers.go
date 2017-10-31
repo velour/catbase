@@ -63,6 +63,10 @@ func (b *bot) SendAction(channel, message string) string {
 	return b.conn.SendAction(channel, message)
 }
 
+func (b *bot) ReplyToMessage(channel, message, identifier string) (string, bool) {
+	return b.conn.ReplyToMessage(channel, message, identifier)
+}
+
 func (b *bot) React(channel, reaction string, message msg.Message) bool {
 	return b.conn.React(channel, reaction, message)
 }

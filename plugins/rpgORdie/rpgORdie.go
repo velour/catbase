@@ -32,6 +32,8 @@ func (p *RPGPlugin) Message(message msg.Message) bool {
 			time.Sleep(2 * time.Second)
 		}
 		p.Bot.Edit(message.Channel, "HECK YES", ts)
+
+		p.Bot.ReplyToMessage(message.Channel, "How's this reply?", ts)
 	}
 	return false
 }

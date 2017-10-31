@@ -17,6 +17,7 @@ type Bot interface {
 	AddHandler(string, Handler)
 	SendMessage(string, string) string
 	SendAction(string, string) string
+	ReplyToMessage(channel, message, identifier string) (string, bool)
 	React(string, string, msg.Message) bool
 	Edit(string, string, string) bool
 	MsgReceived(msg.Message)
@@ -34,6 +35,7 @@ type Connector interface {
 
 	SendMessage(channel, message string) string
 	SendAction(channel, message string) string
+	ReplyToMessage(channel, message, identifier string) (string, bool)
 	React(string, string, msg.Message) bool
 	Edit(string, string, string) bool
 	GetEmojiList() map[string]string

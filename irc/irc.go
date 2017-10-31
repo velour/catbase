@@ -101,6 +101,10 @@ func (i *Irc) SendAction(channel, message string) string {
 	return "NO_IRC_IDENTIFIERS"
 }
 
+func (i *Irc) ReplyToMessage(channel, message, identifier string) (string, bool) {
+	return "NO_IRC_IDENTIFIERS", false
+}
+
 func (i *Irc) React(channel, reaction string, message msg.Message) bool {
 	//we're not goign to do anything because it's IRC
 	return false

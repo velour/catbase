@@ -5,6 +5,7 @@ package slack
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -192,15 +193,20 @@ func (s *Slack) RegisterMessageReceived(f func(msg.Message)) {
 	s.messageReceived = f
 }
 
-func (s *Slack) SendMessageType(channel, messageType, subType, message string) (string, error) {
-	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
+func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string, error) {
+	postUrl := "https://slack.com/api/chat.postMessage"
+	if meMessage {
+		postUrl = "https://slack.com/api/chat.meMessage"
+	}
+
+	resp, err := http.PostForm(postUrl,
 		url.Values{"token": {s.config.Slack.Token},
 			"channel": {channel},
 			"text":    {message},
 		})
 
 	if err != nil {
-		log.Printf("Error sending Slack reaction: %s", err)
+		log.Printf("Error sending Slack message: %s", err)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -213,7 +219,6 @@ func (s *Slack) SendMessageType(channel, messageType, subType, message string) (
 
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
-		Channel   string `json:"channel"`
 		Timestamp string `json:"ts"`
 	}
 
@@ -223,19 +228,64 @@ func (s *Slack) SendMessageType(channel, messageType, subType, message string) (
 		log.Fatalf("Error parsing message response: %s", err)
 	}
 
+	if !mr.OK {
+		return "", errors.New("failure response received")
+	}
+
 	return mr.Timestamp, err
 }
 
 func (s *Slack) SendMessage(channel, message string) string {
 	log.Printf("Sending message to %s: %s", channel, message)
-	identifier, _ := s.SendMessageType(channel, "message", "", message)
+	identifier, _ := s.SendMessageType(channel, message, false)
 	return identifier
 }
 
 func (s *Slack) SendAction(channel, message string) string {
 	log.Printf("Sending action to %s: %s", channel, message)
-	identifier, _ := s.SendMessageType(channel, "message", "me_message", "_"+message+"_")
+	identifier, _ := s.SendMessageType(channel, "_"+message+"_", true)
 	return identifier
+}
+
+func (s *Slack) ReplyToMessage(channel, message, identifier string) (string, bool) {
+	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
+		url.Values{"token": {s.config.Slack.Token},
+			"channel":   {channel},
+			"text":      {message},
+			"thread_ts": {identifier},
+		})
+
+	if err != nil {
+		log.Printf("Error sending Slack reply: %s", err)
+		return "", false
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Printf("Error reading Slack API body: %s", err)
+		return "", false
+	}
+
+	log.Println(string(body))
+
+	type MessageResponse struct {
+		OK        bool   `json:"ok"`
+		Timestamp string `json:"ts"`
+	}
+
+	var mr MessageResponse
+	err = json.Unmarshal(body, &mr)
+	if err != nil {
+		log.Printf("Error parsing message response: %s", err)
+		return "", false
+	}
+
+	if !mr.OK {
+		return "", false
+	}
+
+	return mr.Timestamp, err == nil
 }
 
 func (s *Slack) React(channel, reaction string, message msg.Message) bool {
