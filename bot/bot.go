@@ -93,6 +93,7 @@ func New(config *config.Config, connector Connector) Bot {
 
 	connector.RegisterMessageReceived(bot.MsgReceived)
 	connector.RegisterEventReceived(bot.EventReceived)
+	connector.RegisterReplyMessageReceived(bot.ReplyMsgReceived)
 
 	return bot
 }

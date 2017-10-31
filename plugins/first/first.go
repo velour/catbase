@@ -228,3 +228,5 @@ func (p *FirstPlugin) BotMessage(message msg.Message) bool {
 func (p *FirstPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *FirstPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

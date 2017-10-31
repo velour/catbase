@@ -935,3 +935,5 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 
 	return strings.Join(words, " "), nil
 }
+
+func (p *BabblerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

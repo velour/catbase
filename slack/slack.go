@@ -41,6 +41,7 @@ type Slack struct {
 
 	eventReceived   func(msg.Message)
 	messageReceived func(msg.Message)
+	replyMessageReceived func(msg.Message, string)
 }
 
 var idCounter uint64
@@ -134,6 +135,7 @@ type slackMessage struct {
 	User     string `json:"user"`
 	Username string `json:"username"`
 	Ts       string `json:"ts"`
+	ThreadTs       string `json:"thread_ts"`
 	Error    struct {
 		Code uint64 `json:"code"`
 		Msg  string `json:"msg"`
@@ -191,6 +193,10 @@ func (s *Slack) RegisterEventReceived(f func(msg.Message)) {
 
 func (s *Slack) RegisterMessageReceived(f func(msg.Message)) {
 	s.messageReceived = f
+}
+
+func (s *Slack) RegisterReplyMessageReceived(f func(msg.Message, string)) {
+	s.replyMessageReceived = f
 }
 
 func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string, error) {
@@ -384,19 +390,17 @@ func (s *Slack) Serve() error {
 		}
 		switch msg.Type {
 		case "message":
-			if !msg.Hidden {
+			if !msg.Hidden && msg.ThreadTs == "" {
 				m := s.buildMessage(msg)
-
-				log.Println()
-				log.Println(m)
-				log.Println()
-
 				if m.Time.Before(s.lastRecieved) {
 					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
 				} else {
 					s.lastRecieved = m.Time
-					s.messageReceived(s.buildMessage(msg))
+					s.messageReceived(m)
 				}
+			} else if msg.ThreadTs != "" {
+				//we're throwing away some information here by not parsing the correct reply object type, but that's okay
+				s.replyMessageReceived(s.buildLightReplyMessage(msg), msg.ThreadTs)
 			} else {
 				log.Printf("THAT MESSAGE WAS HIDDEN: %+v", msg.ID)
 			}
@@ -420,6 +424,40 @@ var urlDetector = regexp.MustCompile(`<(.+)://([^|^>]+).*>`)
 
 // Convert a slackMessage to a msg.Message
 func (s *Slack) buildMessage(m slackMessage) msg.Message {
+	text := html.UnescapeString(m.Text)
+
+	text = fixText(s.getUser, text)
+
+	isCmd, text := bot.IsCmd(s.config, text)
+
+	isAction := m.SubType == "me_message"
+
+	u, _ := s.getUser(m.User)
+	if m.Username != "" {
+		u = m.Username
+	}
+
+	tstamp := slackTStoTime(m.Ts)
+
+	return msg.Message{
+		User: &user.User{
+			ID:   m.User,
+			Name: u,
+		},
+		Body:    text,
+		Raw:     m.Text,
+		Channel: m.Channel,
+		Command: isCmd,
+		Action:  isAction,
+		Host:    string(m.ID),
+		Time:    tstamp,
+		AdditionalData: map[string]string{
+			"RAW_SLACK_TIMESTAMP": m.Ts,
+		},
+	}
+}
+
+func (s *Slack) buildLightReplyMessage(m slackMessage) msg.Message {
 	text := html.UnescapeString(m.Text)
 
 	text = fixText(s.getUser, text)

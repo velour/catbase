@@ -122,3 +122,5 @@ func (p *ZorkPlugin) Help(ch string, _ []string) {
 }
 
 func (p *ZorkPlugin) RegisterWeb() *string { return nil }
+
+func (p *ZorkPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

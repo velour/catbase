@@ -117,3 +117,5 @@ func (p *RSSPlugin) BotMessage(message msg.Message) bool {
 func (p *RSSPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *RSSPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

@@ -44,6 +44,7 @@ type Irc struct {
 
 	eventReceived   func(msg.Message)
 	messageReceived func(msg.Message)
+	replyMessageReceived  func(msg.Message, string)
 }
 
 func New(c *config.Config) *Irc {
@@ -59,6 +60,10 @@ func (i *Irc) RegisterEventReceived(f func(msg.Message)) {
 
 func (i *Irc) RegisterMessageReceived(f func(msg.Message)) {
 	i.messageReceived = f
+}
+
+func (i *Irc) RegisterReplyMessageReceived(f func(msg.Message, string)) {
+	i.replyMessageReceived = f
 }
 
 func (i *Irc) JoinChannel(channel string) {

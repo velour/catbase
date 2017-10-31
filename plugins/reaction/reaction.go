@@ -80,3 +80,5 @@ func (p *ReactionPlugin) BotMessage(message msg.Message) bool {
 func (p *ReactionPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *ReactionPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

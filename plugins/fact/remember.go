@@ -170,3 +170,5 @@ func (p *RememberPlugin) recordMsg(message msg.Message) {
 	log.Printf("Logging message: %s: %s", message.User.Name, message.Body)
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 }
+
+func (p *RememberPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

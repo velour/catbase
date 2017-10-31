@@ -22,9 +22,6 @@ func (b *bot) MsgReceived(msg msg.Message) {
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
-
-	log.Println(msg.User.Name)
-
 	if strings.HasPrefix(msg.Body, "help ") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
@@ -50,6 +47,18 @@ func (b *bot) EventReceived(msg msg.Message) {
 	for _, name := range b.pluginOrdering {
 		p := b.plugins[name]
 		if p.Event(msg.Body, msg) { // TODO: could get rid of msg.Body
+			break
+		}
+	}
+}
+
+// Handle incoming replys
+func (b *bot) ReplyMsgReceived(msg msg.Message, identifier string) {
+	log.Println("Received message: ", msg)
+
+	for _, name := range b.pluginOrdering {
+		p := b.plugins[name]
+		if p.ReplyMessage(msg, identifier) {
 			break
 		}
 	}

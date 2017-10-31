@@ -322,3 +322,5 @@ func reminderer(p *ReminderPlugin) {
 		p.queueUpNextReminder()
 	}
 }
+
+func (p *ReminderPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

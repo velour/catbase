@@ -22,6 +22,7 @@ type Bot interface {
 	React(string, string, msg.Message) bool
 	Edit(string, string, string) bool
 	MsgReceived(msg.Message)
+	ReplyMsgReceived(msg.Message, string)
 	EventReceived(msg.Message)
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
@@ -33,6 +34,7 @@ type Bot interface {
 type Connector interface {
 	RegisterEventReceived(func(message msg.Message))
 	RegisterMessageReceived(func(message msg.Message))
+	RegisterReplyMessageReceived(func(msg.Message, string))
 
 	SendMessage(channel, message string) string
 	SendAction(channel, message string) string
@@ -50,6 +52,7 @@ type Connector interface {
 type Handler interface {
 	Message(message msg.Message) bool
 	Event(kind string, message msg.Message) bool
+	ReplyMessage(msg.Message, string) bool
 	BotMessage(message msg.Message) bool
 	Help(channel string, parts []string)
 	RegisterWeb() *string

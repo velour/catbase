@@ -764,3 +764,5 @@ func (p *Factoid) serveQuery(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 }
+
+func (p *Factoid) ReplyMessage(message msg.Message, identifier string) bool { return false }

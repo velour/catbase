@@ -461,3 +461,5 @@ func (p *BeersPlugin) BotMessage(message msg.Message) bool {
 func (p *BeersPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *BeersPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
