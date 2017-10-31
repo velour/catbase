@@ -66,7 +66,7 @@ func (i *Irc) JoinChannel(channel string) {
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
-func (i *Irc) SendMessage(channel, message string) {
+func (i *Irc) SendMessage(channel, message string) string {
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -90,21 +90,25 @@ func (i *Irc) SendMessage(channel, message string) {
 
 		i.Client.Out <- m
 	}
+	return "NO_IRC_IDENTIFIERS"
 }
 
 // Sends action to channel
-func (i *Irc) SendAction(channel, message string) {
+func (i *Irc) SendAction(channel, message string) string {
 	message = actionPrefix + " " + message + "\x01"
 
 	i.SendMessage(channel, message)
+	return "NO_IRC_IDENTIFIERS"
 }
 
-func (i *Irc) React(channel, reaction string, message msg.Message) {
+func (i *Irc) React(channel, reaction string, message msg.Message) bool {
 	//we're not goign to do anything because it's IRC
+	return false
 }
 
-func (i *Irc) Edit(channel, newMessage, identifier string) {
+func (i *Irc) Edit(channel, newMessage, identifier string) bool {
 	//we're not goign to do anything because it's IRC
+	return false
 }
 
 func (i *Irc) GetEmojiList() map[string]string {

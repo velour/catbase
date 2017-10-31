@@ -110,10 +110,6 @@ func (b *bot) DB() *sqlx.DB {
 	return b.db
 }
 
-func (b *bot) Conn() Connector {
-	return b.conn
-}
-
 // Create any tables if necessary based on version of DB
 // Plugins should create their own tables, these are only for official bot stuff
 // Note: This does not return an error. Database issues are all fatal at this stage.

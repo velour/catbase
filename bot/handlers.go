@@ -55,20 +55,20 @@ func (b *bot) EventReceived(msg msg.Message) {
 	}
 }
 
-func (b *bot) SendMessage(channel, message string) {
-	b.conn.SendMessage(channel, message)
+func (b *bot) SendMessage(channel, message string) string {
+	return b.conn.SendMessage(channel, message)
 }
 
-func (b *bot) SendAction(channel, message string) {
-	b.conn.SendAction(channel, message)
+func (b *bot) SendAction(channel, message string) string {
+	return b.conn.SendAction(channel, message)
 }
 
-func (b *bot) React(channel, reaction string, message msg.Message) {
-	b.conn.React(channel, reaction, message)
+func (b *bot) React(channel, reaction string, message msg.Message) bool {
+	return b.conn.React(channel, reaction, message)
 }
 
-func (b *bot) Edit(channel, newMessage, identifier string) {
-	b.conn.Edit(channel, newMessage, identifier)
+func (b *bot) Edit(channel, newMessage, identifier string) bool {
+	return b.conn.Edit(channel, newMessage, identifier)
 }
 
 func (b *bot) GetEmojiList() map[string]string {

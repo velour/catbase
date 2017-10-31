@@ -7,25 +7,21 @@ import (
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/slack"
 )
 
 type RPGPlugin struct {
-	Bot     bot.Bot
-	Slack   *slack.Slack //nasty
+	Bot bot.Bot
 }
 
 func New(b bot.Bot) *RPGPlugin {
 	return &RPGPlugin{
-		Bot:     b,
-		Slack:   b.Conn().(*slack.Slack), //oh boy, this is just filthy
+		Bot: b,
 	}
 }
 
 func (p *RPGPlugin) Message(message msg.Message) bool {
 	if strings.ToLower(message.Body) == "start rpg" {
-		p.Bot.SendMessage(message.Channel, "I'll edit this.")
-		ts := p.Slack.GetLastMessageId()
+		ts := p.Bot.SendMessage(message.Channel, "I'll edit this.")
 
 		time.Sleep(2 * time.Second)
 
