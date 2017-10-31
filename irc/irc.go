@@ -101,7 +101,11 @@ func (i *Irc) SendAction(channel, message string) string {
 	return "NO_IRC_IDENTIFIERS"
 }
 
-func (i *Irc) ReplyToMessage(channel, message, identifier string) (string, bool) {
+func (i *Irc) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
+	return "NO_IRC_IDENTIFIERS", false
+}
+
+func (i *Irc) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
 	return "NO_IRC_IDENTIFIERS", false
 }
 

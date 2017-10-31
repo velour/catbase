@@ -33,7 +33,7 @@ func (p *RPGPlugin) Message(message msg.Message) bool {
 		}
 		p.Bot.Edit(message.Channel, "HECK YES", ts)
 
-		p.Bot.ReplyToMessage(message.Channel, "How's this reply?", ts)
+		p.Bot.ReplyToMessageIdentifier(message.Channel, "How's this reply?", ts)
 	}
 	return false
 }

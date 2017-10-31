@@ -247,7 +247,7 @@ func (s *Slack) SendAction(channel, message string) string {
 	return identifier
 }
 
-func (s *Slack) ReplyToMessage(channel, message, identifier string) (string, bool) {
+func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
 	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
 		url.Values{"token": {s.config.Slack.Token},
 			"channel":   {channel},
@@ -286,6 +286,10 @@ func (s *Slack) ReplyToMessage(channel, message, identifier string) (string, boo
 	}
 
 	return mr.Timestamp, err == nil
+}
+
+func (s *Slack) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
+	return s.ReplyToMessageIdentifier(channel, message, replyTo.AdditionalData["RAW_SLACK_TIMESTAMP"])
 }
 
 func (s *Slack) React(channel, reaction string, message msg.Message) bool {
