@@ -223,13 +223,6 @@ func (s *Slack) SendMessageType(channel, messageType, subType, message string) (
 		log.Fatalf("Error parsing message response: %s", err)
 	}
 
-	bodyAsString := string(body)
-
-	//what the fuck
-	if strings.Contains(bodyAsString, "\"ts\":\"") {
-		mr.Timestamp = strings.Split(strings.Split(bodyAsString, "\"ts\":\"")[1], "\"")[0]
-	}
-
 	return mr.Timestamp, err
 }
 
