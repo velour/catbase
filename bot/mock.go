@@ -39,8 +39,12 @@ func (mb *MockBot) SendAction(ch string, msg string) string {
 	mb.Actions = append(mb.Actions, msg)
 	return fmt.Sprintf("a-%d", len(mb.Actions)-1)
 }
-func (mb *MockBot) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) { return "", false }
-func (mb *MockBot) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) { return "", false }
+func (mb *MockBot) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
+	return "", false
+}
+func (mb *MockBot) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
+	return "", false
+}
 func (mb *MockBot) MsgReceived(msg msg.Message)                {}
 func (mb *MockBot) EventReceived(msg msg.Message)              {}
 func (mb *MockBot) Filter(msg msg.Message, s string) string    { return "" }
@@ -77,6 +81,11 @@ func (mb *MockBot) Edit(channel, newMessage, identifier string) bool {
 	}
 	return true
 }
+
+func (mb *MockBot) ReplyMsgReceived(msg.Message, string) {
+
+}
+
 func (mb *MockBot) GetEmojiList() map[string]string                { return make(map[string]string) }
 func (mb *MockBot) RegisterFilter(s string, f func(string) string) {}
 
