@@ -209,6 +209,7 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 		url.Values{"token": {s.config.Slack.Token},
 			"channel": {channel},
 			"text":    {message},
+			"as_user": {"true"},
 		})
 
 	if err != nil {
@@ -258,6 +259,7 @@ func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (s
 		url.Values{"token": {s.config.Slack.Token},
 			"channel":   {channel},
 			"text":      {message},
+			"as_user": {"true"},
 			"thread_ts": {identifier},
 		})
 
