@@ -60,7 +60,8 @@ func (g *game) scheduleDecrement() {
 		g.timers[0].Stop()
 	}
 	minDec := g.bot.Config().Sisyphus.MinDecrement
-	g.nextDec = time.Now().Add(time.Duration((60 + rand.Intn(60*minDec))) * time.Minute)
+	maxDec := g.bot.Config().Sisyphus.MinDecrement
+	g.nextDec = time.Now().Add(time.Duration((minDec + rand.Intn(maxDec))) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextDec.Sub(time.Now()))
 		g.timers[0] = t
@@ -76,7 +77,8 @@ func (g *game) schedulePush() {
 		g.timers[1].Stop()
 	}
 	minPush := g.bot.Config().Sisyphus.MinPush
-	g.nextPush = time.Now().Add(time.Duration(rand.Intn(60)+minPush) * time.Minute)
+	maxPush := g.bot.Config().Sisyphus.MaxPush
+	g.nextPush = time.Now().Add(time.Duration(rand.Intn(maxPush)+minPush) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextPush.Sub(time.Now()))
 		g.timers[1] = t

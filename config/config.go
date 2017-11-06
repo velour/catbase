@@ -105,7 +105,9 @@ type Config struct {
 	}
 	Sisyphus struct {
 		MinDecrement int
+		MaxDecrement int
 		MinPush      int
+		MaxPush      int
 	}
 }
 
