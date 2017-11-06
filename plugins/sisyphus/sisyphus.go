@@ -29,7 +29,6 @@ type game struct {
 	who      string
 	start    time.Time
 	size     int
-	hardness int
 	current  int
 	nextPush time.Time
 	nextDec  time.Time
@@ -41,13 +40,12 @@ type game struct {
 func NewRandomGame(bot bot.Bot, channel, who string) *game {
 	size := rand.Intn(9) + 2
 	g := game{
-		channel:  channel,
-		bot:      bot,
-		who:      who,
-		start:    time.Now(),
-		size:     size,
-		hardness: rand.Intn(9) + 1,
-		current:  size / 2,
+		channel: channel,
+		bot:     bot,
+		who:     who,
+		start:   time.Now(),
+		size:    size,
+		current: size / 2,
 	}
 	g.id = bot.SendMessage(channel, g.toMessageString())
 
@@ -61,7 +59,8 @@ func (g *game) scheduleDecrement() {
 	if g.timers[0] != nil {
 		g.timers[0].Stop()
 	}
-	g.nextDec = time.Now().Add(time.Duration((60 + rand.Intn(60*5))) * time.Second)
+	minDec := g.bot.Config().Sisyphus.MinDecrement
+	g.nextDec = time.Now().Add(time.Duration((60 + rand.Intn(60*minDec))) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextDec.Sub(time.Now()))
 		g.timers[0] = t
@@ -76,7 +75,8 @@ func (g *game) schedulePush() {
 	if g.timers[1] != nil {
 		g.timers[1].Stop()
 	}
-	g.nextPush = time.Now().Add(time.Duration(rand.Intn(60)+1) * time.Minute)
+	minPush := g.bot.Config().Sisyphus.MinPush
+	g.nextPush = time.Now().Add(time.Duration(rand.Intn(60)+minPush) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextPush.Sub(time.Now()))
 		g.timers[1] = t
