@@ -14,7 +14,11 @@ import (
 )
 
 const (
-	TIMESTAMP = "2006-01-02 15:04:05"
+	SECONDS_PER_SECOND = 1
+	SECONDS_PER_MINUTE = 60
+	SECONDS_PER_HOUR   = SECONDS_PER_MINUTE * SECONDS_PER_MINUTE
+	SECONDS_PER_DAY    = SECONDS_PER_HOUR * 24
+	SECONDS_PER_YEAR   = SECONDS_PER_DAY * 365
 )
 
 type CaptureTheFlagPlugin struct {
@@ -226,7 +230,7 @@ func (p *CaptureTheFlagPlugin) transferActivePossession(pos *Possession, usr *Us
 		}
 	}
 
-	return fmt.Sprintf("%s now has '%s'. %s had it last for %d seconds (total %d seconds).", usr.UserName, flag.FlagName, last.UserName, extraTime, newTime), nil
+	return fmt.Sprintf("%s now has '%s'. %s had it last for %d seconds (total %d seconds).", usr.UserName, flag.FlagName, last.UserName, sexyTime(extraTime), sexyTime(newTime)), nil
 }
 
 func (p *CaptureTheFlagPlugin) createFirstPossession(usr *User, flag *Flag) error {
@@ -307,4 +311,24 @@ func (p *CaptureTheFlagPlugin) tryCapture(username, what string) (string, error)
 		}
 		return fmt.Sprintf("You now have '%s'", what), nil
 	}
+}
+
+func sexyTime(seconds int64) string {
+	timeString := ""
+	units := []int64{SECONDS_PER_YEAR, SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE, SECONDS_PER_SECOND}
+	labels := []string{"year", "day", "hour", "minute", "second"}
+
+	for i, unit := range units {
+		howMany := seconds / unit
+		if howMany > 0 {
+			seconds -= howMany * unit
+			label := labels[i]
+			if howMany > 1 {
+				label += "s"
+			}
+			timeString = fmt.Sprintf("%s %d %s", timeString, howMany, label)
+		}
+	}
+
+	return strings.TrimSpace(timeString)
 }
