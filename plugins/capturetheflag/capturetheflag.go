@@ -77,6 +77,10 @@ func New(bot bot.Bot) *CaptureTheFlagPlugin {
 }
 
 func (p *CaptureTheFlagPlugin) Message(message msg.Message) bool {
+	if !message.Command {
+		return false
+	}
+
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 	numTokens := len(tokens)
