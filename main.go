@@ -12,6 +12,7 @@ import (
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
+	"github.com/velour/catbase/plugins/capturetheflag"
 	"github.com/velour/catbase/plugins/counter"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/emojifyme"
@@ -69,6 +70,7 @@ func main() {
 	b.AddHandler("emojifyme", emojifyme.New(b))
 	b.AddHandler("twitch", twitch.New(b))
 	b.AddHandler("inventory", inventory.New(b))
+	b.AddHandler("capturetheflag", capturetheflag.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 
