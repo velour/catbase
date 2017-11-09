@@ -39,8 +39,8 @@ type Slack struct {
 
 	emoji map[string]string
 
-	eventReceived   func(msg.Message)
-	messageReceived func(msg.Message)
+	eventReceived        func(msg.Message)
+	messageReceived      func(msg.Message)
 	replyMessageReceived func(msg.Message, string)
 }
 
@@ -134,8 +134,9 @@ type slackMessage struct {
 	Text     string `json:"text"`
 	User     string `json:"user"`
 	Username string `json:"username"`
+	BotId    string `json:"bot_id"`
 	Ts       string `json:"ts"`
-	ThreadTs       string `json:"thread_ts"`
+	ThreadTs string `json:"thread_ts"`
 	Error    struct {
 		Code uint64 `json:"code"`
 		Msg  string `json:"msg"`
@@ -259,7 +260,7 @@ func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (s
 		url.Values{"token": {s.config.Slack.Token},
 			"channel":   {channel},
 			"text":      {message},
-			"as_user": {"true"},
+			"as_user":   {"true"},
 			"thread_ts": {identifier},
 		})
 
@@ -392,7 +393,7 @@ func (s *Slack) Serve() error {
 		}
 		switch msg.Type {
 		case "message":
-			if !msg.Hidden && msg.ThreadTs == "" {
+			if msg.BotId == "" && !msg.Hidden && msg.ThreadTs == "" {
 				m := s.buildMessage(msg)
 				if m.Time.Before(s.lastRecieved) {
 					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
