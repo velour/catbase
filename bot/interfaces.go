@@ -15,10 +15,14 @@ type Bot interface {
 	DB() *sqlx.DB
 	Who(string) []user.User
 	AddHandler(string, Handler)
-	SendMessage(string, string)
-	SendAction(string, string)
-	React(string, string, msg.Message)
+	SendMessage(string, string) string
+	SendAction(string, string) string
+	ReplyToMessageIdentifier(string, string, string) (string, bool)
+	ReplyToMessage(string, string, msg.Message) (string, bool)
+	React(string, string, msg.Message) bool
+	Edit(string, string, string) bool
 	MsgReceived(msg.Message)
+	ReplyMsgReceived(msg.Message, string)
 	EventReceived(msg.Message)
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
@@ -30,10 +34,14 @@ type Bot interface {
 type Connector interface {
 	RegisterEventReceived(func(message msg.Message))
 	RegisterMessageReceived(func(message msg.Message))
+	RegisterReplyMessageReceived(func(msg.Message, string))
 
-	SendMessage(channel, message string)
-	SendAction(channel, message string)
-	React(string, string, msg.Message)
+	SendMessage(channel, message string) string
+	SendAction(channel, message string) string
+	ReplyToMessageIdentifier(string, string, string) (string, bool)
+	ReplyToMessage(string, string, msg.Message) (string, bool)
+	React(string, string, msg.Message) bool
+	Edit(string, string, string) bool
 	GetEmojiList() map[string]string
 	Serve() error
 
@@ -44,6 +52,7 @@ type Connector interface {
 type Handler interface {
 	Message(message msg.Message) bool
 	Event(kind string, message msg.Message) bool
+	ReplyMessage(msg.Message, string) bool
 	BotMessage(message msg.Message) bool
 	Help(channel string, parts []string)
 	RegisterWeb() *string

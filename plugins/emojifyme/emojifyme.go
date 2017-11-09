@@ -112,3 +112,5 @@ func (p *EmojifyMePlugin) BotMessage(message msg.Message) bool {
 func (p *EmojifyMePlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *EmojifyMePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

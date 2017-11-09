@@ -275,3 +275,5 @@ func (p *StatsPlugin) mkSightingStat(message msg.Message) stats {
 func (p *StatsPlugin) mkChannelStat(message msg.Message) stats {
 	return stats{stat{mkDay(), "channel", message.Channel, 1}}
 }
+
+func (p *StatsPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

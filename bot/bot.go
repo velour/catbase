@@ -93,6 +93,7 @@ func New(config *config.Config, connector Connector) Bot {
 
 	connector.RegisterMessageReceived(bot.MsgReceived)
 	connector.RegisterEventReceived(bot.EventReceived)
+	connector.RegisterReplyMessageReceived(bot.ReplyMsgReceived)
 
 	return bot
 }
@@ -145,7 +146,7 @@ func (b *bot) migrateDB() {
 
 // Adds a constructed handler to the bots handlers list
 func (b *bot) AddHandler(name string, h Handler) {
-	b.plugins[strings.ToLower(name)] = h
+	b.plugins[name] = h
 	b.pluginOrdering = append(b.pluginOrdering, name)
 	if entry := h.RegisterWeb(); entry != nil {
 		b.httpEndPoints[name] = *entry

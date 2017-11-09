@@ -100,3 +100,5 @@ func (p *DicePlugin) BotMessage(message msg.Message) bool {
 func (p *DicePlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *DicePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

@@ -22,7 +22,6 @@ func (b *bot) MsgReceived(msg msg.Message) {
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
-
 	if strings.HasPrefix(msg.Body, "help ") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
@@ -53,16 +52,40 @@ func (b *bot) EventReceived(msg msg.Message) {
 	}
 }
 
-func (b *bot) SendMessage(channel, message string) {
-	b.conn.SendMessage(channel, message)
+// Handle incoming replys
+func (b *bot) ReplyMsgReceived(msg msg.Message, identifier string) {
+	log.Println("Received message: ", msg)
+
+	for _, name := range b.pluginOrdering {
+		p := b.plugins[name]
+		if p.ReplyMessage(msg, identifier) {
+			break
+		}
+	}
 }
 
-func (b *bot) SendAction(channel, message string) {
-	b.conn.SendAction(channel, message)
+func (b *bot) SendMessage(channel, message string) string {
+	return b.conn.SendMessage(channel, message)
 }
 
-func (b *bot) React(channel, reaction string, message msg.Message) {
-	b.conn.React(channel, reaction, message)
+func (b *bot) SendAction(channel, message string) string {
+	return b.conn.SendAction(channel, message)
+}
+
+func (b *bot) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
+	return b.conn.ReplyToMessageIdentifier(channel, message, identifier)
+}
+
+func (b *bot) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
+		return b.conn.ReplyToMessage(channel, message, replyTo)
+}
+
+func (b *bot) React(channel, reaction string, message msg.Message) bool {
+	return b.conn.React(channel, reaction, message)
+}
+
+func (b *bot) Edit(channel, newMessage, identifier string) bool {
+	return b.conn.Edit(channel, newMessage, identifier)
 }
 
 func (b *bot) GetEmojiList() map[string]string {

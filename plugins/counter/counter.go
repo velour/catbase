@@ -364,3 +364,5 @@ func (p *CounterPlugin) BotMessage(message msg.Message) bool {
 func (p *CounterPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *CounterPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

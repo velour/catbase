@@ -231,3 +231,5 @@ func (p *DowntimePlugin) BotMessage(message msg.Message) bool {
 func (p *DowntimePlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *DowntimePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

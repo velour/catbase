@@ -238,3 +238,5 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		twitcher.game = game
 	}
 }
+
+func (p *TwitchPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
