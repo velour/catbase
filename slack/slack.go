@@ -208,6 +208,7 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 
 	resp, err := http.PostForm(postUrl,
 		url.Values{"token": {s.config.Slack.Token},
+			"as_user": {"true"},
 			"channel": {channel},
 			"text":    {message},
 			"as_user": {"true"},
@@ -258,6 +259,7 @@ func (s *Slack) SendAction(channel, message string) string {
 func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
 	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
 		url.Values{"token": {s.config.Slack.Token},
+			"as_user":   {"true"},
 			"channel":   {channel},
 			"text":      {message},
 			"as_user":   {"true"},

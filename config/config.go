@@ -103,6 +103,12 @@ type Config struct {
 	Inventory struct {
 		Max int
 	}
+	Sisyphus struct {
+		MinDecrement int
+		MaxDecrement int
+		MinPush      int
+		MaxPush      int
+	}
 }
 
 func init() {
