@@ -211,7 +211,6 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 			"as_user": {"true"},
 			"channel": {channel},
 			"text":    {message},
-			"as_user": {"true"},
 		})
 
 	if err != nil {
@@ -262,7 +261,6 @@ func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (s
 			"as_user":   {"true"},
 			"channel":   {channel},
 			"text":      {message},
-			"as_user":   {"true"},
 			"thread_ts": {identifier},
 		})
 
