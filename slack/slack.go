@@ -134,7 +134,7 @@ type slackMessage struct {
 	Text     string `json:"text"`
 	User     string `json:"user"`
 	Username string `json:"username"`
-	BotId    string `json:"bot_id"`
+	BotID    string `json:"bot_id"`
 	Ts       string `json:"ts"`
 	ThreadTs string `json:"thread_ts"`
 	Error    struct {
@@ -363,7 +363,6 @@ func (s *Slack) populateEmojiList() {
 func (s *Slack) receiveMessage() (slackMessage, error) {
 	var msg []byte
 	m := slackMessage{}
-	//err := websocket.JSON.Receive(s.ws, &m)
 	err := websocket.Message.Receive(s.ws, &msg)
 	if err != nil {
 		log.Println("Error decoding WS message")
@@ -393,7 +392,13 @@ func (s *Slack) Serve() error {
 		}
 		switch msg.Type {
 		case "message":
-			if msg.BotId == "" && !msg.Hidden && msg.ThreadTs == "" {
+			botOK := true
+			if msg.BotID != "" {
+				u, _ := s.getUser(msg.User)
+				log.Printf("User: %s, BotList: %+v", u, s.config.BotList)
+				botOK = s.config.BotList[strings.Title(u)]
+			}
+			if botOK && !msg.Hidden && msg.ThreadTs == "" {
 				m := s.buildMessage(msg)
 				if m.Time.Before(s.lastRecieved) {
 					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)

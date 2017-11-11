@@ -109,6 +109,7 @@ type Config struct {
 		MinPush      int
 		MaxPush      int
 	}
+	BotList map[string]bool
 }
 
 func init() {
