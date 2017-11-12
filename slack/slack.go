@@ -395,6 +395,9 @@ func (s *Slack) Serve() error {
 			botOK := true
 			if msg.BotID != "" {
 				u, _ := s.getUser(msg.User)
+				if u == "" && msg.Username != "" {
+					u = msg.Username
+				}
 				log.Printf("User: %s, BotList: %+v", u, s.config.BotList)
 				botOK = s.config.BotList[strings.Title(u)]
 			}
