@@ -26,6 +26,7 @@ import (
 	"github.com/velour/catbase/plugins/sisyphus"
 	"github.com/velour/catbase/plugins/stats"
 	"github.com/velour/catbase/plugins/talker"
+	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/twitch"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
@@ -73,6 +74,7 @@ func main() {
 	b.AddHandler("inventory", inventory.New(b))
 	b.AddHandler("rpgORdie", rpgORdie.New(b))
 	b.AddHandler("sisyphus", sisyphus.New(b))
+	b.AddHandler("tell", tell.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 
