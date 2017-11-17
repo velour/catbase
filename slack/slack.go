@@ -230,7 +230,9 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
 		Timestamp string `json:"ts"`
-		BotID  string `json:"message.bot_id"`
+		Message struct {
+			BotID  string `json:"bot_id"`
+		} `json:"message"`
 	}
 
 	var mr MessageResponse
@@ -243,7 +245,7 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 		return "", errors.New("failure response received")
 	}
 
-	s.myBotID = mr.BotID
+	s.myBotID = mr.Message.BotID
 
 	return mr.Timestamp, err
 }
@@ -397,7 +399,7 @@ func (s *Slack) Serve() error {
 		}
 		switch msg.Type {
 		case "message":
-			isItMe := s.myBotID != "" && msg.BotID != s.myBotID
+			isItMe := msg.BotID != "" && msg.BotID == s.myBotID
 			if !isItMe && !msg.Hidden && msg.ThreadTs == "" {
 				m := s.buildMessage(msg)
 				if m.Time.Before(s.lastRecieved) {
