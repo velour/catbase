@@ -71,19 +71,25 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 	tokens := strings.Fields(strings.ToLower(message.Body))
 	for i, token := range tokens {
 		if _, ok := p.Emoji[token]; ok {
-			emojied++
+			if token != "a" && token != "it" {
+				emojied++
+			}
 			tokens[i] = ":" + token + ":"
 		} else if strings.HasSuffix(token, "s") {
 			//Check to see if we can strip the trailing "es" off and get an emoji
 			temp := strings.TrimSuffix(token, "s")
 			if _, ok := p.Emoji[temp]; ok {
-				emojied++
+				if token != "a" && token != "it" {
+					emojied++
+				}
 				tokens[i] = ":" + temp + ":s"
 			} else if strings.HasSuffix(token, "es") {
 				//Check to see if we can strip the trailing "es" off and get an emoji
 				temp := strings.TrimSuffix(token, "es")
 				if _, ok := p.Emoji[temp]; ok {
-					emojied++
+					if token != "a" && token != "it" {
+						emojied++
+					}
 					tokens[i] = ":" + temp + ":es"
 				}
 			}
