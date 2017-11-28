@@ -79,7 +79,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 			//Check to see if we can strip the trailing "es" off and get an emoji
 			temp := strings.TrimSuffix(token, "s")
 			if _, ok := p.Emoji[temp]; ok {
-				if token != "a" && token != "it" {
+				if temp != "a" && temp != "it" {
 					emojied++
 				}
 				tokens[i] = ":" + temp + ":s"
@@ -87,7 +87,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 				//Check to see if we can strip the trailing "es" off and get an emoji
 				temp := strings.TrimSuffix(token, "es")
 				if _, ok := p.Emoji[temp]; ok {
-					if token != "a" && token != "it" {
+					if temp != "a" && temp != "it" {
 						emojied++
 					}
 					tokens[i] = ":" + temp + ":es"
