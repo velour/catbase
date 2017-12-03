@@ -67,11 +67,12 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 	}
 
+	inertTokens := p.Bot.Config().Emojify.Scoreless
 	emojied := 0.0
 	tokens := strings.Fields(strings.ToLower(message.Body))
 	for i, token := range tokens {
 		if _, ok := p.Emoji[token]; ok {
-			if token != "a" && token != "it" {
+			if !stringsContain(inertTokens, token) {
 				emojied++
 			}
 			tokens[i] = ":" + token + ":"
@@ -79,7 +80,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 			//Check to see if we can strip the trailing "es" off and get an emoji
 			temp := strings.TrimSuffix(token, "s")
 			if _, ok := p.Emoji[temp]; ok {
-				if temp != "a" && temp != "it" {
+				if !stringsContain(inertTokens, temp) {
 					emojied++
 				}
 				tokens[i] = ":" + temp + ":s"
@@ -87,7 +88,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 				//Check to see if we can strip the trailing "es" off and get an emoji
 				temp := strings.TrimSuffix(token, "es")
 				if _, ok := p.Emoji[temp]; ok {
-					if temp != "a" && temp != "it" {
+					if !stringsContain(inertTokens, temp) {
 						emojied++
 					}
 					tokens[i] = ":" + temp + ":es"
@@ -120,3 +121,12 @@ func (p *EmojifyMePlugin) RegisterWeb() *string {
 }
 
 func (p *EmojifyMePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
+
+func stringsContain(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
+}

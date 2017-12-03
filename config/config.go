@@ -91,6 +91,7 @@ type Config struct {
 	}
 	Emojify struct {
 		Chance float64
+		Scoreless []string
 	}
 	Reaction struct {
 		GeneralChance                 float64

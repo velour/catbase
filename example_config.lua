@@ -29,7 +29,11 @@ config = {
 	  YourChance = 0.4
 	},
 	Emojify = {
-	  Chance = 0.02
+	  Chance = 0.02,
+		Scoreless = {
+			"a",
+			"it"
+		}
 	},
 	DB = {
 	  File = "catbase.db",
