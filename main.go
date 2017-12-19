@@ -19,6 +19,7 @@ import (
 	"github.com/velour/catbase/plugins/first"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/leftpad"
+	"github.com/velour/catbase/plugins/picker"
 	"github.com/velour/catbase/plugins/reaction"
 	"github.com/velour/catbase/plugins/reminder"
 	"github.com/velour/catbase/plugins/rpgORdie"
@@ -60,6 +61,7 @@ func main() {
 	// b.AddHandler("downtime", downtime.New(b))
 	b.AddHandler("talker", talker.New(b))
 	b.AddHandler("dice", dice.New(b))
+	b.AddHandler("picker", picker.New(b))
 	b.AddHandler("beers", beers.New(b))
 	b.AddHandler("remember", fact.NewRemember(b))
 	b.AddHandler("your", your.New(b))
