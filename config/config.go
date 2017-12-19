@@ -91,6 +91,7 @@ type Config struct {
 	}
 	Emojify struct {
 		Chance float64
+		Scoreless []string
 	}
 	Reaction struct {
 		GeneralChance                 float64
@@ -109,7 +110,6 @@ type Config struct {
 		MinPush      int
 		MaxPush      int
 	}
-	BotList map[string]bool
 }
 
 func init() {

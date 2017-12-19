@@ -37,6 +37,8 @@ type Slack struct {
 
 	users map[string]string
 
+	myBotID string
+
 	emoji map[string]string
 
 	eventReceived        func(msg.Message)
@@ -228,6 +230,9 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
 		Timestamp string `json:"ts"`
+		Message struct {
+			BotID  string `json:"bot_id"`
+		} `json:"message"`
 	}
 
 	var mr MessageResponse
@@ -239,6 +244,8 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 	if !mr.OK {
 		return "", errors.New("failure response received")
 	}
+
+	s.myBotID = mr.Message.BotID
 
 	return mr.Timestamp, err
 }
@@ -392,16 +399,8 @@ func (s *Slack) Serve() error {
 		}
 		switch msg.Type {
 		case "message":
-			botOK := true
-			if msg.BotID != "" {
-				u, _ := s.getUser(msg.User)
-				if u == "" && msg.Username != "" {
-					u = msg.Username
-				}
-				log.Printf("User: %s, BotList: %+v", u, s.config.BotList)
-				botOK = s.config.BotList[strings.Title(u)]
-			}
-			if botOK && !msg.Hidden && msg.ThreadTs == "" {
+			isItMe := msg.BotID != "" && msg.BotID == s.myBotID
+			if !isItMe && !msg.Hidden && msg.ThreadTs == "" {
 				m := s.buildMessage(msg)
 				if m.Time.Before(s.lastRecieved) {
 					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
