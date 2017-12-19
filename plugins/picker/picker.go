@@ -34,10 +34,6 @@ func rollDie(sides int) int {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *PickerPlugin) Message(message msg.Message) bool {
-	if !message.Command {
-		return false
-	}
-
 	body := message.Body
 	pfx, sfx := "pick {", "}"
 
@@ -46,7 +42,7 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 		items := strings.Split(body, ",")
 		item := items[rand.Intn(len(items))]
 
-		out := fmt.Sprintf("I've chosen \"%s\" for you.", item)
+		out := fmt.Sprintf("I've chosen \"%s\" for you.", strings.TrimSpace(item))
 
 		p.Bot.SendMessage(message.Channel, out)
 
