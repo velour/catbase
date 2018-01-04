@@ -45,6 +45,32 @@ func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
 	return items, nil
 }
 
+func LeaderAll(db *sqlx.DB) ([]Item, error) {
+	s := `select id,item,nick,max(count) as count from counter group by item having count(nick) > 1 and max(count) > 1 order by count desc`
+	var items []Item
+	err := db.Select(&items, s)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].DB = db
+	}
+	return items, nil
+}
+
+func Leader(db *sqlx.DB, itemName string) ([]Item, error) {
+	s := `select * from counter where item=? order by count desc`
+	var items []Item
+	err := db.Select(&items, s, itemName)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].DB = db
+	}
+	return items, nil
+}
+
 // GetItem returns a specific counter for a subject
 func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	var item Item
@@ -136,7 +162,36 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	if tea, _ := regexp.MatchString("(?i)^tea\\. [^.]*\\. ((hot)|(iced))\\.?$", message.Body); tea {
+	if parts[0] == "leaderboard" {
+		var cmd func() ([]Item, error)
+		itNameTxt := ""
+
+		if len(parts) == 1 {
+			cmd = func() ([]Item, error) { return LeaderAll(p.DB) }
+		} else {
+			itNameTxt = fmt.Sprintf(" for %s", parts[1])
+			cmd = func() ([]Item, error) { return Leader(p.DB, parts[1]) }
+		}
+
+		its, err := cmd()
+		if err != nil {
+			log.Println(err)
+			return false
+		} else if len(its) == 0 {
+			return false
+		}
+
+		out := fmt.Sprintf("Leaderboard%s:\n", itNameTxt)
+		for _, it := range its {
+			out += fmt.Sprintf("%s with %d %s\n",
+				it.Nick,
+				it.Count,
+				it.Item,
+			)
+		}
+		p.Bot.SendMessage(channel, out)
+		return true
+	} else if tea, _ := regexp.MatchString("(?i)^tea\\. [^.]*\\. ((hot)|(iced))\\.?$", message.Body); tea {
 		item, err := GetItem(p.DB, nick, ":tea:")
 		if err != nil {
 			log.Printf("Error finding item %s.%s: %s.", nick, ":tea:", err)
