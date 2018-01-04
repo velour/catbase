@@ -117,18 +117,6 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 
 		// no matter what, if we're in here, then we've responded
 		return true
-	} else if parts[0] == "beers--" {
-		p.addBeers(nick, -1)
-		p.Bot.SendAction(channel, "flushes")
-		return true
-	} else if parts[0] == "beers++" {
-		p.addBeers(nick, 1)
-		p.randomReply(channel)
-		return true
-	} else if parts[0] == "bourbon++" {
-		p.addBeers(nick, 2)
-		p.randomReply(channel)
-		return true
 	} else if parts[0] == "puke" {
 		p.puke(nick, channel)
 		return true
