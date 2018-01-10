@@ -77,7 +77,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 			}
 			tokens[i] = ":" + token + ":"
 		} else if strings.HasSuffix(token, "s") {
-			//Check to see if we can strip the trailing "es" off and get an emoji
+			//Check to see if we can strip the trailing "s" off and get an emoji
 			temp := strings.TrimSuffix(token, "s")
 			if _, ok := p.Emoji[temp]; ok {
 				if !stringsContain(inertTokens, temp) {
