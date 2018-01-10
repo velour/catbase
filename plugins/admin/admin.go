@@ -117,3 +117,5 @@ func (p *AdminPlugin) BotMessage(message msg.Message) bool {
 func (p *AdminPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *AdminPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

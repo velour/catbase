@@ -76,3 +76,5 @@ func (p *LeftpadPlugin) RegisterWeb() *string {
 	// nothing to register
 	return nil
 }
+
+func (p *LeftpadPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

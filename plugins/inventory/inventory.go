@@ -236,3 +236,5 @@ func (p *InventoryPlugin) RegisterWeb() *string {
 	// nothing to register
 	return nil
 }
+
+func (p *InventoryPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

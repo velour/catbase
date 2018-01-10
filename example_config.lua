@@ -29,7 +29,11 @@ config = {
 	  YourChance = 0.4
 	},
 	Emojify = {
-	  Chance = 0.02
+	  Chance = 0.02,
+		Scoreless = {
+			"a",
+			"it"
+		}
 	},
 	DB = {
 	  File = "catbase.db",
@@ -105,5 +109,14 @@ config = {
 	  },
 	  DBPath = "stats.db"
 	},
-	HttpAddr = "127.0.0.1:1337"
+	HttpAddr = "127.0.0.1:1337",
+  Inventory = {
+    Max = 5
+  },
+  Sisyphus = {
+    MinDecrement = 10,
+    MinPush = 1
+  }
+}
+
 }

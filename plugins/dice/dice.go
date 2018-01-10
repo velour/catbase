@@ -12,8 +12,6 @@ import (
 import (
 	"fmt"
 	"math/rand"
-	"strconv"
-	"strings"
 )
 
 // This is a dice plugin to serve as an example and quick copy/paste for new plugins.
@@ -39,46 +37,37 @@ func rollDie(sides int) int {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *DicePlugin) Message(message msg.Message) bool {
+	if !message.Command {
+		return false
+	}
+
 	channel := message.Channel
-	parts := strings.Fields(message.Body)
+	nDice := 0
+	sides := 0
 
-	if len(parts) == 1 && message.Command {
-		var dice []string
-		dice = strings.Split(parts[0], "d")
+	if n, err := fmt.Sscanf(message.Body, "%dd%d", &nDice, &sides); n != 2 || err != nil {
+		return false
+	}
 
-		if len(dice) == 2 {
-			// We actually have a die roll.
-			nDice, err := strconv.Atoi(dice[0])
-			if err != nil {
-				return false
-			}
+	if sides < 2 || nDice < 1 || nDice > 20 {
+		p.Bot.SendMessage(channel, "You're a dick.")
+		return true
+	}
 
-			sides, err := strconv.Atoi(dice[1])
-			if err != nil {
-				return false
-			}
+	rolls := fmt.Sprintf("%s, you rolled: ", message.User.Name)
 
-			if sides < 2 || nDice < 1 || nDice > 20 {
-				p.Bot.SendMessage(channel, "You're a dick.")
-				return true
-			}
-
-			rolls := fmt.Sprintf("%s, you rolled: ", message.User.Name)
-
-			for i := 0; i < nDice; i++ {
-				rolls = fmt.Sprintf("%s %d", rolls, rollDie(sides))
-				if i != nDice-1 {
-					rolls = fmt.Sprintf("%s,", rolls)
-				} else {
-					rolls = fmt.Sprintf("%s.", rolls)
-				}
-			}
-
-			p.Bot.SendMessage(channel, rolls)
-			return true
+	for i := 0; i < nDice; i++ {
+		rolls = fmt.Sprintf("%s %d", rolls, rollDie(sides))
+		if i != nDice-1 {
+			rolls = fmt.Sprintf("%s,", rolls)
+		} else {
+			rolls = fmt.Sprintf("%s.", rolls)
 		}
 	}
-	return false
+
+	p.Bot.SendMessage(channel, rolls)
+	return true
+
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
@@ -100,3 +89,5 @@ func (p *DicePlugin) BotMessage(message msg.Message) bool {
 func (p *DicePlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *DicePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

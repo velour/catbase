@@ -20,11 +20,15 @@ import (
 	"github.com/velour/catbase/plugins/first"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/leftpad"
+	"github.com/velour/catbase/plugins/picker"
 	"github.com/velour/catbase/plugins/reaction"
 	"github.com/velour/catbase/plugins/reminder"
+	"github.com/velour/catbase/plugins/rpgORdie"
 	"github.com/velour/catbase/plugins/rss"
+	"github.com/velour/catbase/plugins/sisyphus"
 	"github.com/velour/catbase/plugins/stats"
 	"github.com/velour/catbase/plugins/talker"
+	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/twitch"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
@@ -58,6 +62,7 @@ func main() {
 	// b.AddHandler("downtime", downtime.New(b))
 	b.AddHandler("talker", talker.New(b))
 	b.AddHandler("dice", dice.New(b))
+	b.AddHandler("picker", picker.New(b))
 	b.AddHandler("beers", beers.New(b))
 	b.AddHandler("remember", fact.NewRemember(b))
 	b.AddHandler("your", your.New(b))
@@ -71,6 +76,9 @@ func main() {
 	b.AddHandler("twitch", twitch.New(b))
 	b.AddHandler("inventory", inventory.New(b))
 	b.AddHandler("capturetheflag", capturetheflag.New(b))
+	b.AddHandler("rpgORdie", rpgORdie.New(b))
+	b.AddHandler("sisyphus", sisyphus.New(b))
+	b.AddHandler("tell", tell.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 

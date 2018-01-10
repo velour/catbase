@@ -66,3 +66,5 @@ func (p *YourPlugin) BotMessage(message msg.Message) bool {
 func (p *YourPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *YourPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

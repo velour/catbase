@@ -119,3 +119,5 @@ func (p *TalkerPlugin) BotMessage(message msg.Message) bool {
 func (p *TalkerPlugin) RegisterWeb() *string {
 	return nil
 }
+
+func (p *TalkerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

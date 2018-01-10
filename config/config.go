@@ -91,6 +91,7 @@ type Config struct {
 	}
 	Emojify struct {
 		Chance float64
+		Scoreless []string
 	}
 	Reaction struct {
 		GeneralChance                 float64
@@ -102,6 +103,12 @@ type Config struct {
 	}
 	Inventory struct {
 		Max int
+	}
+	Sisyphus struct {
+		MinDecrement int
+		MaxDecrement int
+		MinPush      int
+		MaxPush      int
 	}
 }
 
