@@ -420,9 +420,11 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 				msg, checkin.Checkin_comment)
 		}
 
-		msg2 := ""
 		if checkin.Media.Count > 0 {
-			msg2 = "Here's a photo: " + checkin.Media.Items[0].Photo.Photo_img_lg
+			if strings.Contains(checkin.Media.Items[0].Photo.Photo_img_lg, "photos-processing") {
+				continue
+			}
+			msg += "\nHere's a photo: " + checkin.Media.Items[0].Photo.Photo_img_lg
 		}
 
 		user.lastCheckin = checkin.Checkin_id
@@ -435,9 +437,6 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 
 		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
 		p.Bot.SendMessage(channel, msg)
-		if msg2 != "" {
-			p.Bot.SendMessage(channel, msg2)
-		}
 	}
 }
 
