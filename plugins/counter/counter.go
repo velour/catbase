@@ -31,6 +31,14 @@ type Item struct {
 	Count int
 }
 
+type alias struct {
+	*sqlx.DB
+
+	ID       int64
+	Item     string
+	PointsTo string `db:"points_to"`
+}
+
 // GetItems returns all counters for a subject
 func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
 	var items []Item
@@ -59,6 +67,7 @@ func LeaderAll(db *sqlx.DB) ([]Item, error) {
 }
 
 func Leader(db *sqlx.DB, itemName string) ([]Item, error) {
+	itemName = strings.ToLower(itemName)
 	s := `select * from counter where item=? order by count desc`
 	var items []Item
 	err := db.Select(&items, s, itemName)
@@ -71,11 +80,38 @@ func Leader(db *sqlx.DB, itemName string) ([]Item, error) {
 	return items, nil
 }
 
+func MkAlias(db *sqlx.DB, item, pointsTo string) (*alias, error) {
+	item = strings.ToLower(item)
+	pointsTo = strings.ToLower(pointsTo)
+	res, err := db.Exec(`insert into counter_alias (item, points_to) values (?, ?)`,
+		item, pointsTo)
+	if err != nil {
+		_, err := db.Exec(`update counter_alias set points_to=? where item=?`, pointsTo, item)
+		if err != nil {
+			return nil, err
+		}
+		var a alias
+		if err := db.Get(&a, `select * from counter_alias where item=?`, item); err != nil {
+			return nil, err
+		}
+		return &a, nil
+	}
+	id, _ := res.LastInsertId()
+
+	return &alias{db, id, item, pointsTo}, nil
+}
+
 // GetItem returns a specific counter for a subject
 func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	var item Item
 	item.DB = db
-	log.Printf("GetItem db: %#v", db)
+	var a alias
+	if err := db.Get(&a, `select * from counter_alias where item=?`, itemName); err == nil {
+		itemName = a.PointsTo
+	} else {
+		log.Println(err, a)
+	}
+
 	err := db.Get(&item, `select * from counter where nick = ? and item= ?`,
 		nick, itemName)
 	switch err {
@@ -132,15 +168,20 @@ func (i *Item) Delete() error {
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
 func New(bot bot.Bot) *CounterPlugin {
-	if bot.DBVersion() == 1 {
-		if _, err := bot.DB().Exec(`create table if not exists counter (
+	if _, err := bot.DB().Exec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
 			count integer
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
+	}
+	if _, err := bot.DB().Exec(`create table if not exists counter_alias (
+			id integer PRIMARY KEY AUTOINCREMENT,
+			item string NOT NULL UNIQUE,
+			points_to string NOT NULL
+		);`); err != nil {
+		log.Fatal(err)
 	}
 	return &CounterPlugin{
 		Bot: bot,
@@ -162,7 +203,15 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		return false
 	}
 
-	if parts[0] == "leaderboard" {
+	if len(parts) == 3 && strings.ToLower(parts[0]) == "mkalias" {
+		if _, err := MkAlias(p.DB, parts[1], parts[2]); err != nil {
+			log.Println(err)
+			return false
+		}
+		p.Bot.SendMessage(channel, fmt.Sprintf("Created alias %s -> %s",
+			parts[1], parts[2]))
+		return true
+	} else if strings.ToLower(parts[0]) == "leaderboard" {
 		var cmd func() ([]Item, error)
 		itNameTxt := ""
 

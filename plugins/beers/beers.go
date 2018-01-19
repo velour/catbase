@@ -22,6 +22,8 @@ import (
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 
+const itemName = ":beer:"
+
 type BeersPlugin struct {
 	Bot bot.Bot
 	db  *sqlx.DB
@@ -116,18 +118,6 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 		}
 
 		// no matter what, if we're in here, then we've responded
-		return true
-	} else if parts[0] == "beers--" {
-		p.addBeers(nick, -1)
-		p.Bot.SendAction(channel, "flushes")
-		return true
-	} else if parts[0] == "beers++" {
-		p.addBeers(nick, 1)
-		p.randomReply(channel)
-		return true
-	} else if parts[0] == "bourbon++" {
-		p.addBeers(nick, 2)
-		p.randomReply(channel)
 		return true
 	} else if parts[0] == "puke" {
 		p.puke(nick, channel)
@@ -224,7 +214,7 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 }
 
 func getUserBeers(db *sqlx.DB, user string) counter.Item {
-	booze, _ := counter.GetItem(db, user, "booze")
+	booze, _ := counter.GetItem(db, user, itemName)
 	return booze
 }
 
