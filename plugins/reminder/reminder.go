@@ -22,11 +22,11 @@ const (
 )
 
 type ReminderPlugin struct {
-	Bot            bot.Bot
-	db             *sqlx.DB
-	mutex          *sync.Mutex
-	timer          *time.Timer
-	config         *config.Config
+	Bot    bot.Bot
+	db     *sqlx.DB
+	mutex  *sync.Mutex
+	timer  *time.Timer
+	config *config.Config
 }
 
 type Reminder struct {
@@ -58,11 +58,11 @@ func New(bot bot.Bot) *ReminderPlugin {
 	timer.Stop()
 
 	plugin := &ReminderPlugin{
-		Bot:            bot,
-		db:             bot.DB(),
-		mutex:          &sync.Mutex{},
-		timer:          timer,
-		config:         bot.Config(),
+		Bot:    bot,
+		db:     bot.DB(),
+		mutex:  &sync.Mutex{},
+		timer:  timer,
+		config: bot.Config(),
 	}
 
 	plugin.queueUpNextReminder()
@@ -155,8 +155,18 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 
 			return true
 		}
-	} else if len(parts) == 2 && strings.ToLower(parts[0]) == "list" && strings.ToLower(parts[1]) == "reminders" {
-		response, err := p.getAllRemindersFormatted(channel)
+	} else if len(parts) >= 2 && strings.ToLower(parts[0]) == "list" && strings.ToLower(parts[1]) == "reminders" {
+		var response string
+		var err error
+		if len(parts) == 2 {
+			response, err = p.getAllRemindersFormatted(channel)
+		} else if len(parts) == 4 {
+			if strings.ToLower(parts[2]) == "to" {
+				response, err = p.getAllRemindersToMeFormatted(channel, strings.ToLower(parts[3]))
+			} else if strings.ToLower(parts[2]) == "from" {
+				response, err = p.getAllRemindersFromMeFormatted(channel, strings.ToLower(parts[3]))
+			}
+		}
 		if err != nil {
 			p.Bot.SendMessage(channel, "listing failed.")
 		} else {
@@ -238,7 +248,7 @@ func (p *ReminderPlugin) addReminder(reminder *Reminder) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	_, err := p.db.Exec(`insert into reminders (fromWho, toWho, what, remindWhen, channel) values (?, ?, ?, ?, ?);`,
-	reminder.from, reminder.who, reminder.what, reminder.when.Format(TIMESTAMP), reminder.channel)
+		reminder.from, reminder.who, reminder.what, reminder.when.Format(TIMESTAMP), reminder.channel)
 
 	if err != nil {
 		log.Print(err)
@@ -262,10 +272,10 @@ func (p *ReminderPlugin) deleteReminder(id int64) error {
 	return err
 }
 
-func (p *ReminderPlugin) getAllRemindersFormatted(channel string) (string, error) {
+func (p *ReminderPlugin) getRemindersFormatted(queryString string) (string, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	rows, err := p.db.Query("select id, fromWho, toWho, what, remindWhen from reminders order by remindWhen asc;")
+	rows, err := p.db.Query(queryString)
 	if err != nil {
 		log.Print(err)
 		return "", nil
@@ -290,6 +300,18 @@ func (p *ReminderPlugin) getAllRemindersFormatted(channel string) (string, error
 	return reminders, nil
 }
 
+func (p *ReminderPlugin) getAllRemindersFormatted(channel string) (string, error) {
+	return p.getRemindersFormatted("select id, fromWho, toWho, what, remindWhen from reminders order by remindWhen asc;")
+}
+
+func (p *ReminderPlugin) getAllRemindersFromMeFormatted(channel, me string) (string, error) {
+	return p.getRemindersFormatted(fmt.Sprintf("select id, fromWho, toWho, what, remindWhen from reminders where fromWho = '%s' order by remindWhen asc;", me))
+}
+
+func (p *ReminderPlugin) getAllRemindersToMeFormatted(channel, me string) (string, error) {
+	return p.getRemindersFormatted(fmt.Sprintf("select id, fromWho, toWho, what, remindWhen from reminders where toWho = '%s' order by remindWhen asc;", me))
+}
+
 func (p *ReminderPlugin) queueUpNextReminder() {
 	nextReminder := p.getNextReminder()
 
@@ -312,7 +334,7 @@ func reminderer(p *ReminderPlugin) {
 			message := fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
 			p.Bot.SendMessage(reminder.channel, message)
 
-			if err:= p.deleteReminder(reminder.id); err != nil {
+			if err := p.deleteReminder(reminder.id); err != nil {
 				log.Print(reminder.id)
 				log.Print(err)
 				log.Fatal("this will cause problems, we need to stop now.")
