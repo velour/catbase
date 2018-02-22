@@ -13,6 +13,7 @@ import (
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
 	"github.com/velour/catbase/plugins/counter"
+	"github.com/velour/catbase/plugins/db"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/emojifyme"
 	"github.com/velour/catbase/plugins/fact"
@@ -79,6 +80,7 @@ func main() {
 	b.AddHandler("tell", tell.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
+	b.AddHandler("db", db.New(b))
 
 	for {
 		err := client.Serve()
