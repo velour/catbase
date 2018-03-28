@@ -198,7 +198,7 @@ func (p *FirstPlugin) announceFirst(message msg.Message) {
 	c := message.Channel
 	if p.First != nil {
 		p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
-			p.First.nick, p.First.time.Format(time.Kitchen), p.First.body))
+			p.First.nick, p.First.time.Format("15:04"), p.First.body))
 	}
 }
 
