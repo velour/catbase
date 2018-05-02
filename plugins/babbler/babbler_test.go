@@ -265,7 +265,6 @@ func TestBabblerBadMiddleOutSeed(t *testing.T) {
 	assert.Equal(t, mb.Messages[0], "seabass never said 'anything true'")
 }
 
-
 func TestBabblerBatch(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)

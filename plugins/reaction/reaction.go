@@ -3,8 +3,8 @@
 package reaction
 
 import (
-	"time"
 	"math/rand"
+	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -12,7 +12,7 @@ import (
 )
 
 type ReactionPlugin struct {
-	Bot bot.Bot
+	Bot    bot.Bot
 	Config *config.Config
 }
 
@@ -20,7 +20,7 @@ func New(bot bot.Bot) *ReactionPlugin {
 	rand.Seed(time.Now().Unix())
 
 	return &ReactionPlugin{
-		Bot: bot,
+		Bot:    bot,
 		Config: bot.Config(),
 	}
 }
@@ -45,7 +45,7 @@ func (p *ReactionPlugin) Message(message msg.Message) bool {
 		numPositiveReactions := len(p.Config.Reaction.PositiveReactions)
 		numNegativeReactions := len(p.Config.Reaction.NegativeReactions)
 
-		maxIndex := numPositiveReactions + numNegativeReactions * negativeWeight
+		maxIndex := numPositiveReactions + numNegativeReactions*negativeWeight
 
 		index := rand.Intn(maxIndex)
 

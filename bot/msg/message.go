@@ -12,12 +12,12 @@ type Log Messages
 type Messages []Message
 
 type Message struct {
-	User          *user.User
-	Channel, Body string
-	Raw           string
-	Command       bool
-	Action        bool
-	Time          time.Time
-	Host          string
+	User           *user.User
+	Channel, Body  string
+	Raw            string
+	Command        bool
+	Action         bool
+	Time           time.Time
+	Host           string
 	AdditionalData map[string]string
 }

@@ -13,7 +13,7 @@ import (
 )
 
 type YourPlugin struct {
-	bot bot.Bot
+	bot    bot.Bot
 	config *config.Config
 }
 
@@ -21,7 +21,7 @@ type YourPlugin struct {
 func New(bot bot.Bot) *YourPlugin {
 	rand.Seed(time.Now().Unix())
 	return &YourPlugin{
-		bot: bot,
+		bot:    bot,
 		config: bot.Config(),
 	}
 }

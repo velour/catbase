@@ -42,9 +42,9 @@ type Irc struct {
 	config *config.Config
 	quit   chan bool
 
-	eventReceived   func(msg.Message)
-	messageReceived func(msg.Message)
-	replyMessageReceived  func(msg.Message, string)
+	eventReceived        func(msg.Message)
+	messageReceived      func(msg.Message)
+	replyMessageReceived func(msg.Message, string)
 }
 
 func New(c *config.Config) *Irc {

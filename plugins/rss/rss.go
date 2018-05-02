@@ -38,10 +38,10 @@ func (c *cacheItem) getCurrentPage(maxLines int) string {
 
 	page := strings.Join(c.data[start:end], "\n")
 
-	if end - start == maxLines {
+	if end-start == maxLines {
 		c.currentLine = end
 	} else {
-		c.currentLine = maxLines-(end-start)
+		c.currentLine = maxLines - (end - start)
 		page += "\n"
 		page += strings.Join(c.data[0:c.currentLine], "\n")
 	}

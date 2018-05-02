@@ -90,7 +90,7 @@ type Config struct {
 		Sightings []string
 	}
 	Emojify struct {
-		Chance float64
+		Chance    float64
 		Scoreless []string
 	}
 	Reaction struct {

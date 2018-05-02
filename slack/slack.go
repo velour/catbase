@@ -230,8 +230,8 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
 		Timestamp string `json:"ts"`
-		Message struct {
-			BotID  string `json:"bot_id"`
+		Message   struct {
+			BotID string `json:"bot_id"`
 		} `json:"message"`
 	}
 
