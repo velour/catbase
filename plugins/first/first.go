@@ -48,30 +48,22 @@ func (fe *FirstEntry) save(db *sqlx.DB) error {
 
 // NewFirstPlugin creates a new FirstPlugin with the Plugin interface
 func New(b bot.Bot) *FirstPlugin {
-	_, err := b.DB().Exec(`create table if not exists last (
+	if b.DBVersion() == 1 {
+		_, err := b.DB().Exec(`create table if not exists first (
 			id integer primary key,
 			day integer,
 			time integer,
 			body string,
 			nick string
 		);`)
-	if err != nil {
-		log.Fatal("Could not create first table: ", err)
-	}
-	_, err = b.DB().Exec(`create table if not exists first (
-			id integer primary key,
-			day integer,
-			time integer,
-			body string,
-			nick string
-		);`)
-	if err != nil {
-		log.Fatal("Could not create first table: ", err)
+		if err != nil {
+			log.Fatal("Could not create first table: ", err)
+		}
 	}
 
 	log.Println("First plugin initialized with day:", midnight(time.Now()))
 
-	first, _, err := getLastFirst(b.DB())
+	first, err := getLastFirst(b.DB())
 	if err != nil {
 		log.Fatal("Could not initialize first plugin: ", err)
 	}
@@ -83,7 +75,7 @@ func New(b bot.Bot) *FirstPlugin {
 	}
 }
 
-func getLastFirst(db *sqlx.DB) (*FirstEntry, *FirstEntry, error) {
+func getLastFirst(db *sqlx.DB) (*FirstEntry, error) {
 	// Get last first entry
 	var id sql.NullInt64
 	var day sql.NullInt64
@@ -104,50 +96,20 @@ func getLastFirst(db *sqlx.DB) (*FirstEntry, *FirstEntry, error) {
 	switch {
 	case err == sql.ErrNoRows || !id.Valid:
 		log.Println("No previous first entries")
-		return nil, nil, nil
+		return nil, nil
 	case err != nil:
 		log.Println("Error on first query row: ", err)
-		return nil, nil, err
+		return nil, err
 	}
 	log.Println(id, day, timeEntered, body, nick)
-	first := &FirstEntry{
+	return &FirstEntry{
 		id:    id.Int64,
 		day:   time.Unix(day.Int64, 0),
 		time:  time.Unix(timeEntered.Int64, 0),
 		body:  body.String,
 		nick:  nick.String,
 		saved: true,
-	}
-
-	err = db.QueryRow(`select
-		id, max(day), time, body, nick from last
-		limit 1;
-	`).Scan(
-		&id,
-		&day,
-		&timeEntered,
-		&body,
-		&nick,
-	)
-	switch {
-	case err == sql.ErrNoRows || !id.Valid:
-		log.Println("No previous last entries")
-		return nil, nil, nil
-	case err != nil:
-		log.Println("Error on last query row: ", err)
-		return nil, nil, err
-	}
-	log.Println(id, day, timeEntered, body, nick)
-	last := &FirstEntry{
-		id:    id.Int64,
-		day:   time.Unix(day.Int64, 0),
-		time:  time.Unix(timeEntered.Int64, 0),
-		body:  body.String,
-		nick:  nick.String,
-		saved: true,
-	}
-
-	return first, last, nil
+	}, nil
 }
 
 func midnight(t time.Time) time.Time {
