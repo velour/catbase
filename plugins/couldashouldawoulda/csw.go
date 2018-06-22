@@ -36,7 +36,7 @@ func (p *CSWPlugin) Message(message msg.Message) bool {
 	}
 
 	could := tokens[0] == "could"
-	should := tokens[0] ==  "should"
+	should := tokens[0] == "should"
 	would := tokens[0] == "would"
 
 	if could || should || would {
@@ -79,6 +79,8 @@ func (p *CSWPlugin) Event(kind string, message msg.Message) bool {
 func (p *CSWPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
+
+func (p *CSWPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
 
 func (p *CSWPlugin) RegisterWeb() *string {
 	return nil

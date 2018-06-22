@@ -12,8 +12,8 @@ import (
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
+	"github.com/velour/catbase/plugins/couldashouldawoulda"
 	"github.com/velour/catbase/plugins/counter"
-	"github.com/velour/catbase/plugins/couldashouldwoulda"
 	"github.com/velour/catbase/plugins/db"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/emojifyme"
@@ -79,7 +79,7 @@ func main() {
 	b.AddHandler("rpgORdie", rpgORdie.New(b))
 	b.AddHandler("sisyphus", sisyphus.New(b))
 	b.AddHandler("tell", tell.New(b))
-	b.AddHandler("couldashouldwoulda", couldashouldwoulda.New(b))
+	b.AddHandler("couldashouldawoulda", couldashouldawoulda.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 	b.AddHandler("db", db.New(b))
