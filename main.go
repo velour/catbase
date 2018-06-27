@@ -27,7 +27,6 @@ import (
 	"github.com/velour/catbase/plugins/rpgORdie"
 	"github.com/velour/catbase/plugins/rss"
 	"github.com/velour/catbase/plugins/sisyphus"
-	"github.com/velour/catbase/plugins/stats"
 	"github.com/velour/catbase/plugins/talker"
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/twitch"
@@ -55,12 +54,9 @@ func main() {
 
 	b := bot.New(c, client)
 
-	// b.AddHandler(plugins.NewTestPlugin(b))
 	b.AddHandler("admin", admin.New(b))
-	b.AddHandler("stats", stats.New(b))
 	b.AddHandler("first", first.New(b))
 	b.AddHandler("leftpad", leftpad.New(b))
-	// b.AddHandler("downtime", downtime.New(b))
 	b.AddHandler("talker", talker.New(b))
 	b.AddHandler("dice", dice.New(b))
 	b.AddHandler("picker", picker.New(b))

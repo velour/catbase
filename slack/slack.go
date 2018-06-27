@@ -18,12 +18,13 @@ import (
 	"strings"
 	// "sync/atomic"
 	"time"
+	"context"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
-	"golang.org/x/net/websocket"
+	"github.com/velour/chat/websocket"
 )
 
 type Slack struct {
@@ -316,7 +317,7 @@ func (s *Slack) React(channel, reaction string, message msg.Message) bool {
 			"channel":   {channel},
 			"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
 	if err != nil {
-		log.Println("reaction failed: %s", err)
+		log.Printf("reaction failed: %s", err)
 		return false
 	}
 	return checkReturnStatus(resp)
@@ -330,7 +331,7 @@ func (s *Slack) Edit(channel, newMessage, identifier string) bool {
 			"text":    {newMessage},
 			"ts":      {identifier}})
 	if err != nil {
-		log.Println("edit failed: %s", err)
+		log.Printf("edit failed: %s", err)
 		return false
 	}
 	return checkReturnStatus(resp)
@@ -355,8 +356,8 @@ func (s *Slack) populateEmojiList() {
 	}
 
 	type EmojiListResponse struct {
-		OK    bool              `json:ok`
-		Emoji map[string]string `json:emoji`
+		OK    bool              `json:"ok"`
+		Emoji map[string]string `json:"emoji"`
 	}
 
 	var list EmojiListResponse
@@ -367,16 +368,30 @@ func (s *Slack) populateEmojiList() {
 	s.emoji = list.Emoji
 }
 
+func (s *Slack) ping(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+			case <-ctx.Done():
+			return
+			case <-ticker.C:
+			ping := map[string]interface{}{"type": "ping", "time": time.Now().UnixNano()}
+			if err := s.ws.Send(context.TODO(), ping); err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
 func (s *Slack) receiveMessage() (slackMessage, error) {
-	var msg []byte
 	m := slackMessage{}
-	err := websocket.Message.Receive(s.ws, &msg)
+	err := s.ws.Recv(context.TODO(), &m)
 	if err != nil {
 		log.Println("Error decoding WS message")
-		return m, err
+		panic(fmt.Errorf("%v\n%v", m, err))
 	}
-	err2 := json.Unmarshal(msg, &m)
-	return m, err2
+	return m, nil
 }
 
 // I think it's horseshit that I have to do this
@@ -390,6 +405,11 @@ func slackTStoTime(t string) time.Time {
 func (s *Slack) Serve() error {
 	s.connect()
 	s.populateEmojiList()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go s.ping(ctx)
+
 	for {
 		msg, err := s.receiveMessage()
 		if err != nil && err == io.EOF {
@@ -422,6 +442,7 @@ func (s *Slack) Serve() error {
 		case "user_typing":
 		case "reconnect_url":
 		case "desktop_notification":
+		case "pong":
 			// squeltch this stuff
 			continue
 		default:
@@ -588,8 +609,8 @@ func (s *Slack) markChannelAsRead(slackChanId string) error {
 
 func (s *Slack) connect() {
 	token := s.config.Slack.Token
-	url := fmt.Sprintf("https://slack.com/api/rtm.connect?token=%s", token)
-	resp, err := http.Get(url)
+	u := fmt.Sprintf("https://slack.com/api/rtm.connect?token=%s", token)
+	resp, err := http.Get(u)
 	if err != nil {
 		return
 	}
@@ -614,9 +635,11 @@ func (s *Slack) connect() {
 	s.url = "https://slack.com/api/"
 	s.id = rtm.Self.ID
 
-	s.markAllChannelsRead()
+	// This is hitting the rate limit, and it may not be needed
+	//s.markAllChannelsRead()
 
-	s.ws, err = websocket.Dial(rtm.URL, "", s.url)
+	rtmURL, _ := url.Parse(rtm.URL)
+	s.ws, err = websocket.Dial(context.TODO(), rtmURL)
 	if err != nil {
 		log.Fatal(err)
 	}
