@@ -137,8 +137,6 @@ func (b *bot) LastMessage(channel string) (msg.Message, error) {
 
 // Take an input string and mutate it based on $vars in the string
 func (b *bot) Filter(message msg.Message, input string) string {
-	rand.Seed(time.Now().Unix())
-
 	if strings.Contains(input, "$NICK") {
 		nick := strings.ToUpper(message.User.Name)
 		input = strings.Replace(input, "$NICK", nick, -1)

@@ -4,7 +4,6 @@ package reaction
 
 import (
 	"math/rand"
-	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -17,8 +16,6 @@ type ReactionPlugin struct {
 }
 
 func New(bot bot.Bot) *ReactionPlugin {
-	rand.Seed(time.Now().Unix())
-
 	return &ReactionPlugin{
 		Bot:    bot,
 		Config: bot.Config(),

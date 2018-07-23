@@ -3,8 +3,6 @@
 package dice
 
 import (
-	"time"
-
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 )
@@ -22,8 +20,6 @@ type DicePlugin struct {
 
 // NewDicePlugin creates a new DicePlugin with the Plugin interface
 func New(bot bot.Bot) *DicePlugin {
-	rand.Seed(time.Now().Unix())
-
 	return &DicePlugin{
 		Bot: bot,
 	}

@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -22,8 +21,6 @@ type EmojifyMePlugin struct {
 }
 
 func New(bot bot.Bot) *EmojifyMePlugin {
-	rand.Seed(time.Now().Unix())
-
 	resp, err := http.Get("https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json")
 	if err != nil {
 		log.Fatalf("Error generic emoji list: %s", err)

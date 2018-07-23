@@ -4,9 +4,7 @@ package admin
 
 import (
 	"log"
-	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -95,7 +93,6 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 // date.
 func (p *AdminPlugin) LoadData() {
 	// This bot has no data to load
-	rand.Seed(time.Now().Unix())
 }
 
 // Help responds to help requests. Every plugin must implement a help function.

@@ -5,6 +5,8 @@ package main
 import (
 	"flag"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
@@ -37,6 +39,8 @@ import (
 )
 
 func main() {
+	rand.Seed(time.Now().Unix())
+
 	var cfile = flag.String("config", "config.lua",
 		"Config file to load. (Defaults to config.lua)")
 	flag.Parse() // parses the logging flags.

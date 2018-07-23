@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -47,7 +46,6 @@ type TalkerPlugin struct {
 }
 
 func New(bot bot.Bot) *TalkerPlugin {
-	rand.Seed(time.Now().Unix())
 	return &TalkerPlugin{
 		Bot:          bot,
 		enforceNicks: bot.Config().EnforceNicks,

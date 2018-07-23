@@ -4,7 +4,6 @@ package picker
 
 import (
 	"strings"
-	"time"
 
 	"fmt"
 	"math/rand"
@@ -19,15 +18,9 @@ type PickerPlugin struct {
 
 // NewPickerPlugin creates a new PickerPlugin with the Plugin interface
 func New(bot bot.Bot) *PickerPlugin {
-	rand.Seed(time.Now().Unix())
-
 	return &PickerPlugin{
 		Bot: bot,
 	}
-}
-
-func rollDie(sides int) int {
-	return rand.Intn(sides) + 1
 }
 
 // Message responds to the bot hook on recieving messages.

@@ -5,7 +5,6 @@ package your
 import (
 	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -19,7 +18,6 @@ type YourPlugin struct {
 
 // NewYourPlugin creates a new YourPlugin with the Plugin interface
 func New(bot bot.Bot) *YourPlugin {
-	rand.Seed(time.Now().Unix())
 	return &YourPlugin{
 		bot:    bot,
 		config: bot.Config(),
