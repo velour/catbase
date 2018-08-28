@@ -40,6 +40,36 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 		p.Bot.SendMessage(message.Channel, out)
 
 		return true
+	} else if strings.HasPrefix(body, "pick") && strings.HasSuffix(body, sfx) {
+		var n int
+		var q string
+		_, err := fmt.Sscanf(body, "pick %d %s", n, q)
+		if err != nil || q != "{" {
+			return false
+		}
+
+		prefix := fmt.Sprintf("pick %d %s", n, q)
+		body = strings.TrimSuffix(strings.TrimPrefix(body, prefix), sfx)
+
+		items := strings.Split(body, ",")
+		if n < 1 || n > len(items) {
+			return false
+		}
+
+		rand.Shuffle(len(items), func(i, j int) {
+			items[i], items[j] = items[j], items[i]
+		})
+		items = items[:n]
+
+		var b strings.Builder
+		b.WriteString("I've chosen these hot picks for you: { ")
+		for _, item := range items {
+			fmt.Fprintf(&b, "%q ", item)
+		}
+		b.WriteString("}")
+		p.Bot.SendMessage(message.Channel, b.String())
+
+		return true
 	}
 	return false
 }
