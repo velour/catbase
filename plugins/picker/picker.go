@@ -43,7 +43,7 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 	} else if strings.HasPrefix(body, "pick") && strings.HasSuffix(body, sfx) {
 		var n int
 		var q string
-		_, err := fmt.Sscanf(body, "pick %d %s", n, q)
+		_, err := fmt.Sscanf(body, "pick %d %s", &n, &q)
 		if err != nil || q != "{" {
 			return false
 		}
