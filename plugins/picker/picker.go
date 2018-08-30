@@ -3,6 +3,7 @@
 package picker
 
 import (
+	"regexp"
 	"strings"
 
 	"fmt"
@@ -27,51 +28,74 @@ func New(bot bot.Bot) *PickerPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *PickerPlugin) Message(message msg.Message) bool {
-	body := message.Body
-	pfx, sfx := "pick {", "}"
+	n, items, err := p.parse(message.Body)
+	if err != nil {
+		p.Bot.SendMessage(message.Channel, err.Error())
+		return false
+	}
 
-	if strings.HasPrefix(body, pfx) && strings.HasSuffix(body, sfx) {
-		body = strings.TrimSuffix(strings.TrimPrefix(body, pfx), sfx)
-		items := strings.Split(body, ",")
+	if n == 1 {
 		item := items[rand.Intn(len(items))]
-
-		out := fmt.Sprintf("I've chosen \"%s\" for you.", strings.TrimSpace(item))
-
+		out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(item))
 		p.Bot.SendMessage(message.Channel, out)
-
-		return true
-	} else if strings.HasPrefix(body, "pick") && strings.HasSuffix(body, sfx) {
-		var n int
-		var q string
-		_, err := fmt.Sscanf(body, "pick %d %s", &n, &q)
-		if err != nil || q != "{" {
-			return false
-		}
-
-		prefix := fmt.Sprintf("pick %d %s", n, q)
-		body = strings.TrimSuffix(strings.TrimPrefix(body, prefix), sfx)
-
-		items := strings.Split(body, ",")
-		if n < 1 || n > len(items) {
-			return false
-		}
-
-		rand.Shuffle(len(items), func(i, j int) {
-			items[i], items[j] = items[j], items[i]
-		})
-		items = items[:n]
-
-		var b strings.Builder
-		b.WriteString("I've chosen these hot picks for you: { ")
-		for _, item := range items {
-			fmt.Fprintf(&b, "%q ", item)
-		}
-		b.WriteString("}")
-		p.Bot.SendMessage(message.Channel, b.String())
-
 		return true
 	}
-	return false
+
+	rand.Shuffle(len(items), func(i, j int) {
+		items[i], items[j] = items[j], items[i]
+	})
+	items = items[:n]
+
+	var b strings.Builder
+	b.WriteString("I've chosen these hot picks for you: { ")
+	fmt.Fprintf(&b, "%q", items[0])
+	for _, item := range items[1:] {
+		fmt.Fprintf(&b, ", %q", item)
+	}
+	b.WriteString(" }")
+	p.Bot.SendMessage(message.Channel, b.String())
+	return true
+}
+
+var pickerListPrologue = regexp.MustParse(`^pick[ \t]+([0-9]*)[ \t]+\{[ \t]+`)
+var pickerListItem = regexp.MustParse(`^([^,]+),[ \t]+`)
+
+func (p * PickerPlugin) parse(body string) (int, []string, error) {
+	subs := pickerListPrologue.FindStringSubmatch(body)
+	if subs == nil {
+		return 0, nil, errors.New("saddle up for a syntax error")
+	}
+
+	n := 0
+	var err error
+	if subs[1] != "" {
+		n, err = strconv.Atoi(subs[1])
+		if err != nil {
+			return 0, nil, err
+		}
+	}
+
+	var items []string
+	rest := body[len(subs[0]):]
+	for {
+		subs = pickerListItem.FindStringSubmatch(rest)
+		if subs == nil {
+			break
+		}
+
+		items = append(items, subs[1])
+		rest = rest[len(subs[0]):]
+	}
+
+	if strings.TrimSpace(rest) != "}" {
+		return 0, nil, errors.New("lasso yerself that final curly brace, compadre")
+	}
+
+	if n < 1 || n > len(items) {
+		return 0, nil, errors.New("whoah there, bucko, I can't create something out of nothing")
+	}
+
+	return n, items, nil
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
