@@ -3,7 +3,9 @@
 package picker
 
 import (
+	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"fmt"
@@ -28,6 +30,10 @@ func New(bot bot.Bot) *PickerPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *PickerPlugin) Message(message msg.Message) bool {
+	if !strings.HasPrefix(body, "pick") {
+		return false
+	}
+
 	n, items, err := p.parse(message.Body)
 	if err != nil {
 		p.Bot.SendMessage(message.Channel, err.Error())
