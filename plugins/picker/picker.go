@@ -37,7 +37,7 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 	n, items, err := p.parse(message.Body)
 	if err != nil {
 		p.Bot.SendMessage(message.Channel, err.Error())
-		return false
+		return true
 	}
 
 	if n == 1 {
