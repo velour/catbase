@@ -30,14 +30,14 @@ func New(bot bot.Bot) *PickerPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *PickerPlugin) Message(message msg.Message) bool {
-	if !strings.HasPrefix(body, "pick") {
+	if !strings.HasPrefix(message.Body, "pick") {
 		return false
 	}
 
 	n, items, err := p.parse(message.Body)
 	if err != nil {
 		p.Bot.SendMessage(message.Channel, err.Error())
-		return false
+		return true
 	}
 
 	if n == 1 {
@@ -63,10 +63,11 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 	return true
 }
 
-var pickerListPrologue = regexp.MustCompile(`^pick[ \t]+([0-9]*)[ \t]+\{[ \t]+`)
-var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]+`)
+var pickerListPrologue = regexp.MustCompile(`^pick[ \t]+([0-9]*)[ \t]+\{[ \t]*`)
+var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]*`)
+var pickerListFinalItem = regexp.MustCompile(`^([^,}]+),?[ \t]*\}[ \t]*`)
 
-func (p * PickerPlugin) parse(body string) (int, []string, error) {
+func (p *PickerPlugin) parse(body string) (int, []string, error) {
 	subs := pickerListPrologue.FindStringSubmatch(body)
 	if subs == nil {
 		return 0, nil, errors.New("saddle up for a syntax error")
@@ -93,9 +94,11 @@ func (p * PickerPlugin) parse(body string) (int, []string, error) {
 		rest = rest[len(subs[0]):]
 	}
 
-	if strings.TrimSpace(rest) != "}" {
+	subs = pickerListFinalItem.FindStringSubmatch(rest)
+	if subs == nil {
 		return 0, nil, errors.New("lasso yerself that final curly brace, compadre")
 	}
+	items = append(items, subs[1])
 
 	if n < 1 || n > len(items) {
 		return 0, nil, errors.New("whoah there, bucko, I can't create something out of nothing")
