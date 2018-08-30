@@ -30,6 +30,10 @@ func New(bot bot.Bot) *PickerPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *PickerPlugin) Message(message msg.Message) bool {
+	if !strings.HasPrefix(body, "pick") {
+		return false
+	}
+
 	n, items, err := p.parse(message.Body)
 	if err != nil {
 		p.Bot.SendMessage(message.Channel, err.Error())
@@ -64,7 +68,7 @@ var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]+`)
 
 func (p * PickerPlugin) parse(body string) (int, []string, error) {
 	subs := pickerListPrologue.FindStringSubmatch(body)
-	if subs == nil && !strings.HasPrefix(body, "pick") {
+	if subs == nil {
 		return 0, nil, errors.New("saddle up for a syntax error")
 	}
 
