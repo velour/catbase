@@ -57,8 +57,8 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 	return true
 }
 
-var pickerListPrologue = regexp.MustParse(`^pick[ \t]+([0-9]*)[ \t]+\{[ \t]+`)
-var pickerListItem = regexp.MustParse(`^([^,]+),[ \t]+`)
+var pickerListPrologue = regexp.MustCompile(`^pick[ \t]+([0-9]*)[ \t]+\{[ \t]+`)
+var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]+`)
 
 func (p * PickerPlugin) parse(body string) (int, []string, error) {
 	subs := pickerListPrologue.FindStringSubmatch(body)
