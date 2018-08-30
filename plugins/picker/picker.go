@@ -87,7 +87,7 @@ func (p * PickerPlugin) parse(body string) (int, []string, error) {
 		rest = rest[len(subs[0]):]
 	}
 
-	if strings.TrimSpace(rest) = "}" {
+	if strings.TrimSpace(rest) != "}" {
 		return 0, nil, errors.New("lasso yerself that final curly brace, compadre")
 	}
 
