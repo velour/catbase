@@ -3,7 +3,9 @@
 package picker
 
 import (
+	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"fmt"
@@ -62,7 +64,7 @@ var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]+`)
 
 func (p * PickerPlugin) parse(body string) (int, []string, error) {
 	subs := pickerListPrologue.FindStringSubmatch(body)
-	if subs == nil {
+	if subs == nil && !strings.HasPrefix(body, "pick") {
 		return 0, nil, errors.New("saddle up for a syntax error")
 	}
 
