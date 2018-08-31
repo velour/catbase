@@ -63,7 +63,7 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 	return true
 }
 
-var pickerListPrologue = regexp.MustCompile(`^pick[ \t]+([0-9]*)[ \t]+\{[ \t]*`)
+var pickerListPrologue = regexp.MustCompile(`^pick[ \t]+([0-9]*)[ \t]*\{[ \t]*`)
 var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]*`)
 var pickerListFinalItem = regexp.MustCompile(`^([^,}]+),?[ \t]*\}[ \t]*`)
 
@@ -73,7 +73,7 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 		return 0, nil, errors.New("saddle up for a syntax error")
 	}
 
-	n := 0
+	n := 1
 	var err error
 	if subs[1] != "" {
 		n, err = strconv.Atoi(subs[1])
