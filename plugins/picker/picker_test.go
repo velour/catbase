@@ -25,7 +25,7 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
-func TestReplacement(t *testing.T) {
+func TestPick2(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
@@ -34,4 +34,13 @@ func TestReplacement(t *testing.T) {
 	if !res {
 		t.Fatalf("expected a successful choice, got %q", mb.Messages[0])
 	}
+}
+
+func TestPickDefault(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	_ = c.Message(makeMessage("!pick { a}"))
+	assert.Len(t, mb.Messages, 1)
+	assert.Equal(t, `I've chosen "a" for you.`, mb.Messages[0])
 }
