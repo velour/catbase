@@ -99,6 +99,15 @@ func TestCounterOne(t *testing.T) {
 	assert.Equal(t, mb.Messages[0], "tester has 1 test.")
 }
 
+func TestCounterOneWithSpace(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage(":test: ++"))
+	assert.Len(t, mb.Messages, 1)
+	assert.Equal(t, mb.Messages[0], "tester has 1 :test:.")
+}
+
 func TestCounterFour(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)

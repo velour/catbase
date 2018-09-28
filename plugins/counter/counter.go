@@ -358,7 +358,10 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 			itemName))
 
 		return true
-	} else if len(parts) == 1 {
+	} else if len(parts) <= 2 {
+		if (len(parts) == 2) && (parts[1] == "++" || parts[1] == "--") {
+			parts = []string{parts[0] + parts[1]}
+		}
 		// Need to have at least 3 characters to ++ or --
 		if len(parts[0]) < 3 {
 			return false
