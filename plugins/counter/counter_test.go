@@ -37,6 +37,28 @@ func TestTeaEarlGreyHot(t *testing.T) {
 	assert.Equal(t, 2, item.Count)
 }
 
+func TestTeaTwoPeriods(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("Tea. Earl Grey."))
+	c.Message(makeMessage("Tea. Earl Grey."))
+	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, item.Count)
+}
+
+func TestTeaMultiplePeriods(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	c.Message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
+	c.Message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
+	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, item.Count)
+}
+
 func TestTeaGreenHot(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
