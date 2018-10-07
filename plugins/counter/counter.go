@@ -240,7 +240,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		}
 		p.Bot.SendMessage(channel, out)
 		return true
-	} else if tea, _ := regexp.MatchString("(?i)^tea\\. [^.]*\\. ((hot)|(iced))\\.?$", message.Body); tea {
+	} else if tea, _ := regexp.MatchString("(?i)^tea\\. [^.]*\\. ([^.]*\\.?)+$", message.Body); tea {
 		item, err := GetItem(p.DB, nick, ":tea:")
 		if err != nil {
 			log.Printf("Error finding item %s.%s: %s.", nick, ":tea:", err)
