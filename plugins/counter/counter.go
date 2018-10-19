@@ -17,6 +17,8 @@ import (
 
 // This is a counter plugin to count arbitrary things.
 
+var teaMatcher = regexp.MustCompile("(?i)^([^.]+)\\. [^.]*\\. ([^.]*\\.?)+$")
+
 type CounterPlugin struct {
 	Bot bot.Bot
 	DB  *sqlx.DB
@@ -240,18 +242,9 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		}
 		p.Bot.SendMessage(channel, out)
 		return true
-	} else if tea, _ := regexp.MatchString("(?i)^tea\\. [^.]*\\. ([^.]*\\.?)+$", message.Body); tea {
-		item, err := GetItem(p.DB, nick, ":tea:")
-		if err != nil {
-			log.Printf("Error finding item %s.%s: %s.", nick, ":tea:", err)
-			// Item ain't there, I guess
-			return false
-		}
-		log.Printf("About to update item: %#v", item)
-		item.UpdateDelta(1)
-		p.Bot.SendMessage(channel, fmt.Sprintf("bleep-bloop-blop... %s has %d :tea:",
-			nick, item.Count))
-		return true
+	} else if match := teaMatcher.MatchString(message.Body); match {
+		// check for tea match TTT
+		return p.checkMatch(message)
 	} else if message.Command && message.Body == "reset me" {
 		items, err := GetItems(p.DB, strings.ToLower(nick))
 		if err != nil {
@@ -473,3 +466,27 @@ func (p *CounterPlugin) RegisterWeb() *string {
 }
 
 func (p *CounterPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
+
+func (p *CounterPlugin) checkMatch(message msg.Message) bool {
+	nick := message.User.Name
+	channel := message.Channel
+
+	submatches := teaMatcher.FindStringSubmatch(message.Body)
+	if len(submatches) <= 1 {
+		return false
+	}
+	itemName := strings.ToLower(submatches[1])
+
+	// We will specifically allow :tea: to keep compatability
+	item, err := GetItem(p.DB, nick, itemName)
+	if err != nil || (item.Count == 0 && item.Item != ":tea:") {
+		log.Printf("Error finding item %s.%s: %s.", nick, itemName, err)
+		// Item ain't there, I guess
+		return false
+	}
+	log.Printf("About to update item: %#v", item)
+	item.UpdateDelta(1)
+	p.Bot.SendMessage(channel, fmt.Sprintf("bleep-bloop-blop... %s has %d %s",
+		nick, item.Count, itemName))
+	return true
+}

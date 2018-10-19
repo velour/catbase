@@ -13,6 +13,14 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
+func setup(t *testing.T) (*bot.MockBot, *CounterPlugin) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	_, err := MkAlias(mb.DB(), "tea", ":tea:")
+	assert.Nil(t, err)
+	return mb, c
+}
+
 func makeMessage(payload string) msg.Message {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
@@ -26,9 +34,28 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
+func TestThreeSentencesExists(t *testing.T) {
+	mb, c := setup(t)
+	assert.NotNil(t, c)
+	c.Message(makeMessage(":beer:++"))
+	c.Message(makeMessage(":beer:. Earl Grey. Hot."))
+	item, err := GetItem(mb.DB(), "tester", ":beer:")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, item.Count)
+}
+
+func TestThreeSentencesNotExists(t *testing.T) {
+	mb, c := setup(t)
+	assert.NotNil(t, c)
+	item, err := GetItem(mb.DB(), "tester", ":beer:")
+	c.Message(makeMessage(":beer:. Earl Grey. Hot."))
+	item, err = GetItem(mb.DB(), "tester", ":beer:")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, item.Count)
+}
+
 func TestTeaEarlGreyHot(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("Tea. Earl Grey. Hot."))
 	c.Message(makeMessage("Tea. Earl Grey. Hot."))
@@ -38,8 +65,7 @@ func TestTeaEarlGreyHot(t *testing.T) {
 }
 
 func TestTeaTwoPeriods(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("Tea. Earl Grey."))
 	c.Message(makeMessage("Tea. Earl Grey."))
@@ -49,8 +75,7 @@ func TestTeaTwoPeriods(t *testing.T) {
 }
 
 func TestTeaMultiplePeriods(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
 	c.Message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
@@ -60,8 +85,7 @@ func TestTeaMultiplePeriods(t *testing.T) {
 }
 
 func TestTeaGreenHot(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("Tea. Green. Hot."))
 	c.Message(makeMessage("Tea. Green. Hot"))
@@ -72,8 +96,7 @@ func TestTeaGreenHot(t *testing.T) {
 }
 
 func TestTeaUnrelated(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("Tea."))
 	c.Message(makeMessage("Tea. It's great."))
@@ -83,8 +106,7 @@ func TestTeaUnrelated(t *testing.T) {
 }
 
 func TestTeaSkieselQuote(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed"))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
@@ -92,8 +114,7 @@ func TestTeaSkieselQuote(t *testing.T) {
 	assert.Equal(t, 0, item.Count)
 }
 func TestTeaUnicodeJapanese(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("Tea. おちや. Hot."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
@@ -102,8 +123,7 @@ func TestTeaUnicodeJapanese(t *testing.T) {
 }
 
 func TestResetMe(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("test++"))
 	c.Message(makeMessage("!reset me"))
@@ -113,8 +133,7 @@ func TestResetMe(t *testing.T) {
 }
 
 func TestCounterOne(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage("test++"))
 	assert.Len(t, mb.Messages, 1)
@@ -122,8 +141,7 @@ func TestCounterOne(t *testing.T) {
 }
 
 func TestCounterOneWithSpace(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Message(makeMessage(":test: ++"))
 	assert.Len(t, mb.Messages, 1)
@@ -131,8 +149,7 @@ func TestCounterOneWithSpace(t *testing.T) {
 }
 
 func TestCounterFour(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("test++"))
@@ -142,8 +159,7 @@ func TestCounterFour(t *testing.T) {
 }
 
 func TestCounterDecrement(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("test++"))
@@ -155,8 +171,7 @@ func TestCounterDecrement(t *testing.T) {
 }
 
 func TestFriendCounterDecrement(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("other.test++"))
@@ -168,8 +183,7 @@ func TestFriendCounterDecrement(t *testing.T) {
 }
 
 func TestDecrementZero(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("test++"))
@@ -186,8 +200,7 @@ func TestDecrementZero(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("test++"))
@@ -200,8 +213,7 @@ func TestClear(t *testing.T) {
 }
 
 func TestCount(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("test++"))
@@ -214,8 +226,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestInspectMe(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
 		c.Message(makeMessage("test++"))
@@ -236,30 +247,26 @@ func TestInspectMe(t *testing.T) {
 }
 
 func TestHelp(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.Help("channel", []string{})
 	assert.Len(t, mb.Messages, 1)
 }
 
 func TestBotMessage(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	_, c := setup(t)
 	assert.NotNil(t, c)
 	assert.False(t, c.BotMessage(makeMessage("test")))
 }
 
 func TestEvent(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	_, c := setup(t)
 	assert.NotNil(t, c)
 	assert.False(t, c.Event("dummy", makeMessage("test")))
 }
 
 func TestRegisterWeb(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	_, c := setup(t)
 	assert.NotNil(t, c)
 	assert.Nil(t, c.RegisterWeb())
 }
