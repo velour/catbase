@@ -40,6 +40,18 @@ func makeMessageBy(payload, by string) msg.Message {
 	}
 }
 
+func TestMeReminder(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("!remind me in 1s don't fail this test"))
+	time.Sleep(2 * time.Second)
+	assert.Len(t, mb.Messages, 2)
+	assert.True(t, res)
+	assert.Contains(t, mb.Messages[0], "Okay. I'll remind you.")
+	assert.Contains(t, mb.Messages[1], "Hey tester, you wanted you to be reminded: don't fail this test")
+}
+
 func TestReminder(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)

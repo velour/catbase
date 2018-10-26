@@ -31,6 +31,7 @@ func makeBeersPlugin(t *testing.T) (*BeersPlugin, *bot.MockBot) {
 	counter.New(mb)
 	b := New(mb)
 	assert.NotNil(t, b)
+	b.Message(makeMessage("!mkalias beer :beer:"))
 	return b, mb
 }
 
