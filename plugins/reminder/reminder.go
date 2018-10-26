@@ -146,9 +146,10 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				return true
 			}
 
-			if doConfirm {
-				response := fmt.Sprintf("Sure %s, I'll remind %s.", from, who)
-				p.Bot.SendMessage(channel, response)
+			if doConfirm && from == who {
+				p.Bot.SendMessage(channel, fmt.Sprintf("Okay. I'll remind you."))
+			} else if doConfirm {
+				p.Bot.SendMessage(channel, fmt.Sprintf("Sure %s, I'll remind %s.", from, who))
 			}
 
 			p.queueUpNextReminder()
