@@ -49,7 +49,7 @@ func TestMeReminder(t *testing.T) {
 	assert.Len(t, mb.Messages, 2)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "Okay. I'll remind you.")
-	assert.Contains(t, mb.Messages[1], "Hey tester, you wanted you to be reminded: don't fail this test")
+	assert.Contains(t, mb.Messages[1], "Hey tester, you wanted to be reminded: don't fail this test")
 }
 
 func TestReminder(t *testing.T) {

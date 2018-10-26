@@ -328,14 +328,14 @@ func reminderer(p *ReminderPlugin) {
 		reminder := p.getNextReminder()
 
 		if reminder != nil && time.Now().UTC().After(reminder.when) {
+			var message string
 			if reminder.from == reminder.who {
 				reminder.from = "you"
+				message = fmt.Sprintf("Hey %s, you wanted to be reminded: %s", reminder.who, reminder.what)
+			} else {
+				message = fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
 			}
 
-			message := fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
-			if reminder.who == reminder.from {
-				message = fmt.Sprintf("Hey %s, %s wanted to be reminded: %s", reminder.who, reminder.from, reminder.what)
-			}
 			p.Bot.SendMessage(reminder.channel, message)
 
 			if err := p.deleteReminder(reminder.id); err != nil {
