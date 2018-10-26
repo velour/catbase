@@ -333,6 +333,9 @@ func reminderer(p *ReminderPlugin) {
 			}
 
 			message := fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
+			if reminder.who == reminder.from {
+				message = fmt.Sprintf("Hey %s, %s wanted to be reminded: %s", reminder.who, reminder.from, reminder.what)
+			}
 			p.Bot.SendMessage(reminder.channel, message)
 
 			if err := p.deleteReminder(reminder.id); err != nil {
