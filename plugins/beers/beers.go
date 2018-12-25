@@ -400,27 +400,16 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		p.addBeers(user.chanNick, 1)
 		drunken := p.getBeers(user.chanNick)
 
-		//Is it our channel drunkard?
-		isTheSherminator := strings.ToLower(user.chanNick) == "msherms"
-
 		msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
 			user.chanNick, beerName, breweryName, venue, drunken)
 		if checkin.Rating_score > 0 {
-			//It is he, invert his score 5% of the time
-			if isTheSherminator && rand.Intn(100) < 5 {
-				msg = fmt.Sprintf("%s. Rating: %.2f", msg, 5 - checkin.Rating_score)
-			} else {
-				msg = fmt.Sprintf("%s. Rating: %.2f", msg, checkin.Rating_score)
-			}
+			msg = fmt.Sprintf("%s. Rating: %.2f", msg, checkin.Rating_score)
 		}
 		if checkin.Checkin_comment != "" {
-			//It is he, 25% of the time show his haze pride
-			if isTheSherminator && rand.Intn(4) == 0 {
-				msg = fmt.Sprintf("%s -- Stay hazy boyz. %s", msg, checkin.Checkin_comment)
-			} else {
-				msg = fmt.Sprintf("%s -- %s", msg, checkin.Checkin_comment)
-			}
+			msg = fmt.Sprintf("%s -- %s",
+				msg, checkin.Checkin_comment)
 		}
+
 		if checkin.Media.Count > 0 {
 			if strings.Contains(checkin.Media.Items[0].Photo.Photo_img_lg, "photos-processing") {
 				continue
@@ -437,12 +426,6 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		}
 
 		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
-
-		//It is he, drop 50% of his checkins from the channel
-		if isTheSherminator && rand.Intn(2) == 0 {
-			continue
-		}
-
 		p.Bot.SendMessage(channel, msg)
 	}
 }
