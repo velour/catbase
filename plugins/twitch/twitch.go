@@ -222,18 +222,18 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	}
 	if alwaysPrintStatus {
 		if game == "" {
-			p.Bot.SendMessage(channel, twitcher.name+" is not screaming.")
+			p.Bot.SendMessage(channel, twitcher.name+" is not streaming.")
 		} else {
-			p.Bot.SendMessage(channel, twitcher.name+" is screaming "+game+" at "+twitcher.URL())
+			p.Bot.SendMessage(channel, twitcher.name+" is streaming "+game+" at "+twitcher.URL())
 		}
 	} else if game == "" {
 		if twitcher.game != "" {
-			p.Bot.SendMessage(channel, twitcher.name+" just stopped screaming.")
+			p.Bot.SendMessage(channel, twitcher.name+" just stopped streaming.")
 		}
 		twitcher.game = ""
 	} else {
 		if twitcher.game != game {
-			p.Bot.SendMessage(channel, twitcher.name+" just started screaming "+game+" at "+twitcher.URL())
+			p.Bot.SendMessage(channel, twitcher.name+" just started streaming "+game+" at "+twitcher.URL())
 		}
 		twitcher.game = game
 	}
