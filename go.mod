@@ -2,6 +2,7 @@ module github.com/velour/catbase
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0 // indirect
+	github.com/boltdb/bolt v1.3.1
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
