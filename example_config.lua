@@ -7,6 +7,7 @@ config = {
 	  MaxBatchAdd = 10
 	},
 	Nick = "CatBaseTest",
+	IconURL = "http://placekitten.com/g/200/300",
 	LeftPad = {
 	  Who = "person",
 	  MaxLen = 50

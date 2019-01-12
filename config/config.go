@@ -35,6 +35,7 @@ type Config struct {
 		Token string
 	}
 	Nick        string
+	IconURL     string
 	FullName    string
 	Version     string
 	CommandChar []string

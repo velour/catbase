@@ -16,9 +16,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
 	// "sync/atomic"
-	"time"
 	"context"
+	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -209,11 +210,15 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 		postUrl = "https://slack.com/api/chat.meMessage"
 	}
 
+	nick := s.config.Nick
+	icon := s.config.IconURL
+
 	resp, err := http.PostForm(postUrl,
 		url.Values{"token": {s.config.Slack.Token},
-			"as_user": {"true"},
-			"channel": {channel},
-			"text":    {message},
+			"username": {nick},
+			"icon_url": {icon},
+			"channel":  {channel},
+			"text":     {message},
 		})
 
 	if err != nil {
@@ -264,9 +269,13 @@ func (s *Slack) SendAction(channel, message string) string {
 }
 
 func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
+	nick := s.config.Nick
+	icon := s.config.IconURL
+
 	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
 		url.Values{"token": {s.config.Slack.Token},
-			"as_user":   {"true"},
+			"username":  {nick},
+			"icon_url":  {icon},
 			"channel":   {channel},
 			"text":      {message},
 			"thread_ts": {identifier},
@@ -373,9 +382,9 @@ func (s *Slack) ping(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		select {
-			case <-ctx.Done():
+		case <-ctx.Done():
 			return
-			case <-ticker.C:
+		case <-ticker.C:
 			ping := map[string]interface{}{"type": "ping", "time": time.Now().UnixNano()}
 			if err := s.ws.Send(context.TODO(), ping); err != nil {
 				panic(err)
