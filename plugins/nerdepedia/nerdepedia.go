@@ -59,15 +59,15 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 		for scanner.Scan() {
 			line := scanner.Text()
 			if description == "" {
-				index := strings.Index(line, linkPrefix)
+				index := strings.Index(line, descriptionPrefix)
 				if index >= 0 {
-					description = html.UnescapeString(strings.TrimSuffix(strings.TrimPrefix(line, linkPrefix), closingTagSuffix))
+					description = html.UnescapeString(strings.TrimSuffix(strings.TrimPrefix(line, descriptionPrefix), closingTagSuffix))
 				}
 			}
 			if link == "" {
-				index := strings.Index(line, descriptionPrefix)
+				index := strings.Index(line, linkPrefix)
 				if index >= 0 {
-					link = strings.TrimSuffix(strings.TrimPrefix(line, descriptionPrefix), closingTagSuffix)
+					link = strings.TrimSuffix(strings.TrimPrefix(line, linkPrefix), closingTagSuffix)
 				}
 			}
 
