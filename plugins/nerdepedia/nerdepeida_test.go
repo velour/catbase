@@ -25,11 +25,38 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
-func TestObiWan(t *testing.T) {
+func TestWars(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
 	res := c.Message(makeMessage("help me obi-wan"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+}
+
+func TestTrek(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("live long and prosper"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+}
+
+func TestDune(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("bless the maker"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+}
+
+func TestPoke(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.Message(makeMessage("gotta catch em all"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 }
