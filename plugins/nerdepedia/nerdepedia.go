@@ -44,10 +44,12 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 		query = "http://starwars.wikia.com/wiki/Special:Random"
 	} else if lowerCase == "beam me up scotty" || lowerCase == "live long and prosper" {
 		query = "http://memory-alpha.wikia.com/wiki/Special:Random"
-	} else if lowerCase == "bless the maker" || lowerCase == "i must not fear" {
+	} else if lowerCase == "bless the maker" || lowerCase == "i must not fear" || lowerCase == "the spice must flow" {
 		query = "http://dune.wikia.com/wiki/Special:Random"
 	} else if lowerCase == "my precious" || lowerCase == "one ring to rule them all" || lowerCase == "one does not simply walk into mordor" {
 		query = "http://lotr.wikia.com/wiki/Special:Random"
+	} else if lowerCase == "pikachu i choose you" || lowerCase == "gotta catch em all" {
+		query = "http://pokemon.wikia.com/wiki/Special:Random"
 	}
 
 	if query != "" {
