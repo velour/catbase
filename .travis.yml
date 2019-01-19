@@ -1,4 +1,6 @@
 language: go
 go: 1.x
+env:
+  - GO111MODULE=on
 install: go get -t -v ./... && go build -v ./...
 script: ./gok.sh
