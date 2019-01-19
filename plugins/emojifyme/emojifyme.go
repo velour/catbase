@@ -32,7 +32,7 @@ func New(bot bot.Bot) *EmojifyMePlugin {
 	}
 
 	type Emoji struct {
-		Aliases []string `json:aliases`
+		Aliases []string `json:"aliases"`
 	}
 
 	var emoji []Emoji

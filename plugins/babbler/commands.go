@@ -17,7 +17,11 @@ func (p *BabblerPlugin) initializeBabbler(tokens []string) (string, bool) {
 func (p *BabblerPlugin) addToBabbler(babblerName, whatWasSaid string) (string, bool) {
 	babblerId, err := p.getOrCreateBabbler(babblerName)
 	if err == nil {
-		go p.addToMarkovChain(babblerId, whatWasSaid)
+		if p.WithGoRoutines {
+			go p.addToMarkovChain(babblerId, whatWasSaid)
+		} else {
+			p.addToMarkovChain(babblerId, whatWasSaid)
+		}
 	}
 	return "", false
 }

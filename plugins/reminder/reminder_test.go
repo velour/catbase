@@ -178,9 +178,9 @@ func TestBatch(t *testing.T) {
 	c := New(mb)
 	c.config.Reminder.MaxBatchAdd = 50
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!remind testuser every 1s for 5s yikes"))
+	res := c.Message(makeMessage("!remind testuser every 1ms for 5ms yikes"))
 	assert.True(t, res)
-	time.Sleep(6 * time.Second)
+	time.Sleep(2 * time.Second)
 	assert.Len(t, mb.Messages, 6)
 	for i := 0; i < 5; i++ {
 		assert.Contains(t, mb.Messages[i+1], "Hey testuser, tester wanted you to be reminded: yikes")

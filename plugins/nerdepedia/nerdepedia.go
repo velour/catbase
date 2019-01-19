@@ -3,11 +3,11 @@
 package nerdepedia
 
 import (
+	"bufio"
 	"fmt"
-	"strings"
 	"html"
 	"net/http"
-	"bufio"
+	"strings"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -16,7 +16,7 @@ import (
 
 const (
 	descriptionPrefix = "<meta name=\"description\" content=\""
-	linkPrefix = "<link rel=\"canonical\" href=\""
+	linkPrefix        = "<link rel=\"canonical\" href=\""
 
 	closingTagSuffix = "\" />"
 )

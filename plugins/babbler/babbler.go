@@ -23,9 +23,10 @@ var (
 )
 
 type BabblerPlugin struct {
-	Bot    bot.Bot
-	db     *sqlx.DB
-	config *config.Config
+	Bot            bot.Bot
+	db             *sqlx.DB
+	config         *config.Config
+	WithGoRoutines bool
 }
 
 type Babbler struct {
@@ -90,9 +91,10 @@ func New(bot bot.Bot) *BabblerPlugin {
 	}
 
 	plugin := &BabblerPlugin{
-		Bot:    bot,
-		db:     bot.DB(),
-		config: bot.Config(),
+		Bot:            bot,
+		db:             bot.DB(),
+		config:         bot.Config(),
+		WithGoRoutines: true,
 	}
 
 	plugin.createNewWord("")
