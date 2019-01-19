@@ -3,7 +3,9 @@
 package nerdepedia
 
 import (
+	"fmt"
 	"strings"
+	"html"
 	"net/http"
 	"bufio"
 
@@ -13,7 +15,10 @@ import (
 )
 
 const (
-	prefix = "<meta name=\"description\" content=\""
+	descriptionPrefix = "<meta name=\"description\" content=\""
+	linkPrefix = "<link rel=\"canonical\" href=\""
+
+	closingTagSuffix = "\" />"
 )
 
 type NerdepediaPlugin struct {
@@ -37,23 +42,37 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 	query := ""
 	if lowerCase == "may the force be with you" || lowerCase == "help me obi-wan" {
 		query = "http://starwars.wikia.com/wiki/Special:Random"
-	} else if lowerCase == "beam me up scotty" || lowerCase == "live long and prosper" || lowerCase == "make it so" {
+	} else if lowerCase == "beam me up scotty" || lowerCase == "live long and prosper" {
 		query = "http://memory-alpha.wikia.com/wiki/Special:Random"
 	}
 
 	if query != "" {
 		resp, err := http.Get(query)
 		if err != nil {
-			panic(err)
+			return false
 		}
 		defer resp.Body.Close()
 
 		scanner := bufio.NewScanner(resp.Body)
+		link := ""
+		description := ""
 		for scanner.Scan() {
 			line := scanner.Text()
-			index := strings.Index(line, prefix)
-			if index >= 0 {
-				p.bot.SendMessage(message.Channel, strings.TrimSuffix(strings.TrimPrefix(line, prefix), "\" />"))
+			if description == "" {
+				index := strings.Index(line, linkPrefix)
+				if index >= 0 {
+					description = html.UnescapeString(strings.TrimSuffix(strings.TrimPrefix(line, linkPrefix), closingTagSuffix))
+				}
+			}
+			if link == "" {
+				index := strings.Index(line, descriptionPrefix)
+				if index >= 0 {
+					link = strings.TrimSuffix(strings.TrimPrefix(line, descriptionPrefix), closingTagSuffix)
+				}
+			}
+
+			if description != "" && link != "" {
+				p.bot.SendMessage(message.Channel, fmt.Sprintf("%s (%s)", description, link))
 				return true
 			}
 		}
