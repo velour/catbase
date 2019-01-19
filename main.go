@@ -23,6 +23,7 @@ import (
 	"github.com/velour/catbase/plugins/first"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/leftpad"
+	"github.com/velour/catbase/plugins/nerdepedia"
 	"github.com/velour/catbase/plugins/picker"
 	"github.com/velour/catbase/plugins/reaction"
 	"github.com/velour/catbase/plugins/reminder"
@@ -80,6 +81,7 @@ func main() {
 	b.AddHandler("sisyphus", sisyphus.New(b))
 	b.AddHandler("tell", tell.New(b))
 	b.AddHandler("couldashouldawoulda", couldashouldawoulda.New(b))
+	b.AddHandler("nedepedia", nerdepedia.New(b))
 	// catches anything left, will always return true
 	b.AddHandler("factoid", fact.New(b))
 	b.AddHandler("db", db.New(b))
