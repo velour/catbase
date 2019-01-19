@@ -65,7 +65,7 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 			if description == "" {
 				index := strings.Index(line, descriptionPrefix)
 				if index >= 0 {
-					description = html.UnescapeString(strings.TrimSuffix(strings.TrimPrefix(line, descriptionPrefix), closingTagSuffix))
+					description = html.UnescapeString(html.UnescapeString(strings.TrimSuffix(strings.TrimPrefix(line, descriptionPrefix), closingTagSuffix)))
 				}
 			}
 			if link == "" {
