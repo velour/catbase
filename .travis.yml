@@ -1,3 +1,4 @@
 language: go
 go: 1.x
-script: go build
+install: go get -t -v ./... && go build -v ./...
+script: ./gok.sh
