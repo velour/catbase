@@ -44,6 +44,8 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 		query = "http://starwars.wikia.com/wiki/Special:Random"
 	} else if lowerCase == "beam me up scotty" || lowerCase == "live long and prosper" {
 		query = "http://memory-alpha.wikia.com/wiki/Special:Random"
+	} else if lowerCase == "bless the maker" || lowerCase == "i must not fear" {
+		query = "http://dune.wikia.com/wiki/Special:Random"
 	}
 
 	if query != "" {
@@ -82,7 +84,7 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *NerdepediaPlugin) Help(channel string, parts []string) {
-	p.bot.SendMessage(channel, "star wars/trek stuff")
+	p.bot.SendMessage(channel, "nerd stuff")
 }
 
 // Empty event handler because this plugin does not do anything on event recv
