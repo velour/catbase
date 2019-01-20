@@ -176,11 +176,11 @@ func TestFromEmptyList(t *testing.T) {
 func TestBatch(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
-	c.config.Reminder.MaxBatchAdd = 50
+	c.config.Set("Reminder.MaxBatchAdd", "50")
 	assert.NotNil(t, c)
 	res := c.Message(makeMessage("!remind testuser every 1ms for 5ms yikes"))
 	assert.True(t, res)
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 	assert.Len(t, mb.Messages, 6)
 	for i := 0; i < 5; i++ {
 		assert.Contains(t, mb.Messages[i+1], "Hey testuser, tester wanted you to be reminded: yikes")
@@ -190,7 +190,7 @@ func TestBatch(t *testing.T) {
 func TestBatchMax(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
-	c.config.Reminder.MaxBatchAdd = 10
+	c.config.Set("Reminder.MaxBatchAdd", "10")
 	assert.NotNil(t, c)
 	res := c.Message(makeMessage("!remind testuser every 1h for 24h yikes"))
 	assert.True(t, res)

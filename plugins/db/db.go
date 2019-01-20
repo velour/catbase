@@ -34,7 +34,7 @@ func (p *DBPlugin) RegisterWeb() *string {
 }
 
 func (p *DBPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
-	f, err := os.Open(p.bot.Config().DB.File)
+	f, err := os.Open(p.bot.Config().DBFile)
 	defer f.Close()
 	if err != nil {
 		log.Printf("Error opening DB for web service: %s", err)

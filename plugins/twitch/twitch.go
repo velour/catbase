@@ -58,8 +58,8 @@ func New(bot bot.Bot) *TwitchPlugin {
 		twitchList: map[string]*Twitcher{},
 	}
 
-	for _, users := range p.config.Twitch.Users {
-		for _, twitcherName := range users {
+	for _, ch := range p.config.GetArray("Twitch.Channels") {
+		for _, twitcherName := range p.config.GetArray("Twitch." + ch + ".Users") {
 			if _, ok := p.twitchList[twitcherName]; !ok {
 				p.twitchList[twitcherName] = &Twitcher{
 					name: twitcherName,
@@ -67,10 +67,7 @@ func New(bot bot.Bot) *TwitchPlugin {
 				}
 			}
 		}
-	}
-
-	for channel := range p.config.Twitch.Users {
-		go p.twitchLoop(channel)
+		go p.twitchLoop(ch)
 	}
 
 	return p
@@ -120,9 +117,9 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 func (p *TwitchPlugin) Message(message msg.Message) bool {
 	if strings.ToLower(message.Body) == "twitch status" {
 		channel := message.Channel
-		if _, ok := p.config.Twitch.Users[channel]; ok {
-			for _, twitcherName := range p.config.Twitch.Users[channel] {
-				if _, ok = p.twitchList[twitcherName]; ok {
+		if users := p.config.GetArray("Twitch." + channel + ".Users"); len(users) > 0 {
+			for _, twitcherName := range users {
+				if _, ok := p.twitchList[twitcherName]; ok {
 					p.checkTwitch(channel, p.twitchList[twitcherName], true)
 				}
 			}
@@ -147,14 +144,14 @@ func (p *TwitchPlugin) Help(channel string, parts []string) {
 }
 
 func (p *TwitchPlugin) twitchLoop(channel string) {
-	frequency := p.config.Twitch.Freq
+	frequency := p.config.GetInt("Twitch.Freq")
 
 	log.Println("Checking every ", frequency, " seconds")
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
 
-		for _, twitcherName := range p.config.Twitch.Users[channel] {
+		for _, twitcherName := range p.config.GetArray("Twitch." + channel + ".Users") {
 			p.checkTwitch(channel, p.twitchList[twitcherName], false)
 		}
 	}
@@ -200,8 +197,8 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 
 	baseURL.RawQuery = query.Encode()
 
-	cid := p.config.Twitch.ClientID
-	auth := p.config.Twitch.Authorization
+	cid := p.config.Get("Twitch.ClientID")
+	auth := p.config.Get("Twitch.Authorization")
 
 	body, ok := getRequest(baseURL.String(), cid, auth)
 	if !ok {

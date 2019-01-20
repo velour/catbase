@@ -26,15 +26,16 @@ type InventoryPlugin struct {
 // New creates a new InventoryPlugin with the Plugin interface
 func New(bot bot.Bot) *InventoryPlugin {
 	config := bot.Config()
+	nick := config.Get("nick")
 	r1, err := regexp.Compile("take this (.+)")
 	checkerr(err)
 	r2, err := regexp.Compile("have a (.+)")
 	checkerr(err)
-	r3, err := regexp.Compile(fmt.Sprintf("puts (.+) in %s([^a-zA-Z].*)?", config.Nick))
+	r3, err := regexp.Compile(fmt.Sprintf("puts (.+) in %s([^a-zA-Z].*)?", nick))
 	checkerr(err)
-	r4, err := regexp.Compile(fmt.Sprintf("gives %s (.+)", config.Nick))
+	r4, err := regexp.Compile(fmt.Sprintf("gives %s (.+)", nick))
 	checkerr(err)
-	r5, err := regexp.Compile(fmt.Sprintf("gives (.+) to %s([^a-zA-Z].*)?", config.Nick))
+	r5, err := regexp.Compile(fmt.Sprintf("gives (.+) to %s([^a-zA-Z].*)?", nick))
 	checkerr(err)
 
 	p := InventoryPlugin{
@@ -200,7 +201,7 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 		return true
 	}
 	var removed string
-	if p.count() > p.config.Inventory.Max {
+	if p.count() > p.config.GetInt("Inventory.Max") {
 		removed = p.removeRandom()
 	}
 	_, err := p.Exec(`INSERT INTO inventory (item) values (?)`, i)

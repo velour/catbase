@@ -41,20 +41,20 @@ import (
 func main() {
 	rand.Seed(time.Now().Unix())
 
-	var cfile = flag.String("config", "config.lua",
-		"Config file to load. (Defaults to config.lua)")
+	var dbpath = flag.String("db", "catbase.db",
+		"Database file to load. (Defaults to catbase.db)")
 	flag.Parse() // parses the logging flags.
 
-	c := config.Readconfig(Version, *cfile)
+	c := config.ReadConfig(*dbpath)
 	var client bot.Connector
 
-	switch c.Type {
+	switch c.Get("type") {
 	case "irc":
 		client = irc.New(c)
 	case "slack":
 		client = slack.New(c)
 	default:
-		log.Fatalf("Unknown connection type: %s", c.Type)
+		log.Fatalf("Unknown connection type: %s", c.Get("type"))
 	}
 
 	b := bot.New(c, client)

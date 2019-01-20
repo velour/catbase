@@ -3,7 +3,6 @@
 package bot
 
 import (
-	"database/sql"
 	"html/template"
 	"log"
 	"net/http"
@@ -32,13 +31,6 @@ type bot struct {
 
 	conn Connector
 
-	// SQL DB
-	// TODO: I think it'd be nice to use https://github.com/jmoiron/sqlx so that
-	//       the select/update/etc statements could be simplified with struct
-	//       marshalling.
-	db        *sqlx.DB
-	dbVersion int64
-
 	logIn  chan msg.Message
 	logOut chan msg.Messages
 
@@ -64,7 +56,7 @@ func New(config *config.Config, connector Connector) Bot {
 
 	users := []user.User{
 		user.User{
-			Name: config.Nick,
+			Name: config.Get("Nick"),
 		},
 	}
 
@@ -75,10 +67,8 @@ func New(config *config.Config, connector Connector) Bot {
 		conn:           connector,
 		users:          users,
 		me:             users[0],
-		db:             config.DBConn,
 		logIn:          logIn,
 		logOut:         logOut,
-		version:        config.Version,
 		httpEndPoints:  make(map[string]string),
 		filters:        make(map[string]func(string) string),
 	}
@@ -86,10 +76,11 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.migrateDB()
 
 	http.HandleFunc("/", bot.serveRoot)
-	if config.HttpAddr == "" {
-		config.HttpAddr = "127.0.0.1:1337"
+	addr := config.Get("HttpAddr")
+	if addr == "" {
+		addr = "127.0.0.1:1337"
 	}
-	go http.ListenAndServe(config.HttpAddr, nil)
+	go http.ListenAndServe(addr, nil)
 
 	connector.RegisterMessageReceived(bot.MsgReceived)
 	connector.RegisterEventReceived(bot.EventReceived)
@@ -103,39 +94,15 @@ func (b *bot) Config() *config.Config {
 	return b.config
 }
 
-func (b *bot) DBVersion() int64 {
-	return b.dbVersion
-}
-
 func (b *bot) DB() *sqlx.DB {
-	return b.db
+	return b.config.DB
 }
 
 // Create any tables if necessary based on version of DB
 // Plugins should create their own tables, these are only for official bot stuff
 // Note: This does not return an error. Database issues are all fatal at this stage.
 func (b *bot) migrateDB() {
-	_, err := b.db.Exec(`create table if not exists version (version integer);`)
-	if err != nil {
-		log.Fatal("Initial DB migration create version table: ", err)
-	}
-	var version sql.NullInt64
-	err = b.db.QueryRow("select max(version) from version").Scan(&version)
-	if err != nil {
-		log.Fatal("Initial DB migration get version: ", err)
-	}
-	if version.Valid {
-		b.dbVersion = version.Int64
-		log.Printf("Database version: %v\n", b.dbVersion)
-	} else {
-		log.Printf("No versions, we're the first!.")
-		_, err := b.db.Exec(`insert into version (version) values (1)`)
-		if err != nil {
-			log.Fatal("Initial DB migration insert: ", err)
-		}
-	}
-
-	if _, err := b.db.Exec(`create table if not exists variables (
+	if _, err := b.DB().Exec(`create table if not exists variables (
 			id integer primary key,
 			name string,
 			value string
@@ -204,8 +171,8 @@ func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 
 // Checks if message is a command and returns its curtailed version
 func IsCmd(c *config.Config, message string) (bool, string) {
-	cmdcs := c.CommandChar
-	botnick := strings.ToLower(c.Nick)
+	cmdcs := c.GetArray("CommandChar")
+	botnick := strings.ToLower(c.Get("Nick"))
 	iscmd := false
 	lowerMessage := strings.ToLower(message)
 
@@ -237,7 +204,7 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 }
 
 func (b *bot) CheckAdmin(nick string) bool {
-	for _, u := range b.Config().Admins {
+	for _, u := range b.Config().GetArray("Admins") {
 		if nick == u {
 			return true
 		}
@@ -265,7 +232,7 @@ func (b *bot) NewUser(nick string) *user.User {
 }
 
 func (b *bot) checkAdmin(nick string) bool {
-	for _, u := range b.Config().Admins {
+	for _, u := range b.Config().GetArray("Admins") {
 		if nick == u {
 			return true
 		}

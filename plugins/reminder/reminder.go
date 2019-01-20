@@ -40,8 +40,7 @@ type Reminder struct {
 
 func New(bot bot.Bot) *ReminderPlugin {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if bot.DBVersion() == 1 {
-		if _, err := bot.DB().Exec(`create table if not exists reminders (
+	if _, err := bot.DB().Exec(`create table if not exists reminders (
 			id integer primary key,
 			fromWho string,
 			toWho string,
@@ -49,8 +48,7 @@ func New(bot bot.Bot) *ReminderPlugin {
 			remindWhen string,
 			channel string
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 
 	dur, _ := time.ParseDuration("1h")
@@ -124,7 +122,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				what := strings.Join(parts[6:], " ")
 
 				for i := 0; when.Before(endTime); i++ {
-					if i >= p.config.Reminder.MaxBatchAdd {
+					if i >= p.config.GetInt("Reminder.MaxBatchAdd") {
 						p.Bot.SendMessage(channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
 						doConfirm = false
 						break

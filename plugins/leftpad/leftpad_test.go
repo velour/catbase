@@ -63,7 +63,8 @@ func TestNoMaxLen(t *testing.T) {
 
 func Test50Padding(t *testing.T) {
 	p, mb := makePlugin(t)
-	p.config.LeftPad.MaxLen = 50
+	p.config.Set("LeftPad.MaxLen", "50")
+	assert.Equal(t, 50, p.config.GetInt("LeftPad.MaxLen"))
 	p.Message(makeMessage("!leftpad dicks 100 dicks"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "kill me")
@@ -71,7 +72,7 @@ func Test50Padding(t *testing.T) {
 
 func TestUnder50Padding(t *testing.T) {
 	p, mb := makePlugin(t)
-	p.config.LeftPad.MaxLen = 50
+	p.config.Set("LeftPad.MaxLen", "50")
 	p.Message(makeMessage("!leftpad dicks 49 dicks"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "dicks")

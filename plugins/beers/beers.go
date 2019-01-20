@@ -37,25 +37,22 @@ type untappdUser struct {
 	chanNick    string
 }
 
-// NewBeersPlugin creates a new BeersPlugin with the Plugin interface
+// New BeersPlugin creates a new BeersPlugin with the Plugin interface
 func New(bot bot.Bot) *BeersPlugin {
-	if bot.DBVersion() == 1 {
-		if _, err := bot.DB().Exec(`create table if not exists untappd (
+	if _, err := bot.DB().Exec(`create table if not exists untappd (
 			id integer primary key,
 			untappdUser string,
 			channel string,
 			lastCheckin integer,
 			chanNick string
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 	p := BeersPlugin{
 		Bot: bot,
 		db:  bot.DB(),
 	}
-	p.LoadData()
-	for _, channel := range bot.Config().Untappd.Channels {
+	for _, channel := range bot.Config().GetArray("Untappd.Channels") {
 		go p.untappdLoop(channel)
 	}
 	return &p
@@ -198,13 +195,6 @@ func (p *BeersPlugin) Event(kind string, message msg.Message) bool {
 	return false
 }
 
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
-func (p *BeersPlugin) LoadData() {
-	rand.Seed(time.Now().Unix())
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *BeersPlugin) Help(channel string, parts []string) {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
@@ -316,7 +306,7 @@ type Beers struct {
 }
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
-	access_token := "?access_token=" + p.Bot.Config().Untappd.Token
+	access_token := "?access_token=" + p.Bot.Config().Get("Untappd.Token")
 	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
@@ -346,9 +336,8 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
-	token := p.Bot.Config().Untappd.Token
+	token := p.Bot.Config().Get("Untappd.Token")
 	if token == "" || token == "<Your Token>" {
-		log.Println("No Untappd token, cannot enable plugin.")
 		return
 	}
 
@@ -431,7 +420,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 }
 
 func (p *BeersPlugin) untappdLoop(channel string) {
-	frequency := p.Bot.Config().Untappd.Freq
+	frequency := p.Bot.Config().GetInt("Untappd.Freq")
 
 	log.Println("Checking every ", frequency, " seconds")
 

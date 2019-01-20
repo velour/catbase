@@ -29,3 +29,4 @@ vendor
 .vscode/
 *.code-workspace
 *config.lua
+modd.conf

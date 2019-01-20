@@ -11,7 +11,6 @@ import (
 
 type Bot interface {
 	Config() *config.Config
-	DBVersion() int64
 	DB() *sqlx.DB
 	Who(string) []user.User
 	AddHandler(string, Handler)

@@ -28,13 +28,16 @@ func New(bot bot.Bot) *YourPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *YourPlugin) Message(message msg.Message) bool {
-	if len(message.Body) > p.config.Your.MaxLength {
+	if len(message.Body) > p.config.GetInt("Your.MaxLength") {
 		return false
 	}
 	msg := message.Body
-	for _, replacement := range p.config.Your.Replacements {
-		if rand.Float64() < replacement.Frequency {
-			r := strings.NewReplacer(replacement.This, replacement.That)
+	for _, replacement := range p.config.GetArray("Your.Replacements") {
+		freq := p.config.GetFloat64("your.replacements." + replacement + ".freq")
+		this := p.config.Get("your.replacements." + replacement + ".this")
+		that := p.config.Get("your.replacements." + replacement + ".that")
+		if rand.Float64() < freq {
+			r := strings.NewReplacer(this, that)
 			msg = r.Replace(msg)
 		}
 	}

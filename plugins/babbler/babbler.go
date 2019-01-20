@@ -13,7 +13,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/config"
 )
 
 var (
@@ -25,7 +24,6 @@ var (
 type BabblerPlugin struct {
 	Bot            bot.Bot
 	db             *sqlx.DB
-	config         *config.Config
 	WithGoRoutines bool
 }
 
@@ -93,7 +91,6 @@ func New(bot bot.Bot) *BabblerPlugin {
 	plugin := &BabblerPlugin{
 		Bot:            bot,
 		db:             bot.DB(),
-		config:         bot.Config(),
 		WithGoRoutines: true,
 	}
 

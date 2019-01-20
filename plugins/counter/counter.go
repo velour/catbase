@@ -133,6 +133,9 @@ func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 func (i *Item) Create() error {
 	res, err := i.Exec(`insert into counter (nick, item, count) values (?, ?, ?);`,
 		i.Nick, i.Item, i.Count)
+	if err != nil {
+		return err
+	}
 	id, _ := res.LastInsertId()
 	// hackhackhack?
 	i.ID = id
