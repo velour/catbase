@@ -50,3 +50,30 @@ func TestCornerCaseBug(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Contains(t, q.Tidbit, "horse dick")
 }
+
+func TestReact(t *testing.T) {
+	msgs := []msg.Message{
+		makeMessage("user1", "!testing123 <react> jesus"),
+		makeMessage("user2", "testing123"),
+	}
+	_, p, mb := makePlugin(t)
+
+	for _, m := range msgs {
+		p.Message(m)
+	}
+	assert.Len(t, mb.Reactions, 1)
+	assert.Contains(t, mb.Reactions[0], "jesus")
+}
+
+func TestReactCantLearnSpaces(t *testing.T) {
+	msgs := []msg.Message{
+		makeMessage("user1", "!test <react> jesus christ"),
+	}
+	_, p, mb := makePlugin(t)
+
+	for _, m := range msgs {
+		p.Message(m)
+	}
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "not a valid")
+}
