@@ -21,8 +21,9 @@ type MockBot struct {
 
 	Cfg config.Config
 
-	Messages []string
-	Actions  []string
+	Messages  []string
+	Actions   []string
+	Reactions []string
 }
 
 func (mb *MockBot) Config() *config.Config            { return &mb.Cfg }
@@ -47,11 +48,14 @@ func (mb *MockBot) ReplyToMessage(channel, message string, replyTo msg.Message) 
 }
 func (mb *MockBot) MsgReceived(msg msg.Message)                {}
 func (mb *MockBot) EventReceived(msg msg.Message)              {}
-func (mb *MockBot) Filter(msg msg.Message, s string) string    { return "" }
+func (mb *MockBot) Filter(msg msg.Message, s string) string    { return s }
 func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
 func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
 
-func (mb *MockBot) React(channel, reaction string, message msg.Message) bool { return false }
+func (mb *MockBot) React(channel, reaction string, message msg.Message) bool {
+	mb.Reactions = append(mb.Reactions, reaction)
+	return false
+}
 
 func (mb *MockBot) Edit(channel, newMessage, identifier string) bool {
 	isMessage := identifier[0] == 'm'

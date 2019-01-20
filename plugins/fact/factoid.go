@@ -338,8 +338,16 @@ func findAction(message string) string {
 
 // learnFact assumes we have a learning situation and inserts a new fact
 // into the database
-func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) bool {
+func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) error {
 	verb = strings.ToLower(verb)
+	if verb == "react" {
+		// This would be a great place to check against the API for valid emojy
+		// I'm too lazy for that
+		tidbit = strings.Replace(tidbit, ":", "", -1)
+		if len(strings.Split(tidbit, " ")) > 1 {
+			return fmt.Errorf("That's not a valid emojy.")
+		}
+	}
 
 	var count sql.NullInt64
 	err := p.db.QueryRow(`select count(*) from factoid
@@ -347,10 +355,10 @@ func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) bool
 		fact, verb, tidbit).Scan(&count)
 	if err != nil {
 		log.Println("Error counting facts: ", err)
-		return false
+		return fmt.Errorf("What?")
 	} else if count.Valid && count.Int64 != 0 {
 		log.Println("User tried to relearn a fact.")
-		return false
+		return fmt.Errorf("Look, I already know that.")
 	}
 
 	n := factoid{
@@ -366,10 +374,10 @@ func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) bool
 	err = n.save(p.db)
 	if err != nil {
 		log.Println("Error inserting fact: ", err)
-		return false
+		return fmt.Errorf("My brain is overheating.")
 	}
 
-	return true
+	return nil
 }
 
 // findTrigger checks to see if a given string is a trigger or not
@@ -398,6 +406,8 @@ func (p *Factoid) sayFact(message msg.Message, fact factoid) {
 
 		if fact.Verb == "action" {
 			p.Bot.SendAction(message.Channel, msg)
+		} else if fact.Verb == "react" {
+			p.Bot.React(message.Channel, msg, message)
 		} else if fact.Verb == "reply" {
 			p.Bot.SendMessage(message.Channel, msg)
 		} else {
@@ -476,10 +486,10 @@ func (p *Factoid) learnAction(message msg.Message, action string) bool {
 
 	strippedaction := strings.Replace(strings.Replace(action, "<", "", 1), ">", "", 1)
 
-	if p.learnFact(message, trigger, strippedaction, fact) {
-		p.Bot.SendMessage(message.Channel, fmt.Sprintf("Okay, %s.", message.User.Name))
+	if err := p.learnFact(message, trigger, strippedaction, fact); err != nil {
+		p.Bot.SendMessage(message.Channel, err.Error())
 	} else {
-		p.Bot.SendMessage(message.Channel, "I already know that.")
+		p.Bot.SendMessage(message.Channel, fmt.Sprintf("Okay, %s.", message.User.Name))
 	}
 
 	return true
