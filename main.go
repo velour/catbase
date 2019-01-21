@@ -38,23 +38,47 @@ import (
 	"github.com/velour/catbase/slack"
 )
 
+var (
+	key    = flag.String("set", "", "Configuration key to set")
+	val    = flag.String("val", "", "Configuration value to set")
+	initDB = flag.Bool("init", false, "Initialize the configuration DB")
+)
+
 func main() {
 	rand.Seed(time.Now().Unix())
 
-	var cfile = flag.String("config", "config.lua",
-		"Config file to load. (Defaults to config.lua)")
+	var dbpath = flag.String("db", "catbase.db",
+		"Database file to load. (Defaults to catbase.db)")
 	flag.Parse() // parses the logging flags.
 
-	c := config.Readconfig(Version, *cfile)
+	c := config.ReadConfig(*dbpath)
+
+	if *key != "" && *val != "" {
+		c.Set(*key, *val)
+		log.Printf("Set config %s: %s", *key, *val)
+		return
+	}
+	if (*initDB && len(flag.Args()) != 2) || (!*initDB && c.GetInt("init") != 1) {
+		log.Fatal(`You must run "catbase -init <channel> <nick>"`)
+	} else if *initDB {
+		c.SetDefaults(flag.Arg(0), flag.Arg(1))
+		return
+	}
+
 	var client bot.Connector
 
-	switch c.Type {
+	t := c.Get("type")
+	if t == "" {
+		c.Set("type", "slack")
+		t = "slack"
+	}
+	switch c.Get("type") {
 	case "irc":
 		client = irc.New(c)
 	case "slack":
 		client = slack.New(c)
 	default:
-		log.Fatalf("Unknown connection type: %s", c.Type)
+		log.Fatalf("Unknown connection type: %s", c.Get("type"))
 	}
 
 	b := bot.New(c, client)

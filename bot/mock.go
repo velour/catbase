@@ -19,16 +19,16 @@ type MockBot struct {
 	mock.Mock
 	db *sqlx.DB
 
-	Cfg config.Config
+	Cfg *config.Config
 
 	Messages  []string
 	Actions   []string
 	Reactions []string
 }
 
-func (mb *MockBot) Config() *config.Config            { return &mb.Cfg }
+func (mb *MockBot) Config() *config.Config            { return mb.Cfg }
 func (mb *MockBot) DBVersion() int64                  { return 1 }
-func (mb *MockBot) DB() *sqlx.DB                      { return mb.db }
+func (mb *MockBot) DB() *sqlx.DB                      { return mb.Cfg.DB }
 func (mb *MockBot) Conn() Connector                   { return nil }
 func (mb *MockBot) Who(string) []user.User            { return []user.User{} }
 func (mb *MockBot) AddHandler(name string, f Handler) {}
@@ -94,12 +94,9 @@ func (mb *MockBot) GetEmojiList() map[string]string                { return make
 func (mb *MockBot) RegisterFilter(s string, f func(string) string) {}
 
 func NewMockBot() *MockBot {
-	db, err := sqlx.Open("sqlite3_custom", ":memory:")
-	if err != nil {
-		log.Fatal("Failed to open database:", err)
-	}
+	cfg := config.ReadConfig("file::memory:?mode=memory&cache=shared")
 	b := MockBot{
-		db:       db,
+		Cfg:      cfg,
 		Messages: make([]string, 0),
 		Actions:  make([]string, 0),
 	}

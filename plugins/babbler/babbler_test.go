@@ -28,13 +28,18 @@ func makeMessage(payload string) msg.Message {
 func newBabblerPlugin(mb *bot.MockBot) *BabblerPlugin {
 	bp := New(mb)
 	bp.WithGoRoutines = false
+	mb.DB().MustExec(`
+		delete from babblers;
+		delete from babblerWords;
+		delete from babblerNodes;
+		delete from babblerArcs;
+	`)
 	return bp
 }
 
 func TestBabblerNoBabbler(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	bp.Message(makeMessage("!seabass2 says"))
 	res := assert.Len(t, mb.Messages, 0)
@@ -45,7 +50,6 @@ func TestBabblerNoBabbler(t *testing.T) {
 func TestBabblerNothingSaid(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	res := bp.Message(makeMessage("initialize babbler for seabass"))
 	assert.True(t, res)
@@ -59,7 +63,6 @@ func TestBabblerNothingSaid(t *testing.T) {
 func TestBabbler(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
@@ -78,7 +81,6 @@ func TestBabbler(t *testing.T) {
 func TestBabblerSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
@@ -96,7 +98,6 @@ func TestBabblerSeed(t *testing.T) {
 func TestBabblerMultiSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
@@ -114,7 +115,6 @@ func TestBabblerMultiSeed(t *testing.T) {
 func TestBabblerMultiSeed2(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
@@ -132,7 +132,6 @@ func TestBabblerMultiSeed2(t *testing.T) {
 func TestBabblerBadSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
@@ -149,7 +148,6 @@ func TestBabblerBadSeed(t *testing.T) {
 func TestBabblerBadSeed2(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is a message")
 	seabass.User = &user.User{Name: "seabass"}
@@ -166,7 +164,6 @@ func TestBabblerBadSeed2(t *testing.T) {
 func TestBabblerSuffixSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is message one")
 	seabass.User = &user.User{Name: "seabass"}
@@ -186,7 +183,6 @@ func TestBabblerSuffixSeed(t *testing.T) {
 func TestBabblerBadSuffixSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("This is message one")
 	seabass.User = &user.User{Name: "seabass"}
@@ -204,7 +200,6 @@ func TestBabblerBadSuffixSeed(t *testing.T) {
 func TestBabblerBookendSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
@@ -218,7 +213,6 @@ func TestBabblerBookendSeed(t *testing.T) {
 func TestBabblerBookendSeedShort(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
@@ -232,7 +226,6 @@ func TestBabblerBookendSeedShort(t *testing.T) {
 func TestBabblerBadBookendSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
@@ -246,7 +239,6 @@ func TestBabblerBadBookendSeed(t *testing.T) {
 func TestBabblerMiddleOutSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
@@ -260,7 +252,6 @@ func TestBabblerMiddleOutSeed(t *testing.T) {
 func TestBabblerBadMiddleOutSeed(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("It's easier to test with unique messages")
 	seabass.User = &user.User{Name: "seabass"}
@@ -274,7 +265,6 @@ func TestBabblerBadMiddleOutSeed(t *testing.T) {
 func TestBabblerBatch(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 	seabass := makeMessage("batch learn for seabass This is a message! This is another message. This is not a long message? This is not a message! This is not another message. This is a long message?")
 	res := bp.Message(seabass)
@@ -289,7 +279,6 @@ func TestBabblerBatch(t *testing.T) {
 func TestBabblerMerge(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
-	bp.config.Babbler.DefaultUsers = []string{"seabass"}
 	assert.NotNil(t, bp)
 
 	seabass := makeMessage("<seabass> This is a message")

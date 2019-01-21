@@ -4,7 +4,6 @@ package talker
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 
 	"github.com/velour/catbase/bot"
@@ -40,16 +39,13 @@ var goatse []string = []string{
 }
 
 type TalkerPlugin struct {
-	Bot          bot.Bot
-	enforceNicks bool
-	sayings      []string
+	Bot     bot.Bot
+	sayings []string
 }
 
 func New(bot bot.Bot) *TalkerPlugin {
 	return &TalkerPlugin{
-		Bot:          bot,
-		enforceNicks: bot.Config().EnforceNicks,
-		sayings:      bot.Config().WelcomeMsgs,
+		Bot: bot,
 	}
 }
 
@@ -81,13 +77,6 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 		return true
 	}
 
-	if p.enforceNicks && len(message.User.Name) != 9 {
-		msg := fmt.Sprintf("Hey %s, we really like to have 9 character nicks because we're crazy OCD and stuff.",
-			message.User.Name)
-		p.Bot.SendMessage(message.Channel, msg)
-		return true
-	}
-
 	return false
 }
 
@@ -97,14 +86,6 @@ func (p *TalkerPlugin) Help(channel string, parts []string) {
 
 // Empty event handler because this plugin does not do anything on event recv
 func (p *TalkerPlugin) Event(kind string, message msg.Message) bool {
-	if kind == "JOIN" && strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Nick) {
-		if len(p.sayings) == 0 {
-			return false
-		}
-		msg := fmt.Sprintf(p.sayings[rand.Intn(len(p.sayings))], message.User.Name)
-		p.Bot.SendMessage(message.Channel, msg)
-		return true
-	}
 	return false
 }
 

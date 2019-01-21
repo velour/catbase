@@ -192,7 +192,7 @@ func (b *bot) Filter(message msg.Message, input string) string {
 
 func (b *bot) getVar(varName string) (string, error) {
 	var text string
-	err := b.db.Get(&text, `select value from variables where name=? order by random() limit 1`, varName)
+	err := b.DB().Get(&text, `select value from variables where name=? order by random() limit 1`, varName)
 	switch {
 	case err == sql.ErrNoRows:
 		return "", fmt.Errorf("No factoid found")
@@ -204,7 +204,7 @@ func (b *bot) getVar(varName string) (string, error) {
 
 func (b *bot) listVars(channel string, parts []string) {
 	var variables []string
-	err := b.db.Select(&variables, `select name from variables group by name`)
+	err := b.DB().Select(&variables, `select name from variables group by name`)
 	if err != nil {
 		log.Fatal(err)
 	}

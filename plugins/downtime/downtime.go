@@ -107,15 +107,13 @@ func New(bot bot.Bot) *DowntimePlugin {
 		db:  bot.DB(),
 	}
 
-	if bot.DBVersion() == 1 {
-		_, err := p.db.Exec(`create table if not exists downtime (
+	_, err := p.db.Exec(`create table if not exists downtime (
 			id integer primary key,
 			nick string,
 			lastSeen integer
 		);`)
-		if err != nil {
-			log.Fatal("Error creating downtime table: ", err)
-		}
+	if err != nil {
+		log.Fatal("Error creating downtime table: ", err)
 	}
 
 	return &p
@@ -161,7 +159,7 @@ func (p *DowntimePlugin) Message(message msg.Message) bool {
 		for _, e := range entries {
 
 			// filter out ZNC entries and ourself
-			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config().Nick) == e.nick {
+			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config().Get("Nick")) == e.nick {
 				p.remove(e.nick)
 			} else {
 				tops = fmt.Sprintf("%s%s: %s ", tops, e.nick, time.Now().Sub(e.lastSeen))
@@ -205,7 +203,7 @@ func (p *DowntimePlugin) Help(channel string, parts []string) {
 // Empty event handler because this plugin does not do anything on event recv
 func (p *DowntimePlugin) Event(kind string, message msg.Message) bool {
 	log.Println(kind, "\t", message)
-	if kind != "PART" && message.User.Name != p.Bot.Config().Nick {
+	if kind != "PART" && message.User.Name != p.Bot.Config().Get("Nick") {
 		// user joined, let's nail them for it
 		if kind == "NICK" {
 			p.record(strings.ToLower(message.Channel))

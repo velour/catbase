@@ -74,47 +74,6 @@ func TestSayCommand(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "hello")
 }
 
-func TestNineChars(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.enforceNicks = true
-	assert.NotNil(t, c)
-	res := c.Message(makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 1)
-	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "OCD")
-}
-
-func TestWelcome(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.sayings = []string{"Hi"}
-	assert.NotNil(t, c)
-	res := c.Event("JOIN", makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 1)
-	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "Hi")
-}
-
-func TestNoSayings(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.sayings = []string{}
-	assert.NotNil(t, c)
-	res := c.Event("JOIN", makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 0)
-	assert.False(t, res)
-}
-
-func TestNonJoinEvent(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	res := c.Event("SPLURT", makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 0)
-	assert.False(t, res)
-}
-
 func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)

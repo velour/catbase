@@ -48,17 +48,15 @@ func (fe *FirstEntry) save(db *sqlx.DB) error {
 
 // NewFirstPlugin creates a new FirstPlugin with the Plugin interface
 func New(b bot.Bot) *FirstPlugin {
-	if b.DBVersion() == 1 {
-		_, err := b.DB().Exec(`create table if not exists first (
+	_, err := b.DB().Exec(`create table if not exists first (
 			id integer primary key,
 			day integer,
 			time integer,
 			body string,
 			nick string
 		);`)
-		if err != nil {
-			log.Fatal("Could not create first table: ", err)
-		}
+	if err != nil {
+		log.Fatal("Could not create first table: ", err)
 	}
 
 	log.Println("First plugin initialized with day:", midnight(time.Now()))
@@ -152,7 +150,7 @@ func (p *FirstPlugin) Message(message msg.Message) bool {
 }
 
 func (p *FirstPlugin) allowed(message msg.Message) bool {
-	for _, msg := range p.Bot.Config().Bad.Msgs {
+	for _, msg := range p.Bot.Config().GetArray("Bad.Msgs") {
 		match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
 		if err != nil {
 			log.Println("Bad regexp: ", err)
@@ -162,13 +160,13 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 			return false
 		}
 	}
-	for _, host := range p.Bot.Config().Bad.Hosts {
+	for _, host := range p.Bot.Config().GetArray("Bad.Hosts") {
 		if host == message.Host {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
 		}
 	}
-	for _, nick := range p.Bot.Config().Bad.Nicks {
+	for _, nick := range p.Bot.Config().GetArray("Bad.Nicks") {
 		if nick == message.User.Name {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false

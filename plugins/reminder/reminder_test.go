@@ -40,10 +40,15 @@ func makeMessageBy(payload, by string) msg.Message {
 	}
 }
 
-func TestMeReminder(t *testing.T) {
+func setup(t *testing.T) (*ReminderPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	r := New(mb)
+	mb.DB().MustExec(`delete from reminders; delete from config;`)
+	return r, mb
+}
+
+func TestMeReminder(t *testing.T) {
+	c, mb := setup(t)
 	res := c.Message(makeMessage("!remind me in 1s don't fail this test"))
 	time.Sleep(2 * time.Second)
 	assert.Len(t, mb.Messages, 2)
@@ -53,9 +58,7 @@ func TestMeReminder(t *testing.T) {
 }
 
 func TestReminder(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessage("!remind testuser in 1s don't fail this test"))
 	time.Sleep(2 * time.Second)
 	assert.Len(t, mb.Messages, 2)
@@ -65,9 +68,7 @@ func TestReminder(t *testing.T) {
 }
 
 func TestReminderReorder(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessage("!remind testuser in 2s don't fail this test 2"))
 	assert.True(t, res)
 	res = c.Message(makeMessage("!remind testuser in 1s don't fail this test 1"))
@@ -81,9 +82,7 @@ func TestReminderReorder(t *testing.T) {
 }
 
 func TestReminderParse(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessage("!remind testuser in unparseable don't fail this test"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
@@ -91,9 +90,7 @@ func TestReminderParse(t *testing.T) {
 }
 
 func TestEmptyList(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessage("!list reminders"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
@@ -101,9 +98,7 @@ func TestEmptyList(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessage("!remind testuser in 5m don't fail this test 1"))
 	assert.True(t, res)
 	res = c.Message(makeMessage("!remind testuser in 5m don't fail this test 2"))
@@ -116,9 +111,7 @@ func TestList(t *testing.T) {
 }
 
 func TestListBy(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessageBy("!remind testuser in 5m don't fail this test 1", "testuser"))
 	assert.True(t, res)
 	res = c.Message(makeMessageBy("!remind testuser in 5m don't fail this test 2", "testuser2"))
@@ -131,9 +124,7 @@ func TestListBy(t *testing.T) {
 }
 
 func TestListTo(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessageBy("!remind testuser2 in 5m don't fail this test 1", "testuser"))
 	assert.True(t, res)
 	res = c.Message(makeMessageBy("!remind testuser in 5m don't fail this test 2", "testuser2"))
@@ -146,9 +137,7 @@ func TestListTo(t *testing.T) {
 }
 
 func TestToEmptyList(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessageBy("!remind testuser2 in 5m don't fail this test 1", "testuser"))
 	assert.True(t, res)
 	res = c.Message(makeMessageBy("!remind testuser in 5m don't fail this test 2", "testuser2"))
@@ -160,9 +149,7 @@ func TestToEmptyList(t *testing.T) {
 }
 
 func TestFromEmptyList(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	res := c.Message(makeMessageBy("!remind testuser2 in 5m don't fail this test 1", "testuser"))
 	assert.True(t, res)
 	res = c.Message(makeMessageBy("!remind testuser in 5m don't fail this test 2", "testuser2"))
@@ -173,24 +160,9 @@ func TestFromEmptyList(t *testing.T) {
 	assert.Contains(t, mb.Messages[2], "no pending reminders")
 }
 
-func TestBatch(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.config.Reminder.MaxBatchAdd = 50
-	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!remind testuser every 1ms for 5ms yikes"))
-	assert.True(t, res)
-	time.Sleep(2 * time.Second)
-	assert.Len(t, mb.Messages, 6)
-	for i := 0; i < 5; i++ {
-		assert.Contains(t, mb.Messages[i+1], "Hey testuser, tester wanted you to be reminded: yikes")
-	}
-}
-
 func TestBatchMax(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.config.Reminder.MaxBatchAdd = 10
+	c, mb := setup(t)
+	c.config.Set("Reminder.MaxBatchAdd", "10")
 	assert.NotNil(t, c)
 	res := c.Message(makeMessage("!remind testuser every 1h for 24h yikes"))
 	assert.True(t, res)
@@ -206,8 +178,7 @@ func TestBatchMax(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	c, mb := setup(t)
 	assert.NotNil(t, c)
 	res := c.Message(makeMessage("!remind testuser in 1m don't fail this test"))
 	assert.True(t, res)
@@ -222,8 +193,7 @@ func TestCancel(t *testing.T) {
 }
 
 func TestCancelMiss(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	c, mb := setup(t)
 	assert.NotNil(t, c)
 	res := c.Message(makeMessage("!cancel reminder 1"))
 	assert.True(t, res)
@@ -232,30 +202,26 @@ func TestCancelMiss(t *testing.T) {
 }
 
 func TestHelp(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	c, mb := setup(t)
 	assert.NotNil(t, c)
 	c.Help("channel", []string{})
 	assert.Len(t, mb.Messages, 1)
 }
 
 func TestBotMessage(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	c, _ := setup(t)
 	assert.NotNil(t, c)
 	assert.False(t, c.BotMessage(makeMessage("test")))
 }
 
 func TestEvent(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	c, _ := setup(t)
 	assert.NotNil(t, c)
 	assert.False(t, c.Event("dummy", makeMessage("test")))
 }
 
 func TestRegisterWeb(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
+	c, _ := setup(t)
 	assert.NotNil(t, c)
 	assert.Nil(t, c.RegisterWeb())
 }
