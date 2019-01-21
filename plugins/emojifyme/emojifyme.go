@@ -70,10 +70,18 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 	msg := strings.Replace(strings.ToLower(message.Body), "_", " ", -1)
 	for k, v := range p.Emoji {
 		k = strings.Replace(k, "_", " ", -1)
-		if strings.Contains(msg, " "+k+" ") || strings.HasPrefix(msg, k) || strings.HasSuffix(msg, k) {
-			emojys = append(emojys, v)
-			if !stringsContain(inertTokens, k) || len(k) <= 2 {
-				emojied++
+		candidates := []string{
+			k + "es",
+			k + "s",
+		}
+		for _, c := range candidates {
+			if strings.Contains(msg, " "+c+" ") ||
+				strings.HasPrefix(msg, c) ||
+				strings.HasSuffix(msg, c) {
+				emojys = append(emojys, v)
+				if !stringsContain(inertTokens, k) || len(k) <= 2 {
+					emojied++
+				}
 			}
 		}
 	}
