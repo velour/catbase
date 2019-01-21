@@ -16,6 +16,7 @@ import (
 func setup(t *testing.T) (*bot.MockBot, *CounterPlugin) {
 	mb := bot.NewMockBot()
 	c := New(mb)
+	mb.DB().MustExec(`delete from counter; delete from counter_alias;`)
 	_, err := MkAlias(mb.DB(), "tea", ":tea:")
 	assert.Nil(t, err)
 	return mb, c

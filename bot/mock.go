@@ -94,7 +94,7 @@ func (mb *MockBot) GetEmojiList() map[string]string                { return make
 func (mb *MockBot) RegisterFilter(s string, f func(string) string) {}
 
 func NewMockBot() *MockBot {
-	cfg := config.ReadConfig(":memory:")
+	cfg := config.ReadConfig("file::memory:?mode=memory&cache=shared")
 	b := MockBot{
 		Cfg:      cfg,
 		Messages: make([]string, 0),

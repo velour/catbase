@@ -25,10 +25,15 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
-func TestReplacement(t *testing.T) {
+func setup(t *testing.T) (*YourPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
-	assert.NotNil(t, c)
+	mb.DB().MustExec(`delete from config;`)
+	return c, mb
+}
+
+func TestReplacement(t *testing.T) {
+	c, mb := setup(t)
 	c.config.Set("Your.MaxLength", "1000")
 	c.config.SetArray("your.replacements", []string{"0"})
 	c.config.Set("your.replacements.0.freq", "1.0")
@@ -41,9 +46,7 @@ func TestReplacement(t *testing.T) {
 }
 
 func TestNoReplacement(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
+	c, mb := setup(t)
 	c.config.Set("Your.MaxLength", "1000")
 	c.config.SetArray("your.replacements", []string{"0", "1", "2"})
 	c.config.Set("your.replacements.0.freq", "1.0")

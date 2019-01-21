@@ -173,21 +173,19 @@ func (i *Item) Delete() error {
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
 func New(bot bot.Bot) *CounterPlugin {
-	if _, err := bot.DB().Exec(`create table if not exists counter (
+	tx := bot.DB().MustBegin()
+	bot.DB().MustExec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
 			count integer
-		);`); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := bot.DB().Exec(`create table if not exists counter_alias (
+		);`)
+	bot.DB().MustExec(`create table if not exists counter_alias (
 			id integer PRIMARY KEY AUTOINCREMENT,
 			item string NOT NULL UNIQUE,
 			points_to string NOT NULL
-		);`); err != nil {
-		log.Fatal(err)
-	}
+		);`)
+	tx.Commit()
 	return &CounterPlugin{
 		Bot: bot,
 		DB:  bot.DB(),

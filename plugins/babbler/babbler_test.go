@@ -28,6 +28,12 @@ func makeMessage(payload string) msg.Message {
 func newBabblerPlugin(mb *bot.MockBot) *BabblerPlugin {
 	bp := New(mb)
 	bp.WithGoRoutines = false
+	mb.DB().MustExec(`
+		delete from babblers;
+		delete from babblerWords;
+		delete from babblerNodes;
+		delete from babblerArcs;
+	`)
 	return bp
 }
 

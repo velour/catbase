@@ -29,10 +29,22 @@ func makeMessage(payload string) msg.Message {
 func makeBeersPlugin(t *testing.T) (*BeersPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	counter.New(mb)
+	mb.DB().MustExec(`delete from counter; delete from counter_alias;`)
 	b := New(mb)
 	b.Message(makeMessage("!mkalias beer :beer:"))
 	b.Message(makeMessage("!mkalias beers :beer:"))
 	return b, mb
+}
+
+func TestCounter(t *testing.T) {
+	_, mb := makeBeersPlugin(t)
+	i, err := counter.GetItem(mb.DB(), "tester", "test")
+	if !assert.Nil(t, err) {
+		t.Log(err)
+		t.Fatal()
+	}
+	err = i.Update(5)
+	assert.Nil(t, err)
 }
 
 func TestImbibe(t *testing.T) {
