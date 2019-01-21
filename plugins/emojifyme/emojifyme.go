@@ -71,6 +71,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 	for k, v := range p.Emoji {
 		k = strings.Replace(k, "_", " ", -1)
 		candidates := []string{
+			k,
 			k + "es",
 			k + "s",
 		}
@@ -79,8 +80,8 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 				strings.HasPrefix(msg, c) ||
 				strings.HasSuffix(msg, c) {
 				emojys = append(emojys, v)
-				if !stringsContain(inertTokens, k) || len(k) <= 2 {
-					emojied++
+				if !stringsContain(inertTokens, k) || len(v) < 2 {
+					emojied += 1
 				}
 			}
 		}
