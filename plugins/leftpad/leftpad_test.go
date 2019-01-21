@@ -31,6 +31,7 @@ func makePlugin(t *testing.T) (*LeftpadPlugin, *bot.MockBot) {
 	counter.New(mb)
 	p := New(mb)
 	assert.NotNil(t, p)
+	p.config.Set("LeftPad.MaxLen", "0")
 	return p, mb
 }
 
@@ -56,6 +57,7 @@ func TestNotCommand(t *testing.T) {
 
 func TestNoMaxLen(t *testing.T) {
 	p, mb := makePlugin(t)
+	p.config.Set("LeftPad.MaxLen", "0")
 	p.Message(makeMessage("!leftpad dicks 100 dicks"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "dicks")

@@ -212,6 +212,10 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 
 	nick := s.config.Get("Nick")
 	icon := s.config.Get("IconURL")
+	if icon == "" {
+		icon = "https://placekitten.com/400/400"
+		log.Println("Set config item IconURL to customize appearance!")
+	}
 
 	resp, err := http.PostForm(postUrl,
 		url.Values{"token": {s.config.Get("Slack.Token")},

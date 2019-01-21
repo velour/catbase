@@ -54,6 +54,12 @@ func (c *Config) Get(key string) string {
 	return c.GetString(key)
 }
 
+func envkey(key string) string {
+	key = strings.ToUpper(key)
+	key = strings.Replace(key, ".", "", -1)
+	return key
+}
+
 // GetString returns the config value for a string key
 // It will first look in the env vars for the key
 // It will check the DB for the key if an env DNE
@@ -61,13 +67,14 @@ func (c *Config) Get(key string) string {
 // It will convert the value to a string if it exists
 func (c *Config) GetString(key string) string {
 	key = strings.ToLower(key)
-	if v, found := os.LookupEnv(key); found {
+	if v, found := os.LookupEnv(envkey(key)); found {
 		return v
 	}
 	var configValue string
 	q := `select value from config where key=?`
 	err := c.DB.Get(&configValue, q, key)
 	if err != nil {
+		log.Printf("WARN: Key %s is empty", key)
 		return ""
 	}
 	return configValue
@@ -81,6 +88,9 @@ func (c *Config) GetString(key string) string {
 // This will do no conversion.
 func (c *Config) GetArray(key string) []string {
 	val := c.GetString(key)
+	if val == "" {
+		return []string{}
+	}
 	return strings.Split(val, ";;")
 }
 
@@ -88,14 +98,19 @@ func (c *Config) GetArray(key string) []string {
 // Note, this is always a string. Use the SetArray for an array helper
 func (c *Config) Set(key, value string) error {
 	key = strings.ToLower(key)
-	q := (`insert into config (key,value) values (?, ?);`)
-	_, err := c.Exec(q, key, value)
+	q := (`insert into config (key,value) values (?, ?)
+		on conflict(key) do update set value=?;`)
+	tx, err := c.Begin()
 	if err != nil {
-		q := (`update config set value=? where key=?);`)
-		_, err = c.Exec(q, value, key)
-		if err != nil {
-			return err
-		}
+		return err
+	}
+	_, err = tx.Exec(q, key, value, value)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 	return nil
 }

@@ -306,7 +306,12 @@ type Beers struct {
 }
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
-	access_token := "?access_token=" + p.Bot.Config().Get("Untappd.Token")
+	token := p.Bot.Config().Get("Untappd.Token")
+	if token == "" {
+		return []checkin{}, fmt.Errorf("No untappd token")
+	}
+
+	access_token := "?access_token=" + token
 	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
@@ -337,7 +342,8 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 
 func (p *BeersPlugin) checkUntappd(channel string) {
 	token := p.Bot.Config().Get("Untappd.Token")
-	if token == "" || token == "<Your Token>" {
+	if token == "" {
+		log.Println(`Set config value "untappd.token" if you wish to enable untappd`)
 		return
 	}
 
@@ -421,6 +427,9 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 
 func (p *BeersPlugin) untappdLoop(channel string) {
 	frequency := p.Bot.Config().GetInt("Untappd.Freq")
+	if frequency == 0 {
+		return
+	}
 
 	log.Println("Checking every ", frequency, " seconds")
 

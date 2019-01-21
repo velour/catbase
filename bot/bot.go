@@ -79,6 +79,7 @@ func New(config *config.Config, connector Connector) Bot {
 	addr := config.Get("HttpAddr")
 	if addr == "" {
 		addr = "127.0.0.1:1337"
+		config.Set("HttpAddr", addr)
 	}
 	go http.ListenAndServe(addr, nil)
 
@@ -172,7 +173,14 @@ func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 // Checks if message is a command and returns its curtailed version
 func IsCmd(c *config.Config, message string) (bool, string) {
 	cmdcs := c.GetArray("CommandChar")
+	if len(cmdcs) == 0 {
+		cmdcs = []string{"!"}
+		c.SetArray("CommandChar", cmdcs)
+	}
 	botnick := strings.ToLower(c.Get("Nick"))
+	if botnick == "" {
+		log.Fatalf(`You must run catbase -set nick -val <your bot nick>`)
+	}
 	iscmd := false
 	lowerMessage := strings.ToLower(message)
 

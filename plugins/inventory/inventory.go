@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -201,7 +202,12 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 		return true
 	}
 	var removed string
-	if p.count() > p.config.GetInt("Inventory.Max") {
+	max := p.config.GetInt("inventory.max")
+	if max == 0 {
+		max = 10
+		p.config.Set("inventory.max", strconv.Itoa(max))
+	}
+	if p.count() > max {
 		removed = p.removeRandom()
 	}
 	_, err := p.Exec(`INSERT INTO inventory (item) values (?)`, i)

@@ -45,7 +45,12 @@ func (p *LeftpadPlugin) Message(message msg.Message) bool {
 			p.bot.SendMessage(message.Channel, "Invalid padding number")
 			return true
 		}
-		if length > p.config.GetInt("LeftPad.MaxLen") && p.config.GetInt("LeftPad.MaxLen") > 0 {
+		maxLen, who := p.config.GetInt("LeftPad.MaxLen"), p.config.Get("LeftPad.Who")
+		if who == "" {
+			who = "Putin"
+			p.config.Set("LeftPad.MaxLen", who)
+		}
+		if length > maxLen && maxLen > 0 {
 			msg := fmt.Sprintf("%s would kill me if I did that.", p.config.Get("LeftPad.Who"))
 			p.bot.SendMessage(message.Channel, msg)
 			return true

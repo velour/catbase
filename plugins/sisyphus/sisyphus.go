@@ -60,7 +60,13 @@ func (g *game) scheduleDecrement() {
 		g.timers[0].Stop()
 	}
 	minDec := g.bot.Config().GetInt("Sisyphus.MinDecrement")
-	maxDec := g.bot.Config().GetInt("Sisyphus.MinDecrement")
+	maxDec := g.bot.Config().GetInt("Sisyphus.MaxDecrement")
+	if maxDec == minDec && maxDec == 0 {
+		maxDec = 30
+		minDec = 10
+		g.bot.Config().Set("Sisyphus.MinDecrement", strconv.Itoa(minDec))
+		g.bot.Config().Set("Sisyphus.MaxDecrement", strconv.Itoa(maxDec))
+	}
 	g.nextDec = time.Now().Add(time.Duration((minDec + rand.Intn(maxDec))) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextDec.Sub(time.Now()))
@@ -78,6 +84,12 @@ func (g *game) schedulePush() {
 	}
 	minPush := g.bot.Config().GetInt("Sisyphus.MinPush")
 	maxPush := g.bot.Config().GetInt("Sisyphus.MaxPush")
+	if minPush == maxPush && maxPush == 0 {
+		minPush = 1
+		maxPush = 10
+		g.bot.Config().Set("Sisyphus.MinPush", strconv.Itoa(minPush))
+		g.bot.Config().Set("Sisyphus.MaxPush", strconv.Itoa(maxPush))
+	}
 	g.nextPush = time.Now().Add(time.Duration(rand.Intn(maxPush)+minPush) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextPush.Sub(time.Now()))
