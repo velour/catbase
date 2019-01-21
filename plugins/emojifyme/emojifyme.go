@@ -48,10 +48,6 @@ func New(bot bot.Bot) *EmojifyMePlugin {
 		}
 	}
 
-	for _, e := range customEmojys {
-		emojiMap[e] = e
-	}
-
 	return &EmojifyMePlugin{
 		Bot:         bot,
 		GotBotEmoji: false,
@@ -70,36 +66,20 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 
 	inertTokens := p.Bot.Config().GetArray("Emojify.Scoreless")
 	emojied := 0.0
-	tokens := strings.Fields(strings.ToLower(message.Body))
-	emojys := map[string]bool{}
-	for _, token := range tokens {
-		if _, ok := p.Emoji[token]; ok {
-			if !stringsContain(inertTokens, token) {
+	emojys := []string{}
+	msg := strings.Replace(strings.ToLower(message.Body), "_", " ", -1)
+	for k, v := range p.Emoji {
+		k = strings.Replace(k, "_", " ", -1)
+		if strings.Contains(msg, " "+k+" ") || strings.HasPrefix(msg, k) || strings.HasSuffix(msg, k) {
+			emojys = append(emojys, v)
+			if !stringsContain(inertTokens, k) || len(k) <= 2 {
 				emojied++
-			}
-			emojys[token] = true
-		} else if strings.HasSuffix(token, "s") {
-			//Check to see if we can strip the trailing "s" off and get an emoji
-			temp := strings.TrimSuffix(token, "s")
-			if _, ok := p.Emoji[temp]; ok {
-				if !stringsContain(inertTokens, temp) {
-					emojied++
-				}
-				emojys[token] = true
-			} else if strings.HasSuffix(token, "es") {
-				//Check to see if we can strip the trailing "es" off and get an emoji
-				temp := strings.TrimSuffix(token, "es")
-				if _, ok := p.Emoji[temp]; ok {
-					if !stringsContain(inertTokens, temp) {
-						emojied++
-					}
-					emojys[token] = true
-				}
 			}
 		}
 	}
+
 	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance")*emojied {
-		for e, _ := range emojys {
+		for _, e := range emojys {
 			p.Bot.React(message.Channel, e, message)
 		}
 		return true
