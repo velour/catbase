@@ -3,12 +3,14 @@
 package admin
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
 // This is a admin plugin to serve as an example and quick copy/paste for new plugins.
@@ -16,6 +18,7 @@ import (
 type AdminPlugin struct {
 	Bot bot.Bot
 	db  *sqlx.DB
+	cfg *config.Config
 }
 
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface
@@ -23,9 +26,16 @@ func New(bot bot.Bot) *AdminPlugin {
 	p := &AdminPlugin{
 		Bot: bot,
 		db:  bot.DB(),
+		cfg: bot.Config(),
 	}
-	p.LoadData()
 	return p
+}
+
+var forbiddenKeys = map[string]bool{
+	"twitch.authorization": true,
+	"twitch.clientid":      true,
+	"untappd.token":        true,
+	"slack.token":          true,
 }
 
 // Message responds to the bot hook on recieving messages.
@@ -36,6 +46,28 @@ func (p *AdminPlugin) Message(message msg.Message) bool {
 
 	if len(body) > 0 && body[0] == '$' {
 		return p.handleVariables(message)
+	}
+
+	if !message.Command {
+		return false
+	}
+
+	parts := strings.Split(body, " ")
+	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
+		p.Bot.SendMessage(message.Channel, "You cannot access that key")
+		return true
+	} else if parts[0] == "set" && len(parts) > 2 {
+		p.cfg.Set(parts[1], strings.Join(parts[2:], " "))
+		p.Bot.SendMessage(message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		return true
+	}
+	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
+		p.Bot.SendMessage(message.Channel, "You cannot access that key")
+		return true
+	} else if parts[0] == "get" && len(parts) == 2 {
+		v := p.cfg.Get(parts[1])
+		p.Bot.SendMessage(message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
+		return true
 	}
 
 	return false
@@ -86,13 +118,6 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 		p.Bot.SendMessage(message.Channel, "Added.")
 	}
 	return true
-}
-
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
-func (p *AdminPlugin) LoadData() {
-	// This bot has no data to load
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
