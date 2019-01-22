@@ -65,7 +65,7 @@ func (p *AdminPlugin) Message(message msg.Message) bool {
 		p.Bot.SendMessage(message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "get" && len(parts) == 2 {
-		v := p.cfg.Get(parts[1])
+		v := p.cfg.Get(parts[1], "<unknown>")
 		p.Bot.SendMessage(message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
 		return true
 	}

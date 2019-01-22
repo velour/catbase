@@ -297,13 +297,13 @@ func New(botInst bot.Bot) *Factoid {
 		log.Fatal(err)
 	}
 
-	for _, channel := range botInst.Config().GetArray("channels") {
+	for _, channel := range botInst.Config().GetArray("channels", []string{}) {
 		go p.factTimer(channel)
 
 		go func(ch string) {
 			// Some random time to start up
 			time.Sleep(time.Duration(15) * time.Second)
-			if ok, fact := p.findTrigger(p.Bot.Config().Get("Factoid.StartupFact")); ok {
+			if ok, fact := p.findTrigger(p.Bot.Config().Get("Factoid.StartupFact", "speed test")); ok {
 				p.sayFact(msg.Message{
 					Channel: ch,
 					Body:    "speed test", // BUG: This is defined in the config too
@@ -430,7 +430,7 @@ func (p *Factoid) sayFact(message msg.Message, fact factoid) {
 // trigger checks the message for its fitness to be a factoid and then hauls
 // the message off to sayFact for processing if it is in fact a trigger
 func (p *Factoid) trigger(message msg.Message) bool {
-	minLen := p.Bot.Config().GetInt("Factoid.MinLen")
+	minLen := p.Bot.Config().GetInt("Factoid.MinLen", 4)
 	if len(message.Body) > minLen || message.Command || message.Body == "..." {
 		if ok, fact := p.findTrigger(message.Body); ok {
 			p.sayFact(message, *fact)
@@ -691,7 +691,7 @@ func (p *Factoid) randomFact() *factoid {
 
 // factTimer spits out a fact at a given interval and with given probability
 func (p *Factoid) factTimer(channel string) {
-	quoteTime := p.Bot.Config().GetInt("Factoid.QuoteTime")
+	quoteTime := p.Bot.Config().GetInt("Factoid.QuoteTime", 30)
 	if quoteTime == 0 {
 		quoteTime = 30
 		p.Bot.Config().Set("Factoid.QuoteTime", "30")
@@ -710,7 +710,7 @@ func (p *Factoid) factTimer(channel string) {
 		tdelta := time.Since(lastmsg.Time)
 		earlier := time.Since(myLastMsg) > tdelta
 		chance := rand.Float64()
-		quoteChance := p.Bot.Config().GetFloat64("Factoid.QuoteChance")
+		quoteChance := p.Bot.Config().GetFloat64("Factoid.QuoteChance", 0.99)
 		if quoteChance == 0.0 {
 			quoteChance = 0.99
 			p.Bot.Config().Set("Factoid.QuoteChance", "0.99")

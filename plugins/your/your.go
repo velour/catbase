@@ -4,7 +4,6 @@ package your
 
 import (
 	"math/rand"
-	"strconv"
 	"strings"
 
 	"github.com/velour/catbase/bot"
@@ -29,19 +28,15 @@ func New(bot bot.Bot) *YourPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *YourPlugin) Message(message msg.Message) bool {
-	maxLen := p.config.GetInt("your.maxlength")
-	if maxLen == 0 {
-		maxLen = 140
-		p.config.Set("your.maxlength", strconv.Itoa(maxLen))
-	}
+	maxLen := p.config.GetInt("your.maxlength", 140)
 	if len(message.Body) > maxLen {
 		return false
 	}
 	msg := message.Body
-	for _, replacement := range p.config.GetArray("Your.Replacements") {
-		freq := p.config.GetFloat64("your.replacements." + replacement + ".freq")
-		this := p.config.Get("your.replacements." + replacement + ".this")
-		that := p.config.Get("your.replacements." + replacement + ".that")
+	for _, replacement := range p.config.GetArray("Your.Replacements", []string{}) {
+		freq := p.config.GetFloat64("your.replacements."+replacement+".freq", 0.0)
+		this := p.config.Get("your.replacements."+replacement+".this", "")
+		that := p.config.Get("your.replacements."+replacement+".that", "")
 		if rand.Float64() < freq {
 			r := strings.NewReplacer(this, that)
 			msg = r.Replace(msg)

@@ -28,6 +28,8 @@ func makeMessage(payload string) msg.Message {
 func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
+	mb.Config().Set("twitch.clientid", "fake")
+	mb.Config().Set("twitch.authorization", "fake")
 	c.config.SetArray("Twitch.Channels", []string{"test"})
 	c.config.SetArray("Twitch.test.Users", []string{"drseabass"})
 	assert.NotNil(t, c)

@@ -28,8 +28,8 @@ type Config struct {
 // It will check the DB for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will attempt to convert the value to a float64 if it exists
-func (c *Config) GetFloat64(key string) float64 {
-	f, err := strconv.ParseFloat(c.GetString(key), 64)
+func (c *Config) GetFloat64(key string, fallback float64) float64 {
+	f, err := strconv.ParseFloat(c.GetString(key, fmt.Sprintf("%f", fallback)), 64)
 	if err != nil {
 		return 0.0
 	}
@@ -41,8 +41,8 @@ func (c *Config) GetFloat64(key string) float64 {
 // It will check the DB for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will attempt to convert the value to an int if it exists
-func (c *Config) GetInt(key string) int {
-	i, err := strconv.Atoi(c.GetString(key))
+func (c *Config) GetInt(key string, fallback int) int {
+	i, err := strconv.Atoi(c.GetString(key, strconv.Itoa(fallback)))
 	if err != nil {
 		return 0
 	}
@@ -50,8 +50,8 @@ func (c *Config) GetInt(key string) int {
 }
 
 // Get is a shortcut for GetString
-func (c *Config) Get(key string) string {
-	return c.GetString(key)
+func (c *Config) Get(key, fallback string) string {
+	return c.GetString(key, fallback)
 }
 
 func envkey(key string) string {
@@ -65,7 +65,7 @@ func envkey(key string) string {
 // It will check the DB for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will convert the value to a string if it exists
-func (c *Config) GetString(key string) string {
+func (c *Config) GetString(key, fallback string) string {
 	key = strings.ToLower(key)
 	if v, found := os.LookupEnv(envkey(key)); found {
 		return v
@@ -75,7 +75,7 @@ func (c *Config) GetString(key string) string {
 	err := c.DB.Get(&configValue, q, key)
 	if err != nil {
 		log.Printf("WARN: Key %s is empty", key)
-		return ""
+		return fallback
 	}
 	return configValue
 }
@@ -86,10 +86,10 @@ func (c *Config) GetString(key string) string {
 // It will check the DB for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // This will do no conversion.
-func (c *Config) GetArray(key string) []string {
-	val := c.GetString(key)
+func (c *Config) GetArray(key string, fallback []string) []string {
+	val := c.GetString(key, "")
 	if val == "" {
-		return []string{}
+		return fallback
 	}
 	return strings.Split(val, ";;")
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -27,7 +26,7 @@ type InventoryPlugin struct {
 // New creates a new InventoryPlugin with the Plugin interface
 func New(bot bot.Bot) *InventoryPlugin {
 	config := bot.Config()
-	nick := config.Get("nick")
+	nick := config.Get("nick", "bot")
 	r1, err := regexp.Compile("take this (.+)")
 	checkerr(err)
 	r2, err := regexp.Compile("have a (.+)")
@@ -202,11 +201,7 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 		return true
 	}
 	var removed string
-	max := p.config.GetInt("inventory.max")
-	if max == 0 {
-		max = 10
-		p.config.Set("inventory.max", strconv.Itoa(max))
-	}
+	max := p.config.GetInt("inventory.max", 10)
 	if p.count() > max {
 		removed = p.removeRandom()
 	}

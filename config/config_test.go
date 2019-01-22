@@ -10,7 +10,7 @@ func TestSetGet(t *testing.T) {
 	cfg := ReadConfig(":memory:")
 	expected := "value"
 	cfg.Set("test", expected)
-	actual := cfg.Get("test")
+	actual := cfg.Get("test", "NOPE")
 	assert.Equal(t, expected, actual, "Config did not store values")
 }
 
@@ -18,6 +18,6 @@ func TestSetGetArray(t *testing.T) {
 	cfg := ReadConfig(":memory:")
 	expected := []string{"a", "b", "c"}
 	cfg.SetArray("test", expected)
-	actual := cfg.GetArray("test")
+	actual := cfg.GetArray("test", []string{"NOPE"})
 	assert.Equal(t, expected, actual, "Config did not store values")
 }

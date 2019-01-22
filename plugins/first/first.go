@@ -150,7 +150,7 @@ func (p *FirstPlugin) Message(message msg.Message) bool {
 }
 
 func (p *FirstPlugin) allowed(message msg.Message) bool {
-	for _, msg := range p.Bot.Config().GetArray("Bad.Msgs") {
+	for _, msg := range p.Bot.Config().GetArray("Bad.Msgs", []string{}) {
 		match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
 		if err != nil {
 			log.Println("Bad regexp: ", err)
@@ -160,13 +160,13 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 			return false
 		}
 	}
-	for _, host := range p.Bot.Config().GetArray("Bad.Hosts") {
+	for _, host := range p.Bot.Config().GetArray("Bad.Hosts", []string{}) {
 		if host == message.Host {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
 		}
 	}
-	for _, nick := range p.Bot.Config().GetArray("Bad.Nicks") {
+	for _, nick := range p.Bot.Config().GetArray("Bad.Nicks", []string{}) {
 		if nick == message.User.Name {
 			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
 			return false
