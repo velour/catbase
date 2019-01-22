@@ -77,8 +77,8 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 		for _, c := range candidates {
 			if strings.Contains(msg, " "+c+" ") ||
-				strings.HasPrefix(msg, c) ||
-				strings.HasSuffix(msg, c) {
+				strings.HasPrefix(msg, c+" ") ||
+				strings.HasSuffix(msg, " "+c) {
 				emojys = append(emojys, v)
 				if !stringsContain(inertTokens, k) || len(v) < 2 {
 					emojied += 1
