@@ -2,9 +2,9 @@ package config
 
 import (
 	"bytes"
-	"html/template"
 	"log"
 	"strings"
+	"text/template"
 )
 
 var q = `
