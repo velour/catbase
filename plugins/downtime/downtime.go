@@ -159,7 +159,7 @@ func (p *DowntimePlugin) Message(message msg.Message) bool {
 		for _, e := range entries {
 
 			// filter out ZNC entries and ourself
-			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config().Get("Nick")) == e.nick {
+			if strings.HasPrefix(e.nick, "*") || strings.ToLower(p.Bot.Config().Get("Nick", "bot")) == e.nick {
 				p.remove(e.nick)
 			} else {
 				tops = fmt.Sprintf("%s%s: %s ", tops, e.nick, time.Now().Sub(e.lastSeen))
@@ -203,7 +203,7 @@ func (p *DowntimePlugin) Help(channel string, parts []string) {
 // Empty event handler because this plugin does not do anything on event recv
 func (p *DowntimePlugin) Event(kind string, message msg.Message) bool {
 	log.Println(kind, "\t", message)
-	if kind != "PART" && message.User.Name != p.Bot.Config().Get("Nick") {
+	if kind != "PART" && message.User.Name != p.Bot.Config().Get("Nick", "bot") {
 		// user joined, let's nail them for it
 		if kind == "NICK" {
 			p.record(strings.ToLower(message.Channel))

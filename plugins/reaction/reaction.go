@@ -24,23 +24,23 @@ func New(bot bot.Bot) *ReactionPlugin {
 
 func (p *ReactionPlugin) Message(message msg.Message) bool {
 	harrass := false
-	for _, nick := range p.Config.GetArray("Reaction.HarrassList") {
+	for _, nick := range p.Config.GetArray("Reaction.HarrassList", []string{}) {
 		if message.User.Name == nick {
 			harrass = true
 			break
 		}
 	}
 
-	chance := p.Config.GetFloat64("Reaction.GeneralChance")
+	chance := p.Config.GetFloat64("Reaction.GeneralChance", 0.01)
 	negativeWeight := 1
 	if harrass {
-		chance = p.Config.GetFloat64("Reaction.HarrassChance")
-		negativeWeight = p.Config.GetInt("Reaction.NegativeHarrassmentMultiplier")
+		chance = p.Config.GetFloat64("Reaction.HarrassChance", 0.05)
+		negativeWeight = p.Config.GetInt("Reaction.NegativeHarrassmentMultiplier", 2)
 	}
 
 	if rand.Float64() < chance {
-		numPositiveReactions := len(p.Config.GetArray("Reaction.PositiveReactions"))
-		numNegativeReactions := len(p.Config.GetArray("Reaction.NegativeReactions"))
+		numPositiveReactions := len(p.Config.GetArray("Reaction.PositiveReactions", []string{}))
+		numNegativeReactions := len(p.Config.GetArray("Reaction.NegativeReactions", []string{}))
 
 		maxIndex := numPositiveReactions + numNegativeReactions*negativeWeight
 
@@ -49,11 +49,11 @@ func (p *ReactionPlugin) Message(message msg.Message) bool {
 		reaction := ""
 
 		if index < numPositiveReactions {
-			reaction = p.Config.GetArray("Reaction.PositiveReactions")[index]
+			reaction = p.Config.GetArray("Reaction.PositiveReactions", []string{})[index]
 		} else {
 			index -= numPositiveReactions
 			index %= numNegativeReactions
-			reaction = p.Config.GetArray("Reaction.NegativeReactions")[index]
+			reaction = p.Config.GetArray("Reaction.NegativeReactions", []string{})[index]
 		}
 
 		p.Bot.React(message.Channel, reaction, message)

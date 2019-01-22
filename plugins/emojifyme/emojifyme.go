@@ -64,7 +64,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	inertTokens := p.Bot.Config().GetArray("Emojify.Scoreless")
+	inertTokens := p.Bot.Config().GetArray("Emojify.Scoreless", []string{})
 	emojied := 0.0
 	emojys := []string{}
 	msg := strings.Replace(strings.ToLower(message.Body), "_", " ", -1)
@@ -87,7 +87,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance")*emojied {
+	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance", 0.02)*emojied {
 		for _, e := range emojys {
 			p.Bot.React(message.Channel, e, message)
 		}

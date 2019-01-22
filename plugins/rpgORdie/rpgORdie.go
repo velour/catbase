@@ -136,7 +136,7 @@ func (p *RPGPlugin) RegisterWeb() *string {
 }
 
 func (p *RPGPlugin) ReplyMessage(message msg.Message, identifier string) bool {
-	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick")) {
+	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {
 		if b, ok := p.listenFor[identifier]; ok {
 
 			var res int

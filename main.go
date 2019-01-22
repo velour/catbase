@@ -58,7 +58,7 @@ func main() {
 		log.Printf("Set config %s: %s", *key, *val)
 		return
 	}
-	if (*initDB && len(flag.Args()) != 2) || (!*initDB && c.GetInt("init") != 1) {
+	if (*initDB && len(flag.Args()) != 2) || (!*initDB && c.GetInt("init", 0) != 1) {
 		log.Fatal(`You must run "catbase -init <channel> <nick>"`)
 	} else if *initDB {
 		c.SetDefaults(flag.Arg(0), flag.Arg(1))
@@ -67,18 +67,13 @@ func main() {
 
 	var client bot.Connector
 
-	t := c.Get("type")
-	if t == "" {
-		c.Set("type", "slack")
-		t = "slack"
-	}
-	switch c.Get("type") {
+	switch c.Get("type", "slack") {
 	case "irc":
 		client = irc.New(c)
 	case "slack":
 		client = slack.New(c)
 	default:
-		log.Fatalf("Unknown connection type: %s", c.Get("type"))
+		log.Fatalf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}
 
 	b := bot.New(c, client)

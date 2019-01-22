@@ -87,7 +87,7 @@ func (i *Irc) SendMessage(channel, message string) string {
 		}
 
 		if throttle == nil {
-			ratePerSec := i.config.GetInt("RatePerSec")
+			ratePerSec := i.config.GetInt("RatePerSec", 5)
 			throttle = time.Tick(time.Second / time.Duration(ratePerSec))
 		}
 
@@ -136,17 +136,17 @@ func (i *Irc) Serve() error {
 
 	var err error
 	i.Client, err = irc.DialSSL(
-		i.config.Get("Irc.Server"),
-		i.config.Get("Nick"),
-		i.config.Get("FullName"),
-		i.config.Get("Irc.Pass"),
+		i.config.Get("Irc.Server", "localhost"),
+		i.config.Get("Nick", "bot"),
+		i.config.Get("FullName", "bot"),
+		i.config.Get("Irc.Pass", ""),
 		true,
 	)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
-	for _, c := range i.config.GetArray("channels") {
+	for _, c := range i.config.GetArray("channels", []string{}) {
 		i.JoinChannel(c)
 	}
 
@@ -270,7 +270,7 @@ func (i *Irc) buildMessage(inMsg irc.Msg) msg.Message {
 	}
 
 	channel := inMsg.Args[0]
-	if channel == i.config.Get("Nick") {
+	if channel == i.config.Get("Nick", "bot") {
 		channel = inMsg.Args[0]
 	}
 

@@ -52,7 +52,7 @@ func New(bot bot.Bot) *BeersPlugin {
 		Bot: bot,
 		db:  bot.DB(),
 	}
-	for _, channel := range bot.Config().GetArray("Untappd.Channels") {
+	for _, channel := range bot.Config().GetArray("Untappd.Channels", []string{}) {
 		go p.untappdLoop(channel)
 	}
 	return &p
@@ -306,8 +306,8 @@ type Beers struct {
 }
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
-	token := p.Bot.Config().Get("Untappd.Token")
-	if token == "" {
+	token := p.Bot.Config().Get("Untappd.Token", "NONE")
+	if token == "NONE" {
 		return []checkin{}, fmt.Errorf("No untappd token")
 	}
 
@@ -341,8 +341,8 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 }
 
 func (p *BeersPlugin) checkUntappd(channel string) {
-	token := p.Bot.Config().Get("Untappd.Token")
-	if token == "" {
+	token := p.Bot.Config().Get("Untappd.Token", "NONE")
+	if token == "NONE" {
 		log.Println(`Set config value "untappd.token" if you wish to enable untappd`)
 		return
 	}
@@ -426,7 +426,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 }
 
 func (p *BeersPlugin) untappdLoop(channel string) {
-	frequency := p.Bot.Config().GetInt("Untappd.Freq")
+	frequency := p.Bot.Config().GetInt("Untappd.Freq", 120)
 	if frequency == 0 {
 		return
 	}

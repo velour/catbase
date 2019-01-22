@@ -39,7 +39,7 @@ func TestSet(t *testing.T) {
 	a, mb := setup(t)
 	expected := "test value"
 	a.Message(makeMessage("!set test.key " + expected))
-	actual := mb.Config().Get("test.key")
+	actual := mb.Config().Get("test.key", "ERR")
 	assert.Equal(t, expected, actual)
 }
 
@@ -54,7 +54,7 @@ func TestGetValue(t *testing.T) {
 
 func TestGetEmpty(t *testing.T) {
 	a, mb := setup(t)
-	expected := "test.key: "
+	expected := "test.key: <unknown>"
 	a.Message(makeMessage("!get test.key"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, expected, mb.Messages[0])

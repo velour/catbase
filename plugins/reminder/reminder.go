@@ -122,11 +122,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				what := strings.Join(parts[6:], " ")
 
 				for i := 0; when.Before(endTime); i++ {
-					max := p.config.GetInt("Reminder.MaxBatchAdd")
-					if max == 0 {
-						max = 10
-						p.config.Set("reminder.maxbatchadd", strconv.Itoa(max))
-					}
+					max := p.config.GetInt("Reminder.MaxBatchAdd", 10)
 					if i >= max {
 						p.Bot.SendMessage(channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
 						doConfirm = false

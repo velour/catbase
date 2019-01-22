@@ -31,9 +31,10 @@ import (
 type Slack struct {
 	config *config.Config
 
-	url string
-	id  string
-	ws  *websocket.Conn
+	url   string
+	id    string
+	token string
+	ws    *websocket.Conn
 
 	lastRecieved time.Time
 
@@ -163,8 +164,13 @@ type rtmStart struct {
 }
 
 func New(c *config.Config) *Slack {
+	token := c.Get("slack.token", "NONE")
+	if token == "NONE" {
+		log.Fatalf("No slack token found. Set SLACKTOKEN env.")
+	}
 	return &Slack{
 		config:       c,
+		token:        c.Get("slack.token", ""),
 		lastRecieved: time.Now(),
 		users:        make(map[string]string),
 		emoji:        make(map[string]string),
@@ -210,15 +216,11 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 		postUrl = "https://slack.com/api/chat.meMessage"
 	}
 
-	nick := s.config.Get("Nick")
-	icon := s.config.Get("IconURL")
-	if icon == "" {
-		icon = "https://placekitten.com/400/400"
-		log.Println("Set config item IconURL to customize appearance!")
-	}
+	nick := s.config.Get("Nick", "bot")
+	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
 
 	resp, err := http.PostForm(postUrl,
-		url.Values{"token": {s.config.Get("Slack.Token")},
+		url.Values{"token": {s.token},
 			"username": {nick},
 			"icon_url": {icon},
 			"channel":  {channel},
@@ -273,11 +275,11 @@ func (s *Slack) SendAction(channel, message string) string {
 }
 
 func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
-	nick := s.config.Get("Nick")
-	icon := s.config.Get("IconURL")
+	nick := s.config.Get("Nick", "bot")
+	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
 
 	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
-		url.Values{"token": {s.config.Get("Slack.Token")},
+		url.Values{"token": {s.token},
 			"username":  {nick},
 			"icon_url":  {icon},
 			"channel":   {channel},
@@ -325,7 +327,7 @@ func (s *Slack) ReplyToMessage(channel, message string, replyTo msg.Message) (st
 func (s *Slack) React(channel, reaction string, message msg.Message) bool {
 	log.Printf("Reacting in %s: %s", channel, reaction)
 	resp, err := http.PostForm("https://slack.com/api/reactions.add",
-		url.Values{"token": {s.config.Get("Slack.Token")},
+		url.Values{"token": {s.token},
 			"name":      {reaction},
 			"channel":   {channel},
 			"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
@@ -339,7 +341,7 @@ func (s *Slack) React(channel, reaction string, message msg.Message) bool {
 func (s *Slack) Edit(channel, newMessage, identifier string) bool {
 	log.Printf("Editing in (%s) %s: %s", identifier, channel, newMessage)
 	resp, err := http.PostForm("https://slack.com/api/chat.update",
-		url.Values{"token": {s.config.Get("Slack.Token")},
+		url.Values{"token": {s.token},
 			"channel": {channel},
 			"text":    {newMessage},
 			"ts":      {identifier}})
@@ -356,7 +358,7 @@ func (s *Slack) GetEmojiList() map[string]string {
 
 func (s *Slack) populateEmojiList() {
 	resp, err := http.PostForm("https://slack.com/api/emoji.list",
-		url.Values{"token": {s.config.Get("Slack.Token")}})
+		url.Values{"token": {s.token}})
 	if err != nil {
 		log.Printf("Error retrieving emoji list from Slack: %s", err)
 		return
@@ -549,7 +551,7 @@ func (s *Slack) markAllChannelsRead() {
 func (s *Slack) getAllChannels() []slackChannelListItem {
 	u := s.url + "channels.list"
 	resp, err := http.PostForm(u,
-		url.Values{"token": {s.config.Get("Slack.Token")}})
+		url.Values{"token": {s.token}})
 	if err != nil {
 		log.Printf("Error posting user info request: %s",
 			err)
@@ -574,7 +576,7 @@ func (s *Slack) getAllChannels() []slackChannelListItem {
 func (s *Slack) markChannelAsRead(slackChanId string) error {
 	u := s.url + "channels.info"
 	resp, err := http.PostForm(u,
-		url.Values{"token": {s.config.Get("Slack.Token")}, "channel": {slackChanId}})
+		url.Values{"token": {s.token}, "channel": {slackChanId}})
 	if err != nil {
 		log.Printf("Error posting user info request: %s",
 			err)
@@ -596,7 +598,7 @@ func (s *Slack) markChannelAsRead(slackChanId string) error {
 
 	u = s.url + "channels.mark"
 	resp, err = http.PostForm(u,
-		url.Values{"token": {s.config.Get("Slack.Token")}, "channel": {slackChanId}, "ts": {chanInfo.Channel.Latest.Ts}})
+		url.Values{"token": {s.token}, "channel": {slackChanId}, "ts": {chanInfo.Channel.Latest.Ts}})
 	if err != nil {
 		log.Printf("Error posting user info request: %s",
 			err)
@@ -621,7 +623,7 @@ func (s *Slack) markChannelAsRead(slackChanId string) error {
 }
 
 func (s *Slack) connect() {
-	token := s.config.Get("Slack.Token")
+	token := s.token
 	u := fmt.Sprintf("https://slack.com/api/rtm.connect?token=%s", token)
 	resp, err := http.Get(u)
 	if err != nil {
@@ -667,7 +669,7 @@ func (s *Slack) getUser(id string) (string, bool) {
 	log.Printf("User %s not already found, requesting info", id)
 	u := s.url + "users.info"
 	resp, err := http.PostForm(u,
-		url.Values{"token": {s.config.Get("Slack.Token")}, "user": {id}})
+		url.Values{"token": {s.token}, "user": {id}})
 	if err != nil || resp.StatusCode != 200 {
 		log.Printf("Error posting user info request: %d %s",
 			resp.StatusCode, err)
@@ -689,7 +691,7 @@ func (s *Slack) Who(id string) []string {
 	log.Println("Who is queried for ", id)
 	u := s.url + "channels.info"
 	resp, err := http.PostForm(u,
-		url.Values{"token": {s.config.Get("Slack.Token")}, "channel": {id}})
+		url.Values{"token": {s.token}, "channel": {id}})
 	if err != nil {
 		log.Printf("Error posting user info request: %s",
 			err)
