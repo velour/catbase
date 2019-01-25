@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -19,6 +20,8 @@ type AdminPlugin struct {
 	Bot bot.Bot
 	db  *sqlx.DB
 	cfg *config.Config
+
+	quiet bool
 }
 
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface
@@ -44,12 +47,31 @@ var forbiddenKeys = map[string]bool{
 func (p *AdminPlugin) Message(message msg.Message) bool {
 	body := message.Body
 
+	if p.quiet {
+		return true
+	}
+
 	if len(body) > 0 && body[0] == '$' {
 		return p.handleVariables(message)
 	}
 
 	if !message.Command {
 		return false
+	}
+
+	if strings.ToLower(body) == "shut up" {
+		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
+		log.Printf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
+		p.Bot.SendMessage(message.Channel, "Okay. I'll be back later.")
+		p.quiet = true
+		go func() {
+			select {
+			case <-time.After(dur):
+				p.quiet = false
+				log.Println("Waking up from nap.")
+			}
+		}()
+		return true
 	}
 
 	parts := strings.Split(body, " ")
