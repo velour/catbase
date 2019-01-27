@@ -201,6 +201,34 @@ func TestCancelMiss(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "failed to find and cancel reminder: 1")
 }
 
+func TestLimitList(t *testing.T) {
+	c, mb := setup(t)
+	c.config.Set("Reminder.MaxBatchAdd", "10")
+	c.config.Set("Reminder.MaxList", "25")
+	assert.NotNil(t, c)
+
+	//Someone can redo this with a single batch add, but I can't locally due to an old version of sqllite (maybe).
+	res := c.Message(makeMessage("!remind testuser every 1h for 10h don't fail this test"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!remind testuser every 1h for 10h don't fail this test"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!remind testuser every 1h for 10h don't fail this test"))
+	assert.True(t, res)
+	res = c.Message(makeMessage("!list reminders"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 4)
+	assert.Contains(t, mb.Messages[0], "Sure tester, I'll remind testuser.")
+	assert.Contains(t, mb.Messages[1], "Sure tester, I'll remind testuser.")
+	assert.Contains(t, mb.Messages[2], "Sure tester, I'll remind testuser.")
+
+	for i := 0; i < 25; i++ {
+		assert.Contains(t, mb.Messages[3], fmt.Sprintf("%d) tester -> testuser :: don't fail this test", i+1))
+	}
+	assert.Contains(t, mb.Messages[3], "...5 more...")
+
+	assert.NotContains(t, mb.Messages[3], "26) tester -> testuser")
+}
+
 func TestHelp(t *testing.T) {
 	c, mb := setup(t)
 	assert.NotNil(t, c)
