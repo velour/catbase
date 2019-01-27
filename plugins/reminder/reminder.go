@@ -121,8 +121,8 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				endTime := time.Now().UTC().Add(dur2)
 				what := strings.Join(parts[6:], " ")
 
+				max := p.config.GetInt("Reminder.MaxBatchAdd", 10)
 				for i := 0; when.Before(endTime); i++ {
-					max := p.config.GetInt("Reminder.MaxBatchAdd", 10)
 					if i >= max {
 						p.Bot.SendMessage(channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
 						doConfirm = false
@@ -272,9 +272,25 @@ func (p *ReminderPlugin) deleteReminder(id int64) error {
 	return err
 }
 
-func (p *ReminderPlugin) getRemindersFormatted(queryString string) (string, error) {
+func (p *ReminderPlugin) getRemindersFormatted(filter string) (string, error) {
+	max := p.config.GetInt("Reminder.MaxList", 25)
+	queryString := fmt.Sprintf("select id, fromWho, toWho, what, remindWhen from reminders %s order by remindWhen asc limit %d;", filter, max)
+	countString := fmt.Sprintf("select COUNT(*) from reminders %s;", filter)
+
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+
+	var total int
+	err := p.db.Get(&total, countString)
+	if err != nil {
+		log.Print(err)
+		return "", nil
+	}
+
+	if total == 0 {
+		return "no pending reminders", nil
+	}
+
 	rows, err := p.db.Query(queryString)
 	if err != nil {
 		log.Print(err)
@@ -293,23 +309,25 @@ func (p *ReminderPlugin) getRemindersFormatted(queryString string) (string, erro
 		reminders += fmt.Sprintf("%d) %s -> %s :: %s @ %s (%d)\n", counter, reminder.from, reminder.who, reminder.what, when, reminder.id)
 		counter++
 	}
-	if counter == 1 {
-		return "no pending reminders", nil
+
+	remaining := total - max
+	if remaining > 0 {
+		reminders += fmt.Sprintf("...%d more...\n", remaining)
 	}
 
 	return reminders, nil
 }
 
 func (p *ReminderPlugin) getAllRemindersFormatted(channel string) (string, error) {
-	return p.getRemindersFormatted("select id, fromWho, toWho, what, remindWhen from reminders order by remindWhen asc;")
+	return p.getRemindersFormatted("")
 }
 
 func (p *ReminderPlugin) getAllRemindersFromMeFormatted(channel, me string) (string, error) {
-	return p.getRemindersFormatted(fmt.Sprintf("select id, fromWho, toWho, what, remindWhen from reminders where fromWho = '%s' order by remindWhen asc;", me))
+	return p.getRemindersFormatted(fmt.Sprintf("where fromWho = '%s'", me))
 }
 
 func (p *ReminderPlugin) getAllRemindersToMeFormatted(channel, me string) (string, error) {
-	return p.getRemindersFormatted(fmt.Sprintf("select id, fromWho, toWho, what, remindWhen from reminders where toWho = '%s' order by remindWhen asc;", me))
+	return p.getRemindersFormatted(fmt.Sprintf("where toWho = '%s'", me))
 }
 
 func (p *ReminderPlugin) queueUpNextReminder() {
