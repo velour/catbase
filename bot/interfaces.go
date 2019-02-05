@@ -45,7 +45,7 @@ type Bot interface {
 	// Who lists users in a particular channel
 	Who(string) []user.User
 	// AddPlugin registers a new plugin handler
-	AddPlugin(string, Plugin)
+	AddPlugin(Plugin)
 	// First arg should be one of bot.Message/Reply/Action/etc
 	Send(Kind, ...interface{}) (string, error)
 	// First arg should be one of bot.Message/Reply/Action/etc

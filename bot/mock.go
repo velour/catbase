@@ -46,7 +46,7 @@ func (mb *MockBot) Send(kind Kind, args ...interface{}) (string, error) {
 	}
 	return "ERR", fmt.Errorf("Mesasge type unhandled")
 }
-func (mb *MockBot) AddPlugin(name string, f Plugin)                         {}
+func (mb *MockBot) AddPlugin(f Plugin)                                      {}
 func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)               {}
 func (mb *MockBot) Receive(kind Kind, msg msg.Message, args ...interface{}) {}
 func (mb *MockBot) Filter(msg msg.Message, s string) string                 { return s }

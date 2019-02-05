@@ -112,7 +112,8 @@ func (b *bot) migrateDB() {
 }
 
 // Adds a constructed handler to the bots handlers list
-func (b *bot) AddPlugin(name string, h Plugin) {
+func (b *bot) AddPlugin(h Plugin) {
+	name := reflect.TypeOf(h).String()
 	b.plugins[name] = h
 	b.pluginOrdering = append(b.pluginOrdering, name)
 	if entry := h.RegisterWeb(); entry != nil {
