@@ -34,12 +34,16 @@ type kind int
 
 type Callback func(int, msg.Message, ...interface{}) bool
 
+// Bot interface serves to allow mocking of the actual bot
 type Bot interface {
+	// Config allows access to the bot's configuration system
 	Config() *config.Config
+	// DB gives access to the current database
 	DB() *sqlx.DB
+	// Who lists users in a particular channel
 	Who(string) []user.User
+	// AddPlugin registers a new plugin handler
 	AddPlugin(string, Plugin)
-
 	// First arg should be one of bot.Message/Reply/Action/etc
 	Send(int, ...interface{}) (error, string)
 	// First arg should be one of bot.Message/Reply/Action/etc
@@ -55,6 +59,7 @@ type Bot interface {
 	RegisterFilter(string, func(string) string)
 }
 
+// Connector represents a server connection to a chat service
 type Connector interface {
 	RegisterEventReceived(func(message msg.Message))
 	RegisterMessageReceived(func(message msg.Message))
@@ -68,7 +73,8 @@ type Connector interface {
 	Who(string) []string
 }
 
-// Interface used for compatibility with the Plugin interface
+// Plugin interface used for compatibility with the Plugin interface
+// Probably can disappear once RegisterWeb gets inverted
 type Plugin interface {
 	RegisterWeb() *string
 }

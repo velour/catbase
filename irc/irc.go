@@ -66,12 +66,24 @@ func (i *Irc) RegisterReplyMessageReceived(f func(msg.Message, string)) {
 	i.replyMessageReceived = f
 }
 
+func (i *Irc) Send(kind int, args ...interface{}) (error, string) {
+	switch kind {
+	case bot.Reply:
+	case bot.Message:
+		return i.sendMessage(args[0].(string), args[1].(string))
+	case bot.Action:
+		return i.sendAction(args[0].(string), args[1].(string))
+	default:
+	}
+	return nil, ""
+}
+
 func (i *Irc) JoinChannel(channel string) {
 	log.Printf("Joining channel: %s", channel)
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
-func (i *Irc) SendMessage(channel, message string) string {
+func (i *Irc) sendMessage(channel, message string) (error, string) {
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -95,37 +107,18 @@ func (i *Irc) SendMessage(channel, message string) string {
 
 		i.Client.Out <- m
 	}
-	return "NO_IRC_IDENTIFIERS"
+	return nil, "NO_IRC_IDENTIFIERS"
 }
 
 // Sends action to channel
-func (i *Irc) SendAction(channel, message string) string {
+func (i *Irc) sendAction(channel, message string) (error, string) {
 	message = actionPrefix + " " + message + "\x01"
 
-	i.SendMessage(channel, message)
-	return "NO_IRC_IDENTIFIERS"
-}
-
-func (i *Irc) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
-	return "NO_IRC_IDENTIFIERS", false
-}
-
-func (i *Irc) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
-	return "NO_IRC_IDENTIFIERS", false
-}
-
-func (i *Irc) React(channel, reaction string, message msg.Message) bool {
-	//we're not goign to do anything because it's IRC
-	return false
-}
-
-func (i *Irc) Edit(channel, newMessage, identifier string) bool {
-	//we're not goign to do anything because it's IRC
-	return false
+	return i.sendMessage(channel, message)
 }
 
 func (i *Irc) GetEmojiList() map[string]string {
-	//we're not goign to do anything because it's IRC
+	//we're not going to do anything because it's IRC
 	return make(map[string]string)
 }
 
