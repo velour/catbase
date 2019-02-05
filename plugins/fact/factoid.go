@@ -314,6 +314,9 @@ func New(botInst bot.Bot) *Factoid {
 		}(channel)
 	}
 
+	botInst.Register(p, bot.Message, p.message)
+	botInst.Register(p, bot.Help, p.help)
+
 	return p
 }
 
@@ -609,7 +612,7 @@ func (p *Factoid) changeFact(message msg.Message) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *Factoid) Message(message msg.Message) bool {
+func (p *Factoid) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "what was that?" {
 		return p.tellThemWhatThatWas(message)
 	}
@@ -669,14 +672,10 @@ func (p *Factoid) Message(message msg.Message) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *Factoid) Help(channel string, parts []string) {
-	p.Bot.Send(bot.Message, channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
-	p.Bot.Send(bot.Message, channel, "I can also figure out some variables including: $nonzero, $digit, $nick, and $someone.")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *Factoid) Event(kind string, message msg.Message) bool {
-	return false
+func (p *Factoid) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
+	p.Bot.Send(bot.Message, message.Channel, "I can also figure out some variables including: $nonzero, $digit, $nick, and $someone.")
+	return true
 }
 
 // Pull a fact at random from the database
@@ -737,11 +736,6 @@ func (p *Factoid) factTimer(channel string) {
 	}
 }
 
-// Handler for bot's own messages
-func (p *Factoid) BotMessage(message msg.Message) bool {
-	return false
-}
-
 // Register any web URLs desired
 func (p *Factoid) RegisterWeb() *string {
 	http.HandleFunc("/factoid/req", p.serveQuery)
@@ -784,5 +778,3 @@ func (p *Factoid) serveQuery(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 }
-
-func (p *Factoid) ReplyMessage(message msg.Message, identifier string) bool { return false }

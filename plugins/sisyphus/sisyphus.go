@@ -162,13 +162,17 @@ func (g *game) toMessageString() string {
 }
 
 func New(b bot.Bot) *SisyphusPlugin {
-	return &SisyphusPlugin{
+	sp := &SisyphusPlugin{
 		Bot:       b,
 		listenFor: map[string]*game{},
 	}
+	b.Register(sp, bot.Message, sp.message)
+	b.Register(sp, bot.Reply, sp.replyMessage)
+	b.Register(sp, bot.Help, sp.help)
+	return sp
 }
 
-func (p *SisyphusPlugin) Message(message msg.Message) bool {
+func (p *SisyphusPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "start sisyphus" {
 		b := NewRandomGame(p.Bot, message.Channel, message.User.Name)
 		p.listenFor[b.id] = b
@@ -178,23 +182,17 @@ func (p *SisyphusPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-func (p *SisyphusPlugin) Help(channel string, parts []string) {
-	p.Bot.Send(bot.Message, channel, "https://en.wikipedia.org/wiki/Sisyphus")
-}
-
-func (p *SisyphusPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *SisyphusPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *SisyphusPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "https://en.wikipedia.org/wiki/Sisyphus")
+	return true
 }
 
 func (p *SisyphusPlugin) RegisterWeb() *string {
 	return nil
 }
 
-func (p *SisyphusPlugin) ReplyMessage(message msg.Message, identifier string) bool {
+func (p *SisyphusPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	identifier := args[0].(string)
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {
 		if g, ok := p.listenFor[identifier]; ok {
 

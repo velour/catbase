@@ -20,19 +20,20 @@ type LeftpadPlugin struct {
 }
 
 // New creates a new LeftpadPlugin with the Plugin interface
-func New(bot bot.Bot) *LeftpadPlugin {
-	p := LeftpadPlugin{
-		bot:    bot,
-		config: bot.Config(),
+func New(b bot.Bot) *LeftpadPlugin {
+	p := &LeftpadPlugin{
+		bot:    b,
+		config: b.Config(),
 	}
-	return &p
+	b.Register(p, bot.Message, p.message)
+	return p
 }
 
 type leftpadResp struct {
 	Str string
 }
 
-func (p *LeftpadPlugin) Message(message msg.Message) bool {
+func (p *LeftpadPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !message.Command {
 		return false
 	}
@@ -62,20 +63,7 @@ func (p *LeftpadPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-func (p *LeftpadPlugin) Event(e string, message msg.Message) bool {
-	return false
-}
-
-func (p *LeftpadPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *LeftpadPlugin) Help(e string, m []string) {
-}
-
 func (p *LeftpadPlugin) RegisterWeb() *string {
 	// nothing to register
 	return nil
 }
-
-func (p *LeftpadPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

@@ -20,16 +20,19 @@ type PickerPlugin struct {
 }
 
 // NewPickerPlugin creates a new PickerPlugin with the Plugin interface
-func New(bot bot.Bot) *PickerPlugin {
-	return &PickerPlugin{
-		Bot: bot,
+func New(b bot.Bot) *PickerPlugin {
+	pp := &PickerPlugin{
+		Bot: b,
 	}
+	b.Register(pp, bot.Message, pp.message)
+	b.Register(pp, bot.Help, pp.help)
+	return pp
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *PickerPlugin) Message(message msg.Message) bool {
+func (p *PickerPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !strings.HasPrefix(message.Body, "pick") {
 		return false
 	}
@@ -108,18 +111,9 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *PickerPlugin) Help(channel string, parts []string) {
-	p.Bot.Send(bot.Message, channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *PickerPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *PickerPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *PickerPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
+	return true
 }
 
 // Register any web URLs desired

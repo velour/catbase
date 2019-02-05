@@ -16,10 +16,12 @@ type TellPlugin struct {
 }
 
 func New(b bot.Bot) *TellPlugin {
-	return &TellPlugin{b, make(map[string][]string)}
+	tp := &TellPlugin{b, make(map[string][]string)}
+	b.Register(tp, bot.Message, tp.message)
+	return tp
 }
 
-func (t *TellPlugin) Message(message msg.Message) bool {
+func (t *TellPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.HasPrefix(strings.ToLower(message.Body), "tell") {
 		parts := strings.Split(message.Body, " ")
 		target := strings.ToLower(parts[1])
@@ -40,8 +42,4 @@ func (t *TellPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-func (t *TellPlugin) Event(kind string, message msg.Message) bool { return false }
-func (t *TellPlugin) ReplyMessage(msg.Message, string) bool       { return false }
-func (t *TellPlugin) BotMessage(message msg.Message) bool         { return false }
-func (t *TellPlugin) Help(channel string, parts []string)         {}
-func (t *TellPlugin) RegisterWeb() *string                        { return nil }
+func (t *TellPlugin) RegisterWeb() *string { return nil }

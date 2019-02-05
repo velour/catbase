@@ -27,10 +27,13 @@ type ZorkPlugin struct {
 }
 
 func New(b bot.Bot) bot.Plugin {
-	return &ZorkPlugin{
+	z := &ZorkPlugin{
 		bot:   b,
 		zorks: make(map[string]io.WriteCloser),
 	}
+	b.Register(z, bot.Message, z.message)
+	b.Register(z, bot.Help, z.help)
+	return z
 }
 
 func (p *ZorkPlugin) runZork(ch string) error {
@@ -91,7 +94,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	return nil
 }
 
-func (p *ZorkPlugin) Message(message msg.Message) bool {
+func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := strings.ToLower(message.Body)
 	log.Printf("got message [%s]\n", m)
 	if ts := strings.Fields(m); len(ts) < 1 || ts[0] != "zork" {
@@ -113,14 +116,9 @@ func (p *ZorkPlugin) Message(message msg.Message) bool {
 	return true
 }
 
-func (p *ZorkPlugin) Event(_ string, _ msg.Message) bool { return false }
-
-func (p *ZorkPlugin) BotMessage(_ msg.Message) bool { return false }
-
-func (p *ZorkPlugin) Help(ch string, _ []string) {
-	p.bot.Send(bot.Message, ch, "Play zork using 'zork <zork command>'.")
+func (p *ZorkPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(bot.Message, message.Channel, "Play zork using 'zork <zork command>'.")
+	return true
 }
 
 func (p *ZorkPlugin) RegisterWeb() *string { return nil }
-
-func (p *ZorkPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

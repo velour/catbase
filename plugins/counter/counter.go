@@ -172,31 +172,34 @@ func (i *Item) Delete() error {
 }
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
-func New(bot bot.Bot) *CounterPlugin {
-	tx := bot.DB().MustBegin()
-	bot.DB().MustExec(`create table if not exists counter (
+func New(b bot.Bot) *CounterPlugin {
+	tx := b.DB().MustBegin()
+	b.DB().MustExec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
 			count integer
 		);`)
-	bot.DB().MustExec(`create table if not exists counter_alias (
+	b.DB().MustExec(`create table if not exists counter_alias (
 			id integer PRIMARY KEY AUTOINCREMENT,
 			item string NOT NULL UNIQUE,
 			points_to string NOT NULL
 		);`)
 	tx.Commit()
-	return &CounterPlugin{
-		Bot: bot,
-		DB:  bot.DB(),
+	cp := &CounterPlugin{
+		Bot: b,
+		DB:  b.DB(),
 	}
+	b.Register(cp, bot.Message, cp.message)
+	b.Register(cp, bot.Help, cp.help)
+	return cp
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
-func (p *CounterPlugin) Message(message msg.Message) bool {
+func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
 	channel := message.Channel
@@ -444,29 +447,18 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *CounterPlugin) Help(channel string, parts []string) {
-	p.Bot.Send(bot.Message, channel, "You can set counters incrementally by using "+
+func (p *CounterPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "You can set counters incrementally by using "+
 		"<noun>++ and <noun>--. You can see all of your counters using "+
 		"\"inspect\", erase them with \"clear\", and view single counters with "+
 		"\"count\".")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *CounterPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *CounterPlugin) BotMessage(message msg.Message) bool {
-	return false
+	return true
 }
 
 // Register any web URLs desired
 func (p *CounterPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *CounterPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
 
 func (p *CounterPlugin) checkMatch(message msg.Message) bool {
 	nick := message.User.Name

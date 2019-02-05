@@ -38,9 +38,9 @@ type Reminder struct {
 	channel string
 }
 
-func New(bot bot.Bot) *ReminderPlugin {
+func New(b bot.Bot) *ReminderPlugin {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if _, err := bot.DB().Exec(`create table if not exists reminders (
+	if _, err := b.DB().Exec(`create table if not exists reminders (
 			id integer primary key,
 			fromWho string,
 			toWho string,
@@ -56,21 +56,24 @@ func New(bot bot.Bot) *ReminderPlugin {
 	timer.Stop()
 
 	plugin := &ReminderPlugin{
-		Bot:    bot,
-		db:     bot.DB(),
+		Bot:    b,
+		db:     b.DB(),
 		mutex:  &sync.Mutex{},
 		timer:  timer,
-		config: bot.Config(),
+		config: b.Config(),
 	}
 
 	plugin.queueUpNextReminder()
 
 	go reminderer(plugin)
 
+	b.Register(plugin, bot.Message, plugin.message)
+	b.Register(plugin, bot.Help, plugin.help)
+
 	return plugin
 }
 
-func (p *ReminderPlugin) Message(message msg.Message) bool {
+func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	channel := message.Channel
 	from := message.User.Name
 
@@ -192,16 +195,9 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-func (p *ReminderPlugin) Help(channel string, parts []string) {
-	p.Bot.Send(bot.Message, channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
-}
-
-func (p *ReminderPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *ReminderPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *ReminderPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
+	return true
 }
 
 func (p *ReminderPlugin) RegisterWeb() *string {
@@ -365,5 +361,3 @@ func reminderer(p *ReminderPlugin) {
 		p.queueUpNextReminder()
 	}
 }
-
-func (p *ReminderPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

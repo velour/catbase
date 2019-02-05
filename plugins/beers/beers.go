@@ -38,8 +38,8 @@ type untappdUser struct {
 }
 
 // New BeersPlugin creates a new BeersPlugin with the Plugin interface
-func New(bot bot.Bot) *BeersPlugin {
-	if _, err := bot.DB().Exec(`create table if not exists untappd (
+func New(b bot.Bot) *BeersPlugin {
+	if _, err := b.DB().Exec(`create table if not exists untappd (
 			id integer primary key,
 			untappdUser string,
 			channel string,
@@ -49,19 +49,21 @@ func New(bot bot.Bot) *BeersPlugin {
 		log.Fatal(err)
 	}
 	p := BeersPlugin{
-		Bot: bot,
-		db:  bot.DB(),
+		Bot: b,
+		db:  b.DB(),
 	}
-	for _, channel := range bot.Config().GetArray("Untappd.Channels", []string{}) {
+	for _, channel := range b.Config().GetArray("Untappd.Channels", []string{}) {
 		go p.untappdLoop(channel)
 	}
+	b.Register(p, bot.Message, p.message)
+	b.Register(p, bot.Help, p.help)
 	return &p
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *BeersPlugin) Message(message msg.Message) bool {
+func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	parts := strings.Fields(message.Body)
 
 	if len(parts) == 0 {
@@ -190,17 +192,13 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-// Empty event handler because this plugin does not do anything on event recv
-func (p *BeersPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *BeersPlugin) Help(channel string, parts []string) {
+func (p *BeersPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
 		"commands. I'll keep a count of how many beers you've had and then if you want " +
 		"to reset, just !puke it all up!"
-	p.Bot.Send(bot.Message, channel, msg)
+	p.Bot.Send(bot.Message, message.Channel, msg)
+	return true
 }
 
 func getUserBeers(db *sqlx.DB, user string) counter.Item {
@@ -439,14 +437,7 @@ func (p *BeersPlugin) untappdLoop(channel string) {
 	}
 }
 
-// Handler for bot's own messages
-func (p *BeersPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
 // Register any web URLs desired
-func (p *BeersPlugin) RegisterWeb() *string {
+func (p BeersPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *BeersPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
