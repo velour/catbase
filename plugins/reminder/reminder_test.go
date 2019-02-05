@@ -224,7 +224,7 @@ func TestLimitList(t *testing.T) {
 	for i := 0; i < 25; i++ {
 		assert.Contains(t, mb.Messages[3], fmt.Sprintf("%d) tester -> testuser :: don't fail this test", i+1))
 	}
-	assert.Contains(t, mb.Messages[3], "...5 more...")
+	assert.Contains(t, mb.Messages[3], "more...")
 
 	assert.NotContains(t, mb.Messages[3], "26) tester -> testuser")
 }
