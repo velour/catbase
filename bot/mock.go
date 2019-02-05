@@ -26,12 +26,11 @@ type MockBot struct {
 	Reactions []string
 }
 
-func (mb *MockBot) Config() *config.Config            { return mb.Cfg }
-func (mb *MockBot) DBVersion() int64                  { return 1 }
-func (mb *MockBot) DB() *sqlx.DB                      { return mb.Cfg.DB }
-func (mb *MockBot) Conn() Connector                   { return nil }
-func (mb *MockBot) Who(string) []user.User            { return []user.User{} }
-func (mb *MockBot) AddHandler(name string, f Handler) {}
+func (mb *MockBot) Config() *config.Config { return mb.Cfg }
+func (mb *MockBot) DBVersion() int64       { return 1 }
+func (mb *MockBot) DB() *sqlx.DB           { return mb.Cfg.DB }
+func (mb *MockBot) Conn() Connector        { return nil }
+func (mb *MockBot) Who(string) []user.User { return []user.User{} }
 func (mb *MockBot) SendMessage(ch string, msg string) string {
 	mb.Messages = append(mb.Messages, msg)
 	return fmt.Sprintf("m-%d", len(mb.Actions)-1)

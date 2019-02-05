@@ -46,7 +46,7 @@ func (p *DicePlugin) Message(message msg.Message) bool {
 	}
 
 	if sides < 2 || nDice < 1 || nDice > 20 {
-		p.Bot.SendMessage(channel, "You're a dick.")
+		p.Bot.Send(bot.Message, channel, "You're a dick.")
 		return true
 	}
 
@@ -61,14 +61,14 @@ func (p *DicePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	p.Bot.SendMessage(channel, rolls)
+	p.Bot.Send(bot.Message, channel, rolls)
 	return true
 
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *DicePlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Roll dice using notation XdY. Try \"3d20\".")
+	p.Bot.Send(bot.Message, channel, "Roll dice using notation XdY. Try \"3d20\".")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

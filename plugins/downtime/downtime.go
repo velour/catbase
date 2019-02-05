@@ -142,9 +142,9 @@ func (p *DowntimePlugin) Message(message msg.Message) bool {
 		}
 		if !entry.id.Valid {
 			// couldn't find em
-			p.Bot.SendMessage(channel, fmt.Sprintf("Sorry, I don't know %s.", nick))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("Sorry, I don't know %s.", nick))
 		} else {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has been idle for: %s",
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has been idle for: %s",
 				nick, time.Now().Sub(entry.lastSeen)))
 		}
 		ret = true
@@ -165,7 +165,7 @@ func (p *DowntimePlugin) Message(message msg.Message) bool {
 				tops = fmt.Sprintf("%s%s: %s ", tops, e.nick, time.Now().Sub(e.lastSeen))
 			}
 		}
-		p.Bot.SendMessage(channel, tops)
+		p.Bot.Send(bot.Message, channel, tops)
 		ret = true
 
 	}
@@ -197,7 +197,7 @@ func (p *DowntimePlugin) remove(user string) error {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *DowntimePlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Ask me how long one of your friends has been idele with, \"idle <nick>\"")
+	p.Bot.Send(bot.Message, channel, "Ask me how long one of your friends has been idele with, \"idle <nick>\"")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

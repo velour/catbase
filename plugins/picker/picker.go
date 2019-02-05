@@ -36,14 +36,14 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 
 	n, items, err := p.parse(message.Body)
 	if err != nil {
-		p.Bot.SendMessage(message.Channel, err.Error())
+		p.Bot.Send(bot.Message, message.Channel, err.Error())
 		return true
 	}
 
 	if n == 1 {
 		item := items[rand.Intn(len(items))]
 		out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(item))
-		p.Bot.SendMessage(message.Channel, out)
+		p.Bot.Send(bot.Message, message.Channel, out)
 		return true
 	}
 
@@ -59,7 +59,7 @@ func (p *PickerPlugin) Message(message msg.Message) bool {
 		fmt.Fprintf(&b, ", %q", item)
 	}
 	b.WriteString(" }")
-	p.Bot.SendMessage(message.Channel, b.String())
+	p.Bot.Send(bot.Message, message.Channel, b.String())
 	return true
 }
 
@@ -109,7 +109,7 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *PickerPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
+	p.Bot.Send(bot.Message, channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

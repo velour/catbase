@@ -26,7 +26,7 @@ type ZorkPlugin struct {
 	zorks map[string]io.WriteCloser
 }
 
-func New(b bot.Bot) bot.Handler {
+func New(b bot.Bot) bot.Plugin {
 	return &ZorkPlugin{
 		bot:   b,
 		zorks: make(map[string]io.WriteCloser),
@@ -75,7 +75,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 			m := strings.Replace(s.Text(), ">", "", -1)
 			m = strings.Replace(m, "\n", "\n>", -1)
 			m = ">" + m + "\n"
-			p.bot.SendMessage(ch, m)
+			p.bot.Send(bot.Message, ch, m)
 		}
 	}()
 	go func() {
@@ -104,7 +104,7 @@ func (p *ZorkPlugin) Message(message msg.Message) bool {
 	defer p.Unlock()
 	if p.zorks[ch] == nil {
 		if err := p.runZork(ch); err != nil {
-			p.bot.SendMessage(ch, "failed to run zork: "+err.Error())
+			p.bot.Send(bot.Message, ch, "failed to run zork: "+err.Error())
 			return true
 		}
 	}
@@ -118,7 +118,7 @@ func (p *ZorkPlugin) Event(_ string, _ msg.Message) bool { return false }
 func (p *ZorkPlugin) BotMessage(_ msg.Message) bool { return false }
 
 func (p *ZorkPlugin) Help(ch string, _ []string) {
-	p.bot.SendMessage(ch, "Play zork using 'zork <zork command>'.")
+	p.bot.Send(bot.Message, ch, "Play zork using 'zork <zork command>'.")
 }
 
 func (p *ZorkPlugin) RegisterWeb() *string { return nil }

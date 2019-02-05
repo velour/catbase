@@ -37,17 +37,17 @@ type game struct {
 	nextAns  int
 }
 
-func NewRandomGame(bot bot.Bot, channel, who string) *game {
+func NewRandomGame(b bot.Bot, channel, who string) *game {
 	size := rand.Intn(9) + 2
 	g := game{
 		channel: channel,
-		bot:     bot,
+		bot:     b,
 		who:     who,
 		start:   time.Now(),
 		size:    size,
 		current: size / 2,
 	}
-	g.id = bot.SendMessage(channel, g.toMessageString())
+	_, g.id = b.Send(bot.Message, channel, g.toMessageString())
 
 	g.schedulePush()
 	g.scheduleDecrement()
@@ -98,11 +98,11 @@ func (g *game) endGame() {
 
 func (g *game) handleDecrement() {
 	g.current++
-	g.bot.Edit(g.channel, g.toMessageString(), g.id)
+	g.bot.Send(bot.Edit, g.channel, g.toMessageString(), g.id)
 	if g.current > g.size-2 {
-		g.bot.ReplyToMessageIdentifier(g.channel, "you lose", g.id)
+		g.bot.Send(bot.Reply, g.channel, "you lose", g.id)
 		msg := fmt.Sprintf("%s just lost the game after %s", g.who, time.Now().Sub(g.start))
-		g.bot.SendMessage(g.channel, msg)
+		g.bot.Send(bot.Message, g.channel, msg)
 		g.endGame()
 	} else {
 		g.scheduleDecrement()
@@ -110,7 +110,7 @@ func (g *game) handleDecrement() {
 }
 
 func (g *game) handleNotify() {
-	g.bot.ReplyToMessageIdentifier(g.channel, "You can push now.\n"+g.generateQuestion(), g.id)
+	g.bot.Send(bot.Reply, g.channel, "You can push now.\n"+g.generateQuestion(), g.id)
 }
 
 func (g *game) generateQuestion() string {
@@ -172,14 +172,14 @@ func (p *SisyphusPlugin) Message(message msg.Message) bool {
 	if strings.ToLower(message.Body) == "start sisyphus" {
 		b := NewRandomGame(p.Bot, message.Channel, message.User.Name)
 		p.listenFor[b.id] = b
-		p.Bot.ReplyToMessageIdentifier(message.Channel, "Over here.", b.id)
+		p.Bot.Send(bot.Reply, message.Channel, "Over here.", b.id)
 		return true
 	}
 	return false
 }
 
 func (p *SisyphusPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "https://en.wikipedia.org/wiki/Sisyphus")
+	p.Bot.Send(bot.Message, channel, "https://en.wikipedia.org/wiki/Sisyphus")
 }
 
 func (p *SisyphusPlugin) Event(kind string, message msg.Message) bool {
@@ -211,18 +211,18 @@ func (p *SisyphusPlugin) ReplyMessage(message msg.Message, identifier string) bo
 
 			if time.Now().After(g.nextPush) {
 				if g.checkAnswer(message.Body) {
-					p.Bot.Edit(message.Channel, g.toMessageString(), identifier)
+					p.Bot.Send(bot.Edit, message.Channel, g.toMessageString(), identifier)
 					g.schedulePush()
 					msg := fmt.Sprintf("Ok. You can push again in %s", g.nextPush.Sub(time.Now()))
-					p.Bot.ReplyToMessageIdentifier(message.Channel, msg, identifier)
+					p.Bot.Send(bot.Reply, message.Channel, msg, identifier)
 				} else {
-					p.Bot.ReplyToMessageIdentifier(message.Channel, "you lose", identifier)
+					p.Bot.Send(bot.Reply, message.Channel, "you lose", identifier)
 					msg := fmt.Sprintf("%s just lost the sisyphus game after %s", g.who, time.Now().Sub(g.start))
-					p.Bot.SendMessage(message.Channel, msg)
+					p.Bot.Send(bot.Message, message.Channel, msg)
 					g.endGame()
 				}
 			} else {
-				p.Bot.ReplyToMessageIdentifier(message.Channel, "you cannot push yet", identifier)
+				p.Bot.Send(bot.Reply, message.Channel, "you cannot push yet", identifier)
 			}
 			return true
 		}

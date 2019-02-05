@@ -195,7 +195,7 @@ func (p *FirstPlugin) recordFirst(message msg.Message) {
 func (p *FirstPlugin) announceFirst(message msg.Message) {
 	c := message.Channel
 	if p.First != nil {
-		p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
+		p.Bot.Send(bot.Message, c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
 			p.First.nick, p.First.time.Format("15:04"), p.First.body))
 	}
 }
@@ -209,7 +209,7 @@ func (p *FirstPlugin) LoadData() {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *FirstPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Sorry, First does not do a goddamn thing.")
+	p.Bot.Send(bot.Message, channel, "Sorry, First does not do a goddamn thing.")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

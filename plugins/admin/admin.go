@@ -62,7 +62,7 @@ func (p *AdminPlugin) Message(message msg.Message) bool {
 	if strings.ToLower(body) == "shut up" {
 		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
 		log.Printf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
-		p.Bot.SendMessage(message.Channel, "Okay. I'll be back later.")
+		p.Bot.Send(bot.Message, message.Channel, "Okay. I'll be back later.")
 		p.quiet = true
 		go func() {
 			select {
@@ -76,19 +76,19 @@ func (p *AdminPlugin) Message(message msg.Message) bool {
 
 	parts := strings.Split(body, " ")
 	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
-		p.Bot.SendMessage(message.Channel, "You cannot access that key")
+		p.Bot.Send(bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "set" && len(parts) > 2 {
 		p.cfg.Set(parts[1], strings.Join(parts[2:], " "))
-		p.Bot.SendMessage(message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
 		return true
 	}
 	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
-		p.Bot.SendMessage(message.Channel, "You cannot access that key")
+		p.Bot.Send(bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "get" && len(parts) == 2 {
 		v := p.cfg.Get(parts[1], "<unknown>")
-		p.Bot.SendMessage(message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
+		p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
 		return true
 	}
 
@@ -102,10 +102,10 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 
 		_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
 		if err != nil {
-			p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Println("[admin]: ", err)
 		} else {
-			p.Bot.SendMessage(message.Channel, "Removed.")
+			p.Bot.Send(bot.Message, message.Channel, "Removed.")
 		}
 
 		return true
@@ -123,28 +123,28 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 	row := p.db.QueryRow(`select count(*) from variables where value = ?`, variable, value)
 	err := row.Scan(&count)
 	if err != nil {
-		p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
+		p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 		log.Println("[admin]: ", err)
 		return true
 	}
 
 	if count > 0 {
-		p.Bot.SendMessage(message.Channel, "I've already got that one.")
+		p.Bot.Send(bot.Message, message.Channel, "I've already got that one.")
 	} else {
 		_, err := p.db.Exec(`INSERT INTO variables (name, value) VALUES (?, ?)`, variable, value)
 		if err != nil {
-			p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Println("[admin]: ", err)
 			return true
 		}
-		p.Bot.SendMessage(message.Channel, "Added.")
+		p.Bot.Send(bot.Message, message.Channel, "Added.")
 	}
 	return true
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *AdminPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "This does super secret things that you're not allowed to know about.")
+	p.Bot.Send(bot.Message, channel, "This does super secret things that you're not allowed to know about.")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

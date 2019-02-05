@@ -64,13 +64,13 @@ func (p *RSSPlugin) Message(message msg.Message) bool {
 
 	if numTokens == 2 && strings.ToLower(tokens[0]) == "rss" {
 		if item, ok := p.cache[strings.ToLower(tokens[1])]; ok && time.Now().Before(item.expiration) {
-			p.Bot.SendMessage(message.Channel, item.getCurrentPage(p.maxLines))
+			p.Bot.Send(bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		} else {
 			fp := gofeed.NewParser()
 			feed, err := fp.ParseURL(tokens[1])
 			if err != nil {
-				p.Bot.SendMessage(message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
+				p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
 				return true
 			}
 			item := &cacheItem{
@@ -86,7 +86,7 @@ func (p *RSSPlugin) Message(message msg.Message) bool {
 
 			p.cache[strings.ToLower(tokens[1])] = item
 
-			p.Bot.SendMessage(message.Channel, item.getCurrentPage(p.maxLines))
+			p.Bot.Send(bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		}
 	}
@@ -100,7 +100,7 @@ func (p *RSSPlugin) LoadData() {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *RSSPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
+	p.Bot.Send(bot.Message, channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

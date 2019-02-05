@@ -56,7 +56,7 @@ func (p *ReactionPlugin) Message(message msg.Message) bool {
 			reaction = p.Config.GetArray("Reaction.NegativeReactions", []string{})[index]
 		}
 
-		p.Bot.React(message.Channel, reaction, message)
+		p.Bot.Send(bot.Reaction, message.Channel, reaction, message)
 	}
 
 	return false

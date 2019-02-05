@@ -40,7 +40,7 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 
 	if strings.ToLower(message.Body) == "quote" && message.Command {
 		q := p.randQuote()
-		p.Bot.SendMessage(message.Channel, q)
+		p.Bot.Send(bot.Message, message.Channel, q)
 
 		// is it evil not to remember that the user said quote?
 		return true
@@ -87,7 +87,7 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 				}
 				if err := fact.save(p.db); err != nil {
 					log.Println("ERROR!!!!:", err)
-					p.Bot.SendMessage(message.Channel, "Tell somebody I'm broke.")
+					p.Bot.Send(bot.Message, message.Channel, "Tell somebody I'm broke.")
 				}
 
 				log.Println("Remembering factoid:", msg)
@@ -95,14 +95,14 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 				// sorry, not creative with names so we're reusing msg
 				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
 					message.User.Name, msg)
-				p.Bot.SendMessage(message.Channel, msg)
+				p.Bot.Send(bot.Message, message.Channel, msg)
 				p.recordMsg(message)
 				return true
 
 			}
 		}
 
-		p.Bot.SendMessage(message.Channel, "Sorry, I don't know that phrase.")
+		p.Bot.Send(bot.Message, message.Channel, "Sorry, I don't know that phrase.")
 		p.recordMsg(message)
 		return true
 	}
@@ -118,7 +118,7 @@ func (p *RememberPlugin) Help(channel string, parts []string) {
 		"be any part of their message. Later on, you can ask for a random " +
 		"!quote."
 
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, channel, msg)
 }
 
 // deliver a random quote out of the db.

@@ -16,6 +16,10 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
+func (b *bot) Receive(kind int, msg msg.Message, args ...interface{}) {
+	panic("I don't know what to do here yet")
+}
+
 // Handles incomming PRIVMSG requests
 func (b *bot) MsgReceived(msg msg.Message) {
 	log.Println("Received message: ", msg)
@@ -29,9 +33,8 @@ func (b *bot) MsgReceived(msg msg.Message) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.Message(msg) {
-			break
+		if b.runCallback(name, Message, msg) {
+			goto RET
 		}
 	}
 
@@ -45,11 +48,19 @@ func (b *bot) EventReceived(msg msg.Message) {
 	log.Println("Received event: ", msg)
 	//msg := b.buildMessage(conn, inMsg)
 	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.Event(msg.Body, msg) { // TODO: could get rid of msg.Body
-			break
+		if b.runCallback(name, Event, msg) {
+			return
 		}
 	}
+}
+
+func (b *bot) runCallback(plugin string, evt int, message msg.Message, args ...interface{}) bool {
+	for _, cb := range b.callbacks[plugin] {
+		if cb(evt, message) {
+			return true
+		}
+	}
+	return false
 }
 
 // Handle incoming replys
@@ -57,35 +68,34 @@ func (b *bot) ReplyMsgReceived(msg msg.Message, identifier string) {
 	log.Println("Received message: ", msg)
 
 	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.ReplyMessage(msg, identifier) {
+		if b.runCallback(name, Reply, msg, identifier) {
 			break
 		}
 	}
 }
 
-func (b *bot) SendMessage(channel, message string) string {
-	return b.conn.SendMessage(channel, message)
+func (b *bot) SendMessage(channel, message string) (error, string) {
+	return b.conn.Send(Message, channel, message)
 }
 
-func (b *bot) SendAction(channel, message string) string {
-	return b.conn.SendAction(channel, message)
+func (b *bot) SendAction(channel, message string) (error, string) {
+	return b.conn.Send(Action, channel, message)
 }
 
-func (b *bot) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
-	return b.conn.ReplyToMessageIdentifier(channel, message, identifier)
+func (b *bot) ReplyToMessageIdentifier(channel, message, identifier string) (error, string) {
+	return b.conn.Send(Reply, channel, message, identifier)
 }
 
-func (b *bot) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
-	return b.conn.ReplyToMessage(channel, message, replyTo)
+func (b *bot) ReplyToMessage(channel, message string, replyTo msg.Message) (error, string) {
+	return b.conn.Send(Reply, channel, message, replyTo)
 }
 
-func (b *bot) React(channel, reaction string, message msg.Message) bool {
-	return b.conn.React(channel, reaction, message)
+func (b *bot) React(channel, reaction string, message msg.Message) (error, string) {
+	return b.conn.Send(Reaction, channel, reaction, message)
 }
 
-func (b *bot) Edit(channel, newMessage, identifier string) bool {
-	return b.conn.Edit(channel, newMessage, identifier)
+func (b *bot) Edit(channel, newMessage, identifier string) (error, string) {
+	return b.conn.Send(Edit, channel, newMessage, identifier)
 }
 
 func (b *bot) GetEmojiList() map[string]string {
@@ -113,7 +123,8 @@ func (b *bot) checkHelp(channel string, parts []string) {
 		}
 		plugin := b.plugins[parts[1]]
 		if plugin != nil {
-			plugin.Help(channel, parts)
+			// TODO: Maybe broke
+			b.runCallback(parts[1], Help, msg.Message{Channel: channel}, channel, parts)
 		} else {
 			msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", parts[1])
 			b.SendMessage(channel, msg)
@@ -236,9 +247,8 @@ func (b *bot) selfSaid(channel, message string, action bool) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.BotMessage(msg) {
-			break
+		if b.runCallback(name, SelfMessage, msg) {
+			return
 		}
 	}
 }

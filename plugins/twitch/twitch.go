@@ -140,7 +140,7 @@ func (p *TwitchPlugin) LoadData() {
 
 func (p *TwitchPlugin) Help(channel string, parts []string) {
 	msg := "There's no help for you here."
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, channel, msg)
 }
 
 func (p *TwitchPlugin) twitchLoop(channel string) {
@@ -223,18 +223,18 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	}
 	if alwaysPrintStatus {
 		if game == "" {
-			p.Bot.SendMessage(channel, twitcher.name+" is not streaming.")
+			p.Bot.Send(bot.Message, channel, twitcher.name+" is not streaming.")
 		} else {
-			p.Bot.SendMessage(channel, twitcher.name+" is streaming "+game+" at "+twitcher.URL())
+			p.Bot.Send(bot.Message, channel, twitcher.name+" is streaming "+game+" at "+twitcher.URL())
 		}
 	} else if game == "" {
 		if twitcher.game != "" {
-			p.Bot.SendMessage(channel, twitcher.name+" just stopped streaming.")
+			p.Bot.Send(bot.Message, channel, twitcher.name+" just stopped streaming.")
 		}
 		twitcher.game = ""
 	} else {
 		if twitcher.game != game {
-			p.Bot.SendMessage(channel, twitcher.name+" just started streaming "+game+" at "+twitcher.URL())
+			p.Bot.Send(bot.Message, channel, twitcher.name+" just started streaming "+game+" at "+twitcher.URL())
 		}
 		twitcher.game = game
 	}

@@ -141,7 +141,7 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	}
 
 	if saidSomething {
-		p.Bot.SendMessage(message.Channel, saidWhat)
+		p.Bot.Send(bot.Message, message.Channel, saidWhat)
 	}
 	return saidSomething
 }
@@ -155,7 +155,7 @@ func (p *BabblerPlugin) Help(channel string, parts []string) {
 		"seabass says-middle-out ...",
 		"seabass says-bridge ... | ...",
 	}
-	p.Bot.SendMessage(channel, strings.Join(commands, "\n\n"))
+	p.Bot.Send(bot.Message, channel, strings.Join(commands, "\n\n"))
 }
 
 func (p *BabblerPlugin) Event(kind string, message msg.Message) bool {

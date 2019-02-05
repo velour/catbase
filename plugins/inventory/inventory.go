@@ -86,7 +86,7 @@ func (p *InventoryPlugin) Message(message msg.Message) bool {
 				log.Printf("I think I have more than 0 items: %+v, len(items)=%d", items, len(items))
 				say = fmt.Sprintf("I'm currently holding %s", strings.Join(items, ", "))
 			}
-			p.bot.SendMessage(message.Channel, say)
+			p.bot.Send(bot.Message, message.Channel, say)
 			return true
 		}
 
@@ -197,7 +197,7 @@ func (p *InventoryPlugin) remove(i string) {
 
 func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 	if p.exists(i) {
-		p.bot.SendMessage(m.Channel, fmt.Sprintf("I already have %s.", i))
+		p.bot.Send(bot.Message, m.Channel, fmt.Sprintf("I already have %s.", i))
 		return true
 	}
 	var removed string
@@ -210,9 +210,9 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 		log.Printf("Error inserting new inventory item: %s", err)
 	}
 	if removed != "" {
-		p.bot.SendAction(m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
+		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
 	} else {
-		p.bot.SendAction(m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
+		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
 	}
 	return true
 }

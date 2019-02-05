@@ -90,7 +90,7 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 
 	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance", 0.02)*emojied {
 		for _, e := range emojys {
-			p.Bot.React(message.Channel, e, message)
+			p.Bot.Send(bot.Reaction, message.Channel, e, message)
 		}
 		return true
 	}

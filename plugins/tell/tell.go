@@ -26,13 +26,13 @@ func (t *TellPlugin) Message(message msg.Message) bool {
 		newMessage := strings.Join(parts[2:], " ")
 		newMessage = fmt.Sprintf("Hey, %s. %s said: %s", target, message.User.Name, newMessage)
 		t.users[target] = append(t.users[target], newMessage)
-		t.b.SendMessage(message.Channel, fmt.Sprintf("Okay. I'll tell %s.", target))
+		t.b.Send(bot.Message, message.Channel, fmt.Sprintf("Okay. I'll tell %s.", target))
 		return true
 	}
 	uname := strings.ToLower(message.User.Name)
 	if msg, ok := t.users[uname]; ok && len(msg) > 0 {
 		for _, m := range msg {
-			t.b.SendMessage(message.Channel, string(m))
+			t.b.Send(bot.Message, message.Channel, string(m))
 		}
 		t.users[uname] = []string{}
 		return true

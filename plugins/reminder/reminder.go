@@ -85,7 +85,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 
 			dur, err := time.ParseDuration(parts[3])
 			if err != nil {
-				p.Bot.SendMessage(channel, "Easy cowboy, not sure I can parse that duration.")
+				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration.")
 				return true
 			}
 
@@ -113,7 +113,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				//remind who every dur for dur2 blah
 				dur2, err := time.ParseDuration(parts[5])
 				if err != nil {
-					p.Bot.SendMessage(channel, "Easy cowboy, not sure I can parse that duration.")
+					p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration.")
 					return true
 				}
 
@@ -124,7 +124,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 				max := p.config.GetInt("Reminder.MaxBatchAdd", 10)
 				for i := 0; when.Before(endTime); i++ {
 					if i >= max {
-						p.Bot.SendMessage(channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
+						p.Bot.Send(bot.Message, channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
 						doConfirm = false
 						break
 					}
@@ -141,14 +141,14 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 					when = when.Add(dur)
 				}
 			} else {
-				p.Bot.SendMessage(channel, "Easy cowboy, not sure I comprehend what you're asking.")
+				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I comprehend what you're asking.")
 				return true
 			}
 
 			if doConfirm && from == who {
-				p.Bot.SendMessage(channel, fmt.Sprintf("Okay. I'll remind you."))
+				p.Bot.Send(bot.Message, channel, fmt.Sprintf("Okay. I'll remind you."))
 			} else if doConfirm {
-				p.Bot.SendMessage(channel, fmt.Sprintf("Sure %s, I'll remind %s.", from, who))
+				p.Bot.Send(bot.Message, channel, fmt.Sprintf("Sure %s, I'll remind %s.", from, who))
 			}
 
 			p.queueUpNextReminder()
@@ -168,22 +168,22 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 			}
 		}
 		if err != nil {
-			p.Bot.SendMessage(channel, "listing failed.")
+			p.Bot.Send(bot.Message, channel, "listing failed.")
 		} else {
-			p.Bot.SendMessage(channel, response)
+			p.Bot.Send(bot.Message, channel, response)
 		}
 		return true
 	} else if len(parts) == 3 && strings.ToLower(parts[0]) == "cancel" && strings.ToLower(parts[1]) == "reminder" {
 		id, err := strconv.ParseInt(parts[2], 10, 64)
 		if err != nil {
-			p.Bot.SendMessage(channel, fmt.Sprintf("couldn't parse id: %s", parts[2]))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("couldn't parse id: %s", parts[2]))
 
 		} else {
 			err := p.deleteReminder(id)
 			if err == nil {
-				p.Bot.SendMessage(channel, fmt.Sprintf("successfully canceled reminder: %s", parts[2]))
+				p.Bot.Send(bot.Message, channel, fmt.Sprintf("successfully canceled reminder: %s", parts[2]))
 			} else {
-				p.Bot.SendMessage(channel, fmt.Sprintf("failed to find and cancel reminder: %s", parts[2]))
+				p.Bot.Send(bot.Message, channel, fmt.Sprintf("failed to find and cancel reminder: %s", parts[2]))
 			}
 		}
 		return true
@@ -193,7 +193,7 @@ func (p *ReminderPlugin) Message(message msg.Message) bool {
 }
 
 func (p *ReminderPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
+	p.Bot.Send(bot.Message, channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
 }
 
 func (p *ReminderPlugin) Event(kind string, message msg.Message) bool {
@@ -353,7 +353,7 @@ func reminderer(p *ReminderPlugin) {
 				message = fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
 			}
 
-			p.Bot.SendMessage(reminder.channel, message)
+			p.Bot.Send(bot.Message, reminder.channel, message)
 
 			if err := p.deleteReminder(reminder.id); err != nil {
 				log.Print(reminder.id)

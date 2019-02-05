@@ -81,13 +81,13 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 			count, err := strconv.Atoi(parts[2])
 			if err != nil {
 				// if it's not a number, maybe it's a nick!
-				p.Bot.SendMessage(channel, "Sorry, that didn't make any sense.")
+				p.Bot.Send(bot.Message, channel, "Sorry, that didn't make any sense.")
 			}
 
 			if count < 0 {
 				// you can't be negative
 				msg := fmt.Sprintf("Sorry %s, you can't have negative beers!", nick)
-				p.Bot.SendMessage(channel, msg)
+				p.Bot.Send(bot.Message, channel, msg)
 				return true
 			}
 			if parts[1] == "+=" {
@@ -101,14 +101,14 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 					p.randomReply(channel)
 				}
 			} else {
-				p.Bot.SendMessage(channel, "I don't know your math.")
+				p.Bot.Send(bot.Message, channel, "I don't know your math.")
 			}
 		} else if len(parts) == 2 {
 			if p.doIKnow(parts[1]) {
 				p.reportCount(parts[1], channel, false)
 			} else {
 				msg := fmt.Sprintf("Sorry, I don't know %s.", parts[1])
-				p.Bot.SendMessage(channel, msg)
+				p.Bot.Send(bot.Message, channel, msg)
 			}
 		} else if len(parts) == 1 {
 			p.reportCount(nick, channel, true)
@@ -132,7 +132,7 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 		channel := message.Channel
 
 		if len(parts) < 2 {
-			p.Bot.SendMessage(channel, "You must also provide a user name.")
+			p.Bot.Send(bot.Message, channel, "You must also provide a user name.")
 		} else if len(parts) == 3 {
 			chanNick = parts[2]
 		} else if len(parts) == 4 {
@@ -154,7 +154,7 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 			log.Println("Error registering untappd: ", err)
 		}
 		if count > 0 {
-			p.Bot.SendMessage(channel, "I'm already watching you.")
+			p.Bot.Send(bot.Message, channel, "I'm already watching you.")
 			return true
 		}
 		_, err = p.db.Exec(`insert into untappd (
@@ -170,11 +170,11 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 		)
 		if err != nil {
 			log.Println("Error registering untappd: ", err)
-			p.Bot.SendMessage(channel, "I can't see.")
+			p.Bot.Send(bot.Message, channel, "I can't see.")
 			return true
 		}
 
-		p.Bot.SendMessage(channel, "I'll be watching you.")
+		p.Bot.Send(bot.Message, channel, "I'll be watching you.")
 
 		p.checkUntappd(channel)
 
@@ -200,7 +200,7 @@ func (p *BeersPlugin) Help(channel string, parts []string) {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
 		"commands. I'll keep a count of how many beers you've had and then if you want " +
 		"to reset, just !puke it all up!"
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, channel, msg)
 }
 
 func getUserBeers(db *sqlx.DB, user string) counter.Item {
@@ -239,13 +239,13 @@ func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
 			msg = fmt.Sprintf("You've had %d beers so far, %s.", beers, nick)
 		}
 	}
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, channel, msg)
 }
 
 func (p *BeersPlugin) puke(user string, channel string) {
 	p.setBeers(user, 0)
 	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user)
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, channel, msg)
 }
 
 func (p *BeersPlugin) doIKnow(nick string) bool {
@@ -260,7 +260,7 @@ func (p *BeersPlugin) doIKnow(nick string) bool {
 // Sends random affirmation to the channel. This could be better (with a datastore for sayings)
 func (p *BeersPlugin) randomReply(channel string) {
 	replies := []string{"ZIGGY! ZAGGY!", "HIC!", "Stay thirsty, my friend!"}
-	p.Bot.SendMessage(channel, replies[rand.Intn(len(replies))])
+	p.Bot.Send(bot.Message, channel, replies[rand.Intn(len(replies))])
 }
 
 type checkin struct {
@@ -421,7 +421,7 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		}
 
 		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
-		p.Bot.SendMessage(channel, msg)
+		p.Bot.Send(bot.Message, channel, msg)
 	}
 }
 

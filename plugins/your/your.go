@@ -43,7 +43,7 @@ func (p *YourPlugin) Message(message msg.Message) bool {
 		}
 	}
 	if msg != message.Body {
-		p.bot.SendMessage(message.Channel, msg)
+		p.bot.Send(bot.Message, message.Channel, msg)
 		return true
 	}
 	return false
@@ -51,7 +51,7 @@ func (p *YourPlugin) Message(message msg.Message) bool {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *YourPlugin) Help(channel string, parts []string) {
-	p.bot.SendMessage(channel, "Your corrects people's grammar.")
+	p.bot.Send(bot.Message, channel, "Your corrects people's grammar.")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

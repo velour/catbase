@@ -63,7 +63,7 @@ func (p *CSWPlugin) Message(message msg.Message) bool {
 			}
 		}
 
-		p.Bot.SendMessage(message.Channel, responses[rand.Intn(len(responses))])
+		p.Bot.Send(bot.Message, message.Channel, responses[rand.Intn(len(responses))])
 		return true
 	}
 

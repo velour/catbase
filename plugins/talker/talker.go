@@ -57,7 +57,7 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 	// TODO: This ought to be space split afterwards to remove any punctuation
 	if message.Command && strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
-		p.Bot.SendMessage(channel, msg)
+		p.Bot.Send(bot.Message, channel, msg)
 		return true
 	}
 
@@ -73,7 +73,7 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 			line = strings.Replace(line, "{nick}", nick, 1)
 			output += line + "\n"
 		}
-		p.Bot.SendMessage(channel, output)
+		p.Bot.Send(bot.Message, channel, output)
 		return true
 	}
 
@@ -81,7 +81,7 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 }
 
 func (p *TalkerPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Hi, this is talker. I like to talk about FredFelps!")
+	p.Bot.Send(bot.Message, channel, "Hi, this is talker. I like to talk about FredFelps!")
 }
 
 // Empty event handler because this plugin does not do anything on event recv

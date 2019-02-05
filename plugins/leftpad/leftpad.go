@@ -42,20 +42,20 @@ func (p *LeftpadPlugin) Message(message msg.Message) bool {
 		padchar := parts[1]
 		length, err := strconv.Atoi(parts[2])
 		if err != nil {
-			p.bot.SendMessage(message.Channel, "Invalid padding number")
+			p.bot.Send(bot.Message, message.Channel, "Invalid padding number")
 			return true
 		}
 		maxLen, who := p.config.GetInt("LeftPad.MaxLen", 50), p.config.Get("LeftPad.Who", "Putin")
 		if length > maxLen && maxLen > 0 {
 			msg := fmt.Sprintf("%s would kill me if I did that.", who)
-			p.bot.SendMessage(message.Channel, msg)
+			p.bot.Send(bot.Message, message.Channel, msg)
 			return true
 		}
 		text := strings.Join(parts[3:], " ")
 
 		res := leftpad.LeftPad(text, length, padchar)
 
-		p.bot.SendMessage(message.Channel, res)
+		p.bot.Send(bot.Message, message.Channel, res)
 		return true
 	}
 

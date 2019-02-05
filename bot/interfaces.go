@@ -9,22 +9,47 @@ import (
 	"github.com/velour/catbase/config"
 )
 
+const (
+	_ = iota
+
+	// Message any standard chat
+	Message
+	// Reply something containing a message reference
+	Reply
+	// Action any /me action
+	Action
+	// Reaction Icon reaction if service supports it
+	Reaction
+	// Edit message ref'd new message to replace
+	Edit
+	// Not sure what event is
+	Event
+	// Help is used when the bot help system is triggered
+	Help
+	// SelfMessage triggers when the bot is sending a message
+	SelfMessage
+)
+
+type kind int
+
+type Callback func(int, msg.Message, ...interface{}) bool
+
 type Bot interface {
 	Config() *config.Config
 	DB() *sqlx.DB
 	Who(string) []user.User
-	AddHandler(string, Handler)
-	SendMessage(string, string) string
-	SendAction(string, string) string
-	ReplyToMessageIdentifier(string, string, string) (string, bool)
-	ReplyToMessage(string, string, msg.Message) (string, bool)
-	React(string, string, msg.Message) bool
-	Edit(string, string, string) bool
-	MsgReceived(msg.Message)
-	ReplyMsgReceived(msg.Message, string)
-	EventReceived(msg.Message)
+	AddPlugin(string, Plugin)
+
+	// First arg should be one of bot.Message/Reply/Action/etc
+	Send(int, ...interface{}) (error, string)
+	// First arg should be one of bot.Message/Reply/Action/etc
+	Receive(int, msg.Message, ...interface{})
+	// Register a callback
+	Register(int, Callback)
+
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
+
 	CheckAdmin(string) bool
 	GetEmojiList() map[string]string
 	RegisterFilter(string, func(string) string)
@@ -35,12 +60,8 @@ type Connector interface {
 	RegisterMessageReceived(func(message msg.Message))
 	RegisterReplyMessageReceived(func(msg.Message, string))
 
-	SendMessage(channel, message string) string
-	SendAction(channel, message string) string
-	ReplyToMessageIdentifier(string, string, string) (string, bool)
-	ReplyToMessage(string, string, msg.Message) (string, bool)
-	React(string, string, msg.Message) bool
-	Edit(string, string, string) bool
+	Send(int, ...interface{}) (error, string)
+
 	GetEmojiList() map[string]string
 	Serve() error
 
@@ -48,11 +69,6 @@ type Connector interface {
 }
 
 // Interface used for compatibility with the Plugin interface
-type Handler interface {
-	Message(message msg.Message) bool
-	Event(kind string, message msg.Message) bool
-	ReplyMessage(msg.Message, string) bool
-	BotMessage(message msg.Message) bool
-	Help(channel string, parts []string)
+type Plugin interface {
 	RegisterWeb() *string
 }

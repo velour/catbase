@@ -19,7 +19,7 @@ import (
 type bot struct {
 	// Each plugin must be registered in our plugins handler. To come: a map so that this
 	// will allow plugins to respond to specific kinds of events
-	plugins        map[string]Handler
+	plugins        map[string]Plugin
 	pluginOrdering []string
 
 	// Users holds information about all of our friends
@@ -41,13 +41,16 @@ type bot struct {
 
 	// filters registered by plugins
 	filters map[string]func(string) string
+
+	callbacks map[string][]Callback
 }
 
+// Variable represents a $var replacement
 type Variable struct {
 	Variable, Value string
 }
 
-// Newbot creates a bot for a given connection and set of handlers.
+// New creates a bot for a given connection and set of handlers.
 func New(config *config.Config, connector Connector) Bot {
 	logIn := make(chan msg.Message)
 	logOut := make(chan msg.Messages)
@@ -62,7 +65,7 @@ func New(config *config.Config, connector Connector) Bot {
 
 	bot := &bot{
 		config:         config,
-		plugins:        make(map[string]Handler),
+		plugins:        make(map[string]Plugin),
 		pluginOrdering: make([]string, 0),
 		conn:           connector,
 		users:          users,
@@ -71,6 +74,7 @@ func New(config *config.Config, connector Connector) Bot {
 		logOut:         logOut,
 		httpEndPoints:  make(map[string]string),
 		filters:        make(map[string]func(string) string),
+		callbacks:      make(map[string][]Callback),
 	}
 
 	bot.migrateDB()
@@ -109,7 +113,7 @@ func (b *bot) migrateDB() {
 }
 
 // Adds a constructed handler to the bots handlers list
-func (b *bot) AddHandler(name string, h Handler) {
+func (b *bot) AddPlugin(name string, h Plugin) {
 	b.plugins[name] = h
 	b.pluginOrdering = append(b.pluginOrdering, name)
 	if entry := h.RegisterWeb(); entry != nil {
@@ -126,7 +130,7 @@ func (b *bot) Who(channel string) []user.User {
 	return users
 }
 
-var rootIndex string = `
+var rootIndex = `
 <!DOCTYPE html>
 <html>
 	<head>
@@ -166,7 +170,7 @@ func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, context)
 }
 
-// Checks if message is a command and returns its curtailed version
+// IsCmd checks if message is a command and returns its curtailed version
 func IsCmd(c *config.Config, message string) (bool, string) {
 	cmdcs := c.GetArray("CommandChar", []string{"!"})
 	botnick := strings.ToLower(c.Get("Nick", "bot"))
@@ -244,3 +248,9 @@ func (b *bot) checkAdmin(nick string) bool {
 func (b *bot) RegisterFilter(name string, f func(string) string) {
 	b.filters[name] = f
 }
+
+// Send a message to the connection
+func (b *bot) Send(int, ...interface{}) (error, string) { return nil, "" }
+
+// Register a callback
+func (b *bot) Register(int, Callback) {}

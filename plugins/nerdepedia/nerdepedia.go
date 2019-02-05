@@ -78,7 +78,7 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 			}
 
 			if description != "" && link != "" {
-				p.bot.SendMessage(message.Channel, fmt.Sprintf("%s (%s)", description, link))
+				p.bot.Send(bot.Message, message.Channel, fmt.Sprintf("%s (%s)", description, link))
 				return true
 			}
 		}
@@ -88,7 +88,7 @@ func (p *NerdepediaPlugin) Message(message msg.Message) bool {
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *NerdepediaPlugin) Help(channel string, parts []string) {
-	p.bot.SendMessage(channel, "nerd stuff")
+	p.bot.Send(bot.Message, channel, "nerd stuff")
 }
 
 // Empty event handler because this plugin does not do anything on event recv
