@@ -98,44 +98,38 @@ func (b *board) checkAndMove(dx, dy int) int {
 }
 
 func New(b bot.Bot) *RPGPlugin {
-	return &RPGPlugin{
+	rpg := &RPGPlugin{
 		Bot:       b,
 		listenFor: map[string]*board{},
 	}
+	b.Register(rpg, bot.Message, rpg.message)
+	b.Register(rpg, bot.Reply, rpg.replyMessage)
+	b.Register(rpg, bot.Help, rpg.help)
+	return rpg
 }
 
-func (p *RPGPlugin) Message(message msg.Message) bool {
+func (p *RPGPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "start rpg" {
 		b := NewRandomBoard()
-		ts := p.Bot.SendMessage(message.Channel, b.toMessageString())
+		ts, _ := p.Bot.Send(bot.Message, message.Channel, b.toMessageString())
 		p.listenFor[ts] = b
-		p.Bot.ReplyToMessageIdentifier(message.Channel, "Over here.", ts)
+		p.Bot.Send(bot.Reply, message.Channel, "Over here.", ts)
 		return true
 	}
 	return false
 }
 
-func (p *RPGPlugin) LoadData() {
-
-}
-
-func (p *RPGPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Go find a walkthrough or something.")
-}
-
-func (p *RPGPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *RPGPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *RPGPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "Go find a walkthrough or something.")
+	return true
 }
 
 func (p *RPGPlugin) RegisterWeb() *string {
 	return nil
 }
 
-func (p *RPGPlugin) ReplyMessage(message msg.Message, identifier string) bool {
+func (p *RPGPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	identifier := args[0].(string)
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {
 		if b, ok := p.listenFor[identifier]; ok {
 
@@ -155,12 +149,12 @@ func (p *RPGPlugin) ReplyMessage(message msg.Message, identifier string) bool {
 
 			switch res {
 			case OK:
-				p.Bot.Edit(message.Channel, b.toMessageString(), identifier)
+				p.Bot.Send(bot.Edit, message.Channel, b.toMessageString(), identifier)
 			case WIN:
-				p.Bot.Edit(message.Channel, b.toMessageString(), identifier)
-				p.Bot.ReplyToMessageIdentifier(message.Channel, "congratulations, you beat the easiest level imaginable.", identifier)
+				p.Bot.Send(bot.Edit, message.Channel, b.toMessageString(), identifier)
+				p.Bot.Send(bot.Reply, message.Channel, "congratulations, you beat the easiest level imaginable.", identifier)
 			case INVALID:
-				p.Bot.ReplyToMessageIdentifier(message.Channel, fmt.Sprintf("you can't move %s", message.Body), identifier)
+				p.Bot.Send(bot.Reply, message.Channel, fmt.Sprintf("you can't move %s", message.Body), identifier)
 			}
 			return true
 		}

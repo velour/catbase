@@ -24,8 +24,8 @@ type InventoryPlugin struct {
 }
 
 // New creates a new InventoryPlugin with the Plugin interface
-func New(bot bot.Bot) *InventoryPlugin {
-	config := bot.Config()
+func New(b bot.Bot) *InventoryPlugin {
+	config := b.Config()
 	nick := config.Get("nick", "bot")
 	r1, err := regexp.Compile("take this (.+)")
 	checkerr(err)
@@ -38,15 +38,15 @@ func New(bot bot.Bot) *InventoryPlugin {
 	r5, err := regexp.Compile(fmt.Sprintf("gives (.+) to %s([^a-zA-Z].*)?", nick))
 	checkerr(err)
 
-	p := InventoryPlugin{
-		DB:     bot.DB(),
-		bot:    bot,
+	p := &InventoryPlugin{
+		DB:     b.DB(),
+		bot:    b,
 		config: config,
 		r1:     r1, r2: r2, r3: r3, r4: r4, r5: r5,
 	}
 
-	bot.RegisterFilter("$item", p.itemFilter)
-	bot.RegisterFilter("$giveitem", p.giveItemFilter)
+	b.RegisterFilter("$item", p.itemFilter)
+	b.RegisterFilter("$giveitem", p.giveItemFilter)
 
 	_, err = p.DB.Exec(`create table if not exists inventory (
 			item string primary key
@@ -56,7 +56,9 @@ func New(bot bot.Bot) *InventoryPlugin {
 		log.Fatal(err)
 	}
 
-	return &p
+	b.Register(p, bot.Message, p.message)
+
+	return p
 }
 
 func (p *InventoryPlugin) giveItemFilter(input string) string {
@@ -75,7 +77,7 @@ func (p *InventoryPlugin) itemFilter(input string) string {
 	return input
 }
 
-func (p *InventoryPlugin) Message(message msg.Message) bool {
+func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := message.Body
 	log.Printf("inventory trying to read %+v", message)
 	if message.Command {
@@ -86,7 +88,7 @@ func (p *InventoryPlugin) Message(message msg.Message) bool {
 				log.Printf("I think I have more than 0 items: %+v, len(items)=%d", items, len(items))
 				say = fmt.Sprintf("I'm currently holding %s", strings.Join(items, ", "))
 			}
-			p.bot.SendMessage(message.Channel, say)
+			p.bot.Send(bot.Message, message.Channel, say)
 			return true
 		}
 
@@ -197,7 +199,7 @@ func (p *InventoryPlugin) remove(i string) {
 
 func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 	if p.exists(i) {
-		p.bot.SendMessage(m.Channel, fmt.Sprintf("I already have %s.", i))
+		p.bot.Send(bot.Message, m.Channel, fmt.Sprintf("I already have %s.", i))
 		return true
 	}
 	var removed string
@@ -210,9 +212,9 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 		log.Printf("Error inserting new inventory item: %s", err)
 	}
 	if removed != "" {
-		p.bot.SendAction(m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
+		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
 	} else {
-		p.bot.SendAction(m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
+		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
 	}
 	return true
 }
@@ -223,20 +225,7 @@ func checkerr(e error) {
 	}
 }
 
-func (p *InventoryPlugin) Event(e string, message msg.Message) bool {
-	return false
-}
-
-func (p *InventoryPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *InventoryPlugin) Help(e string, m []string) {
-}
-
 func (p *InventoryPlugin) RegisterWeb() *string {
 	// nothing to register
 	return nil
 }
-
-func (p *InventoryPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

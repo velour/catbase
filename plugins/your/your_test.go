@@ -12,12 +12,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -39,7 +39,7 @@ func TestReplacement(t *testing.T) {
 	c.config.Set("your.replacements.0.freq", "1.0")
 	c.config.Set("your.replacements.0.this", "fuck")
 	c.config.Set("your.replacements.0.that", "duck")
-	res := c.Message(makeMessage("fuck a duck"))
+	res := c.message(makeMessage("fuck a duck"))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "duck a duck")
@@ -60,6 +60,6 @@ func TestNoReplacement(t *testing.T) {
 	c.config.Set("your.replacements.2.freq", "1.0")
 	c.config.Set("your.replacements.2.this", "Fuck")
 	c.config.Set("your.replacements.2.that", "duck")
-	c.Message(makeMessage("fuck a duck"))
+	c.message(makeMessage("fuck a duck"))
 	assert.Len(t, mb.Messages, 0)
 }

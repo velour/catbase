@@ -22,12 +22,12 @@ func setup(t *testing.T) (*bot.MockBot, *CounterPlugin) {
 	return mb, c
 }
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -38,8 +38,8 @@ func makeMessage(payload string) msg.Message {
 func TestThreeSentencesExists(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage(":beer:++"))
-	c.Message(makeMessage(":beer:. Earl Grey. Hot."))
+	c.message(makeMessage(":beer:++"))
+	c.message(makeMessage(":beer:. Earl Grey. Hot."))
 	item, err := GetItem(mb.DB(), "tester", ":beer:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
@@ -49,7 +49,7 @@ func TestThreeSentencesNotExists(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	item, err := GetItem(mb.DB(), "tester", ":beer:")
-	c.Message(makeMessage(":beer:. Earl Grey. Hot."))
+	c.message(makeMessage(":beer:. Earl Grey. Hot."))
 	item, err = GetItem(mb.DB(), "tester", ":beer:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -58,8 +58,8 @@ func TestThreeSentencesNotExists(t *testing.T) {
 func TestTeaEarlGreyHot(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("Tea. Earl Grey. Hot."))
-	c.Message(makeMessage("Tea. Earl Grey. Hot."))
+	c.message(makeMessage("Tea. Earl Grey. Hot."))
+	c.message(makeMessage("Tea. Earl Grey. Hot."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
@@ -68,8 +68,8 @@ func TestTeaEarlGreyHot(t *testing.T) {
 func TestTeaTwoPeriods(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("Tea. Earl Grey."))
-	c.Message(makeMessage("Tea. Earl Grey."))
+	c.message(makeMessage("Tea. Earl Grey."))
+	c.message(makeMessage("Tea. Earl Grey."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -78,8 +78,8 @@ func TestTeaTwoPeriods(t *testing.T) {
 func TestTeaMultiplePeriods(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
-	c.Message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
+	c.message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
+	c.message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
@@ -88,9 +88,9 @@ func TestTeaMultiplePeriods(t *testing.T) {
 func TestTeaGreenHot(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("Tea. Green. Hot."))
-	c.Message(makeMessage("Tea. Green. Hot"))
-	c.Message(makeMessage("Tea. Green. Iced."))
+	c.message(makeMessage("Tea. Green. Hot."))
+	c.message(makeMessage("Tea. Green. Hot"))
+	c.message(makeMessage("Tea. Green. Iced."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, item.Count)
@@ -99,8 +99,8 @@ func TestTeaGreenHot(t *testing.T) {
 func TestTeaUnrelated(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("Tea."))
-	c.Message(makeMessage("Tea. It's great."))
+	c.message(makeMessage("Tea."))
+	c.message(makeMessage("Tea. It's great."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -109,7 +109,7 @@ func TestTeaUnrelated(t *testing.T) {
 func TestTeaSkieselQuote(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed"))
+	c.message(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed"))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -117,7 +117,7 @@ func TestTeaSkieselQuote(t *testing.T) {
 func TestTeaUnicodeJapanese(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("Tea. おちや. Hot."))
+	c.message(makeMessage("Tea. おちや. Hot."))
 	item, err := GetItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, item.Count)
@@ -126,8 +126,8 @@ func TestTeaUnicodeJapanese(t *testing.T) {
 func TestResetMe(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("test++"))
-	c.Message(makeMessage("!reset me"))
+	c.message(makeMessage("test++"))
+	c.message(makeMessage("!reset me"))
 	items, err := GetItems(mb.DB(), "tester")
 	assert.Nil(t, err)
 	assert.Len(t, items, 0)
@@ -136,7 +136,7 @@ func TestResetMe(t *testing.T) {
 func TestCounterOne(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage("test++"))
+	c.message(makeMessage("test++"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, mb.Messages[0], "tester has 1 test.")
 }
@@ -144,7 +144,7 @@ func TestCounterOne(t *testing.T) {
 func TestCounterOneWithSpace(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Message(makeMessage(":test: ++"))
+	c.message(makeMessage(":test: ++"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, mb.Messages[0], "tester has 1 :test:.")
 }
@@ -153,7 +153,7 @@ func TestCounterFour(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("test++"))
+		c.message(makeMessage("test++"))
 	}
 	assert.Len(t, mb.Messages, 4)
 	assert.Equal(t, mb.Messages[3], "tester has 4 test.")
@@ -163,10 +163,10 @@ func TestCounterDecrement(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("test++"))
+		c.message(makeMessage("test++"))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
-	c.Message(makeMessage("test--"))
+	c.message(makeMessage("test--"))
 	assert.Len(t, mb.Messages, 5)
 	assert.Equal(t, mb.Messages[4], "tester has 3 test.")
 }
@@ -175,10 +175,10 @@ func TestFriendCounterDecrement(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("other.test++"))
+		c.message(makeMessage("other.test++"))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("other has %d test.", i+1))
 	}
-	c.Message(makeMessage("other.test--"))
+	c.message(makeMessage("other.test--"))
 	assert.Len(t, mb.Messages, 5)
 	assert.Equal(t, mb.Messages[4], "other has 3 test.")
 }
@@ -187,12 +187,12 @@ func TestDecrementZero(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("test++"))
+		c.message(makeMessage("test++"))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
 	j := 4
 	for i := 4; i > 0; i-- {
-		c.Message(makeMessage("test--"))
+		c.message(makeMessage("test--"))
 		assert.Equal(t, mb.Messages[j], fmt.Sprintf("tester has %d test.", i-1))
 		j++
 	}
@@ -204,10 +204,10 @@ func TestClear(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("test++"))
+		c.message(makeMessage("test++"))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
-	res := c.Message(makeMessage("!clear test"))
+	res := c.message(makeMessage("!clear test"))
 	assert.True(t, res)
 	assert.Len(t, mb.Actions, 1)
 	assert.Equal(t, mb.Actions[0], "chops a few test out of his brain")
@@ -217,10 +217,10 @@ func TestCount(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("test++"))
+		c.message(makeMessage("test++"))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
-	res := c.Message(makeMessage("!count test"))
+	res := c.message(makeMessage("!count test"))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 5)
 	assert.Equal(t, mb.Messages[4], "tester has 4 test.")
@@ -230,18 +230,18 @@ func TestInspectMe(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.Message(makeMessage("test++"))
+		c.message(makeMessage("test++"))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
 	for i := 0; i < 2; i++ {
-		c.Message(makeMessage("fucks++"))
+		c.message(makeMessage("fucks++"))
 		assert.Equal(t, mb.Messages[i+4], fmt.Sprintf("tester has %d fucks.", i+1))
 	}
 	for i := 0; i < 20; i++ {
-		c.Message(makeMessage("cheese++"))
+		c.message(makeMessage("cheese++"))
 		assert.Equal(t, mb.Messages[i+6], fmt.Sprintf("tester has %d cheese.", i+1))
 	}
-	res := c.Message(makeMessage("!inspect me"))
+	res := c.message(makeMessage("!inspect me"))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 27)
 	assert.Equal(t, mb.Messages[26], "tester has the following counters: test: 4, fucks: 2, cheese: 20.")
@@ -250,20 +250,8 @@ func TestInspectMe(t *testing.T) {
 func TestHelp(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.Help("channel", []string{})
+	c.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
-}
-
-func TestBotMessage(t *testing.T) {
-	_, c := setup(t)
-	assert.NotNil(t, c)
-	assert.False(t, c.BotMessage(makeMessage("test")))
-}
-
-func TestEvent(t *testing.T) {
-	_, c := setup(t)
-	assert.NotNil(t, c)
-	assert.False(t, c.Event("dummy", makeMessage("test")))
 }
 
 func TestRegisterWeb(t *testing.T) {

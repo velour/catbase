@@ -15,14 +15,16 @@ type ReactionPlugin struct {
 	Config *config.Config
 }
 
-func New(bot bot.Bot) *ReactionPlugin {
-	return &ReactionPlugin{
-		Bot:    bot,
-		Config: bot.Config(),
+func New(b bot.Bot) *ReactionPlugin {
+	rp := &ReactionPlugin{
+		Bot:    b,
+		Config: b.Config(),
 	}
+	b.Register(rp, bot.Message, rp.message)
+	return rp
 }
 
-func (p *ReactionPlugin) Message(message msg.Message) bool {
+func (p *ReactionPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	harrass := false
 	for _, nick := range p.Config.GetArray("Reaction.HarrassList", []string{}) {
 		if message.User.Name == nick {
@@ -56,26 +58,12 @@ func (p *ReactionPlugin) Message(message msg.Message) bool {
 			reaction = p.Config.GetArray("Reaction.NegativeReactions", []string{})[index]
 		}
 
-		p.Bot.React(message.Channel, reaction, message)
+		p.Bot.Send(bot.Reaction, message.Channel, reaction, message)
 	}
 
-	return false
-}
-
-func (p *ReactionPlugin) Help(channel string, parts []string) {
-
-}
-
-func (p *ReactionPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *ReactionPlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 
 func (p *ReactionPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *ReactionPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

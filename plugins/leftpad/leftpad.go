@@ -20,19 +20,20 @@ type LeftpadPlugin struct {
 }
 
 // New creates a new LeftpadPlugin with the Plugin interface
-func New(bot bot.Bot) *LeftpadPlugin {
-	p := LeftpadPlugin{
-		bot:    bot,
-		config: bot.Config(),
+func New(b bot.Bot) *LeftpadPlugin {
+	p := &LeftpadPlugin{
+		bot:    b,
+		config: b.Config(),
 	}
-	return &p
+	b.Register(p, bot.Message, p.message)
+	return p
 }
 
 type leftpadResp struct {
 	Str string
 }
 
-func (p *LeftpadPlugin) Message(message msg.Message) bool {
+func (p *LeftpadPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !message.Command {
 		return false
 	}
@@ -42,40 +43,27 @@ func (p *LeftpadPlugin) Message(message msg.Message) bool {
 		padchar := parts[1]
 		length, err := strconv.Atoi(parts[2])
 		if err != nil {
-			p.bot.SendMessage(message.Channel, "Invalid padding number")
+			p.bot.Send(bot.Message, message.Channel, "Invalid padding number")
 			return true
 		}
 		maxLen, who := p.config.GetInt("LeftPad.MaxLen", 50), p.config.Get("LeftPad.Who", "Putin")
 		if length > maxLen && maxLen > 0 {
 			msg := fmt.Sprintf("%s would kill me if I did that.", who)
-			p.bot.SendMessage(message.Channel, msg)
+			p.bot.Send(bot.Message, message.Channel, msg)
 			return true
 		}
 		text := strings.Join(parts[3:], " ")
 
 		res := leftpad.LeftPad(text, length, padchar)
 
-		p.bot.SendMessage(message.Channel, res)
+		p.bot.Send(bot.Message, message.Channel, res)
 		return true
 	}
 
 	return false
 }
 
-func (p *LeftpadPlugin) Event(e string, message msg.Message) bool {
-	return false
-}
-
-func (p *LeftpadPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *LeftpadPlugin) Help(e string, m []string) {
-}
-
 func (p *LeftpadPlugin) RegisterWeb() *string {
 	// nothing to register
 	return nil
 }
-
-func (p *LeftpadPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

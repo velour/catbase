@@ -17,17 +17,20 @@ type YourPlugin struct {
 }
 
 // NewYourPlugin creates a new YourPlugin with the Plugin interface
-func New(bot bot.Bot) *YourPlugin {
-	return &YourPlugin{
-		bot:    bot,
-		config: bot.Config(),
+func New(b bot.Bot) *YourPlugin {
+	yp := &YourPlugin{
+		bot:    b,
+		config: b.Config(),
 	}
+	b.Register(yp, bot.Message, yp.message)
+	b.Register(yp, bot.Help, yp.help)
+	return yp
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *YourPlugin) Message(message msg.Message) bool {
+func (p *YourPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	maxLen := p.config.GetInt("your.maxlength", 140)
 	if len(message.Body) > maxLen {
 		return false
@@ -43,30 +46,19 @@ func (p *YourPlugin) Message(message msg.Message) bool {
 		}
 	}
 	if msg != message.Body {
-		p.bot.SendMessage(message.Channel, msg)
+		p.bot.Send(bot.Message, message.Channel, msg)
 		return true
 	}
 	return false
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *YourPlugin) Help(channel string, parts []string) {
-	p.bot.SendMessage(channel, "Your corrects people's grammar.")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *YourPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *YourPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *YourPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(bot.Message, message.Channel, "Your corrects people's grammar.")
+	return true
 }
 
 // Register any web URLs desired
 func (p *YourPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *YourPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

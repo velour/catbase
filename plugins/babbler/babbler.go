@@ -52,24 +52,24 @@ type BabblerArc struct {
 	Frequency  int64 `db:"frequency"`
 }
 
-func New(bot bot.Bot) *BabblerPlugin {
+func New(b bot.Bot) *BabblerPlugin {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	if _, err := bot.DB().Exec(`create table if not exists babblers (
+	if _, err := b.DB().Exec(`create table if not exists babblers (
 			id integer primary key,
 			babbler string
 		);`); err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err := bot.DB().Exec(`create table if not exists babblerWords (
+	if _, err := b.DB().Exec(`create table if not exists babblerWords (
 			id integer primary key,
 			word string
 		);`); err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err := bot.DB().Exec(`create table if not exists babblerNodes (
+	if _, err := b.DB().Exec(`create table if not exists babblerNodes (
 			id integer primary key,
 			babblerId integer,
 			wordId integer,
@@ -79,7 +79,7 @@ func New(bot bot.Bot) *BabblerPlugin {
 		log.Fatal(err)
 	}
 
-	if _, err := bot.DB().Exec(`create table if not exists babblerArcs (
+	if _, err := b.DB().Exec(`create table if not exists babblerArcs (
 			id integer primary key,
 			fromNodeId integer,
 			toNodeId interger,
@@ -89,17 +89,20 @@ func New(bot bot.Bot) *BabblerPlugin {
 	}
 
 	plugin := &BabblerPlugin{
-		Bot:            bot,
-		db:             bot.DB(),
+		Bot:            b,
+		db:             b.DB(),
 		WithGoRoutines: true,
 	}
 
 	plugin.createNewWord("")
 
+	b.Register(plugin, bot.Message, plugin.message)
+	b.Register(plugin, bot.Help, plugin.help)
+
 	return plugin
 }
 
-func (p *BabblerPlugin) Message(message msg.Message) bool {
+func (p *BabblerPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 	numTokens := len(tokens)
@@ -141,12 +144,12 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	}
 
 	if saidSomething {
-		p.Bot.SendMessage(message.Channel, saidWhat)
+		p.Bot.Send(bot.Message, message.Channel, saidWhat)
 	}
 	return saidSomething
 }
 
-func (p *BabblerPlugin) Help(channel string, parts []string) {
+func (p *BabblerPlugin) help(kind bot.Kind, msg msg.Message, args ...interface{}) bool {
 	commands := []string{
 		"initialize babbler for seabass",
 		"merge babbler drseabass into seabass",
@@ -155,15 +158,8 @@ func (p *BabblerPlugin) Help(channel string, parts []string) {
 		"seabass says-middle-out ...",
 		"seabass says-bridge ... | ...",
 	}
-	p.Bot.SendMessage(channel, strings.Join(commands, "\n\n"))
-}
-
-func (p *BabblerPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *BabblerPlugin) BotMessage(message msg.Message) bool {
-	return false
+	p.Bot.Send(bot.Message, msg.Channel, strings.Join(commands, "\n\n"))
+	return true
 }
 
 func (p *BabblerPlugin) RegisterWeb() *string {
@@ -934,5 +930,3 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 
 	return strings.Join(words, " "), nil
 }
-
-func (p *BabblerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

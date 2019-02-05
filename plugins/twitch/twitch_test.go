@@ -12,12 +12,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -44,6 +44,6 @@ func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 
 func TestTwitch(t *testing.T) {
 	b, mb := makeTwitchPlugin(t)
-	b.Message(makeMessage("!twitch status"))
+	b.message(makeMessage("!twitch status"))
 	assert.NotEmpty(t, mb.Messages)
 }

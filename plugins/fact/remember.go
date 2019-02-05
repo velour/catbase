@@ -29,6 +29,8 @@ func NewRemember(b bot.Bot) *RememberPlugin {
 		Log: make(map[string][]msg.Message),
 		db:  b.DB(),
 	}
+	b.Register(p, bot.Message, p.message)
+	b.Register(p, bot.Message, p.help)
 	return &p
 }
 
@@ -36,11 +38,11 @@ func NewRemember(b bot.Bot) *RememberPlugin {
 // This function returns true if the plugin responds in a meaningful way to the
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
-func (p *RememberPlugin) Message(message msg.Message) bool {
+func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 
 	if strings.ToLower(message.Body) == "quote" && message.Command {
 		q := p.randQuote()
-		p.Bot.SendMessage(message.Channel, q)
+		p.Bot.Send(bot.Message, message.Channel, q)
 
 		// is it evil not to remember that the user said quote?
 		return true
@@ -87,7 +89,7 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 				}
 				if err := fact.save(p.db); err != nil {
 					log.Println("ERROR!!!!:", err)
-					p.Bot.SendMessage(message.Channel, "Tell somebody I'm broke.")
+					p.Bot.Send(bot.Message, message.Channel, "Tell somebody I'm broke.")
 				}
 
 				log.Println("Remembering factoid:", msg)
@@ -95,14 +97,14 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 				// sorry, not creative with names so we're reusing msg
 				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
 					message.User.Name, msg)
-				p.Bot.SendMessage(message.Channel, msg)
+				p.Bot.Send(bot.Message, message.Channel, msg)
 				p.recordMsg(message)
 				return true
 
 			}
 		}
 
-		p.Bot.SendMessage(message.Channel, "Sorry, I don't know that phrase.")
+		p.Bot.Send(bot.Message, message.Channel, "Sorry, I don't know that phrase.")
 		p.recordMsg(message)
 		return true
 	}
@@ -111,14 +113,15 @@ func (p *RememberPlugin) Message(message msg.Message) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *RememberPlugin) Help(channel string, parts []string) {
+func (p *RememberPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 
 	msg := "!remember will let you quote your idiot friends. Just type " +
 		"!remember <nick> <snippet> to remember what they said. Snippet can " +
 		"be any part of their message. Later on, you can ask for a random " +
 		"!quote."
 
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, message.Channel, msg)
+	return true
 }
 
 // deliver a random quote out of the db.
@@ -150,19 +153,8 @@ func (p *RememberPlugin) randQuote() string {
 	return f.Tidbit
 }
 
-// Empty event handler because this plugin does not do anything on event recv
-func (p *RememberPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Record what the bot says in the log
-func (p *RememberPlugin) BotMessage(message msg.Message) bool {
-	p.recordMsg(message)
-	return false
-}
-
 // Register any web URLs desired
-func (p *RememberPlugin) RegisterWeb() *string {
+func (p RememberPlugin) RegisterWeb() *string {
 	return nil
 }
 
@@ -170,5 +162,3 @@ func (p *RememberPlugin) recordMsg(message msg.Message) {
 	log.Printf("Logging message: %s: %s", message.User.Name, message.Body)
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)
 }
-
-func (p *RememberPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

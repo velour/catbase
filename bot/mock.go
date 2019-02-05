@@ -26,68 +26,67 @@ type MockBot struct {
 	Reactions []string
 }
 
-func (mb *MockBot) Config() *config.Config            { return mb.Cfg }
-func (mb *MockBot) DBVersion() int64                  { return 1 }
-func (mb *MockBot) DB() *sqlx.DB                      { return mb.Cfg.DB }
-func (mb *MockBot) Conn() Connector                   { return nil }
-func (mb *MockBot) Who(string) []user.User            { return []user.User{} }
-func (mb *MockBot) AddHandler(name string, f Handler) {}
-func (mb *MockBot) SendMessage(ch string, msg string) string {
-	mb.Messages = append(mb.Messages, msg)
-	return fmt.Sprintf("m-%d", len(mb.Actions)-1)
+func (mb *MockBot) Config() *config.Config { return mb.Cfg }
+func (mb *MockBot) DB() *sqlx.DB           { return mb.Cfg.DB }
+func (mb *MockBot) Who(string) []user.User { return []user.User{} }
+func (mb *MockBot) Send(kind Kind, args ...interface{}) (string, error) {
+	switch kind {
+	case Message:
+		mb.Messages = append(mb.Messages, args[1].(string))
+		return fmt.Sprintf("m-%d", len(mb.Actions)-1), nil
+	case Action:
+		mb.Actions = append(mb.Actions, args[1].(string))
+		return fmt.Sprintf("a-%d", len(mb.Actions)-1), nil
+	case Edit:
+		ch, m, id := args[0].(string), args[1].(string), args[2].(string)
+		return mb.edit(ch, m, id)
+	case Reaction:
+		ch, re, msg := args[0].(string), args[1].(string), args[2].(msg.Message)
+		return mb.react(ch, re, msg)
+	}
+	return "ERR", fmt.Errorf("Mesasge type unhandled")
 }
-func (mb *MockBot) SendAction(ch string, msg string) string {
-	mb.Actions = append(mb.Actions, msg)
-	return fmt.Sprintf("a-%d", len(mb.Actions)-1)
-}
-func (mb *MockBot) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
-	return "", false
-}
-func (mb *MockBot) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
-	return "", false
-}
-func (mb *MockBot) MsgReceived(msg msg.Message)                {}
-func (mb *MockBot) EventReceived(msg msg.Message)              {}
-func (mb *MockBot) Filter(msg msg.Message, s string) string    { return s }
-func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
-func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
+func (mb *MockBot) AddPlugin(f Plugin)                                      {}
+func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)               {}
+func (mb *MockBot) Receive(kind Kind, msg msg.Message, args ...interface{}) {}
+func (mb *MockBot) Filter(msg msg.Message, s string) string                 { return s }
+func (mb *MockBot) LastMessage(ch string) (msg.Message, error)              { return msg.Message{}, nil }
+func (mb *MockBot) CheckAdmin(nick string) bool                             { return false }
 
-func (mb *MockBot) React(channel, reaction string, message msg.Message) bool {
+func (mb *MockBot) react(channel, reaction string, message msg.Message) (string, error) {
 	mb.Reactions = append(mb.Reactions, reaction)
-	return false
+	return "", nil
 }
 
-func (mb *MockBot) Edit(channel, newMessage, identifier string) bool {
+func (mb *MockBot) edit(channel, newMessage, identifier string) (string, error) {
 	isMessage := identifier[0] == 'm'
 	if !isMessage && identifier[0] != 'a' {
-		log.Printf("failed to parse identifier: %s", identifier)
-		return false
+		err := fmt.Errorf("failed to parse identifier: %s", identifier)
+		log.Println(err)
+		return "", err
 	}
 
 	index, err := strconv.Atoi(strings.Split(identifier, "-")[1])
 	if err != nil {
-		log.Printf("failed to parse identifier: %s", identifier)
-		return false
+		err := fmt.Errorf("failed to parse identifier: %s", identifier)
+		log.Println(err)
+		return "", err
 	}
 
 	if isMessage {
 		if index < len(mb.Messages) {
 			mb.Messages[index] = newMessage
 		} else {
-			return false
+			return "", fmt.Errorf("No message")
 		}
 	} else {
 		if index < len(mb.Actions) {
 			mb.Actions[index] = newMessage
 		} else {
-			return false
+			return "", fmt.Errorf("No action")
 		}
 	}
-	return true
-}
-
-func (mb *MockBot) ReplyMsgReceived(msg.Message, string) {
-
+	return "", nil
 }
 
 func (mb *MockBot) GetEmojiList() map[string]string                { return make(map[string]string) }

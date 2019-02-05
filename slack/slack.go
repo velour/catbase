@@ -44,9 +44,7 @@ type Slack struct {
 
 	emoji map[string]string
 
-	eventReceived        func(msg.Message)
-	messageReceived      func(msg.Message)
-	replyMessageReceived func(msg.Message, string)
+	event func(bot.Kind, msg.Message, ...interface{})
 }
 
 var idCounter uint64
@@ -177,7 +175,31 @@ func New(c *config.Config) *Slack {
 	}
 }
 
-func checkReturnStatus(response *http.Response) bool {
+func (s *Slack) Send(kind bot.Kind, args ...interface{}) (string, error) {
+	switch kind {
+	case bot.Message:
+		return s.sendMessage(args[0].(string), args[1].(string))
+	case bot.Action:
+		return s.sendAction(args[0].(string), args[1].(string))
+	case bot.Edit:
+		return s.edit(args[0].(string), args[1].(string), args[2].(string))
+	case bot.Reply:
+		switch args[2].(type) {
+		case msg.Message:
+			return s.replyToMessage(args[0].(string), args[1].(string), args[2].(msg.Message))
+		case string:
+			return s.replyToMessageIdentifier(args[0].(string), args[1].(string), args[2].(string))
+		default:
+			return "", fmt.Errorf("Invalid types given to Reply")
+		}
+	case bot.Reaction:
+		return s.react(args[0].(string), args[1].(string), args[2].(msg.Message))
+	default:
+	}
+	return "", fmt.Errorf("No handler for message type %d", kind)
+}
+
+func checkReturnStatus(response *http.Response) error {
 	type Response struct {
 		OK bool `json:"ok"`
 	}
@@ -185,32 +207,24 @@ func checkReturnStatus(response *http.Response) bool {
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
-		log.Printf("Error reading Slack API body: %s", err)
-		return false
+		err := fmt.Errorf("Error reading Slack API body: %s", err)
+		return err
 	}
 
 	var resp Response
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		log.Printf("Error parsing message response: %s", err)
-		return false
+		err := fmt.Errorf("Error parsing message response: %s", err)
+		return err
 	}
-	return resp.OK
+	return nil
 }
 
-func (s *Slack) RegisterEventReceived(f func(msg.Message)) {
-	s.eventReceived = f
+func (s *Slack) RegisterEvent(f func(bot.Kind, msg.Message, ...interface{})) {
+	s.event = f
 }
 
-func (s *Slack) RegisterMessageReceived(f func(msg.Message)) {
-	s.messageReceived = f
-}
-
-func (s *Slack) RegisterReplyMessageReceived(f func(msg.Message, string)) {
-	s.replyMessageReceived = f
-}
-
-func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string, error) {
+func (s *Slack) sendMessageType(channel, message string, meMessage bool) (string, error) {
 	postUrl := "https://slack.com/api/chat.postMessage"
 	if meMessage {
 		postUrl = "https://slack.com/api/chat.meMessage"
@@ -262,19 +276,19 @@ func (s *Slack) SendMessageType(channel, message string, meMessage bool) (string
 	return mr.Timestamp, err
 }
 
-func (s *Slack) SendMessage(channel, message string) string {
+func (s *Slack) sendMessage(channel, message string) (string, error) {
 	log.Printf("Sending message to %s: %s", channel, message)
-	identifier, _ := s.SendMessageType(channel, message, false)
-	return identifier
+	identifier, err := s.sendMessageType(channel, message, false)
+	return identifier, err
 }
 
-func (s *Slack) SendAction(channel, message string) string {
+func (s *Slack) sendAction(channel, message string) (string, error) {
 	log.Printf("Sending action to %s: %s", channel, message)
-	identifier, _ := s.SendMessageType(channel, "_"+message+"_", true)
-	return identifier
+	identifier, err := s.sendMessageType(channel, "_"+message+"_", true)
+	return identifier, err
 }
 
-func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
+func (s *Slack) replyToMessageIdentifier(channel, message, identifier string) (string, error) {
 	nick := s.config.Get("Nick", "bot")
 	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
 
@@ -288,15 +302,15 @@ func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (s
 		})
 
 	if err != nil {
-		log.Printf("Error sending Slack reply: %s", err)
-		return "", false
+		err := fmt.Errorf("Error sending Slack reply: %s", err)
+		return "", err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Printf("Error reading Slack API body: %s", err)
-		return "", false
+		err := fmt.Errorf("Error reading Slack API body: %s", err)
+		return "", err
 	}
 
 	log.Println(string(body))
@@ -309,22 +323,22 @@ func (s *Slack) ReplyToMessageIdentifier(channel, message, identifier string) (s
 	var mr MessageResponse
 	err = json.Unmarshal(body, &mr)
 	if err != nil {
-		log.Printf("Error parsing message response: %s", err)
-		return "", false
+		err := fmt.Errorf("Error parsing message response: %s", err)
+		return "", err
 	}
 
 	if !mr.OK {
-		return "", false
+		return "", fmt.Errorf("Got !OK from slack message response")
 	}
 
-	return mr.Timestamp, err == nil
+	return mr.Timestamp, err
 }
 
-func (s *Slack) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
-	return s.ReplyToMessageIdentifier(channel, message, replyTo.AdditionalData["RAW_SLACK_TIMESTAMP"])
+func (s *Slack) replyToMessage(channel, message string, replyTo msg.Message) (string, error) {
+	return s.replyToMessageIdentifier(channel, message, replyTo.AdditionalData["RAW_SLACK_TIMESTAMP"])
 }
 
-func (s *Slack) React(channel, reaction string, message msg.Message) bool {
+func (s *Slack) react(channel, reaction string, message msg.Message) (string, error) {
 	log.Printf("Reacting in %s: %s", channel, reaction)
 	resp, err := http.PostForm("https://slack.com/api/reactions.add",
 		url.Values{"token": {s.token},
@@ -332,13 +346,13 @@ func (s *Slack) React(channel, reaction string, message msg.Message) bool {
 			"channel":   {channel},
 			"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
 	if err != nil {
-		log.Printf("reaction failed: %s", err)
-		return false
+		err := fmt.Errorf("reaction failed: %s", err)
+		return "", err
 	}
-	return checkReturnStatus(resp)
+	return "", checkReturnStatus(resp)
 }
 
-func (s *Slack) Edit(channel, newMessage, identifier string) bool {
+func (s *Slack) edit(channel, newMessage, identifier string) (string, error) {
 	log.Printf("Editing in (%s) %s: %s", identifier, channel, newMessage)
 	resp, err := http.PostForm("https://slack.com/api/chat.update",
 		url.Values{"token": {s.token},
@@ -346,10 +360,10 @@ func (s *Slack) Edit(channel, newMessage, identifier string) bool {
 			"text":    {newMessage},
 			"ts":      {identifier}})
 	if err != nil {
-		log.Printf("edit failed: %s", err)
-		return false
+		err := fmt.Errorf("edit failed: %s", err)
+		return "", err
 	}
-	return checkReturnStatus(resp)
+	return "", checkReturnStatus(resp)
 }
 
 func (s *Slack) GetEmojiList() map[string]string {
@@ -441,11 +455,11 @@ func (s *Slack) Serve() error {
 					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
 				} else {
 					s.lastRecieved = m.Time
-					s.messageReceived(m)
+					s.event(bot.Message, m)
 				}
 			} else if msg.ThreadTs != "" {
 				//we're throwing away some information here by not parsing the correct reply object type, but that's okay
-				s.replyMessageReceived(s.buildLightReplyMessage(msg), msg.ThreadTs)
+				s.event(bot.Reply, s.buildLightReplyMessage(msg), msg.ThreadTs)
 			} else {
 				log.Printf("THAT MESSAGE WAS HIDDEN: %+v", msg.ID)
 			}

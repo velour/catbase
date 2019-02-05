@@ -43,13 +43,16 @@ type TalkerPlugin struct {
 	sayings []string
 }
 
-func New(bot bot.Bot) *TalkerPlugin {
-	return &TalkerPlugin{
-		Bot: bot,
+func New(b bot.Bot) *TalkerPlugin {
+	tp := &TalkerPlugin{
+		Bot: b,
 	}
+	b.Register(tp, bot.Message, tp.message)
+	b.Register(tp, bot.Help, tp.help)
+	return tp
 }
 
-func (p *TalkerPlugin) Message(message msg.Message) bool {
+func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	channel := message.Channel
 	body := message.Body
 	lowermessage := strings.ToLower(body)
@@ -57,7 +60,7 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 	// TODO: This ought to be space split afterwards to remove any punctuation
 	if message.Command && strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
-		p.Bot.SendMessage(channel, msg)
+		p.Bot.Send(bot.Message, channel, msg)
 		return true
 	}
 
@@ -73,30 +76,19 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 			line = strings.Replace(line, "{nick}", nick, 1)
 			output += line + "\n"
 		}
-		p.Bot.SendMessage(channel, output)
+		p.Bot.Send(bot.Message, channel, output)
 		return true
 	}
 
 	return false
 }
 
-func (p *TalkerPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Hi, this is talker. I like to talk about FredFelps!")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *TalkerPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *TalkerPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *TalkerPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
+	return true
 }
 
 // Register any web URLs desired
 func (p *TalkerPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *TalkerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

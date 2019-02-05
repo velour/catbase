@@ -26,11 +26,14 @@ type ZorkPlugin struct {
 	zorks map[string]io.WriteCloser
 }
 
-func New(b bot.Bot) bot.Handler {
-	return &ZorkPlugin{
+func New(b bot.Bot) bot.Plugin {
+	z := &ZorkPlugin{
 		bot:   b,
 		zorks: make(map[string]io.WriteCloser),
 	}
+	b.Register(z, bot.Message, z.message)
+	b.Register(z, bot.Help, z.help)
+	return z
 }
 
 func (p *ZorkPlugin) runZork(ch string) error {
@@ -75,7 +78,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 			m := strings.Replace(s.Text(), ">", "", -1)
 			m = strings.Replace(m, "\n", "\n>", -1)
 			m = ">" + m + "\n"
-			p.bot.SendMessage(ch, m)
+			p.bot.Send(bot.Message, ch, m)
 		}
 	}()
 	go func() {
@@ -91,7 +94,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	return nil
 }
 
-func (p *ZorkPlugin) Message(message msg.Message) bool {
+func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := strings.ToLower(message.Body)
 	log.Printf("got message [%s]\n", m)
 	if ts := strings.Fields(m); len(ts) < 1 || ts[0] != "zork" {
@@ -104,7 +107,7 @@ func (p *ZorkPlugin) Message(message msg.Message) bool {
 	defer p.Unlock()
 	if p.zorks[ch] == nil {
 		if err := p.runZork(ch); err != nil {
-			p.bot.SendMessage(ch, "failed to run zork: "+err.Error())
+			p.bot.Send(bot.Message, ch, "failed to run zork: "+err.Error())
 			return true
 		}
 	}
@@ -113,14 +116,9 @@ func (p *ZorkPlugin) Message(message msg.Message) bool {
 	return true
 }
 
-func (p *ZorkPlugin) Event(_ string, _ msg.Message) bool { return false }
-
-func (p *ZorkPlugin) BotMessage(_ msg.Message) bool { return false }
-
-func (p *ZorkPlugin) Help(ch string, _ []string) {
-	p.bot.SendMessage(ch, "Play zork using 'zork <zork command>'.")
+func (p *ZorkPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(bot.Message, message.Channel, "Play zork using 'zork <zork command>'.")
+	return true
 }
 
 func (p *ZorkPlugin) RegisterWeb() *string { return nil }
-
-func (p *ZorkPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

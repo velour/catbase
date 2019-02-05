@@ -51,10 +51,10 @@ type stream struct {
 	} `json:"pagination"`
 }
 
-func New(bot bot.Bot) *TwitchPlugin {
+func New(b bot.Bot) *TwitchPlugin {
 	p := &TwitchPlugin{
-		Bot:        bot,
-		config:     bot.Config(),
+		Bot:        b,
+		config:     b.Config(),
 		twitchList: map[string]*Twitcher{},
 	}
 
@@ -70,11 +70,8 @@ func New(bot bot.Bot) *TwitchPlugin {
 		go p.twitchLoop(ch)
 	}
 
+	b.Register(p, bot.Message, p.message)
 	return p
-}
-
-func (p *TwitchPlugin) BotMessage(message msg.Message) bool {
-	return false
 }
 
 func (p *TwitchPlugin) RegisterWeb() *string {
@@ -114,7 +111,7 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *TwitchPlugin) Message(message msg.Message) bool {
+func (p *TwitchPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "twitch status" {
 		channel := message.Channel
 		if users := p.config.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
@@ -130,17 +127,10 @@ func (p *TwitchPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-func (p *TwitchPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *TwitchPlugin) LoadData() {
-
-}
-
-func (p *TwitchPlugin) Help(channel string, parts []string) {
+func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "There's no help for you here."
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(bot.Message, message.Channel, msg)
+	return true
 }
 
 func (p *TwitchPlugin) twitchLoop(channel string) {
@@ -224,21 +214,19 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	streamWord := p.config.Get("Twitch.StreamWord", "streaming")
 	if alwaysPrintStatus {
 		if game == "" {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s is not %s.", twitcher.name, streamWord))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is not %s.", twitcher.name, streamWord))
 		} else {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
 		}
 	} else if game == "" {
 		if twitcher.game != "" {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s just stopped %s.", twitcher.name, streamWord))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s just stopped %s.", twitcher.name, streamWord))
 		}
 		twitcher.game = ""
 	} else {
 		if twitcher.game != game {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
 		}
 		twitcher.game = game
 	}
 }
-
-func (p *TwitchPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

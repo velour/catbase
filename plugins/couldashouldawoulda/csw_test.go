@@ -12,12 +12,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -29,7 +29,7 @@ func Test0(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!should I drink a beer?"))
+	res := c.message(makeMessage("!should I drink a beer?"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	possibilities := []string{"Yes.", "No.", "Maybe.", "For fucks sake, how should I know?"}
@@ -47,7 +47,7 @@ func Test1(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!should I drink a beer or a bourbon?"))
+	res := c.message(makeMessage("!should I drink a beer or a bourbon?"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	possibilities := []string{"The former.", "The latter.", "Obviously the former.", "Clearly the latter.", "Can't it be both?"}
@@ -65,7 +65,7 @@ func Test2(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!could I drink a beer or a bourbon?"))
+	res := c.message(makeMessage("!could I drink a beer or a bourbon?"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	possibilities := []string{"Yes.", "No.", "Maybe.", "For fucks sake, how should I know?"}
@@ -83,7 +83,7 @@ func Test3(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!would I die if I drank too much bourbon?"))
+	res := c.message(makeMessage("!would I die if I drank too much bourbon?"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	possibilities := []string{"Yes.", "No.", "Maybe.", "For fucks sake, how should I know?"}
@@ -101,7 +101,7 @@ func Test4(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!would I die or be sick if I drank all the bourbon?"))
+	res := c.message(makeMessage("!would I die or be sick if I drank all the bourbon?"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	possibilities := []string{"The former.", "The latter.", "Obviously the former.", "Clearly the latter.", "Can't it be both?"}
@@ -119,7 +119,7 @@ func Test5(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!should I have another beer or bourbon or tequila?"))
+	res := c.message(makeMessage("!should I have another beer or bourbon or tequila?"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	possibilities := []string{"I'd say option", "You'd be an idiot not to choose the"}

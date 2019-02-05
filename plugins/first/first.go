@@ -66,11 +66,14 @@ func New(b bot.Bot) *FirstPlugin {
 		log.Fatal("Could not initialize first plugin: ", err)
 	}
 
-	return &FirstPlugin{
+	fp := &FirstPlugin{
 		Bot:   b,
 		db:    b.DB(),
 		First: first,
 	}
+	b.Register(fp, bot.Message, fp.message)
+	b.Register(fp, bot.Help, fp.help)
+	return fp
 }
 
 func getLastFirst(db *sqlx.DB) (*FirstEntry, error) {
@@ -123,7 +126,7 @@ func isToday(t time.Time) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FirstPlugin) Message(message msg.Message) bool {
+func (p *FirstPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	// This bot does not reply to anything
 
 	if p.First == nil && p.allowed(message) {
@@ -195,7 +198,7 @@ func (p *FirstPlugin) recordFirst(message msg.Message) {
 func (p *FirstPlugin) announceFirst(message msg.Message) {
 	c := message.Channel
 	if p.First != nil {
-		p.Bot.SendMessage(c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
+		p.Bot.Send(bot.Message, c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
 			p.First.nick, p.First.time.Format("15:04"), p.First.body))
 	}
 }
@@ -208,23 +211,12 @@ func (p *FirstPlugin) LoadData() {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *FirstPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Sorry, First does not do a goddamn thing.")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *FirstPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *FirstPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *FirstPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, message.Channel, "Sorry, First does not do a goddamn thing.")
+	return true
 }
 
 // Register any web URLs desired
 func (p *FirstPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *FirstPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

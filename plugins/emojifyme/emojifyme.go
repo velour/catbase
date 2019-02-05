@@ -20,7 +20,7 @@ type EmojifyMePlugin struct {
 	Emoji       map[string]string
 }
 
-func New(bot bot.Bot) *EmojifyMePlugin {
+func New(b bot.Bot) *EmojifyMePlugin {
 	resp, err := http.Get("https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json")
 	if err != nil {
 		log.Fatalf("Error generic emoji list: %s", err)
@@ -48,14 +48,16 @@ func New(bot bot.Bot) *EmojifyMePlugin {
 		}
 	}
 
-	return &EmojifyMePlugin{
-		Bot:         bot,
+	ep := &EmojifyMePlugin{
+		Bot:         b,
 		GotBotEmoji: false,
 		Emoji:       emojiMap,
 	}
+	b.Register(ep, bot.Message, ep.message)
+	return ep
 }
 
-func (p *EmojifyMePlugin) Message(message msg.Message) bool {
+func (p *EmojifyMePlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !p.GotBotEmoji {
 		p.GotBotEmoji = true
 		emojiMap := p.Bot.GetEmojiList()
@@ -90,30 +92,16 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 
 	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance", 0.02)*emojied {
 		for _, e := range emojys {
-			p.Bot.React(message.Channel, e, message)
+			p.Bot.Send(bot.Reaction, message.Channel, e, message)
 		}
-		return true
+		return false
 	}
-	return false
-}
-
-func (p *EmojifyMePlugin) Help(channel string, parts []string) {
-
-}
-
-func (p *EmojifyMePlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *EmojifyMePlugin) BotMessage(message msg.Message) bool {
 	return false
 }
 
 func (p *EmojifyMePlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *EmojifyMePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
 
 func stringsContain(haystack []string, needle string) bool {
 	for _, s := range haystack {
