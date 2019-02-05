@@ -42,7 +42,7 @@ type bot struct {
 	// filters registered by plugins
 	filters map[string]func(string) string
 
-	callbacks map[string][]Callback
+	callbacks CallbackMap
 }
 
 // Variable represents a $var replacement
@@ -74,7 +74,7 @@ func New(config *config.Config, connector Connector) Bot {
 		logOut:         logOut,
 		httpEndPoints:  make(map[string]string),
 		filters:        make(map[string]func(string) string),
-		callbacks:      make(map[string][]Callback),
+		callbacks:      make(CallbackMap),
 	}
 
 	bot.migrateDB()
@@ -250,7 +250,9 @@ func (b *bot) RegisterFilter(name string, f func(string) string) {
 }
 
 // Send a message to the connection
-func (b *bot) Send(int, ...interface{}) (error, string) { return nil, "" }
+func (b *bot) Send(kind Kind, args ...interface{}) (error, string) { return nil, "" }
 
 // Register a callback
-func (b *bot) Register(int, Callback) {}
+func (b *bot) Register(name string, kind Kind, cb Callback) {
+	b.callbacks[name][kind] = append(b.callbacks[name][kind], cb)
+}

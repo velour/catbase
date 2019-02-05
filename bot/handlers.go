@@ -16,7 +16,7 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
-func (b *bot) Receive(kind int, msg msg.Message, args ...interface{}) {
+func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) {
 	panic("I don't know what to do here yet")
 }
 
@@ -54,8 +54,8 @@ func (b *bot) EventReceived(msg msg.Message) {
 	}
 }
 
-func (b *bot) runCallback(plugin string, evt int, message msg.Message, args ...interface{}) bool {
-	for _, cb := range b.callbacks[plugin] {
+func (b *bot) runCallback(plugin string, evt Kind, message msg.Message, args ...interface{}) bool {
+	for _, cb := range b.callbacks[plugin][evt] {
 		if cb(evt, message) {
 			return true
 		}

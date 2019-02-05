@@ -29,7 +29,7 @@ type MockBot struct {
 func (mb *MockBot) Config() *config.Config { return mb.Cfg }
 func (mb *MockBot) DB() *sqlx.DB           { return mb.Cfg.DB }
 func (mb *MockBot) Who(string) []user.User { return []user.User{} }
-func (mb *MockBot) Send(kind int, args ...interface{}) (error, string) {
+func (mb *MockBot) Send(kind Kind, args ...interface{}) (error, string) {
 	switch kind {
 	case Message:
 		mb.Messages = append(mb.Messages, args[1].(string))
@@ -46,12 +46,12 @@ func (mb *MockBot) Send(kind int, args ...interface{}) (error, string) {
 	}
 	return fmt.Errorf("Mesasge type unhandled"), "ERROR"
 }
-func (mb *MockBot) AddPlugin(name string, f Plugin)                        {}
-func (mb *MockBot) Register(kind int, cb Callback)                         {}
-func (mb *MockBot) Receive(kind int, msg msg.Message, args ...interface{}) {}
-func (mb *MockBot) Filter(msg msg.Message, s string) string                { return s }
-func (mb *MockBot) LastMessage(ch string) (msg.Message, error)             { return msg.Message{}, nil }
-func (mb *MockBot) CheckAdmin(nick string) bool                            { return false }
+func (mb *MockBot) AddPlugin(name string, f Plugin)                         {}
+func (mb *MockBot) Register(name string, kind Kind, cb Callback)            {}
+func (mb *MockBot) Receive(kind Kind, msg msg.Message, args ...interface{}) {}
+func (mb *MockBot) Filter(msg msg.Message, s string) string                 { return s }
+func (mb *MockBot) LastMessage(ch string) (msg.Message, error)              { return msg.Message{}, nil }
+func (mb *MockBot) CheckAdmin(nick string) bool                             { return false }
 
 func (mb *MockBot) react(channel, reaction string, message msg.Message) (error, string) {
 	mb.Reactions = append(mb.Reactions, reaction)

@@ -66,7 +66,7 @@ func (i *Irc) RegisterReplyMessageReceived(f func(msg.Message, string)) {
 	i.replyMessageReceived = f
 }
 
-func (i *Irc) Send(kind int, args ...interface{}) (error, string) {
+func (i *Irc) Send(kind bot.Kind, args ...interface{}) (error, string) {
 	switch kind {
 	case bot.Reply:
 	case bot.Message:

@@ -30,9 +30,9 @@ const (
 	SelfMessage
 )
 
-type kind int
-
-type Callback func(int, msg.Message, ...interface{}) bool
+type Kind int
+type Callback func(Kind, msg.Message, ...interface{}) bool
+type CallbackMap map[string]map[Kind][]Callback
 
 // Bot interface serves to allow mocking of the actual bot
 type Bot interface {
@@ -45,11 +45,11 @@ type Bot interface {
 	// AddPlugin registers a new plugin handler
 	AddPlugin(string, Plugin)
 	// First arg should be one of bot.Message/Reply/Action/etc
-	Send(int, ...interface{}) (error, string)
+	Send(Kind, ...interface{}) (error, string)
 	// First arg should be one of bot.Message/Reply/Action/etc
-	Receive(int, msg.Message, ...interface{})
+	Receive(Kind, msg.Message, ...interface{})
 	// Register a callback
-	Register(int, Callback)
+	Register(string, Kind, Callback)
 
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
@@ -65,7 +65,7 @@ type Connector interface {
 	RegisterMessageReceived(func(message msg.Message))
 	RegisterReplyMessageReceived(func(msg.Message, string))
 
-	Send(int, ...interface{}) (error, string)
+	Send(Kind, ...interface{}) (error, string)
 
 	GetEmojiList() map[string]string
 	Serve() error
