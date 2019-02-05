@@ -94,7 +94,7 @@ func (p *EmojifyMePlugin) message(kind bot.Kind, message msg.Message, args ...in
 		for _, e := range emojys {
 			p.Bot.Send(bot.Reaction, message.Channel, e, message)
 		}
-		return true
+		return false
 	}
 	return false
 }

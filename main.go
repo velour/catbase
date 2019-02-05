@@ -79,6 +79,7 @@ func main() {
 	b := bot.New(c, client)
 
 	b.AddPlugin("admin", admin.New(b))
+	b.AddPlugin("emojifyme", emojifyme.New(b))
 	b.AddPlugin("first", first.New(b))
 	b.AddPlugin("leftpad", leftpad.New(b))
 	b.AddPlugin("talker", talker.New(b))
@@ -93,7 +94,6 @@ func main() {
 	b.AddPlugin("zork", zork.New(b))
 	b.AddPlugin("rss", rss.New(b))
 	b.AddPlugin("reaction", reaction.New(b))
-	b.AddPlugin("emojifyme", emojifyme.New(b))
 	b.AddPlugin("twitch", twitch.New(b))
 	b.AddPlugin("inventory", inventory.New(b))
 	b.AddPlugin("rpgORdie", rpgORdie.New(b))
