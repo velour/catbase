@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -249,11 +250,12 @@ func (b *bot) RegisterFilter(name string, f func(string) string) {
 
 // Register a callback
 func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
-	if _, ok := b.callbacks[p]; !ok {
-		b.callbacks[p] = make(map[Kind][]Callback)
+	t := reflect.TypeOf(p)
+	if _, ok := b.callbacks[t]; !ok {
+		b.callbacks[t] = make(map[Kind][]Callback)
 	}
-	if _, ok := b.callbacks[p][kind]; !ok {
-		b.callbacks[p][kind] = []Callback{}
+	if _, ok := b.callbacks[t][kind]; !ok {
+		b.callbacks[t][kind] = []Callback{}
 	}
-	b.callbacks[p][kind] = append(b.callbacks[p][kind], cb)
+	b.callbacks[t][kind] = append(b.callbacks[t][kind], cb)
 }

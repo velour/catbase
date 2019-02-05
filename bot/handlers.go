@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,7 +40,8 @@ RET:
 }
 
 func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
-	for _, cb := range b.callbacks[plugin][evt] {
+	t := reflect.TypeOf(plugin)
+	for _, cb := range b.callbacks[t][evt] {
 		if cb(evt, message, args) {
 			return true
 		}
