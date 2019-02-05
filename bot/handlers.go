@@ -29,7 +29,7 @@ func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.runCallback(b.plugins[name], kind, msg, args) {
+		if b.runCallback(b.plugins[name], kind, msg, args...) {
 			goto RET
 		}
 	}
@@ -42,7 +42,7 @@ RET:
 func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
 	t := reflect.TypeOf(plugin)
 	for _, cb := range b.callbacks[t][evt] {
-		if cb(evt, message, args) {
+		if cb(evt, message, args...) {
 			return true
 		}
 	}
