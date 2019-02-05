@@ -248,13 +248,12 @@ func (b *bot) RegisterFilter(name string, f func(string) string) {
 }
 
 // Register a callback
-func (b *bot) Register(name string, kind Kind, cb Callback) {
-	name = strings.ToLower(name)
-	if _, ok := b.callbacks[name]; !ok {
-		b.callbacks[name] = make(map[Kind][]Callback)
+func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
+	if _, ok := b.callbacks[p]; !ok {
+		b.callbacks[p] = make(map[Kind][]Callback)
 	}
-	if _, ok := b.callbacks[name][kind]; !ok {
-		b.callbacks[name][kind] = []Callback{}
+	if _, ok := b.callbacks[p][kind]; !ok {
+		b.callbacks[p][kind] = []Callback{}
 	}
-	b.callbacks[name][kind] = append(b.callbacks[name][kind], cb)
+	b.callbacks[p][kind] = append(b.callbacks[p][kind], cb)
 }

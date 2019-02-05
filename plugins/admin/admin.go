@@ -31,8 +31,8 @@ func New(b bot.Bot) *AdminPlugin {
 		db:  b.DB(),
 		cfg: b.Config(),
 	}
-	b.Register("admin", bot.Message, p.message)
-	b.Register("admin", bot.Help, p.help)
+	b.Register(p, bot.Message, p.message)
+	b.Register(p, bot.Help, p.help)
 	return p
 }
 

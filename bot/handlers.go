@@ -28,7 +28,7 @@ func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.runCallback(name, kind, msg, args) {
+		if b.runCallback(b.plugins[name], kind, msg, args) {
 			goto RET
 		}
 	}
@@ -38,7 +38,7 @@ RET:
 	return
 }
 
-func (b *bot) runCallback(plugin string, evt Kind, message msg.Message, args ...interface{}) bool {
+func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
 	for _, cb := range b.callbacks[plugin][evt] {
 		if cb(evt, message, args) {
 			return true
@@ -75,10 +75,9 @@ func (b *bot) checkHelp(channel string, parts []string) {
 			b.listVars(channel, parts)
 			return
 		}
-		plugin := b.plugins[parts[1]]
-		if plugin != nil {
-			// TODO: Maybe broke
-			b.runCallback(parts[1], Help, msg.Message{Channel: channel}, channel, parts)
+		plugin, ok := b.plugins[parts[1]]
+		if ok {
+			b.runCallback(plugin, Help, msg.Message{Channel: channel}, channel, parts)
 		} else {
 			msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", parts[1])
 			b.Send(Message, channel, msg)
@@ -201,7 +200,7 @@ func (b *bot) selfSaid(channel, message string, action bool) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.runCallback(name, SelfMessage, msg) {
+		if b.runCallback(b.plugins[name], SelfMessage, msg) {
 			return
 		}
 	}

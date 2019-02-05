@@ -32,7 +32,7 @@ const (
 
 type Kind int
 type Callback func(Kind, msg.Message, ...interface{}) bool
-type CallbackMap map[string]map[Kind][]Callback
+type CallbackMap map[Plugin]map[Kind][]Callback
 
 // Bot interface serves to allow mocking of the actual bot
 type Bot interface {
@@ -49,7 +49,7 @@ type Bot interface {
 	// First arg should be one of bot.Message/Reply/Action/etc
 	Receive(Kind, msg.Message, ...interface{})
 	// Register a callback
-	Register(string, Kind, Callback)
+	Register(Plugin, Kind, Callback)
 
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
