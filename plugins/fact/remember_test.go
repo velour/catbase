@@ -42,7 +42,7 @@ func TestCornerCaseBug(t *testing.T) {
 	p, _, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.Message(m)
+		p.message(bot.Message, m)
 	}
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "horse dick")
@@ -59,7 +59,7 @@ func TestReact(t *testing.T) {
 	_, p, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.Message(m)
+		p.message(bot.Message, m)
 	}
 	assert.Len(t, mb.Reactions, 1)
 	assert.Contains(t, mb.Reactions[0], "jesus")
@@ -72,7 +72,7 @@ func TestReactCantLearnSpaces(t *testing.T) {
 	_, p, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.Message(m)
+		p.message(bot.Message, m)
 	}
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "not a valid")

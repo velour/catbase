@@ -11,12 +11,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -28,7 +28,7 @@ func TestRSS(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
+	res := c.message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 }
@@ -38,7 +38,7 @@ func TestRSSPaging(t *testing.T) {
 	c := New(mb)
 	assert.NotNil(t, c)
 	for i := 0; i < 20; i++ {
-		res := c.Message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
+		res := c.message(makeMessage("!rss http://rss.cnn.com/rss/edition.rss"))
 		assert.True(t, res)
 	}
 

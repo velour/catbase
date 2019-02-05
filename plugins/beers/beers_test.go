@@ -13,12 +13,12 @@ import (
 	"github.com/velour/catbase/plugins/counter"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -31,8 +31,8 @@ func makeBeersPlugin(t *testing.T) (*BeersPlugin, *bot.MockBot) {
 	counter.New(mb)
 	mb.DB().MustExec(`delete from counter; delete from counter_alias;`)
 	b := New(mb)
-	b.Message(makeMessage("!mkalias beer :beer:"))
-	b.Message(makeMessage("!mkalias beers :beer:"))
+	b.message(makeMessage("!mkalias beer :beer:"))
+	b.message(makeMessage("!mkalias beers :beer:"))
 	return b, mb
 }
 
@@ -49,9 +49,9 @@ func TestCounter(t *testing.T) {
 
 func TestImbibe(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("!imbibe"))
+	b.message(makeMessage("!imbibe"))
 	assert.Len(t, mb.Messages, 1)
-	b.Message(makeMessage("!imbibe"))
+	b.message(makeMessage("!imbibe"))
 	assert.Len(t, mb.Messages, 2)
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
@@ -59,7 +59,7 @@ func TestImbibe(t *testing.T) {
 }
 func TestEq(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("!beers = 3"))
+	b.message(makeMessage("!beers = 3"))
 	assert.Len(t, mb.Messages, 1)
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
@@ -68,7 +68,7 @@ func TestEq(t *testing.T) {
 
 func TestEqNeg(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("!beers = -3"))
+	b.message(makeMessage("!beers = -3"))
 	assert.Len(t, mb.Messages, 1)
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
@@ -77,8 +77,8 @@ func TestEqNeg(t *testing.T) {
 
 func TestEqZero(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("beers += 5"))
-	b.Message(makeMessage("!beers = 0"))
+	b.message(makeMessage("beers += 5"))
+	b.message(makeMessage("!beers = 0"))
 	assert.Len(t, mb.Messages, 2)
 	assert.Contains(t, mb.Messages[1], "reversal of fortune")
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
@@ -88,9 +88,9 @@ func TestEqZero(t *testing.T) {
 
 func TestBeersPlusEq(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("beers += 5"))
+	b.message(makeMessage("beers += 5"))
 	assert.Len(t, mb.Messages, 1)
-	b.Message(makeMessage("beers += 5"))
+	b.message(makeMessage("beers += 5"))
 	assert.Len(t, mb.Messages, 2)
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
@@ -99,11 +99,11 @@ func TestBeersPlusEq(t *testing.T) {
 
 func TestPuke(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("beers += 5"))
+	b.message(makeMessage("beers += 5"))
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, it.Count)
-	b.Message(makeMessage("puke"))
+	b.message(makeMessage("puke"))
 	it, err = counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, it.Count)
@@ -111,28 +111,18 @@ func TestPuke(t *testing.T) {
 
 func TestBeersReport(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Message(makeMessage("beers += 5"))
+	b.message(makeMessage("beers += 5"))
 	it, err := counter.GetItem(mb.DB(), "tester", itemName)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, it.Count)
-	b.Message(makeMessage("beers"))
+	b.message(makeMessage("beers"))
 	assert.Contains(t, mb.Messages[1], "5 beers")
 }
 
 func TestHelp(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.Help("channel", []string{})
+	b.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
-}
-
-func TestBotMessage(t *testing.T) {
-	b, _ := makeBeersPlugin(t)
-	assert.False(t, b.BotMessage(makeMessage("test")))
-}
-
-func TestEvent(t *testing.T) {
-	b, _ := makeBeersPlugin(t)
-	assert.False(t, b.Event("dummy", makeMessage("test")))
 }
 
 func TestRegisterWeb(t *testing.T) {
