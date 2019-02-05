@@ -221,20 +221,21 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	if len(games) > 0 {
 		game = games[0].Title
 	}
+	streamWord := p.config.Get("Twitch.StreamWord", "streaming")
 	if alwaysPrintStatus {
 		if game == "" {
-			p.Bot.Send(bot.Message, channel, twitcher.name+" is not streaming.")
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is not %s.", twitcher.name, streamWord))
 		} else {
-			p.Bot.Send(bot.Message, channel, twitcher.name+" is streaming "+game+" at "+twitcher.URL())
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
 		}
 	} else if game == "" {
 		if twitcher.game != "" {
-			p.Bot.Send(bot.Message, channel, twitcher.name+" just stopped streaming.")
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s just stopped %s.", twitcher.name, streamWord))
 		}
 		twitcher.game = ""
 	} else {
 		if twitcher.game != game {
-			p.Bot.Send(bot.Message, channel, twitcher.name+" just started streaming "+game+" at "+twitcher.URL())
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
 		}
 		twitcher.game = game
 	}
