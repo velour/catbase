@@ -107,7 +107,7 @@ func New(b bot.Bot) *RPGPlugin {
 func (p *RPGPlugin) Message(message msg.Message) bool {
 	if strings.ToLower(message.Body) == "start rpg" {
 		b := NewRandomBoard()
-		_, ts := p.Bot.Send(bot.Message, message.Channel, b.toMessageString())
+		ts, _ := p.Bot.Send(bot.Message, message.Channel, b.toMessageString())
 		p.listenFor[ts] = b
 		p.Bot.Send(bot.Reply, message.Channel, "Over here.", ts)
 		return true

@@ -29,14 +29,14 @@ type MockBot struct {
 func (mb *MockBot) Config() *config.Config { return mb.Cfg }
 func (mb *MockBot) DB() *sqlx.DB           { return mb.Cfg.DB }
 func (mb *MockBot) Who(string) []user.User { return []user.User{} }
-func (mb *MockBot) Send(kind Kind, args ...interface{}) (error, string) {
+func (mb *MockBot) Send(kind Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case Message:
 		mb.Messages = append(mb.Messages, args[1].(string))
-		return nil, fmt.Sprintf("m-%d", len(mb.Actions)-1)
+		return fmt.Sprintf("m-%d", len(mb.Actions)-1), nil
 	case Action:
 		mb.Actions = append(mb.Actions, args[1].(string))
-		return nil, fmt.Sprintf("a-%d", len(mb.Actions)-1)
+		return fmt.Sprintf("a-%d", len(mb.Actions)-1), nil
 	case Edit:
 		ch, m, id := args[0].(string), args[1].(string), args[2].(string)
 		return mb.edit(ch, m, id)
@@ -44,7 +44,7 @@ func (mb *MockBot) Send(kind Kind, args ...interface{}) (error, string) {
 		ch, re, msg := args[0].(string), args[1].(string), args[2].(msg.Message)
 		return mb.react(ch, re, msg)
 	}
-	return fmt.Errorf("Mesasge type unhandled"), "ERROR"
+	return "ERR", fmt.Errorf("Mesasge type unhandled")
 }
 func (mb *MockBot) AddPlugin(name string, f Plugin)                         {}
 func (mb *MockBot) Register(name string, kind Kind, cb Callback)            {}
@@ -53,40 +53,40 @@ func (mb *MockBot) Filter(msg msg.Message, s string) string                 { re
 func (mb *MockBot) LastMessage(ch string) (msg.Message, error)              { return msg.Message{}, nil }
 func (mb *MockBot) CheckAdmin(nick string) bool                             { return false }
 
-func (mb *MockBot) react(channel, reaction string, message msg.Message) (error, string) {
+func (mb *MockBot) react(channel, reaction string, message msg.Message) (string, error) {
 	mb.Reactions = append(mb.Reactions, reaction)
-	return nil, ""
+	return "", nil
 }
 
-func (mb *MockBot) edit(channel, newMessage, identifier string) (error, string) {
+func (mb *MockBot) edit(channel, newMessage, identifier string) (string, error) {
 	isMessage := identifier[0] == 'm'
 	if !isMessage && identifier[0] != 'a' {
 		err := fmt.Errorf("failed to parse identifier: %s", identifier)
 		log.Println(err)
-		return err, ""
+		return "", err
 	}
 
 	index, err := strconv.Atoi(strings.Split(identifier, "-")[1])
 	if err != nil {
 		err := fmt.Errorf("failed to parse identifier: %s", identifier)
 		log.Println(err)
-		return err, ""
+		return "", err
 	}
 
 	if isMessage {
 		if index < len(mb.Messages) {
 			mb.Messages[index] = newMessage
 		} else {
-			return fmt.Errorf("No message"), ""
+			return "", fmt.Errorf("No message")
 		}
 	} else {
 		if index < len(mb.Actions) {
 			mb.Actions[index] = newMessage
 		} else {
-			return fmt.Errorf("No action"), ""
+			return "", fmt.Errorf("No action")
 		}
 	}
-	return nil, ""
+	return "", nil
 }
 
 func (mb *MockBot) GetEmojiList() map[string]string                { return make(map[string]string) }

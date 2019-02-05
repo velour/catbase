@@ -42,9 +42,7 @@ type Irc struct {
 	config *config.Config
 	quit   chan bool
 
-	eventReceived        func(msg.Message)
-	messageReceived      func(msg.Message)
-	replyMessageReceived func(msg.Message, string)
+	event func(bot.Kind, msg.Message, ...interface{})
 }
 
 func New(c *config.Config) *Irc {
@@ -54,19 +52,11 @@ func New(c *config.Config) *Irc {
 	return &i
 }
 
-func (i *Irc) RegisterEventReceived(f func(msg.Message)) {
-	i.eventReceived = f
+func (i *Irc) RegisterEvent(f func(bot.Kind, msg.Message, ...interface{})) {
+	i.event = f
 }
 
-func (i *Irc) RegisterMessageReceived(f func(msg.Message)) {
-	i.messageReceived = f
-}
-
-func (i *Irc) RegisterReplyMessageReceived(f func(msg.Message, string)) {
-	i.replyMessageReceived = f
-}
-
-func (i *Irc) Send(kind bot.Kind, args ...interface{}) (error, string) {
+func (i *Irc) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case bot.Reply:
 	case bot.Message:
@@ -75,7 +65,7 @@ func (i *Irc) Send(kind bot.Kind, args ...interface{}) (error, string) {
 		return i.sendAction(args[0].(string), args[1].(string))
 	default:
 	}
-	return nil, ""
+	return "", nil
 }
 
 func (i *Irc) JoinChannel(channel string) {
@@ -83,7 +73,7 @@ func (i *Irc) JoinChannel(channel string) {
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
-func (i *Irc) sendMessage(channel, message string) (error, string) {
+func (i *Irc) sendMessage(channel, message string) (string, error) {
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -107,11 +97,11 @@ func (i *Irc) sendMessage(channel, message string) (error, string) {
 
 		i.Client.Out <- m
 	}
-	return nil, "NO_IRC_IDENTIFIERS"
+	return "NO_IRC_IDENTIFIERS", nil
 }
 
 // Sends action to channel
-func (i *Irc) sendAction(channel, message string) (error, string) {
+func (i *Irc) sendAction(channel, message string) (string, error) {
 	message = actionPrefix + " " + message + "\x01"
 
 	return i.sendMessage(channel, message)
@@ -123,7 +113,7 @@ func (i *Irc) GetEmojiList() map[string]string {
 }
 
 func (i *Irc) Serve() error {
-	if i.eventReceived == nil || i.messageReceived == nil {
+	if i.event == nil {
 		return fmt.Errorf("Missing an event handler")
 	}
 
@@ -202,52 +192,52 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 		// OK, ignore
 
 	case irc.ERR_NOSUCHNICK:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.ERR_NOSUCHCHANNEL:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.RPL_MOTD:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.RPL_NAMREPLY:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.RPL_TOPIC:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.KICK:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.TOPIC:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.MODE:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.JOIN:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.PART:
-		i.eventReceived(botMsg)
+		fallthrough
+
+	case irc.NOTICE:
+		fallthrough
+
+	case irc.NICK:
+		fallthrough
+
+	case irc.RPL_WHOREPLY:
+		fallthrough
+
+	case irc.RPL_ENDOFWHO:
+		i.event(bot.Event, botMsg)
+
+	case irc.PRIVMSG:
+		i.event(bot.Message, botMsg)
 
 	case irc.QUIT:
 		os.Exit(1)
-
-	case irc.NOTICE:
-		i.eventReceived(botMsg)
-
-	case irc.PRIVMSG:
-		i.messageReceived(botMsg)
-
-	case irc.NICK:
-		i.eventReceived(botMsg)
-
-	case irc.RPL_WHOREPLY:
-		i.eventReceived(botMsg)
-
-	case irc.RPL_ENDOFWHO:
-		i.eventReceived(botMsg)
 
 	default:
 		cmd := irc.CmdNames[msg.Cmd]

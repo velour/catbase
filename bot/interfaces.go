@@ -45,7 +45,7 @@ type Bot interface {
 	// AddPlugin registers a new plugin handler
 	AddPlugin(string, Plugin)
 	// First arg should be one of bot.Message/Reply/Action/etc
-	Send(Kind, ...interface{}) (error, string)
+	Send(Kind, ...interface{}) (string, error)
 	// First arg should be one of bot.Message/Reply/Action/etc
 	Receive(Kind, msg.Message, ...interface{})
 	// Register a callback
@@ -61,11 +61,9 @@ type Bot interface {
 
 // Connector represents a server connection to a chat service
 type Connector interface {
-	RegisterEventReceived(func(message msg.Message))
-	RegisterMessageReceived(func(message msg.Message))
-	RegisterReplyMessageReceived(func(msg.Message, string))
+	RegisterEvent(func(Kind, msg.Message, ...interface{}))
 
-	Send(Kind, ...interface{}) (error, string)
+	Send(Kind, ...interface{}) (string, error)
 
 	GetEmojiList() map[string]string
 	Serve() error

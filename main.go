@@ -35,6 +35,7 @@ import (
 	"github.com/velour/catbase/plugins/twitch"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
+	"github.com/velour/catbase/slack"
 )
 
 var (
@@ -70,7 +71,7 @@ func main() {
 	case "irc":
 		client = irc.New(c)
 	case "slack":
-		//client = slack.New(c)
+		client = slack.New(c)
 	default:
 		log.Fatalf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}

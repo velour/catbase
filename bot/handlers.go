@@ -17,23 +17,18 @@ import (
 )
 
 func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) {
-	panic("I don't know what to do here yet")
-}
-
-// Handles incomming PRIVMSG requests
-func (b *bot) MsgReceived(msg msg.Message) {
-	log.Println("Received message: ", msg)
+	log.Println("Received event: ", msg)
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
-	if strings.HasPrefix(msg.Body, "help ") && msg.Command {
+	if kind == Message && strings.HasPrefix(msg.Body, "help ") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
 		goto RET
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.runCallback(name, Message, msg) {
+		if b.runCallback(name, kind, msg, args) {
 			goto RET
 		}
 	}
@@ -43,59 +38,18 @@ RET:
 	return
 }
 
-// Handle incoming events
-func (b *bot) EventReceived(msg msg.Message) {
-	log.Println("Received event: ", msg)
-	//msg := b.buildMessage(conn, inMsg)
-	for _, name := range b.pluginOrdering {
-		if b.runCallback(name, Event, msg) {
-			return
-		}
-	}
-}
-
 func (b *bot) runCallback(plugin string, evt Kind, message msg.Message, args ...interface{}) bool {
 	for _, cb := range b.callbacks[plugin][evt] {
-		if cb(evt, message) {
+		if cb(evt, message, args) {
 			return true
 		}
 	}
 	return false
 }
 
-// Handle incoming replys
-func (b *bot) ReplyMsgReceived(msg msg.Message, identifier string) {
-	log.Println("Received message: ", msg)
-
-	for _, name := range b.pluginOrdering {
-		if b.runCallback(name, Reply, msg, identifier) {
-			break
-		}
-	}
-}
-
-func (b *bot) SendMessage(channel, message string) (error, string) {
-	return b.conn.Send(Message, channel, message)
-}
-
-func (b *bot) SendAction(channel, message string) (error, string) {
-	return b.conn.Send(Action, channel, message)
-}
-
-func (b *bot) ReplyToMessageIdentifier(channel, message, identifier string) (error, string) {
-	return b.conn.Send(Reply, channel, message, identifier)
-}
-
-func (b *bot) ReplyToMessage(channel, message string, replyTo msg.Message) (error, string) {
-	return b.conn.Send(Reply, channel, message, replyTo)
-}
-
-func (b *bot) React(channel, reaction string, message msg.Message) (error, string) {
-	return b.conn.Send(Reaction, channel, reaction, message)
-}
-
-func (b *bot) Edit(channel, newMessage, identifier string) (error, string) {
-	return b.conn.Send(Edit, channel, newMessage, identifier)
+// Send a message to the connection
+func (b *bot) Send(kind Kind, args ...interface{}) (string, error) {
+	return b.conn.Send(kind, args...)
 }
 
 func (b *bot) GetEmojiList() map[string]string {
@@ -110,7 +64,7 @@ func (b *bot) checkHelp(channel string, parts []string) {
 		for name, _ := range b.plugins {
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
-		b.SendMessage(channel, topics)
+		b.Send(Message, channel, topics)
 	} else {
 		// trigger the proper plugin's help response
 		if parts[1] == "about" {
@@ -127,7 +81,7 @@ func (b *bot) checkHelp(channel string, parts []string) {
 			b.runCallback(parts[1], Help, msg.Message{Channel: channel}, channel, parts)
 		} else {
 			msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", parts[1])
-			b.SendMessage(channel, msg)
+			b.Send(Message, channel, msg)
 		}
 	}
 }
@@ -223,14 +177,14 @@ func (b *bot) listVars(channel string, parts []string) {
 	if len(variables) > 0 {
 		msg += ", " + strings.Join(variables, ", ")
 	}
-	b.SendMessage(channel, msg)
+	b.Send(Message, channel, msg)
 }
 
 func (b *bot) Help(channel string, parts []string) {
 	msg := fmt.Sprintf("Hi, I'm based on godeepintir version %s. I'm written in Go, and you "+
 		"can find my source code on the internet here: "+
 		"http://github.com/velour/catbase", b.version)
-	b.SendMessage(channel, msg)
+	b.Send(Message, channel, msg)
 }
 
 // Send our own musings to the plugins

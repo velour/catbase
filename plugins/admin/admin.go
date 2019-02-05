@@ -25,12 +25,14 @@ type AdminPlugin struct {
 }
 
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface
-func New(bot bot.Bot) *AdminPlugin {
+func New(b bot.Bot) *AdminPlugin {
 	p := &AdminPlugin{
-		Bot: bot,
-		db:  bot.DB(),
-		cfg: bot.Config(),
+		Bot: b,
+		db:  b.DB(),
+		cfg: b.Config(),
 	}
+	b.Register("admin", bot.Message, p.message)
+	b.Register("admin", bot.Help, p.help)
 	return p
 }
 
@@ -44,7 +46,7 @@ var forbiddenKeys = map[string]bool{
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *AdminPlugin) Message(message msg.Message) bool {
+func (p *AdminPlugin) message(k bot.Kind, message msg.Message, args ...interface{}) bool {
 	body := message.Body
 
 	if p.quiet {
@@ -143,23 +145,12 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *AdminPlugin) Help(channel string, parts []string) {
-	p.Bot.Send(bot.Message, channel, "This does super secret things that you're not allowed to know about.")
-}
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *AdminPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *AdminPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *AdminPlugin) help(kind bot.Kind, m msg.Message, args ...interface{}) bool {
+	p.Bot.Send(bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
+	return true
 }
 
 // Register any web URLs desired
 func (p *AdminPlugin) RegisterWeb() *string {
 	return nil
 }
-
-func (p *AdminPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

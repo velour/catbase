@@ -22,12 +22,12 @@ func setup(t *testing.T) (*AdminPlugin, *bot.MockBot) {
 	return a, mb
 }
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -38,7 +38,7 @@ func makeMessage(payload string) msg.Message {
 func TestSet(t *testing.T) {
 	a, mb := setup(t)
 	expected := "test value"
-	a.Message(makeMessage("!set test.key " + expected))
+	a.message(makeMessage("!set test.key " + expected))
 	actual := mb.Config().Get("test.key", "ERR")
 	assert.Equal(t, expected, actual)
 }
@@ -47,7 +47,7 @@ func TestGetValue(t *testing.T) {
 	a, mb := setup(t)
 	expected := "value"
 	mb.Config().Set("test.key", "value")
-	a.Message(makeMessage("!get test.key"))
+	a.message(makeMessage("!get test.key"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], expected)
 }
@@ -55,7 +55,7 @@ func TestGetValue(t *testing.T) {
 func TestGetEmpty(t *testing.T) {
 	a, mb := setup(t)
 	expected := "test.key: <unknown>"
-	a.Message(makeMessage("!get test.key"))
+	a.message(makeMessage("!get test.key"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, expected, mb.Messages[0])
 }
@@ -63,7 +63,7 @@ func TestGetEmpty(t *testing.T) {
 func TestGetForbidden(t *testing.T) {
 	a, mb := setup(t)
 	expected := "cannot access"
-	a.Message(makeMessage("!get slack.token"))
+	a.message(makeMessage("!get slack.token"))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], expected)
 }

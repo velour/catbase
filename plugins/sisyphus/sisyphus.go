@@ -47,7 +47,7 @@ func NewRandomGame(b bot.Bot, channel, who string) *game {
 		size:    size,
 		current: size / 2,
 	}
-	_, g.id = b.Send(bot.Message, channel, g.toMessageString())
+	g.id, _ = b.Send(bot.Message, channel, g.toMessageString())
 
 	g.schedulePush()
 	g.scheduleDecrement()
