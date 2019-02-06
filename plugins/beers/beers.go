@@ -358,7 +358,6 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 			log.Fatal(err)
 		}
 		userMap[u.untappdUser] = u
-		log.Printf("Found untappd user: %#v", u)
 		if u.chanNick == "" {
 			log.Fatal("Empty chanNick for no good reason.")
 		}
@@ -373,7 +372,6 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		checkin := chks[i-1]
 
 		if checkin.Checkin_id <= userMap[checkin.User.User_name].lastCheckin {
-			log.Printf("User %s already check in >%d", checkin.User.User_name, checkin.Checkin_id)
 			continue
 		}
 
