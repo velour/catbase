@@ -3,13 +3,10 @@ package slackapp
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,7 +26,8 @@ type SlackApp struct {
 	config *config.Config
 	api    *slack.Client
 
-	token        string
+	botToken     string
+	userToken    string
 	verification string
 	id           string
 
@@ -55,8 +53,10 @@ func New(c *config.Config) *SlackApp {
 	return &SlackApp{
 		api:          api,
 		config:       c,
-		token:        token,
+		botToken:     token,
+		userToken:    c.Get("slack.usertoken", "NONE"),
 		verification: c.Get("slack.verification", "NONE"),
+		myBotID:      c.Get("slack.botid", ""),
 		lastRecieved: time.Now(),
 		users:        make(map[string]string),
 		emoji:        make(map[string]string),
@@ -69,6 +69,7 @@ func (s *SlackApp) RegisterEvent(f bot.Callback) {
 
 func (s *SlackApp) Serve() error {
 	s.populateEmojiList()
+
 	http.HandleFunc("/evt", func(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
@@ -100,7 +101,6 @@ func (s *SlackApp) Serve() error {
 			}
 		}
 	})
-	log.Println("[INFO] Server listening")
 	log.Fatal(http.ListenAndServe("0.0.0.0:1337", nil))
 	return nil
 }
@@ -117,7 +117,7 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 		}
 	} else if msg.ThreadTimeStamp != "" {
 		//we're throwing away some information here by not parsing the correct reply object type, but that's okay
-		s.event(bot.Reply, s.buildLightReplyMessage(msg), msg.ThreadTimeStamp)
+		s.event(bot.Reply, s.buildMessage(msg), msg.ThreadTimeStamp)
 	} else {
 		log.Printf("THAT MESSAGE WAS HIDDEN: %+v", msg.Text)
 	}
@@ -149,55 +149,26 @@ func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
 }
 
 func (s *SlackApp) sendMessageType(channel, message string, meMessage bool) (string, error) {
-	postUrl := "https://slack.com/api/chat.postMessage"
-	if meMessage {
-		postUrl = "https://slack.com/api/chat.meMessage"
-	}
-
+	ts, err := "", fmt.Errorf("")
 	nick := s.config.Get("Nick", "bot")
-	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
 
-	resp, err := http.PostForm(postUrl,
-		url.Values{"token": {s.token},
-			"username": {nick},
-			"icon_url": {icon},
-			"channel":  {channel},
-			"text":     {message},
-		})
+	if meMessage {
+		_, ts, err = s.api.PostMessage(channel,
+			slack.MsgOptionUsername(nick),
+			slack.MsgOptionText(message, false),
+			slack.MsgOptionMeMessage())
+	} else {
+		_, ts, err = s.api.PostMessage(channel,
+			slack.MsgOptionUsername(nick),
+			slack.MsgOptionText(message, false))
+	}
 
 	if err != nil {
-		log.Printf("Error sending Slack message: %s", err)
+		log.Printf("Error sending message: %+v", err)
+		return "", err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		log.Fatalf("Error reading Slack API body: %s", err)
-	}
-
-	log.Println(string(body))
-
-	type MessageResponse struct {
-		OK        bool   `json:"ok"`
-		Timestamp string `json:"ts"`
-		Message   struct {
-			BotID string `json:"bot_id"`
-		} `json:"message"`
-	}
-
-	var mr MessageResponse
-	err = json.Unmarshal(body, &mr)
-	if err != nil {
-		log.Fatalf("Error parsing message response: %s", err)
-	}
-
-	if !mr.OK {
-		return "", errors.New("failure response received")
-	}
-
-	s.myBotID = mr.Message.BotID
-
-	return mr.Timestamp, err
+	return ts, nil
 }
 
 func (s *SlackApp) sendMessage(channel, message string) (string, error) {
@@ -214,48 +185,12 @@ func (s *SlackApp) sendAction(channel, message string) (string, error) {
 
 func (s *SlackApp) replyToMessageIdentifier(channel, message, identifier string) (string, error) {
 	nick := s.config.Get("Nick", "bot")
-	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
-
-	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
-		url.Values{"token": {s.token},
-			"username":  {nick},
-			"icon_url":  {icon},
-			"channel":   {channel},
-			"text":      {message},
-			"thread_ts": {identifier},
-		})
-
-	if err != nil {
-		err := fmt.Errorf("Error sending Slack reply: %s", err)
-		return "", err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		err := fmt.Errorf("Error reading Slack API body: %s", err)
-		return "", err
-	}
-
-	log.Println(string(body))
-
-	type MessageResponse struct {
-		OK        bool   `json:"ok"`
-		Timestamp string `json:"ts"`
-	}
-
-	var mr MessageResponse
-	err = json.Unmarshal(body, &mr)
-	if err != nil {
-		err := fmt.Errorf("Error parsing message response: %s", err)
-		return "", err
-	}
-
-	if !mr.OK {
-		return "", fmt.Errorf("Got !OK from slack message response")
-	}
-
-	return mr.Timestamp, err
+	_, ts, err := s.api.PostMessage(channel,
+		slack.MsgOptionUsername(nick),
+		slack.MsgOptionText(message, false),
+		slack.MsgOptionMeMessage(),
+		slack.MsgOptionTS(identifier))
+	return ts, err
 }
 
 func (s *SlackApp) replyToMessage(channel, message string, replyTo msg.Message) (string, error) {
@@ -264,30 +199,23 @@ func (s *SlackApp) replyToMessage(channel, message string, replyTo msg.Message) 
 
 func (s *SlackApp) react(channel, reaction string, message msg.Message) (string, error) {
 	log.Printf("Reacting in %s: %s", channel, reaction)
-	resp, err := http.PostForm("https://slack.com/api/reactions.add",
-		url.Values{"token": {s.token},
-			"name":      {reaction},
-			"channel":   {channel},
-			"timestamp": {message.AdditionalData["RAW_SLACK_TIMESTAMP"]}})
-	if err != nil {
-		err := fmt.Errorf("reaction failed: %s", err)
-		return "", err
+	ref := slack.ItemRef{
+		Channel:   channel,
+		Timestamp: message.AdditionalData["RAW_SLACK_TIMESTAMP"],
 	}
-	return "", checkReturnStatus(resp)
+	err := s.api.AddReaction(reaction, ref)
+	return "", err
 }
 
 func (s *SlackApp) edit(channel, newMessage, identifier string) (string, error) {
 	log.Printf("Editing in (%s) %s: %s", identifier, channel, newMessage)
-	resp, err := http.PostForm("https://slack.com/api/chat.update",
-		url.Values{"token": {s.token},
-			"channel": {channel},
-			"text":    {newMessage},
-			"ts":      {identifier}})
-	if err != nil {
-		err := fmt.Errorf("edit failed: %s", err)
-		return "", err
-	}
-	return "", checkReturnStatus(resp)
+	nick := s.config.Get("Nick", "bot")
+	_, ts, err := s.api.PostMessage(channel,
+		slack.MsgOptionUsername(nick),
+		slack.MsgOptionText(newMessage, false),
+		slack.MsgOptionMeMessage(),
+		slack.MsgOptionUpdate(identifier))
+	return ts, err
 }
 
 func (s *SlackApp) GetEmojiList() map[string]string {
@@ -295,30 +223,21 @@ func (s *SlackApp) GetEmojiList() map[string]string {
 }
 
 func (s *SlackApp) populateEmojiList() {
-	resp, err := http.PostForm("https://slack.com/api/emoji.list",
-		url.Values{"token": {s.token}})
+	if s.userToken == "NONE" {
+		log.Println("Cannot get emoji list without slack.usertoken")
+		return
+	}
+	dbg := slack.OptionDebug(true)
+	api := slack.New(s.userToken)
+	dbg(api)
+
+	em, err := api.GetEmoji()
 	if err != nil {
 		log.Printf("Error retrieving emoji list from Slack: %s", err)
 		return
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		log.Fatalf("Error reading Slack API body: %s", err)
-	}
-
-	type EmojiListResponse struct {
-		OK    bool              `json:"ok"`
-		Emoji map[string]string `json:"emoji"`
-	}
-
-	var list EmojiListResponse
-	err = json.Unmarshal(body, &list)
-	if err != nil {
-		log.Fatalf("Error parsing emoji list: %s", err)
-	}
-	s.emoji = list.Emoji
+	s.emoji = em
 }
 
 // I think it's horseshit that I have to do this
@@ -329,64 +248,10 @@ func slackTStoTime(t string) time.Time {
 	return time.Unix(sec, nsec)
 }
 
-func checkReturnStatus(response *http.Response) error {
-	type Response struct {
-		OK bool `json:"ok"`
-	}
-
-	body, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if err != nil {
-		err := fmt.Errorf("Error reading Slack API body: %s", err)
-		return err
-	}
-
-	var resp Response
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		err := fmt.Errorf("Error parsing message response: %s", err)
-		return err
-	}
-	return nil
-}
-
 var urlDetector = regexp.MustCompile(`<(.+)://([^|^>]+).*>`)
 
 // Convert a slackMessage to a msg.Message
 func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
-	text := html.UnescapeString(m.Text)
-
-	text = fixText(s.getUser, text)
-
-	isCmd, text := bot.IsCmd(s.config, text)
-
-	isAction := m.SubType == "me_message"
-
-	u, _ := s.getUser(m.User)
-	if m.Username != "" {
-		u = m.Username
-	}
-
-	tstamp := slackTStoTime(m.TimeStamp)
-
-	return msg.Message{
-		User: &user.User{
-			ID:   m.User,
-			Name: u,
-		},
-		Body:    text,
-		Raw:     m.Text,
-		Channel: m.Channel,
-		Command: isCmd,
-		Action:  isAction,
-		Time:    tstamp,
-		AdditionalData: map[string]string{
-			"RAW_SLACK_TIMESTAMP": m.TimeStamp,
-		},
-	}
-}
-
-func (s *SlackApp) buildLightReplyMessage(m *slackevents.MessageEvent) msg.Message {
 	text := html.UnescapeString(m.Text)
 
 	text = fixText(s.getUser, text)
