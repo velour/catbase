@@ -23,8 +23,8 @@ type TwitchPlugin struct {
 }
 
 type Twitcher struct {
-	name string
-	game string
+	name   string
+	gameID string
 }
 
 func (t Twitcher) URL() string {
@@ -62,8 +62,8 @@ func New(b bot.Bot) *TwitchPlugin {
 		for _, twitcherName := range p.config.GetArray("Twitch."+ch+".Users", []string{}) {
 			if _, ok := p.twitchList[twitcherName]; !ok {
 				p.twitchList[twitcherName] = &Twitcher{
-					name: twitcherName,
-					game: "",
+					name:   twitcherName,
+					gameID: "",
 				}
 			}
 		}
@@ -95,7 +95,7 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := "NO."
-	if twitcher.game != "" {
+	if twitcher.gameID != "" {
 		status = "YES."
 	}
 	context := map[string]interface{}{"Name": twitcher.name, "Status": status}
@@ -207,26 +207,27 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	}
 
 	games := s.Data
-	game := ""
+	gameID, title := "", ""
 	if len(games) > 0 {
-		game = games[0].Title
+		gameID = games[0].GameID
+		title = games[0].Title
 	}
 	streamWord := p.config.Get("Twitch.StreamWord", "streaming")
 	if alwaysPrintStatus {
-		if game == "" {
+		if gameID == "" {
 			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is not %s.", twitcher.name, streamWord))
 		} else {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, title, twitcher.URL()))
 		}
-	} else if game == "" {
-		if twitcher.game != "" {
+	} else if gameID == "" {
+		if twitcher.gameID != "" {
 			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s just stopped %s.", twitcher.name, streamWord))
 		}
-		twitcher.game = ""
+		twitcher.gameID = ""
 	} else {
-		if twitcher.game != game {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, game, twitcher.URL()))
+		if twitcher.gameID != gameID {
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, title, twitcher.URL()))
 		}
-		twitcher.game = game
+		twitcher.gameID = gameID
 	}
 }

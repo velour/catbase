@@ -35,8 +35,8 @@ func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 	assert.NotNil(t, c)
 
 	c.twitchList["drseabass"] = &Twitcher{
-		name: "drseabass",
-		game: "",
+		name:   "drseabass",
+		gameID: "",
 	}
 
 	return c, mb
