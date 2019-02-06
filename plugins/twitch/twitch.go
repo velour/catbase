@@ -135,6 +135,10 @@ func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 
 func (p *TwitchPlugin) twitchLoop(channel string) {
 	frequency := p.config.GetInt("Twitch.Freq", 60)
+	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.authorization", "") == "" {
+		log.Println("Disabling twitch autochecking.")
+		return
+	}
 
 	log.Println("Checking every ", frequency, " seconds")
 

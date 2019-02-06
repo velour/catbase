@@ -17,7 +17,7 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
-func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) {
+func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool {
 	log.Println("Received event: ", msg)
 
 	// msg := b.buildMessage(client, inMsg)
@@ -36,7 +36,7 @@ func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) {
 
 RET:
 	b.logIn <- msg
-	return
+	return true
 }
 
 func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
