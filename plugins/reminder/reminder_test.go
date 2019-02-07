@@ -226,9 +226,3 @@ func TestHelp(t *testing.T) {
 	c.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }
-
-func TestRegisterWeb(t *testing.T) {
-	c, _ := setup(t)
-	assert.NotNil(t, c)
-	assert.Nil(t, c.RegisterWeb())
-}

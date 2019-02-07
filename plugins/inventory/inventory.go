@@ -224,8 +224,3 @@ func checkerr(e error) {
 		log.Println(e)
 	}
 }
-
-func (p *InventoryPlugin) RegisterWeb() *string {
-	// nothing to register
-	return nil
-}

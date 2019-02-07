@@ -71,7 +71,3 @@ func (p *CSWPlugin) message(kind bot.Kind, message msg.Message, args ...interfac
 
 	return false
 }
-
-func (p *CSWPlugin) RegisterWeb() *string {
-	return nil
-}

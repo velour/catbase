@@ -18,7 +18,9 @@ type DBPlugin struct {
 }
 
 func New(b bot.Bot) *DBPlugin {
-	return &DBPlugin{b, b.Config()}
+	p := &DBPlugin{b, b.Config()}
+	p.registerWeb()
+	return p
 }
 
 func (p *DBPlugin) Message(message msg.Message) bool            { return false }
@@ -27,10 +29,8 @@ func (p *DBPlugin) ReplyMessage(msg.Message, string) bool       { return false }
 func (p *DBPlugin) BotMessage(message msg.Message) bool         { return false }
 func (p *DBPlugin) Help(channel string, parts []string)         {}
 
-func (p *DBPlugin) RegisterWeb() *string {
+func (p *DBPlugin) registerWeb() {
 	http.HandleFunc("/db/catbase.db", p.serveQuery)
-	tmp := "/db/catbase.db"
-	return &tmp
 }
 
 func (p *DBPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {

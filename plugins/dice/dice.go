@@ -74,8 +74,3 @@ func (p *DicePlugin) help(kind bot.Kind, message msg.Message, args ...interface{
 	p.Bot.Send(bot.Message, message.Channel, "Roll dice using notation XdY. Try \"3d20\".")
 	return true
 }
-
-// Register any web URLs desired
-func (p *DicePlugin) RegisterWeb() *string {
-	return nil
-}

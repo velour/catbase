@@ -49,7 +49,7 @@ type Bot interface {
 	// First arg should be one of bot.Message/Reply/Action/etc
 	Send(Kind, ...interface{}) (string, error)
 	// First arg should be one of bot.Message/Reply/Action/etc
-	Receive(Kind, msg.Message, ...interface{})
+	Receive(Kind, msg.Message, ...interface{}) bool
 	// Register a callback
 	Register(Plugin, Kind, Callback)
 
@@ -59,11 +59,12 @@ type Bot interface {
 	CheckAdmin(string) bool
 	GetEmojiList() map[string]string
 	RegisterFilter(string, func(string) string)
+	RegisterWeb(string, string)
 }
 
 // Connector represents a server connection to a chat service
 type Connector interface {
-	RegisterEvent(func(Kind, msg.Message, ...interface{}))
+	RegisterEvent(Callback)
 
 	Send(Kind, ...interface{}) (string, error)
 
@@ -74,7 +75,6 @@ type Connector interface {
 }
 
 // Plugin interface used for compatibility with the Plugin interface
-// Probably can disappear once RegisterWeb gets inverted
+// Uhh it turned empty, but we're still using it to ID plugins
 type Plugin interface {
-	RegisterWeb() *string
 }

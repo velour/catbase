@@ -10,7 +10,9 @@ import (
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
-	"github.com/velour/catbase/irc"
+	"github.com/velour/catbase/connectors/irc"
+	"github.com/velour/catbase/connectors/slack"
+	"github.com/velour/catbase/connectors/slackapp"
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
@@ -35,7 +37,6 @@ import (
 	"github.com/velour/catbase/plugins/twitch"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
-	"github.com/velour/catbase/slack"
 )
 
 var (
@@ -67,11 +68,13 @@ func main() {
 
 	var client bot.Connector
 
-	switch c.Get("type", "slack") {
+	switch c.Get("type", "slackapp") {
 	case "irc":
 		client = irc.New(c)
 	case "slack":
 		client = slack.New(c)
+	case "slackapp":
+		client = slackapp.New(c)
 	default:
 		log.Fatalf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}

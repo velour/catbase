@@ -85,8 +85,3 @@ func TestNotPadding(t *testing.T) {
 	p.message(makeMessage("!lololol"))
 	assert.Len(t, mb.Messages, 0)
 }
-
-func TestRegisterWeb(t *testing.T) {
-	p, _ := makePlugin(t)
-	assert.Nil(t, p.RegisterWeb())
-}

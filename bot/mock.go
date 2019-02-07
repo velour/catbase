@@ -5,6 +5,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -46,12 +47,13 @@ func (mb *MockBot) Send(kind Kind, args ...interface{}) (string, error) {
 	}
 	return "ERR", fmt.Errorf("Mesasge type unhandled")
 }
-func (mb *MockBot) AddPlugin(f Plugin)                                      {}
-func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)               {}
-func (mb *MockBot) Receive(kind Kind, msg msg.Message, args ...interface{}) {}
-func (mb *MockBot) Filter(msg msg.Message, s string) string                 { return s }
-func (mb *MockBot) LastMessage(ch string) (msg.Message, error)              { return msg.Message{}, nil }
-func (mb *MockBot) CheckAdmin(nick string) bool                             { return false }
+func (mb *MockBot) AddPlugin(f Plugin)                                           {}
+func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)                    {}
+func (mb *MockBot) RegisterWeb(_, _ string)                                      {}
+func (mb *MockBot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool { return false }
+func (mb *MockBot) Filter(msg msg.Message, s string) string                      { return s }
+func (mb *MockBot) LastMessage(ch string) (msg.Message, error)                   { return msg.Message{}, nil }
+func (mb *MockBot) CheckAdmin(nick string) bool                                  { return false }
 
 func (mb *MockBot) react(channel, reaction string, message msg.Message) (string, error) {
 	mb.Reactions = append(mb.Reactions, reaction)
@@ -99,5 +101,7 @@ func NewMockBot() *MockBot {
 		Messages: make([]string, 0),
 		Actions:  make([]string, 0),
 	}
+	// If any plugin registered a route, we need to reset those before any new test
+	http.DefaultServeMux = new(http.ServeMux)
 	return &b
 }

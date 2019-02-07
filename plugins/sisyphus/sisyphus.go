@@ -187,10 +187,6 @@ func (p *SisyphusPlugin) help(kind bot.Kind, message msg.Message, args ...interf
 	return true
 }
 
-func (p *SisyphusPlugin) RegisterWeb() *string {
-	return nil
-}
-
 func (p *SisyphusPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	identifier := args[0].(string)
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {

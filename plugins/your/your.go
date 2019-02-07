@@ -57,8 +57,3 @@ func (p *YourPlugin) help(kind bot.Kind, message msg.Message, args ...interface{
 	p.bot.Send(bot.Message, message.Channel, "Your corrects people's grammar.")
 	return true
 }
-
-// Register any web URLs desired
-func (p *YourPlugin) RegisterWeb() *string {
-	return nil
-}

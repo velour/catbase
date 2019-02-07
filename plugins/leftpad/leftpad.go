@@ -62,8 +62,3 @@ func (p *LeftpadPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 
 	return false
 }
-
-func (p *LeftpadPlugin) RegisterWeb() *string {
-	// nothing to register
-	return nil
-}

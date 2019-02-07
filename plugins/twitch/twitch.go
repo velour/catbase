@@ -71,13 +71,13 @@ func New(b bot.Bot) *TwitchPlugin {
 	}
 
 	b.Register(p, bot.Message, p.message)
+	p.registerWeb()
+
 	return p
 }
 
-func (p *TwitchPlugin) RegisterWeb() *string {
+func (p *TwitchPlugin) registerWeb() {
 	http.HandleFunc("/isstreaming/", p.serveStreaming)
-	tmp := "/isstreaming"
-	return &tmp
 }
 
 func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +135,10 @@ func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 
 func (p *TwitchPlugin) twitchLoop(channel string) {
 	frequency := p.config.GetInt("Twitch.Freq", 60)
+	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.authorization", "") == "" {
+		log.Println("Disabling twitch autochecking.")
+		return
+	}
 
 	log.Println("Checking every ", frequency, " seconds")
 

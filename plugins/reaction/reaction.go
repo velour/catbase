@@ -63,7 +63,3 @@ func (p *ReactionPlugin) message(kind bot.Kind, message msg.Message, args ...int
 
 	return false
 }
-
-func (p *ReactionPlugin) RegisterWeb() *string {
-	return nil
-}

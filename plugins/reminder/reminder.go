@@ -200,10 +200,6 @@ func (p *ReminderPlugin) help(kind bot.Kind, message msg.Message, args ...interf
 	return true
 }
 
-func (p *ReminderPlugin) RegisterWeb() *string {
-	return nil
-}
-
 func (p *ReminderPlugin) getNextReminder() *Reminder {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()

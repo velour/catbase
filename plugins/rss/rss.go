@@ -102,8 +102,3 @@ func (p *RSSPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}
 	p.Bot.Send(bot.Message, message.Channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
 	return true
 }
-
-// Register any web URLs desired
-func (p *RSSPlugin) RegisterWeb() *string {
-	return nil
-}

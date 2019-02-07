@@ -124,8 +124,3 @@ func TestHelp(t *testing.T) {
 	b.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }
-
-func TestRegisterWeb(t *testing.T) {
-	b, _ := makeBeersPlugin(t)
-	assert.Nil(t, b.RegisterWeb())
-}

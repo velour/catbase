@@ -87,8 +87,3 @@ func (p *TalkerPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 	p.Bot.Send(bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
 	return true
 }
-
-// Register any web URLs desired
-func (p *TalkerPlugin) RegisterWeb() *string {
-	return nil
-}

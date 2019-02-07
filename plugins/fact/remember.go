@@ -153,11 +153,6 @@ func (p *RememberPlugin) randQuote() string {
 	return f.Tidbit
 }
 
-// Register any web URLs desired
-func (p RememberPlugin) RegisterWeb() *string {
-	return nil
-}
-
 func (p *RememberPlugin) recordMsg(message msg.Message) {
 	log.Printf("Logging message: %s: %s", message.User.Name, message.Body)
 	p.Log[message.Channel] = append(p.Log[message.Channel], message)

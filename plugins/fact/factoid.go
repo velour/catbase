@@ -317,6 +317,8 @@ func New(botInst bot.Bot) *Factoid {
 	botInst.Register(p, bot.Message, p.message)
 	botInst.Register(p, bot.Help, p.help)
 
+	p.registerWeb()
+
 	return p
 }
 
@@ -737,11 +739,10 @@ func (p *Factoid) factTimer(channel string) {
 }
 
 // Register any web URLs desired
-func (p *Factoid) RegisterWeb() *string {
+func (p *Factoid) registerWeb() {
 	http.HandleFunc("/factoid/req", p.serveQuery)
 	http.HandleFunc("/factoid", p.serveQuery)
-	tmp := "/factoid"
-	return &tmp
+	p.Bot.RegisterWeb("/factoid", "Factoid")
 }
 
 func linkify(text string) template.HTML {

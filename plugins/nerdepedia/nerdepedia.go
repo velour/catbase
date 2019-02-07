@@ -94,8 +94,3 @@ func (p *NerdepediaPlugin) help(kind bot.Kind, message msg.Message, args ...inte
 	p.bot.Send(bot.Message, message.Channel, "nerd stuff")
 	return true
 }
-
-// Register any web URLs desired
-func (p *NerdepediaPlugin) RegisterWeb() *string {
-	return nil
-}

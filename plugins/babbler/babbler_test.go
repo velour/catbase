@@ -312,10 +312,3 @@ func TestHelp(t *testing.T) {
 	bp.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }
-
-func TestRegisterWeb(t *testing.T) {
-	mb := bot.NewMockBot()
-	bp := newBabblerPlugin(mb)
-	assert.NotNil(t, bp)
-	assert.Nil(t, bp.RegisterWeb())
-}
