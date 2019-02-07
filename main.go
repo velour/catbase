@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log"
 	"math/rand"
+	"net/http"
 	"time"
 
 	"github.com/velour/catbase/bot"
@@ -108,8 +109,10 @@ func main() {
 	b.AddPlugin(fact.New(b))
 	b.AddPlugin(db.New(b))
 
-	for {
-		err := client.Serve()
-		log.Println(err)
+	if err := client.Serve(); err != nil {
+		log.Fatal(err)
 	}
+
+	addr := c.Get("HttpAddr", "127.0.0.1:1337")
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
