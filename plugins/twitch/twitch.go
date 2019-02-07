@@ -71,13 +71,13 @@ func New(b bot.Bot) *TwitchPlugin {
 	}
 
 	b.Register(p, bot.Message, p.message)
+	p.registerWeb()
+
 	return p
 }
 
-func (p *TwitchPlugin) RegisterWeb() *string {
+func (p *TwitchPlugin) registerWeb() {
 	http.HandleFunc("/isstreaming/", p.serveStreaming)
-	tmp := "/isstreaming"
-	return &tmp
 }
 
 func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {

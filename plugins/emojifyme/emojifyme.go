@@ -99,10 +99,6 @@ func (p *EmojifyMePlugin) message(kind bot.Kind, message msg.Message, args ...in
 	return false
 }
 
-func (p *EmojifyMePlugin) RegisterWeb() *string {
-	return nil
-}
-
 func stringsContain(haystack []string, needle string) bool {
 	for _, s := range haystack {
 		if s == needle {

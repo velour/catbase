@@ -124,10 +124,6 @@ func (p *RPGPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}
 	return true
 }
 
-func (p *RPGPlugin) RegisterWeb() *string {
-	return nil
-}
-
 func (p *RPGPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	identifier := args[0].(string)
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {

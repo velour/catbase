@@ -215,8 +215,3 @@ func (p *FirstPlugin) help(kind bot.Kind, message msg.Message, args ...interface
 	p.Bot.Send(bot.Message, message.Channel, "Sorry, First does not do a goddamn thing.")
 	return true
 }
-
-// Register any web URLs desired
-func (p *FirstPlugin) RegisterWeb() *string {
-	return nil
-}

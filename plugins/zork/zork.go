@@ -120,5 +120,3 @@ func (p *ZorkPlugin) help(kind bot.Kind, message msg.Message, args ...interface{
 	p.bot.Send(bot.Message, message.Channel, "Play zork using 'zork <zork command>'.")
 	return true
 }
-
-func (p *ZorkPlugin) RegisterWeb() *string { return nil }

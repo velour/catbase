@@ -455,11 +455,6 @@ func (p *CounterPlugin) help(kind bot.Kind, message msg.Message, args ...interfa
 	return true
 }
 
-// Register any web URLs desired
-func (p *CounterPlugin) RegisterWeb() *string {
-	return nil
-}
-
 func (p *CounterPlugin) checkMatch(message msg.Message) bool {
 	nick := message.User.Name
 	channel := message.Channel

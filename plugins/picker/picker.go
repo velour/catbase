@@ -115,10 +115,3 @@ func (p *PickerPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 	p.Bot.Send(bot.Message, message.Channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
 	return true
 }
-
-// Register any web URLs desired
-func (p *PickerPlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *PickerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

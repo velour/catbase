@@ -116,9 +116,6 @@ func (b *bot) AddPlugin(h Plugin) {
 	name := reflect.TypeOf(h).String()
 	b.plugins[name] = h
 	b.pluginOrdering = append(b.pluginOrdering, name)
-	if entry := h.RegisterWeb(); entry != nil {
-		b.httpEndPoints[name] = *entry
-	}
 }
 
 func (b *bot) Who(channel string) []user.User {
@@ -259,4 +256,8 @@ func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
 		b.callbacks[t][kind] = []Callback{}
 	}
 	b.callbacks[t][kind] = append(b.callbacks[t][kind], cb)
+}
+
+func (b *bot) RegisterWeb(root, name string) {
+	b.httpEndPoints[name] = root
 }

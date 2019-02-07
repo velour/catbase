@@ -162,10 +162,6 @@ func (p *BabblerPlugin) help(kind bot.Kind, msg msg.Message, args ...interface{}
 	return true
 }
 
-func (p *BabblerPlugin) RegisterWeb() *string {
-	return nil
-}
-
 func (p *BabblerPlugin) makeBabbler(name string) (*Babbler, error) {
 	res, err := p.db.Exec(`insert into babblers (babbler) values (?);`, name)
 	if err == nil {

@@ -434,8 +434,3 @@ func (p *BeersPlugin) untappdLoop(channel string) {
 		p.checkUntappd(channel)
 	}
 }
-
-// Register any web URLs desired
-func (p BeersPlugin) RegisterWeb() *string {
-	return nil
-}

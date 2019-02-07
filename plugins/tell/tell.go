@@ -41,5 +41,3 @@ func (t *TellPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 	}
 	return false
 }
-
-func (t *TellPlugin) RegisterWeb() *string { return nil }

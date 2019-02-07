@@ -59,6 +59,7 @@ type Bot interface {
 	CheckAdmin(string) bool
 	GetEmojiList() map[string]string
 	RegisterFilter(string, func(string) string)
+	RegisterWeb(string, string)
 }
 
 // Connector represents a server connection to a chat service
@@ -74,7 +75,6 @@ type Connector interface {
 }
 
 // Plugin interface used for compatibility with the Plugin interface
-// Probably can disappear once RegisterWeb gets inverted
+// Uhh it turned empty, but we're still using it to ID plugins
 type Plugin interface {
-	RegisterWeb() *string
 }

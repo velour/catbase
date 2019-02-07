@@ -149,8 +149,3 @@ func (p *AdminPlugin) help(kind bot.Kind, m msg.Message, args ...interface{}) bo
 	p.Bot.Send(bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
 	return true
 }
-
-// Register any web URLs desired
-func (p *AdminPlugin) RegisterWeb() *string {
-	return nil
-}
