@@ -81,8 +81,6 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.migrateDB()
 
 	http.HandleFunc("/", bot.serveRoot)
-	addr := config.Get("HttpAddr", "127.0.0.1:1337")
-	go http.ListenAndServe(addr, nil)
 
 	connector.RegisterEvent(bot.Receive)
 

@@ -101,7 +101,6 @@ func (s *SlackApp) Serve() error {
 			}
 		}
 	})
-	log.Fatal(http.ListenAndServe("0.0.0.0:1337", nil))
 	return nil
 }
 
