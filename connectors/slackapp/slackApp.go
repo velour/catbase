@@ -124,7 +124,6 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 }
 
 func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
-	// TODO: All of these local calls to slack should get routed through the library
 	switch kind {
 	case bot.Message:
 		return s.sendMessage(args[0].(string), args[1].(string))
@@ -285,28 +284,50 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 }
 
 // Get username for Slack user ID
-func (s *SlackApp) getUser(id string) (string, bool) {
+func (s *SlackApp) getUser(id string) (string, error) {
 	if name, ok := s.users[id]; ok {
-		return name, true
+		return name, nil
 	}
 
 	log.Printf("User %s not already found, requesting info", id)
 	u, err := s.api.GetUserInfo(id)
 	if err != nil {
-		return "UNKNOWN", false
+		return "UNKNOWN", err
 	}
 	s.users[id] = u.Name
-	return s.users[id], true
+	return s.users[id], nil
 }
 
 // Who gets usernames out of a channel
 func (s *SlackApp) Who(id string) []string {
+	if s.userToken == "NONE" {
+		log.Println("Cannot get emoji list without slack.usertoken")
+		return []string{s.config.Get("nick", "bot")}
+	}
+	dbg := slack.OptionDebug(true)
+	api := slack.New(s.userToken)
+	dbg(api)
+
 	log.Println("Who is queried for ", id)
 	// Not super sure this is the correct call
-	members, err := s.api.GetUserGroupMembers(id)
+	params := &slack.GetUsersInConversationParameters{
+		ChannelID: id,
+		Limit:     50,
+	}
+	members, _, err := api.GetUsersInConversation(params)
 	if err != nil {
 		log.Println(err)
-		return []string{}
+		return []string{s.config.Get("nick", "bot")}
 	}
-	return members
+
+	ret := []string{}
+	for _, m := range members {
+		u, err := s.getUser(m)
+		if err != nil {
+			log.Printf("Couldn't get user %s: %s", m, err)
+			continue
+		}
+		ret = append(ret, u)
+	}
+	return ret
 }

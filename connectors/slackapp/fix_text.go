@@ -13,7 +13,7 @@ import (
 // • Strips < and > surrounding links.
 //
 // This was directly bogarted from velour/chat with emoji conversion removed.
-func fixText(findUser func(id string) (string, bool), text string) string {
+func fixText(findUser func(id string) (string, error), text string) string {
 	var output []rune
 	for len(text) > 0 {
 		r, i := utf8.DecodeRuneInString(text)
@@ -48,14 +48,14 @@ func fixText(findUser func(id string) (string, bool), text string) string {
 	return string(output)
 }
 
-func fixTag(findUser func(string) (string, bool), tag []rune) ([]rune, bool) {
+func fixTag(findUser func(string) (string, error), tag []rune) ([]rune, bool) {
 	switch {
 	case hasPrefix(tag, "@U"):
 		if i := indexRune(tag, '|'); i >= 0 {
 			return tag[i+1:], true
 		}
 		if findUser != nil {
-			if u, ok := findUser(string(tag[1:])); ok {
+			if u, err := findUser(string(tag[1:])); err == nil {
 				return []rune(u), true
 			}
 		}
