@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -46,9 +48,7 @@ func New(c *config.Config) *SlackApp {
 		log.Fatalf("No slack token found. Set SLACKTOKEN env.")
 	}
 
-	dbg := slack.OptionDebug(true)
-	api := slack.New(token)
-	dbg(api)
+	api := slack.New(token, slack.OptionDebug(true))
 
 	return &SlackApp{
 		api:          api,
@@ -99,6 +99,8 @@ func (s *SlackApp) Serve() error {
 			case *slackevents.MessageEvent:
 				s.msgReceivd(ev)
 			}
+		} else {
+			log.Printf("Event: (%v): %+v", eventsAPIEvent.Type, eventsAPIEvent)
 		}
 	})
 	return nil
@@ -183,12 +185,48 @@ func (s *SlackApp) sendAction(channel, message string) (string, error) {
 
 func (s *SlackApp) replyToMessageIdentifier(channel, message, identifier string) (string, error) {
 	nick := s.config.Get("Nick", "bot")
-	_, ts, err := s.api.PostMessage(channel,
-		slack.MsgOptionUsername(nick),
-		slack.MsgOptionText(message, false),
-		slack.MsgOptionMeMessage(),
-		slack.MsgOptionTS(identifier))
-	return ts, err
+	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
+
+	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
+		url.Values{"token": {s.botToken},
+			"username":  {nick},
+			"icon_url":  {icon},
+			"channel":   {channel},
+			"text":      {message},
+			"thread_ts": {identifier},
+		})
+
+	if err != nil {
+		err := fmt.Errorf("Error sending Slack reply: %s", err)
+		return "", err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		err := fmt.Errorf("Error reading Slack API body: %s", err)
+		return "", err
+	}
+
+	log.Println(string(body))
+
+	type MessageResponse struct {
+		OK        bool   `json:"ok"`
+		Timestamp string `json:"ts"`
+	}
+
+	var mr MessageResponse
+	err = json.Unmarshal(body, &mr)
+	if err != nil {
+		err := fmt.Errorf("Error parsing message response: %s", err)
+		return "", err
+	}
+
+	if !mr.OK {
+		return "", fmt.Errorf("Got !OK from slack message response")
+	}
+
+	return mr.Timestamp, err
 }
 
 func (s *SlackApp) replyToMessage(channel, message string, replyTo msg.Message) (string, error) {
@@ -225,9 +263,7 @@ func (s *SlackApp) populateEmojiList() {
 		log.Println("Cannot get emoji list without slack.usertoken")
 		return
 	}
-	dbg := slack.OptionDebug(true)
-	api := slack.New(s.userToken)
-	dbg(api)
+	api := slack.New(s.userToken, slack.OptionDebug(true))
 
 	em, err := api.GetEmoji()
 	if err != nil {
@@ -303,9 +339,7 @@ func (s *SlackApp) Who(id string) []string {
 		log.Println("Cannot get emoji list without slack.usertoken")
 		return []string{s.config.Get("nick", "bot")}
 	}
-	dbg := slack.OptionDebug(true)
-	api := slack.New(s.userToken)
-	dbg(api)
+	api := slack.New(s.userToken, slack.OptionDebug(true))
 
 	log.Println("Who is queried for ", id)
 	// Not super sure this is the correct call
