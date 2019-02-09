@@ -1,19 +1,26 @@
 package twitch
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
+)
+
+const (
+	isStreamingTplFallback      = "{{.Name}} is streaming {{.Game}} at {{.URL}}"
+	notStreamingTplFallback     = "{{.Name}} is not streaming"
+	stoppedStreamingTplFallback = "{{.Name}} just stopped streaming"
 )
 
 type TwitchPlugin struct {
@@ -112,7 +119,8 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *TwitchPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if strings.ToLower(message.Body) == "twitch status" {
+	body := strings.ToLower(message.Body)
+	if body == "twitch status" {
 		channel := message.Channel
 		if users := p.config.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
 			for _, twitcherName := range users {
@@ -122,13 +130,21 @@ func (p *TwitchPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 			}
 		}
 		return true
+	} else if body == "reset twitch" {
+		p.config.Set("twitch.istpl", isStreamingTplFallback)
+		p.config.Set("twitch.nottpl", notStreamingTplFallback)
+		p.config.Set("twitch.stoppedtpl", stoppedStreamingTplFallback)
 	}
 
 	return false
 }
 
 func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	msg := "There's no help for you here."
+	msg := "You can set the templates for streams with\n"
+	msg += fmt.Sprintf("twitch.istpl (default: %s)\n", isStreamingTplFallback)
+	msg += fmt.Sprintf("twitch.nottpl (default: %s)\n", notStreamingTplFallback)
+	msg += fmt.Sprintf("twitch.stoppedtpl (default: %s)\n", stoppedStreamingTplFallback)
+	msg += "And you can ask who is streaming with `!twitch status`"
 	p.Bot.Send(bot.Message, message.Channel, msg)
 	return true
 }
@@ -216,21 +232,64 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		gameID = games[0].GameID
 		title = games[0].Title
 	}
-	streamWord := p.config.Get("Twitch.StreamWord", "streaming")
+
+	notStreamingTpl := p.config.Get("Twitch.NotTpl", notStreamingTplFallback)
+	isStreamingTpl := p.config.Get("Twitch.IsTpl", isStreamingTplFallback)
+	stoppedStreamingTpl := p.config.Get("Twitch.StoppedTpl", stoppedStreamingTplFallback)
+	buf := bytes.Buffer{}
+
+	info := struct {
+		Name string
+		Game string
+		URL  string
+	}{
+		twitcher.name,
+		title,
+		twitcher.URL(),
+	}
+
 	if alwaysPrintStatus {
 		if gameID == "" {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is not %s.", twitcher.name, streamWord))
+			t, err := template.New("notStreaming").Parse(notStreamingTpl)
+			if err != nil {
+				log.Println(err)
+				p.Bot.Send(bot.Message, channel, err)
+				t = template.Must(template.New("notStreaming").Parse(notStreamingTplFallback))
+			}
+			t.Execute(&buf, info)
+			p.Bot.Send(bot.Message, channel, buf.String())
 		} else {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, title, twitcher.URL()))
+			t, err := template.New("isStreaming").Parse(isStreamingTpl)
+			if err != nil {
+				log.Println(err)
+				p.Bot.Send(bot.Message, channel, err)
+				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
+			}
+			t.Execute(&buf, info)
+			p.Bot.Send(bot.Message, channel, buf.String())
 		}
 	} else if gameID == "" {
 		if twitcher.gameID != "" {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s just stopped %s.", twitcher.name, streamWord))
+			t, err := template.New("stoppedStreaming").Parse(stoppedStreamingTpl)
+			if err != nil {
+				log.Println(err)
+				p.Bot.Send(bot.Message, channel, err)
+				t = template.Must(template.New("stoppedStreaming").Parse(stoppedStreamingTplFallback))
+			}
+			t.Execute(&buf, info)
+			p.Bot.Send(bot.Message, channel, buf.String())
 		}
 		twitcher.gameID = ""
 	} else {
 		if twitcher.gameID != gameID {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s is %s %s at %s", twitcher.name, streamWord, title, twitcher.URL()))
+			t, err := template.New("isStreaming").Parse(isStreamingTpl)
+			if err != nil {
+				log.Println(err)
+				p.Bot.Send(bot.Message, channel, err)
+				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
+			}
+			t.Execute(&buf, info)
+			p.Bot.Send(bot.Message, channel, buf.String())
 		}
 		twitcher.gameID = gameID
 	}
