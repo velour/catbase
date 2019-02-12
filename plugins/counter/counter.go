@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -474,7 +475,16 @@ func (p *CounterPlugin) checkMatch(message msg.Message) bool {
 	}
 	log.Printf("About to update item: %#v", item)
 	item.UpdateDelta(1)
-	p.Bot.Send(bot.Message, channel, fmt.Sprintf("bleep-bloop-blop... %s has %d %s",
-		nick, item.Count, itemName))
+	p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
+		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
+}
+
+func everyDayImShuffling(vals []string) []string {
+	ret := make([]string, len(vals))
+	perm := rand.Perm(len(vals))
+	for i, randIndex := range perm {
+		ret[i] = vals[randIndex]
+	}
+	return ret
 }
