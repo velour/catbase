@@ -22,7 +22,7 @@ func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool {
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
-	if kind == Message && strings.HasPrefix(msg.Body, "help ") && msg.Command {
+	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
 		goto RET
@@ -64,6 +64,7 @@ func (b *bot) checkHelp(channel string, parts []string) {
 		// just print out a list of help topics
 		topics := "Help topics: about variables"
 		for name, _ := range b.plugins {
+			name = strings.Split(strings.TrimPrefix(name, "*"), ".")[0]
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
 		b.Send(Message, channel, topics)
@@ -77,13 +78,19 @@ func (b *bot) checkHelp(channel string, parts []string) {
 			b.listVars(channel, parts)
 			return
 		}
-		plugin, ok := b.plugins[parts[1]]
-		if ok {
-			b.runCallback(plugin, Help, msg.Message{Channel: channel}, channel, parts)
-		} else {
-			msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", parts[1])
-			b.Send(Message, channel, msg)
+		for name, plugin := range b.plugins {
+			if strings.HasPrefix(name, "*"+parts[1]) {
+				if b.runCallback(plugin, Help, msg.Message{Channel: channel}, channel, parts) {
+					return
+				} else {
+					msg := fmt.Sprintf("I'm sorry, I don't know how to help you with %s.", parts[1])
+					b.Send(Message, channel, msg)
+					return
+				}
+			}
 		}
+		msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", strings.Join(parts, " "))
+		b.Send(Message, channel, msg)
 	}
 }
 
