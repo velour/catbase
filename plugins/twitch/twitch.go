@@ -78,6 +78,7 @@ func New(b bot.Bot) *TwitchPlugin {
 	}
 
 	b.Register(p, bot.Message, p.message)
+	b.Register(p, bot.Help, p.help)
 	p.registerWeb()
 
 	return p
@@ -144,6 +145,7 @@ func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 	msg += fmt.Sprintf("twitch.istpl (default: %s)\n", isStreamingTplFallback)
 	msg += fmt.Sprintf("twitch.nottpl (default: %s)\n", notStreamingTplFallback)
 	msg += fmt.Sprintf("twitch.stoppedtpl (default: %s)\n", stoppedStreamingTplFallback)
+	msg += "You can reset all messages with `!reset twitch`"
 	msg += "And you can ask who is streaming with `!twitch status`"
 	p.Bot.Send(bot.Message, message.Channel, msg)
 	return true
