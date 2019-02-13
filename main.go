@@ -37,7 +37,6 @@ import (
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/twitch"
 	"github.com/velour/catbase/plugins/your"
-	"github.com/velour/catbase/plugins/zork"
 )
 
 var (
@@ -95,7 +94,6 @@ func main() {
 	b.AddPlugin(counter.New(b))
 	b.AddPlugin(reminder.New(b))
 	b.AddPlugin(babbler.New(b))
-	b.AddPlugin(zork.New(b))
 	b.AddPlugin(rss.New(b))
 	b.AddPlugin(reaction.New(b))
 	b.AddPlugin(twitch.New(b))
