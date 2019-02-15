@@ -48,7 +48,7 @@ func New(c *config.Config) *SlackApp {
 		log.Fatalf("No slack token found. Set SLACKTOKEN env.")
 	}
 
-	api := slack.New(token, slack.OptionDebug(true))
+	api := slack.New(token, slack.OptionDebug(false))
 
 	return &SlackApp{
 		api:          api,
@@ -263,7 +263,7 @@ func (s *SlackApp) populateEmojiList() {
 		log.Println("Cannot get emoji list without slack.usertoken")
 		return
 	}
-	api := slack.New(s.userToken, slack.OptionDebug(true))
+	api := slack.New(s.userToken, slack.OptionDebug(false))
 
 	em, err := api.GetEmoji()
 	if err != nil {
@@ -339,7 +339,7 @@ func (s *SlackApp) Who(id string) []string {
 		log.Println("Cannot get emoji list without slack.usertoken")
 		return []string{s.config.Get("nick", "bot")}
 	}
-	api := slack.New(s.userToken, slack.OptionDebug(true))
+	api := slack.New(s.userToken, slack.OptionDebug(false))
 
 	log.Println("Who is queried for ", id)
 	// Not super sure this is the correct call

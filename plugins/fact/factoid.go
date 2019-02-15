@@ -22,14 +22,14 @@ import (
 // respond to queries in a way that is unpredictable and fun
 
 // factoid stores info about our factoid for lookup and later interaction
-type factoid struct {
-	id       sql.NullInt64
+type Factoid struct {
+	ID       sql.NullInt64
 	Fact     string
 	Tidbit   string
 	Verb     string
 	Owner    string
-	created  time.Time
-	accessed time.Time
+	Created  time.Time
+	Accessed time.Time
 	Count    int
 }
 
@@ -38,14 +38,14 @@ type alias struct {
 	Next string
 }
 
-func (a *alias) resolve(db *sqlx.DB) (*factoid, error) {
+func (a *alias) resolve(db *sqlx.DB) (*Factoid, error) {
 	// perform DB query to fill the To field
 	q := `select fact, next from factoid_alias where fact=?`
 	var next alias
 	err := db.Get(&next, q, a.Next)
 	if err != nil {
 		// we hit the end of the chain, get a factoid named Next
-		fact, err := getSingleFact(db, a.Next)
+		fact, err := GetSingleFact(db, a.Next)
 		if err != nil {
 			err := fmt.Errorf("Error resolvig alias %v: %v", a, err)
 			return nil, err
@@ -55,7 +55,7 @@ func (a *alias) resolve(db *sqlx.DB) (*factoid, error) {
 	return next.resolve(db)
 }
 
-func findAlias(db *sqlx.DB, fact string) (bool, *factoid) {
+func findAlias(db *sqlx.DB, fact string) (bool, *Factoid) {
 	q := `select * from factoid_alias where fact=?`
 	var a alias
 	err := db.Get(&a, q, fact)
@@ -89,9 +89,9 @@ func aliasFromStrings(from, to string) *alias {
 	return &alias{from, to}
 }
 
-func (f *factoid) save(db *sqlx.DB) error {
+func (f *Factoid) Save(db *sqlx.DB) error {
 	var err error
-	if f.id.Valid {
+	if f.ID.Valid {
 		// update
 		_, err = db.Exec(`update factoid set
 			fact=?,
@@ -105,12 +105,12 @@ func (f *factoid) save(db *sqlx.DB) error {
 			f.Tidbit,
 			f.Verb,
 			f.Owner,
-			f.accessed.Unix(),
+			f.Accessed.Unix(),
 			f.Count,
-			f.id.Int64)
+			f.ID.Int64)
 	} else {
-		f.created = time.Now()
-		f.accessed = time.Now()
+		f.Created = time.Now()
+		f.Accessed = time.Now()
 		// insert
 		res, err := db.Exec(`insert into factoid (
 			fact,
@@ -125,8 +125,8 @@ func (f *factoid) save(db *sqlx.DB) error {
 			f.Tidbit,
 			f.Verb,
 			f.Owner,
-			f.created.Unix(),
-			f.accessed.Unix(),
+			f.Created.Unix(),
+			f.Accessed.Unix(),
 			f.Count,
 		)
 		if err != nil {
@@ -134,23 +134,23 @@ func (f *factoid) save(db *sqlx.DB) error {
 		}
 		id, err := res.LastInsertId()
 		// hackhackhack?
-		f.id.Int64 = id
-		f.id.Valid = true
+		f.ID.Int64 = id
+		f.ID.Valid = true
 	}
 	return err
 }
 
-func (f *factoid) delete(db *sqlx.DB) error {
+func (f *Factoid) delete(db *sqlx.DB) error {
 	var err error
-	if f.id.Valid {
-		_, err = db.Exec(`delete from factoid where id=?`, f.id)
+	if f.ID.Valid {
+		_, err = db.Exec(`delete from factoid where id=?`, f.ID)
 	}
-	f.id.Valid = false
+	f.ID.Valid = false
 	return err
 }
 
-func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*factoid, error) {
-	var fs []*factoid
+func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*Factoid, error) {
+	var fs []*Factoid
 	query := `select
 			id,
 			fact,
@@ -170,11 +170,11 @@ func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*factoid, error) {
 		return nil, err
 	}
 	for rows.Next() {
-		var f factoid
+		var f Factoid
 		var tmpCreated int64
 		var tmpAccessed int64
 		err := rows.Scan(
-			&f.id,
+			&f.ID,
 			&f.Fact,
 			&f.Tidbit,
 			&f.Verb,
@@ -186,15 +186,15 @@ func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*factoid, error) {
 		if err != nil {
 			return nil, err
 		}
-		f.created = time.Unix(tmpCreated, 0)
-		f.accessed = time.Unix(tmpAccessed, 0)
+		f.Created = time.Unix(tmpCreated, 0)
+		f.Accessed = time.Unix(tmpAccessed, 0)
 		fs = append(fs, &f)
 	}
 	return fs, err
 }
 
-func getSingle(db *sqlx.DB) (*factoid, error) {
-	var f factoid
+func GetSingle(db *sqlx.DB) (*Factoid, error) {
+	var f Factoid
 	var tmpCreated int64
 	var tmpAccessed int64
 	err := db.QueryRow(`select
@@ -208,7 +208,7 @@ func getSingle(db *sqlx.DB) (*factoid, error) {
 			count
 		from factoid
 		order by random() limit 1;`).Scan(
-		&f.id,
+		&f.ID,
 		&f.Fact,
 		&f.Tidbit,
 		&f.Verb,
@@ -217,13 +217,13 @@ func getSingle(db *sqlx.DB) (*factoid, error) {
 		&tmpAccessed,
 		&f.Count,
 	)
-	f.created = time.Unix(tmpCreated, 0)
-	f.accessed = time.Unix(tmpAccessed, 0)
+	f.Created = time.Unix(tmpCreated, 0)
+	f.Accessed = time.Unix(tmpAccessed, 0)
 	return &f, err
 }
 
-func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
-	var f factoid
+func GetSingleFact(db *sqlx.DB, fact string) (*Factoid, error) {
+	var f Factoid
 	var tmpCreated int64
 	var tmpAccessed int64
 	err := db.QueryRow(`select
@@ -239,7 +239,7 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 		where fact like ?
 		order by random() limit 1;`,
 		fact).Scan(
-		&f.id,
+		&f.ID,
 		&f.Fact,
 		&f.Tidbit,
 		&f.Verb,
@@ -248,22 +248,22 @@ func getSingleFact(db *sqlx.DB, fact string) (*factoid, error) {
 		&tmpAccessed,
 		&f.Count,
 	)
-	f.created = time.Unix(tmpCreated, 0)
-	f.accessed = time.Unix(tmpAccessed, 0)
+	f.Created = time.Unix(tmpCreated, 0)
+	f.Accessed = time.Unix(tmpAccessed, 0)
 	return &f, err
 }
 
 // Factoid provides the necessary plugin-wide needs
-type Factoid struct {
+type FactoidPlugin struct {
 	Bot      bot.Bot
 	NotFound []string
-	LastFact *factoid
+	LastFact *Factoid
 	db       *sqlx.DB
 }
 
 // NewFactoid creates a new Factoid with the Plugin interface
-func New(botInst bot.Bot) *Factoid {
-	p := &Factoid{
+func New(botInst bot.Bot) *FactoidPlugin {
+	p := &FactoidPlugin{
 		Bot: botInst,
 		NotFound: []string{
 			"I don't know.",
@@ -343,7 +343,7 @@ func findAction(message string) string {
 
 // learnFact assumes we have a learning situation and inserts a new fact
 // into the database
-func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) error {
+func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string) error {
 	verb = strings.ToLower(verb)
 	if verb == "react" {
 		// This would be a great place to check against the API for valid emojy
@@ -366,17 +366,17 @@ func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) erro
 		return fmt.Errorf("Look, I already know that.")
 	}
 
-	n := factoid{
+	n := Factoid{
 		Fact:     fact,
 		Tidbit:   tidbit,
 		Verb:     verb,
 		Owner:    message.User.Name,
-		created:  time.Now(),
-		accessed: time.Now(),
+		Created:  time.Now(),
+		Accessed: time.Now(),
 		Count:    0,
 	}
 	p.LastFact = &n
-	err = n.save(p.db)
+	err = n.Save(p.db)
 	if err != nil {
 		log.Println("Error inserting fact: ", err)
 		return fmt.Errorf("My brain is overheating.")
@@ -386,10 +386,10 @@ func (p *Factoid) learnFact(message msg.Message, fact, verb, tidbit string) erro
 }
 
 // findTrigger checks to see if a given string is a trigger or not
-func (p *Factoid) findTrigger(fact string) (bool, *factoid) {
+func (p *FactoidPlugin) findTrigger(fact string) (bool, *Factoid) {
 	fact = strings.ToLower(fact) // TODO: make sure this needs to be lowered here
 
-	f, err := getSingleFact(p.db, fact)
+	f, err := GetSingleFact(p.db, fact)
 	if err != nil {
 		return findAlias(p.db, fact)
 	}
@@ -398,7 +398,7 @@ func (p *Factoid) findTrigger(fact string) (bool, *factoid) {
 
 // sayFact spits out a fact to the channel and updates the fact in the database
 // with new time and count information
-func (p *Factoid) sayFact(message msg.Message, fact factoid) {
+func (p *FactoidPlugin) sayFact(message msg.Message, fact Factoid) {
 	msg := p.Bot.Filter(message, fact.Tidbit)
 	full := p.Bot.Filter(message, fmt.Sprintf("%s %s %s",
 		fact.Fact, fact.Verb, fact.Tidbit,
@@ -421,9 +421,9 @@ func (p *Factoid) sayFact(message msg.Message, fact factoid) {
 	}
 
 	// update fact tracking
-	fact.accessed = time.Now()
+	fact.Accessed = time.Now()
 	fact.Count += 1
-	err := fact.save(p.db)
+	err := fact.Save(p.db)
 	if err != nil {
 		log.Printf("Could not update fact.\n")
 		log.Printf("%#v\n", fact)
@@ -434,7 +434,7 @@ func (p *Factoid) sayFact(message msg.Message, fact factoid) {
 
 // trigger checks the message for its fitness to be a factoid and then hauls
 // the message off to sayFact for processing if it is in fact a trigger
-func (p *Factoid) trigger(message msg.Message) bool {
+func (p *FactoidPlugin) trigger(message msg.Message) bool {
 	minLen := p.Bot.Config().GetInt("Factoid.MinLen", 4)
 	if len(message.Body) > minLen || message.Command || message.Body == "..." {
 		if ok, fact := p.findTrigger(message.Body); ok {
@@ -453,20 +453,20 @@ func (p *Factoid) trigger(message msg.Message) bool {
 }
 
 // tellThemWhatThatWas is a hilarious name for a function.
-func (p *Factoid) tellThemWhatThatWas(message msg.Message) bool {
+func (p *FactoidPlugin) tellThemWhatThatWas(message msg.Message) bool {
 	fact := p.LastFact
 	var msg string
 	if fact == nil {
 		msg = "Nope."
 	} else {
 		msg = fmt.Sprintf("That was (#%d) '%s <%s> %s'",
-			fact.id.Int64, fact.Fact, fact.Verb, fact.Tidbit)
+			fact.ID.Int64, fact.Fact, fact.Verb, fact.Tidbit)
 	}
 	p.Bot.Send(bot.Message, message.Channel, msg)
 	return true
 }
 
-func (p *Factoid) learnAction(message msg.Message, action string) bool {
+func (p *FactoidPlugin) learnAction(message msg.Message, action string) bool {
 	body := message.Body
 
 	parts := strings.SplitN(body, action, 2)
@@ -512,7 +512,7 @@ func changeOperator(body string) string {
 
 // If the user requesting forget is either the owner of the last learned fact or
 // an admin, it may be deleted
-func (p *Factoid) forgetLastFact(message msg.Message) bool {
+func (p *FactoidPlugin) forgetLastFact(message msg.Message) bool {
 	if p.LastFact == nil {
 		p.Bot.Send(bot.Message, message.Channel, "I refuse.")
 		return true
@@ -522,7 +522,7 @@ func (p *Factoid) forgetLastFact(message msg.Message) bool {
 	if err != nil {
 		log.Println("Error removing fact: ", p.LastFact, err)
 	}
-	fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.id.Int64, p.LastFact.Fact,
+	fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.ID.Int64, p.LastFact.Fact,
 		p.LastFact.Verb, p.LastFact.Tidbit)
 	p.Bot.Send(bot.Action, message.Channel, "hits himself over the head with a skillet")
 	p.LastFact = nil
@@ -531,7 +531,7 @@ func (p *Factoid) forgetLastFact(message msg.Message) bool {
 }
 
 // Allow users to change facts with a simple regexp
-func (p *Factoid) changeFact(message msg.Message) bool {
+func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 	oper := changeOperator(message.Body)
 	parts := strings.SplitN(message.Body, oper, 2)
 	userexp := strings.TrimSpace(parts[1])
@@ -571,8 +571,8 @@ func (p *Factoid) changeFact(message msg.Message) bool {
 			fact.Verb = reg.ReplaceAllString(fact.Verb, replace)
 			fact.Tidbit = reg.ReplaceAllString(fact.Tidbit, replace)
 			fact.Count += 1
-			fact.accessed = time.Now()
-			fact.save(p.db)
+			fact.Accessed = time.Now()
+			fact.Save(p.db)
 		}
 	} else if len(parts) == 3 {
 		// search for a factoid and print it
@@ -614,7 +614,7 @@ func (p *Factoid) changeFact(message msg.Message) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *Factoid) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *FactoidPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "what was that?" {
 		return p.tellThemWhatThatWas(message)
 	}
@@ -674,15 +674,15 @@ func (p *Factoid) message(kind bot.Kind, message msg.Message, args ...interface{
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *Factoid) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *FactoidPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	p.Bot.Send(bot.Message, message.Channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
 	p.Bot.Send(bot.Message, message.Channel, "I can also figure out some variables including: $nonzero, $digit, $nick, and $someone.")
 	return true
 }
 
 // Pull a fact at random from the database
-func (p *Factoid) randomFact() *factoid {
-	f, err := getSingle(p.db)
+func (p *FactoidPlugin) randomFact() *Factoid {
+	f, err := GetSingle(p.db)
 	if err != nil {
 		fmt.Println("Error getting a fact: ", err)
 		return nil
@@ -691,7 +691,7 @@ func (p *Factoid) randomFact() *factoid {
 }
 
 // factTimer spits out a fact at a given interval and with given probability
-func (p *Factoid) factTimer(channel string) {
+func (p *FactoidPlugin) factTimer(channel string) {
 	quoteTime := p.Bot.Config().GetInt("Factoid.QuoteTime", 30)
 	if quoteTime == 0 {
 		quoteTime = 30
@@ -739,7 +739,7 @@ func (p *Factoid) factTimer(channel string) {
 }
 
 // Register any web URLs desired
-func (p *Factoid) registerWeb() {
+func (p *FactoidPlugin) registerWeb() {
 	http.HandleFunc("/factoid/req", p.serveQuery)
 	http.HandleFunc("/factoid", p.serveQuery)
 	p.Bot.RegisterWeb("/factoid", "Factoid")
@@ -755,7 +755,7 @@ func linkify(text string) template.HTML {
 	return template.HTML(strings.Join(parts, " "))
 }
 
-func (p *Factoid) serveQuery(w http.ResponseWriter, r *http.Request) {
+func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	context := make(map[string]interface{})
 	funcMap := template.FuncMap{
 		// The name "title" is what the function will be called in the template text.

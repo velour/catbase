@@ -29,6 +29,7 @@ import (
 	"github.com/velour/catbase/plugins/nerdepedia"
 	"github.com/velour/catbase/plugins/picker"
 	"github.com/velour/catbase/plugins/reaction"
+	"github.com/velour/catbase/plugins/remember"
 	"github.com/velour/catbase/plugins/reminder"
 	"github.com/velour/catbase/plugins/rpgORdie"
 	"github.com/velour/catbase/plugins/rss"
@@ -89,7 +90,7 @@ func main() {
 	b.AddPlugin(dice.New(b))
 	b.AddPlugin(picker.New(b))
 	b.AddPlugin(beers.New(b))
-	b.AddPlugin(fact.NewRemember(b))
+	b.AddPlugin(remember.New(b))
 	b.AddPlugin(your.New(b))
 	b.AddPlugin(counter.New(b))
 	b.AddPlugin(reminder.New(b))

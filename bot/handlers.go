@@ -25,6 +25,7 @@ func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool {
 	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
+		log.Println("Handled a help, returning")
 		goto RET
 	}
 
@@ -40,7 +41,7 @@ RET:
 }
 
 func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
-	t := reflect.TypeOf(plugin)
+	t := reflect.TypeOf(plugin).String()
 	for _, cb := range b.callbacks[t][evt] {
 		if cb(evt, message, args...) {
 			return true

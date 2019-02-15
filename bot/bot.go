@@ -246,7 +246,7 @@ func (b *bot) RegisterFilter(name string, f func(string) string) {
 
 // Register a callback
 func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
-	t := reflect.TypeOf(p)
+	t := reflect.TypeOf(p).String()
 	if _, ok := b.callbacks[t]; !ok {
 		b.callbacks[t] = make(map[Kind][]Callback)
 	}
