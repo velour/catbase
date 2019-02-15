@@ -48,7 +48,7 @@ func New(b bot.Bot) *BeersPlugin {
 		);`); err != nil {
 		log.Fatal(err)
 	}
-	p := BeersPlugin{
+	p := &BeersPlugin{
 		Bot: b,
 		db:  b.DB(),
 	}
@@ -57,7 +57,7 @@ func New(b bot.Bot) *BeersPlugin {
 	}
 	b.Register(p, bot.Message, p.message)
 	b.Register(p, bot.Help, p.help)
-	return &p
+	return p
 }
 
 // Message responds to the bot hook on recieving messages.
