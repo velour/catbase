@@ -3,8 +3,6 @@
 package bot
 
 import (
-	"reflect"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
@@ -34,7 +32,7 @@ const (
 
 type Kind int
 type Callback func(Kind, msg.Message, ...interface{}) bool
-type CallbackMap map[reflect.Type]map[Kind][]Callback
+type CallbackMap map[string]map[Kind][]Callback
 
 // Bot interface serves to allow mocking of the actual bot
 type Bot interface {
