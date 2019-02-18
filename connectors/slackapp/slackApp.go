@@ -2,6 +2,7 @@ package slackapp
 
 import (
 	"bytes"
+	"container/ring"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -23,6 +24,8 @@ import (
 	"github.com/velour/catbase/config"
 )
 
+const DEFAULT_RING = 5
+
 type SlackApp struct {
 	bot    bot.Bot
 	config *config.Config
@@ -40,6 +43,8 @@ type SlackApp struct {
 	emoji   map[string]string
 
 	event bot.Callback
+
+	msgIDBuffer *ring.Ring
 }
 
 func New(c *config.Config) *SlackApp {
@@ -49,6 +54,12 @@ func New(c *config.Config) *SlackApp {
 	}
 
 	api := slack.New(token, slack.OptionDebug(false))
+
+	idBuf := ring.New(c.GetInt("ringSize", DEFAULT_RING))
+	for i := 0; i < idBuf.Len(); i++ {
+		idBuf.Value = ""
+		idBuf = idBuf.Next()
+	}
 
 	return &SlackApp{
 		api:          api,
@@ -60,6 +71,7 @@ func New(c *config.Config) *SlackApp {
 		lastRecieved: time.Now(),
 		users:        make(map[string]string),
 		emoji:        make(map[string]string),
+		msgIDBuffer:  idBuf,
 	}
 }
 
@@ -106,7 +118,28 @@ func (s *SlackApp) Serve() error {
 	return nil
 }
 
+// checkRingOrAdd returns true if it finds the ts value
+// or false if the ts isn't yet in the ring (and adds it)
+func (s *SlackApp) checkRingOrAdd(ts string) bool {
+	found := false
+	s.msgIDBuffer.Do(func(p interface{}) {
+		if p.(string) == ts {
+			found = true
+		}
+	})
+	if found {
+		return true
+	}
+	s.msgIDBuffer.Value = ts
+	s.msgIDBuffer = s.msgIDBuffer.Next()
+	return false
+}
+
 func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
+	if s.checkRingOrAdd(msg.TimeStamp) {
+		log.Printf("Got a duplicate message from server: %s", msg.TimeStamp)
+		return
+	}
 	isItMe := msg.BotID != "" && msg.BotID == s.myBotID
 	if !isItMe && msg.ThreadTimeStamp == "" {
 		m := s.buildMessage(msg)
