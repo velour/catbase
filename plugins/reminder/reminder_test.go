@@ -77,7 +77,7 @@ func TestReminderParse(t *testing.T) {
 	res := c.message(makeMessage("!remind testuser in unparseable don't fail this test"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "Easy cowboy, not sure I can parse that duration.")
+	assert.Contains(t, mb.Messages[0], "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 }
 
 func TestEmptyList(t *testing.T) {
