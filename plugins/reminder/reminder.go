@@ -88,7 +88,7 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 
 			dur, err := time.ParseDuration(parts[3])
 			if err != nil {
-				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration.")
+				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 				return true
 			}
 
@@ -116,7 +116,7 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 				//remind who every dur for dur2 blah
 				dur2, err := time.ParseDuration(parts[5])
 				if err != nil {
-					p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration.")
+					p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 					return true
 				}
 
