@@ -4,10 +4,14 @@ package talker
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
 var goatse []string = []string{
@@ -40,12 +44,14 @@ var goatse []string = []string{
 
 type TalkerPlugin struct {
 	Bot     bot.Bot
+	config  *config.Config
 	sayings []string
 }
 
 func New(b bot.Bot) *TalkerPlugin {
 	tp := &TalkerPlugin{
-		Bot: b,
+		Bot:    b,
+		config: b.Config(),
 	}
 	b.Register(tp, bot.Message, tp.message)
 	b.Register(tp, bot.Help, tp.help)
@@ -56,6 +62,17 @@ func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 	channel := message.Channel
 	body := message.Body
 	lowermessage := strings.ToLower(body)
+
+	if message.Command && strings.HasPrefix(lowermessage, "cowsay") {
+		return p.cowSay(message)
+	}
+
+	if message.Command && strings.HasPrefix(lowermessage, "list cows") {
+		cows := p.allCows()
+		m := fmt.Sprintf("Cows: %s", strings.Join(cows, ", "))
+		p.Bot.Send(bot.Message, channel, m)
+		return true
+	}
 
 	// TODO: This ought to be space split afterwards to remove any punctuation
 	if message.Command && strings.HasPrefix(lowermessage, "say") {
@@ -86,4 +103,70 @@ func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 func (p *TalkerPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	p.Bot.Send(bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
 	return true
+}
+
+func (p *TalkerPlugin) cowSay(message msg.Message) bool {
+	fields := strings.Split(message.Body, " ")
+	text := strings.Join(fields[1:], " ")
+	cow := "default"
+	if len(fields) > 1 && p.hasCow(fields[1]) {
+		cow = fields[1]
+		text = strings.Join(fields[2:], " ")
+	}
+	cmd := exec.Command("cowsay", "-f", cow, text)
+	stdout, err := cmd.StdoutPipe()
+	if p.checkErr(err, message.Channel) {
+		return true
+	}
+
+	if p.checkErr(cmd.Start(), message.Channel) {
+		return true
+	}
+
+	output, err := ioutil.ReadAll(stdout)
+	if p.checkErr(err, message.Channel) {
+		return true
+	}
+
+	p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("```%s```", output))
+
+	return true
+}
+
+func (p *TalkerPlugin) checkErr(err error, ch string) bool {
+	if err != nil {
+		p.Bot.Send(bot.Message, ch, "Error running cowsay: %s", err)
+		return true
+	}
+	return false
+}
+
+func (p *TalkerPlugin) hasCow(cow string) bool {
+	cows := p.allCows()
+	for _, c := range cows {
+		if strings.ToLower(cow) == c {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *TalkerPlugin) allCows() []string {
+	f, err := os.Open(p.config.Get("talker.cowpath", "/usr/local/share/cows"))
+	if err != nil {
+		return []string{"default"}
+	}
+
+	files, err := f.Readdir(0)
+	if err != nil {
+		return []string{"default"}
+	}
+
+	cows := []string{}
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".cow") {
+			cows = append(cows, strings.TrimSuffix(f.Name(), ".cow"))
+		}
+	}
+	return cows
 }
