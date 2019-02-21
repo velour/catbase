@@ -5,6 +5,8 @@ package talker
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -55,6 +57,7 @@ func New(b bot.Bot) *TalkerPlugin {
 	}
 	b.Register(tp, bot.Message, tp.message)
 	b.Register(tp, bot.Help, tp.help)
+	tp.registerWeb()
 	return tp
 }
 
@@ -64,7 +67,13 @@ func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 	lowermessage := strings.ToLower(body)
 
 	if message.Command && strings.HasPrefix(lowermessage, "cowsay") {
-		return p.cowSay(message)
+		msg, err := p.cowSay(strings.TrimPrefix(message.Body, "cowsay "))
+		if err != nil {
+			p.Bot.Send(bot.Message, channel, "Error running cowsay: %s", err)
+			return true
+		}
+		p.Bot.Send(bot.Message, channel, msg)
+		return true
 	}
 
 	if message.Command && strings.HasPrefix(lowermessage, "list cows") {
@@ -105,40 +114,29 @@ func (p *TalkerPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 	return true
 }
 
-func (p *TalkerPlugin) cowSay(message msg.Message) bool {
-	fields := strings.Split(message.Body, " ")
-	text := strings.Join(fields[1:], " ")
+func (p *TalkerPlugin) cowSay(text string) (string, error) {
+	fields := strings.Split(text, " ")
 	cow := "default"
-	if len(fields) > 1 && p.hasCow(fields[1]) {
-		cow = fields[1]
-		text = strings.Join(fields[2:], " ")
+	if len(fields) > 1 && p.hasCow(fields[0]) {
+		cow = fields[0]
+		text = strings.Join(fields[1:], " ")
 	}
 	cmd := exec.Command("cowsay", "-f", cow, text)
 	stdout, err := cmd.StdoutPipe()
-	if p.checkErr(err, message.Channel) {
-		return true
+	if err != nil {
+		return "", err
 	}
 
-	if p.checkErr(cmd.Start(), message.Channel) {
-		return true
+	if err = cmd.Start(); err != nil {
+		return "", err
 	}
 
 	output, err := ioutil.ReadAll(stdout)
-	if p.checkErr(err, message.Channel) {
-		return true
-	}
-
-	p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("```%s```", output))
-
-	return true
-}
-
-func (p *TalkerPlugin) checkErr(err error, ch string) bool {
 	if err != nil {
-		p.Bot.Send(bot.Message, ch, "Error running cowsay: %s", err)
-		return true
+		return "", err
 	}
-	return false
+
+	return fmt.Sprintf("```%s```", output), nil
 }
 
 func (p *TalkerPlugin) hasCow(cow string) bool {
@@ -169,4 +167,17 @@ func (p *TalkerPlugin) allCows() []string {
 		}
 	}
 	return cows
+}
+
+func (p *TalkerPlugin) registerWeb() {
+	http.HandleFunc("/slash/cowsay", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		log.Printf("Cowsay:\n%+v", r.PostForm.Get("text"))
+		msg, err := p.cowSay(r.PostForm.Get("text"))
+		if err != nil {
+			fmt.Fprintf(w, "Error running cowsay: %s", err)
+			return
+		}
+		fmt.Fprintf(w, "%s", msg)
+	})
 }
