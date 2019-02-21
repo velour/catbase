@@ -173,11 +173,14 @@ func (p *TalkerPlugin) registerWeb() {
 	http.HandleFunc("/slash/cowsay", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		log.Printf("Cowsay:\n%+v", r.PostForm.Get("text"))
+		channel := r.PostForm.Get("channel_id")
+		log.Printf("channel: %s", channel)
 		msg, err := p.cowSay(r.PostForm.Get("text"))
 		if err != nil {
-			fmt.Fprintf(w, "Error running cowsay: %s", err)
+			p.Bot.Send(bot.Message, channel, fmt.Sprintf("Error running cowsay: %s", err))
 			return
 		}
-		fmt.Fprintf(w, "%s", msg)
+		p.Bot.Send(bot.Message, channel, msg)
+		w.WriteHeader(200)
 	})
 }
