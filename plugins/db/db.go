@@ -2,10 +2,11 @@ package db
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -37,7 +38,7 @@ func (p *DBPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	f, err := os.Open(p.bot.Config().DBFile)
 	defer f.Close()
 	if err != nil {
-		log.Printf("Error opening DB for web service: %s", err)
+		log.Error().Err(err).Msg("Error opening DB for web service")
 		fmt.Fprintf(w, "Error opening DB")
 		return
 	}

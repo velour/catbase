@@ -2,11 +2,12 @@ package sisyphus
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -192,7 +193,7 @@ func (p *SisyphusPlugin) replyMessage(kind bot.Kind, message msg.Message, args .
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {
 		if g, ok := p.listenFor[identifier]; ok {
 
-			log.Printf("got message on %s: %+v", identifier, message)
+			log.Debug().Msgf("got message on %s: %+v", identifier, message)
 
 			if g.ended {
 				return false

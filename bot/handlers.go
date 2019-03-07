@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"reflect"
 	"regexp"
@@ -14,18 +13,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/msg"
 )
 
 func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool {
-	log.Println("Received event: ", msg)
+	log.Debug().
+		Interface("msg", msg).
+		Msg("Received event")
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
 	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(msg.Channel, parts)
-		log.Println("Handled a help, returning")
+		log.Debug().Msg("Handled a help, returning")
 		goto RET
 	}
 
@@ -171,7 +173,7 @@ func (b *bot) getVar(varName string) (string, error) {
 	case err == sql.ErrNoRows:
 		return "", fmt.Errorf("No factoid found")
 	case err != nil:
-		log.Fatal("getVar error: ", err)
+		log.Fatal().Err(err).Msg("getVar error")
 	}
 	return text, nil
 }
@@ -180,7 +182,7 @@ func (b *bot) listVars(channel string, parts []string) {
 	var variables []string
 	err := b.DB().Select(&variables, `select name from variables group by name`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	msg := "I know: $who, $someone, $digit, $nonzero"
 	if len(variables) > 0 {

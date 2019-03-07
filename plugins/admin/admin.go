@@ -4,9 +4,10 @@ package admin
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -63,14 +64,14 @@ func (p *AdminPlugin) message(k bot.Kind, message msg.Message, args ...interface
 
 	if strings.ToLower(body) == "shut up" {
 		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
-		log.Printf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
+		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
 		p.Bot.Send(bot.Message, message.Channel, "Okay. I'll be back later.")
 		p.quiet = true
 		go func() {
 			select {
 			case <-time.After(dur):
 				p.quiet = false
-				log.Println("Waking up from nap.")
+				log.Info().Msg("Waking up from nap.")
 			}
 		}()
 		return true
@@ -105,7 +106,7 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 		_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
 		if err != nil {
 			p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
-			log.Println("[admin]: ", err)
+			log.Error().Err(err)
 		} else {
 			p.Bot.Send(bot.Message, message.Channel, "Removed.")
 		}
@@ -126,7 +127,7 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 	err := row.Scan(&count)
 	if err != nil {
 		p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
-		log.Println("[admin]: ", err)
+		log.Error().Err(err)
 		return true
 	}
 
@@ -136,7 +137,7 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 		_, err := p.db.Exec(`INSERT INTO variables (name, value) VALUES (?, ?)`, variable, value)
 		if err != nil {
 			p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
-			log.Println("[admin]: ", err)
+			log.Error().Err(err)
 			return true
 		}
 		p.Bot.Send(bot.Message, message.Channel, "Added.")

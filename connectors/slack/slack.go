@@ -10,7 +10,6 @@ import (
 	"html"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -21,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
@@ -164,7 +164,7 @@ type rtmStart struct {
 func New(c *config.Config) *Slack {
 	token := c.Get("slack.token", "NONE")
 	if token == "NONE" {
-		log.Fatalf("No slack token found. Set SLACKTOKEN env.")
+		log.Fatal().Msgf("No slack token found. Set SLACKTOKEN env.")
 	}
 	return &Slack{
 		config:       c,
@@ -242,16 +242,16 @@ func (s *Slack) sendMessageType(channel, message string, meMessage bool) (string
 		})
 
 	if err != nil {
-		log.Printf("Error sending Slack message: %s", err)
+		log.Error().Err(err).Msgf("Error sending Slack message")
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatalf("Error reading Slack API body: %s", err)
+		log.Fatal().Err(err).Msgf("Error reading Slack API body")
 	}
 
-	log.Println(string(body))
+	log.Debug().Msgf("%+v", body)
 
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
@@ -264,7 +264,7 @@ func (s *Slack) sendMessageType(channel, message string, meMessage bool) (string
 	var mr MessageResponse
 	err = json.Unmarshal(body, &mr)
 	if err != nil {
-		log.Fatalf("Error parsing message response: %s", err)
+		log.Fatal().Err(err).Msgf("Error parsing message response")
 	}
 
 	if !mr.OK {
@@ -277,13 +277,13 @@ func (s *Slack) sendMessageType(channel, message string, meMessage bool) (string
 }
 
 func (s *Slack) sendMessage(channel, message string) (string, error) {
-	log.Printf("Sending message to %s: %s", channel, message)
+	log.Debug().Msgf("Sending message to %s: %s", channel, message)
 	identifier, err := s.sendMessageType(channel, message, false)
 	return identifier, err
 }
 
 func (s *Slack) sendAction(channel, message string) (string, error) {
-	log.Printf("Sending action to %s: %s", channel, message)
+	log.Debug().Msgf("Sending action to %s: %s", channel, message)
 	identifier, err := s.sendMessageType(channel, "_"+message+"_", true)
 	return identifier, err
 }
@@ -313,7 +313,7 @@ func (s *Slack) replyToMessageIdentifier(channel, message, identifier string) (s
 		return "", err
 	}
 
-	log.Println(string(body))
+	log.Debug().Msgf("%s", body)
 
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
@@ -339,7 +339,7 @@ func (s *Slack) replyToMessage(channel, message string, replyTo msg.Message) (st
 }
 
 func (s *Slack) react(channel, reaction string, message msg.Message) (string, error) {
-	log.Printf("Reacting in %s: %s", channel, reaction)
+	log.Debug().Msgf("Reacting in %s: %s", channel, reaction)
 	resp, err := http.PostForm("https://slack.com/api/reactions.add",
 		url.Values{"token": {s.token},
 			"name":      {reaction},
@@ -353,7 +353,7 @@ func (s *Slack) react(channel, reaction string, message msg.Message) (string, er
 }
 
 func (s *Slack) edit(channel, newMessage, identifier string) (string, error) {
-	log.Printf("Editing in (%s) %s: %s", identifier, channel, newMessage)
+	log.Debug().Msgf("Editing in (%s) %s: %s", identifier, channel, newMessage)
 	resp, err := http.PostForm("https://slack.com/api/chat.update",
 		url.Values{"token": {s.token},
 			"channel": {channel},
@@ -374,14 +374,14 @@ func (s *Slack) populateEmojiList() {
 	resp, err := http.PostForm("https://slack.com/api/emoji.list",
 		url.Values{"token": {s.token}})
 	if err != nil {
-		log.Printf("Error retrieving emoji list from Slack: %s", err)
+		log.Debug().Msgf("Error retrieving emoji list from Slack: %s", err)
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatalf("Error reading Slack API body: %s", err)
+		log.Fatal().Err(err).Msgf("Error reading Slack API body")
 	}
 
 	type EmojiListResponse struct {
@@ -392,7 +392,7 @@ func (s *Slack) populateEmojiList() {
 	var list EmojiListResponse
 	err = json.Unmarshal(body, &list)
 	if err != nil {
-		log.Fatalf("Error parsing emoji list: %s", err)
+		log.Fatal().Err(err).Msgf("Error parsing emoji list")
 	}
 	s.emoji = list.Emoji
 }
@@ -417,7 +417,7 @@ func (s *Slack) receiveMessage() (slackMessage, error) {
 	m := slackMessage{}
 	err := s.ws.Recv(context.TODO(), &m)
 	if err != nil {
-		log.Println("Error decoding WS message")
+		log.Error().Msgf("Error decoding WS message")
 		panic(fmt.Errorf("%v\n%v", m, err))
 	}
 	return m, nil
@@ -442,7 +442,7 @@ func (s *Slack) Serve() error {
 	for {
 		msg, err := s.receiveMessage()
 		if err != nil && err == io.EOF {
-			log.Fatalf("Slack API EOF")
+			log.Fatal().Msg("Slack API EOF")
 		} else if err != nil {
 			return fmt.Errorf("Slack API error: %s", err)
 		}
@@ -452,7 +452,7 @@ func (s *Slack) Serve() error {
 			if !isItMe && !msg.Hidden && msg.ThreadTs == "" {
 				m := s.buildMessage(msg)
 				if m.Time.Before(s.lastRecieved) {
-					log.Printf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
+					log.Debug().Msgf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
 				} else {
 					s.lastRecieved = m.Time
 					s.event(bot.Message, m)
@@ -461,10 +461,10 @@ func (s *Slack) Serve() error {
 				//we're throwing away some information here by not parsing the correct reply object type, but that's okay
 				s.event(bot.Reply, s.buildLightReplyMessage(msg), msg.ThreadTs)
 			} else {
-				log.Printf("THAT MESSAGE WAS HIDDEN: %+v", msg.ID)
+				log.Debug().Msgf("THAT MESSAGE WAS HIDDEN: %+v", msg.ID)
 			}
 		case "error":
-			log.Printf("Slack error, code: %d, message: %s", msg.Error.Code, msg.Error.Msg)
+			log.Error().Msgf("Slack error, code: %d, message: %s", msg.Error.Code, msg.Error.Msg)
 		case "": // what even is this?
 		case "hello":
 		case "presence_change":
@@ -475,7 +475,7 @@ func (s *Slack) Serve() error {
 			// squeltch this stuff
 			continue
 		default:
-			log.Printf("Unhandled Slack message type: '%s'", msg.Type)
+			log.Debug().Msgf("Unhandled Slack message type: '%s'", msg.Type)
 		}
 	}
 }
@@ -554,11 +554,11 @@ func (s *Slack) buildLightReplyMessage(m slackMessage) msg.Message {
 // markAllChannelsRead gets a list of all channels and marks each as read
 func (s *Slack) markAllChannelsRead() {
 	chs := s.getAllChannels()
-	log.Printf("Got list of channels to mark read: %+v", chs)
+	log.Debug().Msgf("Got list of channels to mark read: %+v", chs)
 	for _, ch := range chs {
 		s.markChannelAsRead(ch.ID)
 	}
-	log.Printf("Finished marking channels read")
+	log.Debug().Msgf("Finished marking channels read")
 }
 
 // getAllChannels returns info for all channels joined
@@ -567,12 +567,11 @@ func (s *Slack) getAllChannels() []slackChannelListItem {
 	resp, err := http.PostForm(u,
 		url.Values{"token": {s.token}})
 	if err != nil {
-		log.Printf("Error posting user info request: %s",
-			err)
+		log.Error().Err(err).Msgf("Error posting user info request")
 		return nil
 	}
 	if resp.StatusCode != 200 {
-		log.Printf("Error posting user info request: %d",
+		log.Error().Msgf("Error posting user info request: %d",
 			resp.StatusCode)
 		return nil
 	}
@@ -580,7 +579,7 @@ func (s *Slack) getAllChannels() []slackChannelListItem {
 	var chanInfo slackChannelListResp
 	err = json.NewDecoder(resp.Body).Decode(&chanInfo)
 	if err != nil || !chanInfo.Ok {
-		log.Println("Error decoding response: ", err)
+		log.Error().Err(err).Msgf("Error decoding response")
 		return nil
 	}
 	return chanInfo.Channels
@@ -592,21 +591,19 @@ func (s *Slack) markChannelAsRead(slackChanId string) error {
 	resp, err := http.PostForm(u,
 		url.Values{"token": {s.token}, "channel": {slackChanId}})
 	if err != nil {
-		log.Printf("Error posting user info request: %s",
-			err)
+		log.Error().Err(err).Msgf("Error posting user info request")
 		return err
 	}
 	if resp.StatusCode != 200 {
-		log.Printf("Error posting user info request: %d",
+		log.Error().Msgf("Error posting user info request: %d",
 			resp.StatusCode)
 		return err
 	}
 	defer resp.Body.Close()
 	var chanInfo slackChannelInfoResp
 	err = json.NewDecoder(resp.Body).Decode(&chanInfo)
-	log.Printf("%+v, %+v", err, chanInfo)
 	if err != nil || !chanInfo.Ok {
-		log.Println("Error decoding response: ", err)
+		log.Error().Err(err).Msgf("Error decoding response")
 		return err
 	}
 
@@ -614,25 +611,23 @@ func (s *Slack) markChannelAsRead(slackChanId string) error {
 	resp, err = http.PostForm(u,
 		url.Values{"token": {s.token}, "channel": {slackChanId}, "ts": {chanInfo.Channel.Latest.Ts}})
 	if err != nil {
-		log.Printf("Error posting user info request: %s",
-			err)
+		log.Error().Err(err).Msgf("Error posting user info request")
 		return err
 	}
 	if resp.StatusCode != 200 {
-		log.Printf("Error posting user info request: %d",
+		log.Error().Msgf("Error posting user info request: %d",
 			resp.StatusCode)
 		return err
 	}
 	defer resp.Body.Close()
 	var markInfo map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&markInfo)
-	log.Printf("%+v, %+v", err, markInfo)
 	if err != nil {
-		log.Println("Error decoding response: ", err)
+		log.Error().Err(err).Msgf("Error decoding response")
 		return err
 	}
 
-	log.Printf("Marked %s as read", slackChanId)
+	log.Info().Msgf("Marked %s as read", slackChanId)
 	return nil
 }
 
@@ -644,12 +639,12 @@ func (s *Slack) connect() {
 		return
 	}
 	if resp.StatusCode != 200 {
-		log.Fatalf("Slack API failed. Code: %d", resp.StatusCode)
+		log.Fatal().Msgf("Slack API failed. Code: %d", resp.StatusCode)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatalf("Error reading Slack API body: %s", err)
+		log.Fatal().Err(err).Msg("Error reading Slack API body")
 	}
 	var rtm rtmStart
 	err = json.Unmarshal(body, &rtm)
@@ -658,7 +653,7 @@ func (s *Slack) connect() {
 	}
 
 	if !rtm.Ok {
-		log.Fatalf("Slack error: %s", rtm.Error)
+		log.Fatal().Msgf("Slack error: %s", rtm.Error)
 	}
 
 	s.url = "https://slack.com/api/"
@@ -670,7 +665,7 @@ func (s *Slack) connect() {
 	rtmURL, _ := url.Parse(rtm.URL)
 	s.ws, err = websocket.Dial(context.TODO(), rtmURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 }
 
@@ -680,20 +675,20 @@ func (s *Slack) getUser(id string) (string, bool) {
 		return name, true
 	}
 
-	log.Printf("User %s not already found, requesting info", id)
+	log.Debug().Msgf("User %s not already found, requesting info", id)
 	u := s.url + "users.info"
 	resp, err := http.PostForm(u,
 		url.Values{"token": {s.token}, "user": {id}})
 	if err != nil || resp.StatusCode != 200 {
-		log.Printf("Error posting user info request: %d %s",
-			resp.StatusCode, err)
+		log.Error().Err(err).Msgf("Error posting user info request: %d",
+			resp.StatusCode)
 		return "UNKNOWN", false
 	}
 	defer resp.Body.Close()
 	var userInfo slackUserInfoResp
 	err = json.NewDecoder(resp.Body).Decode(&userInfo)
 	if err != nil {
-		log.Println("Error decoding response: ", err)
+		log.Error().Err(err).Msgf("Error decoding response")
 		return "UNKNOWN", false
 	}
 	s.users[id] = userInfo.User.Name
@@ -702,17 +697,18 @@ func (s *Slack) getUser(id string) (string, bool) {
 
 // Who gets usernames out of a channel
 func (s *Slack) Who(id string) []string {
-	log.Println("Who is queried for ", id)
+	log.Debug().
+		Str("id", id).
+		Msg("Who is queried for ")
 	u := s.url + "channels.info"
 	resp, err := http.PostForm(u,
 		url.Values{"token": {s.token}, "channel": {id}})
 	if err != nil {
-		log.Printf("Error posting user info request: %s",
-			err)
+		log.Error().Err(err).Msgf("Error posting user info request")
 		return []string{}
 	}
 	if resp.StatusCode != 200 {
-		log.Printf("Error posting user info request: %d",
+		log.Error().Msgf("Error posting user info request: %d",
 			resp.StatusCode)
 		return []string{}
 	}
@@ -720,17 +716,17 @@ func (s *Slack) Who(id string) []string {
 	var chanInfo slackChannelInfoResp
 	err = json.NewDecoder(resp.Body).Decode(&chanInfo)
 	if err != nil || !chanInfo.Ok {
-		log.Println("Error decoding response: ", err)
+		log.Error().Err(err).Msgf("Error decoding response")
 		return []string{}
 	}
 
-	log.Printf("%#v", chanInfo.Channel)
+	log.Debug().Msgf("%#v", chanInfo.Channel)
 
 	handles := []string{}
 	for _, member := range chanInfo.Channel.Members {
 		u, _ := s.getUser(member)
 		handles = append(handles, u)
 	}
-	log.Printf("Returning %d handles", len(handles))
+	log.Debug().Msgf("Returning %d handles", len(handles))
 	return handles
 }

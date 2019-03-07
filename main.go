@@ -4,10 +4,13 @@ package main
 
 import (
 	"flag"
-	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
@@ -19,7 +22,6 @@ import (
 	"github.com/velour/catbase/plugins/beers"
 	"github.com/velour/catbase/plugins/couldashouldawoulda"
 	"github.com/velour/catbase/plugins/counter"
-	"github.com/velour/catbase/plugins/db"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/emojifyme"
 	"github.com/velour/catbase/plugins/fact"
@@ -42,9 +44,11 @@ import (
 )
 
 var (
-	key    = flag.String("set", "", "Configuration key to set")
-	val    = flag.String("val", "", "Configuration value to set")
-	initDB = flag.Bool("init", false, "Initialize the configuration DB")
+	key       = flag.String("set", "", "Configuration key to set")
+	val       = flag.String("val", "", "Configuration value to set")
+	initDB    = flag.Bool("init", false, "Initialize the configuration DB")
+	prettyLog = flag.Bool("pretty", false, "Use pretty console logger")
+	debug     = flag.Bool("debug", false, "Turn on debug logging")
 )
 
 func main() {
@@ -54,15 +58,23 @@ func main() {
 		"Database file to load. (Defaults to catbase.db)")
 	flag.Parse() // parses the logging flags.
 
+	if *prettyLog {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
 	c := config.ReadConfig(*dbpath)
 
 	if *key != "" && *val != "" {
 		c.Set(*key, *val)
-		log.Printf("Set config %s: %s", *key, *val)
+		log.Info().Msgf("Set config %s: %s", *key, *val)
 		return
 	}
 	if (*initDB && len(flag.Args()) != 2) || (!*initDB && c.GetInt("init", 0) != 1) {
-		log.Fatal(`You must run "catbase -init <channel> <nick>"`)
+		log.Fatal().Msgf(`You must run "catbase -init <channel> <nick>"`)
 	} else if *initDB {
 		c.SetDefaults(flag.Arg(0), flag.Arg(1))
 		return
@@ -78,7 +90,7 @@ func main() {
 	case "slackapp":
 		client = slackapp.New(c)
 	default:
-		log.Fatalf("Unknown connection type: %s", c.Get("type", "UNSET"))
+		log.Fatal().Msgf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}
 
 	b := bot.New(c, client)
@@ -108,12 +120,11 @@ func main() {
 	b.AddPlugin(nerdepedia.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
-	b.AddPlugin(db.New(b))
 
 	if err := client.Serve(); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	addr := c.Get("HttpAddr", "127.0.0.1:1337")
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Fatal().Err(http.ListenAndServe(addr, nil))
 }

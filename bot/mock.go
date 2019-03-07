@@ -4,12 +4,12 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/mock"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
@@ -64,14 +64,14 @@ func (mb *MockBot) edit(channel, newMessage, identifier string) (string, error) 
 	isMessage := identifier[0] == 'm'
 	if !isMessage && identifier[0] != 'a' {
 		err := fmt.Errorf("failed to parse identifier: %s", identifier)
-		log.Println(err)
+		log.Error().Err(err)
 		return "", err
 	}
 
 	index, err := strconv.Atoi(strings.Split(identifier, "-")[1])
 	if err != nil {
 		err := fmt.Errorf("failed to parse identifier: %s", identifier)
-		log.Println(err)
+		log.Error().Err(err)
 		return "", err
 	}
 

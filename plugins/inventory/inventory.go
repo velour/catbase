@@ -6,9 +6,10 @@ package inventory
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -53,7 +54,7 @@ func New(b bot.Bot) *InventoryPlugin {
 		);`)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	b.Register(p, bot.Message, p.message)
@@ -79,13 +80,13 @@ func (p *InventoryPlugin) itemFilter(input string) string {
 
 func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := message.Body
-	log.Printf("inventory trying to read %+v", message)
+	log.Debug().Msgf("inventory trying to read %+v", message)
 	if message.Command {
 		if strings.ToLower(m) == "inventory" {
 			items := p.getAll()
 			say := "I'm not holding anything"
 			if len(items) > 0 {
-				log.Printf("I think I have more than 0 items: %+v, len(items)=%d", items, len(items))
+				log.Debug().Msgf("I think I have more than 0 items: %+v, len(items)=%d", items, len(items))
 				say = fmt.Sprintf("I'm currently holding %s", strings.Join(items, ", "))
 			}
 			p.bot.Send(bot.Message, message.Channel, say)
@@ -95,30 +96,30 @@ func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...in
 		// <Randall> Bucket[:,] take this (.+)
 		// <Randall> Bucket[:,] have a (.+)
 		if matches := p.r1.FindStringSubmatch(m); len(matches) > 0 {
-			log.Printf("Found item to add: %s", matches[1])
+			log.Debug().Msgf("Found item to add: %s", matches[1])
 			return p.addItem(message, matches[1])
 		}
 		if matches := p.r2.FindStringSubmatch(m); len(matches) > 0 {
-			log.Printf("Found item to add: %s", matches[1])
+			log.Debug().Msgf("Found item to add: %s", matches[1])
 			return p.addItem(message, matches[1])
 		}
 	}
 	if message.Action {
-		log.Println("Inventory found an action")
+		log.Debug().Msg("Inventory found an action")
 		// * Randall puts (.+) in Bucket([^a-zA-Z].*)?
 		// * Randall gives Bucket (.+)
 		// * Randall gives (.+) to Bucket([^a-zA-Z].*)?
 
 		if matches := p.r3.FindStringSubmatch(m); len(matches) > 0 {
-			log.Printf("Found item to add: %s", matches[1])
+			log.Debug().Msgf("Found item to add: %s", matches[1])
 			return p.addItem(message, matches[1])
 		}
 		if matches := p.r4.FindStringSubmatch(m); len(matches) > 0 {
-			log.Printf("Found item to add: %s", matches[1])
+			log.Debug().Msgf("Found item to add: %s", matches[1])
 			return p.addItem(message, matches[1])
 		}
 		if matches := p.r5.FindStringSubmatch(m); len(matches) > 0 {
-			log.Printf("Found item to add: %s", matches[1])
+			log.Debug().Msgf("Found item to add: %s", matches[1])
 			return p.addItem(message, matches[1])
 		}
 	}
@@ -131,12 +132,12 @@ func (p *InventoryPlugin) removeRandom() string {
 		&name,
 	)
 	if err != nil {
-		log.Printf("Error finding random entry: %s", err)
+		log.Error().Err(err).Msgf("Error finding random entry")
 		return "IAMERROR"
 	}
 	_, err = p.Exec(`delete from inventory where item=?`, name)
 	if err != nil {
-		log.Printf("Error finding random entry: %s", err)
+		log.Error().Err(err).Msgf("Error finding random entry")
 		return "IAMERROR"
 	}
 	return name
@@ -146,7 +147,7 @@ func (p *InventoryPlugin) count() int {
 	var output int
 	err := p.QueryRow(`select count(*) as count from inventory`).Scan(&output)
 	if err != nil {
-		log.Printf("Error checking for item: %s", err)
+		log.Error().Err(err).Msg("Error checking for item")
 		return -1
 	}
 	return output
@@ -158,7 +159,7 @@ func (p *InventoryPlugin) random() string {
 		&name,
 	)
 	if err != nil {
-		log.Printf("Error finding random entry: %s", err)
+		log.Error().Err(err).Msg("Error finding random entry")
 		return "IAMERROR"
 	}
 	return name
@@ -167,7 +168,7 @@ func (p *InventoryPlugin) random() string {
 func (p *InventoryPlugin) getAll() []string {
 	rows, err := p.Queryx(`select item from inventory`)
 	if err != nil {
-		log.Printf("Error getting all items: %s", err)
+		log.Error().Err(err).Msg("Error getting all items")
 		return []string{}
 	}
 	output := []string{}
@@ -184,7 +185,7 @@ func (p *InventoryPlugin) exists(i string) bool {
 	var output int
 	err := p.QueryRow(`select count(*) as count from inventory where item=?`, i).Scan(&output)
 	if err != nil {
-		log.Printf("Error checking for item: %s", err)
+		log.Error().Err(err).Msg("Error checking for item")
 		return false
 	}
 	return output > 0
@@ -193,7 +194,7 @@ func (p *InventoryPlugin) exists(i string) bool {
 func (p *InventoryPlugin) remove(i string) {
 	_, err := p.Exec(`delete from inventory where item=?`, i)
 	if err != nil {
-		log.Printf("Error inserting new inventory item: %s", err)
+		log.Error().Msg("Error inserting new inventory item")
 	}
 }
 
@@ -209,7 +210,7 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 	}
 	_, err := p.Exec(`INSERT INTO inventory (item) values (?)`, i)
 	if err != nil {
-		log.Printf("Error inserting new inventory item: %s", err)
+		log.Error().Err(err).Msg("Error inserting new inventory item")
 	}
 	if removed != "" {
 		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
@@ -221,6 +222,6 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 
 func checkerr(e error) {
 	if e != nil {
-		log.Println(e)
+		log.Error().Err(e)
 	}
 }

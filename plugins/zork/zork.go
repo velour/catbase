@@ -8,11 +8,12 @@ import (
 	"bytes"
 	"go/build"
 	"io"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -52,7 +53,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	var w io.WriteCloser
 	cmd.Stdin, w = io.Pipe()
 
-	log.Printf("zork running %v\n", cmd)
+	log.Info().Msgf("zork running %v", cmd)
 	if err := cmd.Start(); err != nil {
 		w.Close()
 		return err
@@ -83,20 +84,20 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	}()
 	go func() {
 		if err := cmd.Wait(); err != nil {
-			log.Printf("zork exited: %v\n", err)
+			log.Error().Err(err).Msg("zork exited")
 		}
 		p.Lock()
 		p.zorks[ch] = nil
 		p.Unlock()
 	}()
-	log.Printf("zork is running in %s\n", ch)
+	log.Info().Msgf("zork is running in %s\n", ch)
 	p.zorks[ch] = w
 	return nil
 }
 
 func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := strings.ToLower(message.Body)
-	log.Printf("got message [%s]\n", m)
+	log.Debug().Msgf("got message [%s]", m)
 	if ts := strings.Fields(m); len(ts) < 1 || ts[0] != "zork" {
 		return false
 	}
@@ -111,7 +112,7 @@ func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 			return true
 		}
 	}
-	log.Printf("zorking, [%s]\n", m)
+	log.Debug().Msgf("zorking, [%s]", m)
 	io.WriteString(p.zorks[ch], m+"\n")
 	return true
 }

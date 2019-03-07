@@ -5,11 +5,11 @@ package irc
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
@@ -69,7 +69,7 @@ func (i *Irc) Send(kind bot.Kind, args ...interface{}) (string, error) {
 }
 
 func (i *Irc) JoinChannel(channel string) {
-	log.Printf("Joining channel: %s", channel)
+	log.Info().Msgf("Joining channel: %s", channel)
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
@@ -147,7 +147,7 @@ func (i *Irc) handleConnection() {
 		close(i.Client.Out)
 		for err := range i.Client.Errors {
 			if err != io.EOF {
-				log.Println(err)
+				log.Error().Err(err)
 			}
 		}
 	}()
@@ -169,7 +169,7 @@ func (i *Irc) handleConnection() {
 
 		case err, ok := <-i.Client.Errors:
 			if ok && err != io.EOF {
-				log.Println(err)
+				log.Error().Err(err)
 				i.quit <- true
 				return
 			}
@@ -183,7 +183,7 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 
 	switch msg.Cmd {
 	case irc.ERROR:
-		log.Println(1, "Received error: "+msg.Raw)
+		log.Info().Msgf("Received error: " + msg.Raw)
 
 	case irc.PING:
 		i.Client.Out <- irc.Msg{Cmd: irc.PONG}
@@ -241,7 +241,7 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 
 	default:
 		cmd := irc.CmdNames[msg.Cmd]
-		log.Println("(" + cmd + ") " + msg.Raw)
+		log.Debug().Msgf("(%s) %s", cmd, msg.Raw)
 	}
 }
 

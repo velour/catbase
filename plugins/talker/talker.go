@@ -5,11 +5,12 @@ package talker
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -172,9 +173,9 @@ func (p *TalkerPlugin) allCows() []string {
 func (p *TalkerPlugin) registerWeb() {
 	http.HandleFunc("/slash/cowsay", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		log.Printf("Cowsay:\n%+v", r.PostForm.Get("text"))
+		log.Debug().Msgf("Cowsay:\n%+v", r.PostForm.Get("text"))
 		channel := r.PostForm.Get("channel_id")
-		log.Printf("channel: %s", channel)
+		log.Debug().Msgf("channel: %s", channel)
 		msg, err := p.cowSay(r.PostForm.Get("text"))
 		if err != nil {
 			p.Bot.Send(bot.Message, channel, fmt.Sprintf("Error running cowsay: %s", err))

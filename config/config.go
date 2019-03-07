@@ -5,7 +5,6 @@ package config
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	sqlite3 "github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog/log"
 )
 
 // Config stores any system-wide startup information that cannot be easily configured via
@@ -74,7 +74,7 @@ func (c *Config) GetString(key, fallback string) string {
 	q := `select value from config where key=?`
 	err := c.DB.Get(&configValue, q, key)
 	if err != nil {
-		log.Printf("WARN: Key %s is empty", key)
+		log.Debug().Msgf("WARN: Key %s is empty", key)
 		return fallback
 	}
 	return configValue
@@ -137,11 +137,11 @@ func ReadConfig(dbpath string) *Config {
 	if dbpath == "" {
 		dbpath = "catbase.db"
 	}
-	fmt.Printf("Using %s as database file.\n", dbpath)
+	log.Info().Msgf("Using %s as database file.\n", dbpath)
 
 	sqlDB, err := sqlx.Open("sqlite3_custom", dbpath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	c := Config{
 		DBFile: dbpath,
@@ -156,7 +156,7 @@ func ReadConfig(dbpath string) *Config {
 		panic(err)
 	}
 
-	fmt.Printf("catbase is running.\n")
+	log.Info().Msgf("catbase is running.")
 
 	return &c
 }

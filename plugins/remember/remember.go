@@ -2,9 +2,10 @@ package remember
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -52,14 +53,14 @@ func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...int
 		snip := strings.Join(parts[2:], " ")
 		for i := len(p.log[message.Channel]) - 1; i >= 0; i-- {
 			entry := p.log[message.Channel][i]
-			log.Printf("Comparing %s:%s with %s:%s",
+			log.Debug().Msgf("Comparing %s:%s with %s:%s",
 				entry.User.Name, entry.Body, nick, snip)
 			if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
 				strings.Contains(
 					strings.ToLower(entry.Body),
 					strings.ToLower(snip),
 				) {
-				log.Printf("Found!")
+				log.Debug().Msg("Found!")
 
 				var msg string
 				if entry.Action {
@@ -80,11 +81,13 @@ func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...int
 					Count:    0,
 				}
 				if err := fact.Save(p.db); err != nil {
-					log.Println("ERROR!!!!:", err)
+					log.Error().Err(err)
 					p.bot.Send(bot.Message, message.Channel, "Tell somebody I'm broke.")
 				}
 
-				log.Println("Remembering factoid:", msg)
+				log.Info().
+					Str("msg", msg).
+					Msg("Remembering factoid")
 
 				// sorry, not creative with names so we're reusing msg
 				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
@@ -134,7 +137,7 @@ func (p *RememberPlugin) randQuote() string {
 		&f.Count,
 	)
 	if err != nil {
-		log.Println("Error getting quotes: ", err)
+		log.Error().Err(err).Msg("Error getting quotes")
 		return "I had a problem getting your quote."
 	}
 	f.Created = time.Unix(tmpCreated, 0)
@@ -144,6 +147,6 @@ func (p *RememberPlugin) randQuote() string {
 }
 
 func (p *RememberPlugin) recordMsg(message msg.Message) {
-	log.Printf("Logging message: %s: %s", message.User.Name, message.Body)
+	log.Debug().Msgf("Logging message: %s: %s", message.User.Name, message.Body)
 	p.log[message.Channel] = append(p.log[message.Channel], message)
 }
