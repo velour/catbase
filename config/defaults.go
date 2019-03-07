@@ -2,9 +2,10 @@ package config
 
 import (
 	"bytes"
-	"log"
 	"strings"
 	"text/template"
+
+	"github.com/rs/zerolog/log"
 )
 
 var q = `
@@ -17,7 +18,7 @@ INSERT INTO config VALUES('init',1);
 
 func (c *Config) SetDefaults(mainChannel, nick string) {
 	if nick == mainChannel && nick == "" {
-		log.Fatalf("You must provide a nick and a mainChannel")
+		log.Fatal().Msgf("You must provide a nick and a mainChannel")
 	}
 	t := template.Must(template.New("query").Parse(q))
 	vals := struct {
@@ -33,5 +34,5 @@ func (c *Config) SetDefaults(mainChannel, nick string) {
 	t.Execute(&buf, vals)
 	c.MustExec(`delete from config;`)
 	c.MustExec(buf.String())
-	log.Println("Configuration initialized.")
+	log.Info().Msgf("Configuration initialized.")
 }

@@ -6,12 +6,13 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
-	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -166,7 +167,7 @@ func getFacts(db *sqlx.DB, fact string, tidbit string) ([]*Factoid, error) {
 	rows, err := db.Query(query,
 		"%"+fact+"%", "%"+tidbit+"%")
 	if err != nil {
-		log.Printf("Error regexping for facts: %s", err)
+		log.Error().Err(err).Msg("Error regexping for facts")
 		return nil, err
 	}
 	for rows.Next() {
@@ -286,7 +287,7 @@ func New(botInst bot.Bot) *FactoidPlugin {
 			accessed integer,
 			count integer
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	if _, err := p.db.Exec(`create table if not exists factoid_alias (
@@ -294,7 +295,7 @@ func New(botInst bot.Bot) *FactoidPlugin {
 			next string,
 			primary key (fact, next)
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	for _, channel := range botInst.Config().GetArray("channels", []string{}) {
@@ -359,10 +360,10 @@ func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string
 		where fact=? and verb=? and tidbit=?`,
 		fact, verb, tidbit).Scan(&count)
 	if err != nil {
-		log.Println("Error counting facts: ", err)
+		log.Error().Err(err).Msg("Error counting facts")
 		return fmt.Errorf("What?")
 	} else if count.Valid && count.Int64 != 0 {
-		log.Println("User tried to relearn a fact.")
+		log.Debug().Msg("User tried to relearn a fact.")
 		return fmt.Errorf("Look, I already know that.")
 	}
 
@@ -378,7 +379,7 @@ func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string
 	p.LastFact = &n
 	err = n.Save(p.db)
 	if err != nil {
-		log.Println("Error inserting fact: ", err)
+		log.Error().Err(err).Msg("Error inserting fact")
 		return fmt.Errorf("My brain is overheating.")
 	}
 
@@ -425,9 +426,10 @@ func (p *FactoidPlugin) sayFact(message msg.Message, fact Factoid) {
 	fact.Count += 1
 	err := fact.Save(p.db)
 	if err != nil {
-		log.Printf("Could not update fact.\n")
-		log.Printf("%#v\n", fact)
-		log.Println(err)
+		log.Error().
+			Interface("fact", fact).
+			Err(err).
+			Msg("could not update fact")
 	}
 	p.LastFact = &fact
 }
@@ -520,7 +522,10 @@ func (p *FactoidPlugin) forgetLastFact(message msg.Message) bool {
 
 	err := p.LastFact.delete(p.db)
 	if err != nil {
-		log.Println("Error removing fact: ", p.LastFact, err)
+		log.Error().
+			Err(err).
+			Interface("LastFact", p.LastFact).
+			Msg("Error removing fact")
 	}
 	fmt.Printf("Forgot #%d: %s %s %s\n", p.LastFact.ID.Int64, p.LastFact.Fact,
 		p.LastFact.Verb, p.LastFact.Tidbit)
@@ -539,7 +544,11 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 
 	parts = strings.Split(userexp, "/")
 
-	log.Printf("changeFact: %s %s %#v", trigger, userexp, parts)
+	log.Debug().
+		Str("trigger", trigger).
+		Str("userexp", userexp).
+		Strs("parts", parts).
+		Msg("changefact")
 
 	if len(parts) == 4 {
 		// replacement
@@ -552,7 +561,10 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 		// replacement
 		result, err := getFacts(p.db, trigger, parts[1])
 		if err != nil {
-			log.Println("Error getting facts: ", trigger, err)
+			log.Error().
+				Err(err).
+				Str("trigger", trigger).
+				Msg("Error getting facts")
 		}
 		if userexp[len(userexp)-1] != 'g' {
 			result = result[:1]
@@ -578,7 +590,10 @@ func (p *FactoidPlugin) changeFact(message msg.Message) bool {
 		// search for a factoid and print it
 		result, err := getFacts(p.db, trigger, parts[1])
 		if err != nil {
-			log.Println("Error getting facts: ", trigger, err)
+			log.Error().
+				Err(err).
+				Str("trigger", trigger).
+				Msg("Error getting facts")
 			p.Bot.Send(bot.Message, message.Channel, "bzzzt")
 			return true
 		}
@@ -626,7 +641,9 @@ func (p *FactoidPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 	}
 
 	if strings.HasPrefix(strings.ToLower(message.Body), "alias") {
-		log.Printf("Trying to learn an alias: %s", message.Body)
+		log.Debug().
+			Str("alias", message.Body).
+			Msg("Trying to learn an alias")
 		m := strings.TrimPrefix(message.Body, "alias ")
 		parts := strings.SplitN(m, "->", 2)
 		if len(parts) != 2 {
@@ -647,7 +664,7 @@ func (p *FactoidPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 			p.sayFact(message, *fact)
 			return true
 		}
-		log.Println("Got a nil fact.")
+		log.Debug().Msg("Got a nil fact.")
 	}
 
 	if strings.ToLower(message.Body) == "forget that" {
@@ -721,7 +738,7 @@ func (p *FactoidPlugin) factTimer(channel string) {
 		if success && tdelta > duration && earlier {
 			fact := p.randomFact()
 			if fact == nil {
-				log.Println("Didn't find a random fact to say")
+				log.Debug().Msg("Didn't find a random fact to say")
 				continue
 			}
 
@@ -764,7 +781,7 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	if e := r.FormValue("entry"); e != "" {
 		entries, err := getFacts(p.db, e, "")
 		if err != nil {
-			log.Println("Web error searching: ", err)
+			log.Error().Err(err).Msg("Web error searching")
 		}
 		context["Count"] = fmt.Sprintf("%d", len(entries))
 		context["Entries"] = entries
@@ -772,10 +789,10 @@ func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := template.New("factoidIndex").Funcs(funcMap).Parse(factoidIndex)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 	}
 	err = t.Execute(w, context)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 	}
 }

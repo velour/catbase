@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"text/template"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
@@ -110,12 +110,12 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.New("streaming").Parse(page)
 	if err != nil {
-		log.Println("Could not parse template!", err)
+		log.Error().Err(err).Msg("Could not parse template!")
 		return
 	}
 	err = t.Execute(w, context)
 	if err != nil {
-		log.Println("Could not execute template!", err)
+		log.Error().Err(err).Msg("Could not execute template!")
 	}
 }
 
@@ -154,11 +154,11 @@ func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interfac
 func (p *TwitchPlugin) twitchLoop(channel string) {
 	frequency := p.config.GetInt("Twitch.Freq", 60)
 	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.authorization", "") == "" {
-		log.Println("Disabling twitch autochecking.")
+		log.Info().Msgf("Disabling twitch autochecking.")
 		return
 	}
 
-	log.Println("Checking every ", frequency, " seconds")
+	log.Info().Msgf("Checking every %d seconds", frequency)
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
@@ -193,14 +193,14 @@ func getRequest(url, clientID, authorization string) ([]byte, bool) {
 	return body, true
 
 errCase:
-	log.Println(err)
+	log.Error().Err(err)
 	return []byte{}, false
 }
 
 func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPrintStatus bool) {
 	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
 	if err != nil {
-		log.Println("Error parsing twitch stream URL")
+		log.Error().Msg("Error parsing twitch stream URL")
 		return
 	}
 
@@ -212,7 +212,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	cid := p.config.Get("Twitch.ClientID", "")
 	auth := p.config.Get("Twitch.Authorization", "")
 	if cid == auth && cid == "" {
-		log.Println("Twitch plugin not enabled.")
+		log.Info().Msgf("Twitch plugin not enabled.")
 		return
 	}
 
@@ -224,7 +224,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 	var s stream
 	err = json.Unmarshal(body, &s)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 		return
 	}
 
@@ -254,7 +254,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		if gameID == "" {
 			t, err := template.New("notStreaming").Parse(notStreamingTpl)
 			if err != nil {
-				log.Println(err)
+				log.Error().Err(err)
 				p.Bot.Send(bot.Message, channel, err)
 				t = template.Must(template.New("notStreaming").Parse(notStreamingTplFallback))
 			}
@@ -263,7 +263,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		} else {
 			t, err := template.New("isStreaming").Parse(isStreamingTpl)
 			if err != nil {
-				log.Println(err)
+				log.Error().Err(err)
 				p.Bot.Send(bot.Message, channel, err)
 				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
 			}
@@ -274,7 +274,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		if twitcher.gameID != "" {
 			t, err := template.New("stoppedStreaming").Parse(stoppedStreamingTpl)
 			if err != nil {
-				log.Println(err)
+				log.Error().Err(err)
 				p.Bot.Send(bot.Message, channel, err)
 				t = template.Must(template.New("stoppedStreaming").Parse(stoppedStreamingTplFallback))
 			}
@@ -286,7 +286,7 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 		if twitcher.gameID != gameID {
 			t, err := template.New("isStreaming").Parse(isStreamingTpl)
 			if err != nil {
-				log.Println(err)
+				log.Error().Err(err)
 				p.Bot.Send(bot.Message, channel, err)
 				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
 			}

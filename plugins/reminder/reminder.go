@@ -5,11 +5,12 @@ package reminder
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -39,7 +40,6 @@ type Reminder struct {
 }
 
 func New(b bot.Bot) *ReminderPlugin {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if _, err := b.DB().Exec(`create table if not exists reminders (
 			id integer primary key,
 			fromWho string,
@@ -48,7 +48,7 @@ func New(b bot.Bot) *ReminderPlugin {
 			remindWhen string,
 			channel string
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	dur, _ := time.ParseDuration("1h")
@@ -205,7 +205,7 @@ func (p *ReminderPlugin) getNextReminder() *Reminder {
 	defer p.mutex.Unlock()
 	rows, err := p.db.Query("select id, fromWho, toWho, what, remindWhen, channel from reminders order by remindWhen asc limit 1;")
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil
 	}
 	defer rows.Close()
@@ -214,19 +214,19 @@ func (p *ReminderPlugin) getNextReminder() *Reminder {
 	var reminder *Reminder
 	for rows.Next() {
 		if once {
-			log.Print("somehow got multiple rows")
+			log.Debug().Msg("somehow got multiple rows")
 		}
 		reminder = &Reminder{}
 
 		var when string
 		err := rows.Scan(&reminder.id, &reminder.from, &reminder.who, &reminder.what, &when, &reminder.channel)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil
 		}
 		reminder.when, err = time.Parse(TIMESTAMP, when)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil
 		}
 
@@ -243,7 +243,7 @@ func (p *ReminderPlugin) addReminder(reminder *Reminder) error {
 		reminder.from, reminder.who, reminder.what, reminder.when.Format(TIMESTAMP), reminder.channel)
 
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 	}
 	return err
 }
@@ -253,7 +253,7 @@ func (p *ReminderPlugin) deleteReminder(id int64) error {
 	defer p.mutex.Unlock()
 	res, err := p.db.Exec(`delete from reminders where id = ?;`, id)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 	} else {
 		if affected, err := res.RowsAffected(); err != nil {
 			return err
@@ -275,7 +275,7 @@ func (p *ReminderPlugin) getRemindersFormatted(filter string) (string, error) {
 	var total int
 	err := p.db.Get(&total, countString)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", nil
 	}
 
@@ -285,7 +285,7 @@ func (p *ReminderPlugin) getRemindersFormatted(filter string) (string, error) {
 
 	rows, err := p.db.Query(queryString)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", nil
 	}
 	defer rows.Close()
@@ -348,9 +348,10 @@ func reminderer(p *ReminderPlugin) {
 			p.Bot.Send(bot.Message, reminder.channel, message)
 
 			if err := p.deleteReminder(reminder.id); err != nil {
-				log.Print(reminder.id)
-				log.Print(err)
-				log.Fatal("this will cause problems, we need to stop now.")
+				log.Error().
+					Int64("id", reminder.id).
+					Err(err).
+					Msg("this will cause problems, we need to stop now.")
 			}
 		}
 

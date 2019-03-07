@@ -5,12 +5,14 @@ import (
 	"flag"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -20,9 +22,10 @@ var (
 
 func main() {
 	flag.Parse()
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	if *token == "" {
-		log.Printf("No token provided.")
+		log.Fatal().Msg("No token provided.")
 		return
 	}
 
@@ -35,7 +38,7 @@ func main() {
 func getFiles() map[string]string {
 	files := fileResp{}
 
-	log.Printf("Getting files")
+	log.Debug().Msgf("Getting files")
 	body := mkReq("https://slack.com/api/emoji.list",
 		"token", *token,
 	)
@@ -43,9 +46,9 @@ func getFiles() map[string]string {
 	err := json.Unmarshal(body, &files)
 	checkErr(err)
 
-	log.Printf("Ok: %v", files.Ok)
+	log.Debug().Msgf("Ok: %v", files.Ok)
 	if !files.Ok {
-		log.Println(files)
+		log.Debug().Msgf("%+v", files)
 	}
 
 	return files.Files
@@ -55,7 +58,7 @@ func downloadFile(n, f string) {
 	url := strings.Replace(f, "\\", "", -1) // because fuck slack
 
 	if strings.HasPrefix(url, "alias:") {
-		log.Printf("Skipping alias: %s", url)
+		log.Debug().Msgf("Skipping alias: %s", url)
 		return
 	}
 
@@ -66,7 +69,7 @@ func downloadFile(n, f string) {
 
 	fname := filepath.Join(*path, n+"."+ext)
 
-	log.Printf("Downloading from: %s", url)
+	log.Debug().Msgf("Downloading from: %s", url)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -82,18 +85,18 @@ func downloadFile(n, f string) {
 	defer out.Close()
 	io.Copy(out, resp.Body)
 
-	log.Printf("Downloaded %s", f)
+	log.Debug().Msgf("Downloaded %s", f)
 }
 
 func checkErr(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 }
 
 func mkReq(path string, arg ...string) []byte {
 	if len(arg)%2 != 0 {
-		log.Fatal("Bad request arg number.")
+		log.Fatal().Msg("Bad request arg number.")
 	}
 
 	u, err := url.Parse(path)

@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
@@ -50,7 +51,7 @@ type SlackApp struct {
 func New(c *config.Config) *SlackApp {
 	token := c.Get("slack.token", "NONE")
 	if token == "NONE" {
-		log.Fatalf("No slack token found. Set SLACKTOKEN env.")
+		log.Fatal().Msg("No slack token found. Set SLACKTOKEN env.")
 	}
 
 	api := slack.New(token, slack.OptionDebug(false))
@@ -88,7 +89,7 @@ func (s *SlackApp) Serve() error {
 		body := buf.String()
 		eventsAPIEvent, e := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.verification}))
 		if e != nil {
-			log.Println(e)
+			log.Error().Err(e)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 
@@ -96,7 +97,7 @@ func (s *SlackApp) Serve() error {
 			var r *slackevents.ChallengeResponse
 			err := json.Unmarshal([]byte(body), &r)
 			if err != nil {
-				log.Println(err)
+				log.Error().Err(err)
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 			w.Header().Set("Content-Type", "text")
@@ -112,7 +113,10 @@ func (s *SlackApp) Serve() error {
 				s.msgReceivd(ev)
 			}
 		} else {
-			log.Printf("Event: (%v): %+v", eventsAPIEvent.Type, eventsAPIEvent)
+			log.Debug().
+				Str("type", eventsAPIEvent.Type).
+				Interface("event", eventsAPIEvent).
+				Msg("event")
 		}
 	})
 	return nil
@@ -137,14 +141,19 @@ func (s *SlackApp) checkRingOrAdd(ts string) bool {
 
 func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 	if s.checkRingOrAdd(msg.TimeStamp) {
-		log.Printf("Got a duplicate message from server: %s", msg.TimeStamp)
+		log.Debug().
+			Str("ts", msg.TimeStamp).
+			Msg("Got a duplicate message from server")
 		return
 	}
 	isItMe := msg.BotID != "" && msg.BotID == s.myBotID
 	if !isItMe && msg.ThreadTimeStamp == "" {
 		m := s.buildMessage(msg)
 		if m.Time.Before(s.lastRecieved) {
-			log.Printf("Ignoring message: lastRecieved: %v msg: %v", s.lastRecieved, m.Time)
+			log.Debug().
+				Time("ts", m.Time).
+				Interface("lastRecv", s.lastRecieved).
+				Msg("Ignoring message")
 		} else {
 			s.lastRecieved = m.Time
 			s.event(bot.Message, m)
@@ -153,7 +162,9 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 		//we're throwing away some information here by not parsing the correct reply object type, but that's okay
 		s.event(bot.Reply, s.buildMessage(msg), msg.ThreadTimeStamp)
 	} else {
-		log.Printf("THAT MESSAGE WAS HIDDEN: %+v", msg.Text)
+		log.Debug().
+			Str("text", msg.Text).
+			Msg("THAT MESSAGE WAS HIDDEN")
 	}
 }
 
@@ -197,7 +208,7 @@ func (s *SlackApp) sendMessageType(channel, message string, meMessage bool) (str
 	}
 
 	if err != nil {
-		log.Printf("Error sending message: %+v", err)
+		log.Error().Err(err).Msg("Error sending message")
 		return "", err
 	}
 
@@ -205,13 +216,19 @@ func (s *SlackApp) sendMessageType(channel, message string, meMessage bool) (str
 }
 
 func (s *SlackApp) sendMessage(channel, message string) (string, error) {
-	log.Printf("Sending message to %s: %s", channel, message)
+	log.Debug().
+		Str("channel", channel).
+		Str("message", message).
+		Msg("Sending message")
 	identifier, err := s.sendMessageType(channel, message, false)
 	return identifier, err
 }
 
 func (s *SlackApp) sendAction(channel, message string) (string, error) {
-	log.Printf("Sending action to %s: %s", channel, message)
+	log.Debug().
+		Str("channel", channel).
+		Str("message", message).
+		Msg("Sending action")
 	identifier, err := s.sendMessageType(channel, "_"+message+"_", true)
 	return identifier, err
 }
@@ -241,7 +258,7 @@ func (s *SlackApp) replyToMessageIdentifier(channel, message, identifier string)
 		return "", err
 	}
 
-	log.Println(string(body))
+	log.Debug().Bytes("body", body)
 
 	type MessageResponse struct {
 		OK        bool   `json:"ok"`
@@ -267,7 +284,10 @@ func (s *SlackApp) replyToMessage(channel, message string, replyTo msg.Message) 
 }
 
 func (s *SlackApp) react(channel, reaction string, message msg.Message) (string, error) {
-	log.Printf("Reacting in %s: %s", channel, reaction)
+	log.Debug().
+		Str("channel", channel).
+		Str("reaction", reaction).
+		Msg("reacting")
 	ref := slack.ItemRef{
 		Channel:   channel,
 		Timestamp: message.AdditionalData["RAW_SLACK_TIMESTAMP"],
@@ -277,7 +297,11 @@ func (s *SlackApp) react(channel, reaction string, message msg.Message) (string,
 }
 
 func (s *SlackApp) edit(channel, newMessage, identifier string) (string, error) {
-	log.Printf("Editing in (%s) %s: %s", identifier, channel, newMessage)
+	log.Debug().
+		Str("channel", channel).
+		Str("identifier", identifier).
+		Str("newMessage", newMessage).
+		Msg("editing")
 	nick := s.config.Get("Nick", "bot")
 	_, ts, err := s.api.PostMessage(channel,
 		slack.MsgOptionUsername(nick),
@@ -293,14 +317,14 @@ func (s *SlackApp) GetEmojiList() map[string]string {
 
 func (s *SlackApp) populateEmojiList() {
 	if s.userToken == "NONE" {
-		log.Println("Cannot get emoji list without slack.usertoken")
+		log.Error().Msg("Cannot get emoji list without slack.usertoken")
 		return
 	}
 	api := slack.New(s.userToken, slack.OptionDebug(false))
 
 	em, err := api.GetEmoji()
 	if err != nil {
-		log.Printf("Error retrieving emoji list from Slack: %s", err)
+		log.Error().Err(err).Msg("Error retrieving emoji list from Slack")
 		return
 	}
 
@@ -357,7 +381,9 @@ func (s *SlackApp) getUser(id string) (string, error) {
 		return name, nil
 	}
 
-	log.Printf("User %s not already found, requesting info", id)
+	log.Debug().
+		Str("id", id).
+		Msg("User not already found, requesting info")
 	u, err := s.api.GetUserInfo(id)
 	if err != nil {
 		return "UNKNOWN", err
@@ -369,12 +395,14 @@ func (s *SlackApp) getUser(id string) (string, error) {
 // Who gets usernames out of a channel
 func (s *SlackApp) Who(id string) []string {
 	if s.userToken == "NONE" {
-		log.Println("Cannot get emoji list without slack.usertoken")
+		log.Error().Msg("Cannot get emoji list without slack.usertoken")
 		return []string{s.config.Get("nick", "bot")}
 	}
 	api := slack.New(s.userToken, slack.OptionDebug(false))
 
-	log.Println("Who is queried for ", id)
+	log.Debug().
+		Str("id", id).
+		Msg("Who is queried")
 	// Not super sure this is the correct call
 	params := &slack.GetUsersInConversationParameters{
 		ChannelID: id,
@@ -382,7 +410,7 @@ func (s *SlackApp) Who(id string) []string {
 	}
 	members, _, err := api.GetUsersInConversation(params)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 		return []string{s.config.Get("nick", "bot")}
 	}
 
@@ -390,7 +418,10 @@ func (s *SlackApp) Who(id string) []string {
 	for _, m := range members {
 		u, err := s.getUser(m)
 		if err != nil {
-			log.Printf("Couldn't get user %s: %s", m, err)
+			log.Error().
+				Err(err).
+				Str("user", m).
+				Msg("Couldn't get user")
 			continue
 		}
 		ret = append(ret, u)

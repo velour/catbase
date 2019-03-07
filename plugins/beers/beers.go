@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/plugins/counter"
@@ -46,7 +46,7 @@ func New(b bot.Bot) *BeersPlugin {
 			lastCheckin integer,
 			chanNick string
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	p := &BeersPlugin{
 		Bot: b,
@@ -147,13 +147,16 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 			channel:     channel,
 		}
 
-		log.Println("Creating Untappd user:", u.untappdUser, "nick:", u.chanNick)
+		log.Info().
+			Str("untappdUser", u.untappdUser).
+			Str("nick", u.chanNick).
+			Msg("Creating Untappd user")
 
 		var count int
 		err := p.db.QueryRow(`select count(*) from untappd
 			where untappdUser = ?`, u.untappdUser).Scan(&count)
 		if err != nil {
-			log.Println("Error registering untappd: ", err)
+			log.Error().Err(err).Msgf("Error registering untappd")
 		}
 		if count > 0 {
 			p.Bot.Send(bot.Message, channel, "I'm already watching you.")
@@ -171,7 +174,7 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 			u.chanNick,
 		)
 		if err != nil {
-			log.Println("Error registering untappd: ", err)
+			log.Error().Err(err).Msgf("Error registering untappd")
 			p.Bot.Send(bot.Message, channel, "I can't see.")
 			return true
 		}
@@ -184,7 +187,9 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 	}
 
 	if message.Command && parts[0] == "checkuntappd" {
-		log.Println("Checking untappd at request of user.")
+		log.Info().
+			Str("user", message.User.Name).
+			Msgf("Checking untappd at request of user.")
 		p.checkUntappd(channel)
 		return true
 	}
@@ -210,7 +215,7 @@ func (p *BeersPlugin) setBeers(user string, amount int) {
 	ub := getUserBeers(p.db, user)
 	err := ub.Update(amount)
 	if err != nil {
-		log.Println("Error saving beers: ", err)
+		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
@@ -218,7 +223,7 @@ func (p *BeersPlugin) addBeers(user string, delta int) {
 	ub := getUserBeers(p.db, user)
 	err := ub.UpdateDelta(delta)
 	if err != nil {
-		log.Println("Error saving beers: ", err)
+		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
@@ -325,14 +330,14 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	}
 
 	if resp.StatusCode == 500 {
-		log.Printf("Error querying untappd: %s, %s", resp.Status, body)
+		log.Error().Msgf("Error querying untappd: %s, %s", resp.Status, body)
 		return []checkin{}, errors.New(resp.Status)
 	}
 
 	var beers Beers
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 		return []checkin{}, err
 	}
 	return beers.Response.Checkins.Items, nil
@@ -341,31 +346,32 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 func (p *BeersPlugin) checkUntappd(channel string) {
 	token := p.Bot.Config().Get("Untappd.Token", "NONE")
 	if token == "NONE" {
-		log.Println(`Set config value "untappd.token" if you wish to enable untappd`)
+		log.Info().
+			Msg(`Set config value "untappd.token" if you wish to enable untappd`)
 		return
 	}
 
 	userMap := make(map[string]untappdUser)
 	rows, err := p.db.Query(`select id, untappdUser, channel, lastCheckin, chanNick from untappd;`)
 	if err != nil {
-		log.Println("Error getting untappd users: ", err)
+		log.Error().Err(err).Msg("Error getting untappd users")
 		return
 	}
 	for rows.Next() {
 		u := untappdUser{}
 		err := rows.Scan(&u.id, &u.untappdUser, &u.channel, &u.lastCheckin, &u.chanNick)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err)
 		}
 		userMap[u.untappdUser] = u
 		if u.chanNick == "" {
-			log.Fatal("Empty chanNick for no good reason.")
+			log.Fatal().Msg("Empty chanNick for no good reason.")
 		}
 	}
 
 	chks, err := p.pullUntappd()
 	if err != nil {
-		log.Println("Untappd ERROR: ", err)
+		log.Error().Err(err).Msg("Untappd ERROR")
 		return
 	}
 	for i := len(chks); i > 0; i-- {
@@ -386,8 +392,9 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		if !ok {
 			continue
 		}
-		log.Printf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
-			user.chanNick, user.untappdUser, checkin.User.User_name)
+		log.Debug().
+			Msgf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
+				user.chanNick, user.untappdUser, checkin.User.User_name)
 		p.addBeers(user.chanNick, 1)
 		drunken := p.getBeers(user.chanNick)
 
@@ -413,10 +420,13 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 			lastCheckin = ?
 		where id = ?`, user.lastCheckin, user.id)
 		if err != nil {
-			log.Println("UPDATE ERROR!:", err)
+			log.Error().Err(err).Msg("UPDATE ERROR!")
 		}
 
-		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
+		log.Debug().
+			Int("checkin_id", checkin.Checkin_id).
+			Str("msg", msg).
+			Msg("checkin")
 		p.Bot.Send(bot.Message, channel, msg)
 	}
 }
@@ -427,7 +437,7 @@ func (p *BeersPlugin) untappdLoop(channel string) {
 		return
 	}
 
-	log.Println("Checking every ", frequency, " seconds")
+	log.Info().Msgf("Checking every %v seconds", frequency)
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)

@@ -5,12 +5,12 @@ package first
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 )
@@ -56,14 +56,19 @@ func New(b bot.Bot) *FirstPlugin {
 			nick string
 		);`)
 	if err != nil {
-		log.Fatal("Could not create first table: ", err)
+		log.Fatal().
+			Err(err).
+			Msg("Could not create first table")
 	}
 
-	log.Println("First plugin initialized with day:", midnight(time.Now()))
+	log.Info().Msgf("First plugin initialized with day: %s",
+		midnight(time.Now()))
 
 	first, err := getLastFirst(b.DB())
 	if err != nil {
-		log.Fatal("Could not initialize first plugin: ", err)
+		log.Fatal().
+			Err(err).
+			Msg("Could not initialize first plugin")
 	}
 
 	fp := &FirstPlugin{
@@ -96,13 +101,14 @@ func getLastFirst(db *sqlx.DB) (*FirstEntry, error) {
 	)
 	switch {
 	case err == sql.ErrNoRows || !id.Valid:
-		log.Println("No previous first entries")
+		log.Info().Msg("No previous first entries")
 		return nil, nil
 	case err != nil:
-		log.Println("Error on first query row: ", err)
+		log.Warn().Err(err).Msg("Error on first query row")
 		return nil, err
 	}
-	log.Println(id, day, timeEntered, body, nick)
+	log.Debug().Msgf("id: %v day %v time %v body %v nick %v",
+		id, day, timeEntered, body, nick)
 	return &FirstEntry{
 		id:    id.Int64,
 		day:   time.Unix(day.Int64, 0),
@@ -130,12 +136,18 @@ func (p *FirstPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 	// This bot does not reply to anything
 
 	if p.First == nil && p.allowed(message) {
-		log.Printf("No previous first. Recording new first: %s", message.Body)
+		log.Debug().
+			Str("body", message.Body).
+			Msg("No previous first. Recording new first")
 		p.recordFirst(message)
 		return false
 	} else if p.First != nil {
 		if isToday(p.First.time) && p.allowed(message) {
-			log.Printf("Recording first: %s - %v vs %v", message.Body, p.First.time, time.Now())
+			log.Debug().
+				Str("body", message.Body).
+				Time("t0", p.First.time).
+				Time("t1", time.Now()).
+				Msg("Recording first")
 			p.recordFirst(message)
 			return false
 		}
@@ -156,22 +168,31 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 	for _, msg := range p.Bot.Config().GetArray("Bad.Msgs", []string{}) {
 		match, err := regexp.MatchString(msg, strings.ToLower(message.Body))
 		if err != nil {
-			log.Println("Bad regexp: ", err)
+			log.Error().Err(err).Msg("Bad regexp")
 		}
 		if match {
-			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
+			log.Info().
+				Str("user", message.User.Name).
+				Str("body", message.Body).
+				Msg("Disallowing first")
 			return false
 		}
 	}
 	for _, host := range p.Bot.Config().GetArray("Bad.Hosts", []string{}) {
 		if host == message.Host {
-			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
+			log.Info().
+				Str("user", message.User.Name).
+				Str("body", message.Body).
+				Msg("Disallowing first")
 			return false
 		}
 	}
 	for _, nick := range p.Bot.Config().GetArray("Bad.Nicks", []string{}) {
 		if nick == message.User.Name {
-			log.Println("Disallowing first: ", message.User.Name, ":", message.Body)
+			log.Info().
+				Str("user", message.User.Name).
+				Str("body", message.Body).
+				Msg("Disallowing first")
 			return false
 		}
 	}
@@ -179,17 +200,20 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 }
 
 func (p *FirstPlugin) recordFirst(message msg.Message) {
-	log.Println("Recording first: ", message.User.Name, ":", message.Body)
+	log.Info().
+		Str("user", message.User.Name).
+		Str("body", message.Body).
+		Msg("Recording first")
 	p.First = &FirstEntry{
 		day:  midnight(time.Now()),
 		time: message.Time,
 		body: message.Body,
 		nick: message.User.Name,
 	}
-	log.Printf("recordFirst: %+v", p.First.day)
+	log.Info().Msgf("recordFirst: %+v", p.First.day)
 	err := p.First.save(p.db)
 	if err != nil {
-		log.Println("Error saving first entry: ", err)
+		log.Error().Err(err).Msg("Error saving first entry")
 		return
 	}
 	p.announceFirst(message)

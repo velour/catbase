@@ -4,12 +4,12 @@ package bot
 
 import (
 	"html/template"
-	"log"
 	"net/http"
 	"reflect"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/msglog"
 	"github.com/velour/catbase/bot/user"
@@ -105,7 +105,7 @@ func (b *bot) migrateDB() {
 			name string,
 			value string
 		);`); err != nil {
-		log.Fatal("Initial DB migration create variables table: ", err)
+		log.Fatal().Err(err).Msgf("Initial DB migration create variables table")
 	}
 }
 
@@ -160,7 +160,7 @@ func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 	context["EndPoints"] = b.httpEndPoints
 	t, err := template.New("rootIndex").Parse(rootIndex)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 	}
 	t.Execute(w, context)
 }
@@ -170,7 +170,8 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 	cmdcs := c.GetArray("CommandChar", []string{"!"})
 	botnick := strings.ToLower(c.Get("Nick", "bot"))
 	if botnick == "" {
-		log.Fatalf(`You must run catbase -set nick -val <your bot nick>`)
+		log.Fatal().
+			Msgf(`You must run catbase -set nick -val <your bot nick>`)
 	}
 	iscmd := false
 	lowerMessage := strings.ToLower(message)

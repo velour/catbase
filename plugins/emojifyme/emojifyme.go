@@ -5,10 +5,11 @@ package emojifyme
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -23,12 +24,12 @@ type EmojifyMePlugin struct {
 func New(b bot.Bot) *EmojifyMePlugin {
 	resp, err := http.Get("https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json")
 	if err != nil {
-		log.Fatalf("Error generic emoji list: %s", err)
+		log.Fatal().Err(err).Msg("Error generic emoji list")
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatalf("Error generic emoji list body: %s", err)
+		log.Fatal().Err(err).Msg("Error generic emoji list body")
 	}
 
 	type Emoji struct {
@@ -38,7 +39,7 @@ func New(b bot.Bot) *EmojifyMePlugin {
 	var emoji []Emoji
 	err = json.Unmarshal(body, &emoji)
 	if err != nil {
-		log.Fatalf("Error parsing emoji list: %s", err)
+		log.Fatal().Err(err).Msg("Error parsing emoji list")
 	}
 
 	emojiMap := map[string]string{}
