@@ -58,8 +58,9 @@ func main() {
 		"Database file to load. (Defaults to catbase.db)")
 	flag.Parse() // parses the logging flags.
 
+	log.Logger = log.With().Caller().Stack().Logger()
 	if *prettyLog {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *debug {

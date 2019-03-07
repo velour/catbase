@@ -334,6 +334,11 @@ func (s *SlackApp) populateEmojiList() {
 // I think it's horseshit that I have to do this
 func slackTStoTime(t string) time.Time {
 	ts := strings.Split(t, ".")
+	if len(ts) < 2 {
+		log.Fatal().
+			Str("ts", t).
+			Msg("Could not parse Slack timestamp")
+	}
 	sec, _ := strconv.ParseInt(ts[0], 10, 64)
 	nsec, _ := strconv.ParseInt(ts[1], 10, 64)
 	return time.Unix(sec, nsec)
