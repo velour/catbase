@@ -60,9 +60,9 @@ func (i *Irc) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case bot.Reply:
 	case bot.Message:
-		return i.sendMessage(args[0].(string), args[1].(string))
+		return i.sendMessage(args[0].(string), args[1].(string), args...)
 	case bot.Action:
-		return i.sendAction(args[0].(string), args[1].(string))
+		return i.sendAction(args[0].(string), args[1].(string), args...)
 	default:
 	}
 	return "", nil
@@ -73,7 +73,7 @@ func (i *Irc) JoinChannel(channel string) {
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
-func (i *Irc) sendMessage(channel, message string) (string, error) {
+func (i *Irc) sendMessage(channel, message string, args ...interface{}) (string, error) {
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -96,15 +96,32 @@ func (i *Irc) sendMessage(channel, message string) (string, error) {
 		<-throttle
 
 		i.Client.Out <- m
+
+		if len(args) > 0 {
+			for _, a := range args {
+				switch a := a.(type) {
+				case bot.ImageAttachment:
+					m = irc.Msg{
+						Cmd: "PRIVMSG",
+						Args: []string{channel, fmt.Sprintf("%s: %s",
+							a.AltTxt, a.URL)},
+					}
+
+					<-throttle
+
+					i.Client.Out <- m
+				}
+			}
+		}
 	}
 	return "NO_IRC_IDENTIFIERS", nil
 }
 
 // Sends action to channel
-func (i *Irc) sendAction(channel, message string) (string, error) {
+func (i *Irc) sendAction(channel, message string, args ...interface{}) (string, error) {
 	message = actionPrefix + " " + message + "\x01"
 
-	return i.sendMessage(channel, message)
+	return i.sendMessage(channel, message, args...)
 }
 
 func (i *Irc) GetEmojiList() map[string]string {

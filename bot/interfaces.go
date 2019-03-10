@@ -30,6 +30,11 @@ const (
 	SelfMessage
 )
 
+type ImageAttachment struct {
+	URL    string
+	AltTxt string
+}
+
 type Kind int
 type Callback func(Kind, msg.Message, ...interface{}) bool
 type CallbackMap map[string]map[Kind][]Callback

@@ -171,9 +171,9 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case bot.Message:
-		return s.sendMessage(args[0].(string), args[1].(string))
+		return s.sendMessage(args[0].(string), args[1].(string), false, args...)
 	case bot.Action:
-		return s.sendAction(args[0].(string), args[1].(string))
+		return s.sendMessage(args[0].(string), args[1].(string), true, args...)
 	case bot.Edit:
 		return s.edit(args[0].(string), args[1].(string), args[2].(string))
 	case bot.Reply:
@@ -192,20 +192,45 @@ func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	return "", fmt.Errorf("No handler for message type %d", kind)
 }
 
-func (s *SlackApp) sendMessageType(channel, message string, meMessage bool) (string, error) {
+func (s *SlackApp) sendMessage(channel, message string, meMessage bool, args ...interface{}) (string, error) {
 	ts, err := "", fmt.Errorf("")
 	nick := s.config.Get("Nick", "bot")
 
-	if meMessage {
-		_, ts, err = s.api.PostMessage(channel,
-			slack.MsgOptionUsername(nick),
-			slack.MsgOptionText(message, false),
-			slack.MsgOptionMeMessage())
-	} else {
-		_, ts, err = s.api.PostMessage(channel,
-			slack.MsgOptionUsername(nick),
-			slack.MsgOptionText(message, false))
+	options := []slack.MsgOption{
+		slack.MsgOptionUsername(nick),
+		slack.MsgOptionText(message, false),
 	}
+	if meMessage {
+		options = append(options, slack.MsgOptionMeMessage())
+	}
+
+	// Check for message attachments
+	attachments := []slack.Attachment{}
+	if len(args) > 0 {
+		for _, a := range args {
+			switch a := a.(type) {
+			case bot.ImageAttachment:
+				attachments = append(attachments, slack.Attachment{
+					ImageURL: a.URL,
+					Text:     a.AltTxt,
+				})
+			}
+		}
+	}
+
+	if len(attachments) > 0 {
+		options = append(options, slack.MsgOptionAttachments(attachments...))
+	}
+
+	log.Debug().
+		Str("channel", channel).
+		Str("message", message).
+		Int("attachment count", len(attachments)).
+		Int("option count", len(options)).
+		Int("arg count", len(args)).
+		Msg("Sending message")
+
+	_, ts, err = s.api.PostMessage(channel, options...)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Error sending message")
@@ -213,24 +238,6 @@ func (s *SlackApp) sendMessageType(channel, message string, meMessage bool) (str
 	}
 
 	return ts, nil
-}
-
-func (s *SlackApp) sendMessage(channel, message string) (string, error) {
-	log.Debug().
-		Str("channel", channel).
-		Str("message", message).
-		Msg("Sending message")
-	identifier, err := s.sendMessageType(channel, message, false)
-	return identifier, err
-}
-
-func (s *SlackApp) sendAction(channel, message string) (string, error) {
-	log.Debug().
-		Str("channel", channel).
-		Str("message", message).
-		Msg("Sending action")
-	identifier, err := s.sendMessageType(channel, "_"+message+"_", true)
-	return identifier, err
 }
 
 func (s *SlackApp) replyToMessageIdentifier(channel, message, identifier string) (string, error) {
