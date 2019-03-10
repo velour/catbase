@@ -91,8 +91,12 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 	t, err := p.when.Parse(message.Body, time.Now())
 	// Allowing err to fallthrough for other parsing
 	if t != nil && err == nil {
-		t2 := time.Now().Sub(t.Time).String()
+		t2 := t.Time.Sub(time.Now()).String()
 		message.Body = string(message.Body[0:t.Index]) + t2 + string(message.Body[t.Index+len(t.Text):])
+		log.Debug().
+			Str("body", message.Body).
+			Str("text", t.Text).
+			Msg("Got time request")
 	}
 	parts := strings.Fields(message.Body)
 
