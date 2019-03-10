@@ -58,6 +58,24 @@ func TestReminder(t *testing.T) {
 	assert.Contains(t, mb.Messages[1], "Hey testuser, tester wanted you to be reminded: don't fail this test")
 }
 
+func TestReminderDate(t *testing.T) {
+	c, mb := setup(t)
+	m0 := fmt.Sprintf("!remind testuser at %s don't fail this test 2",
+		time.Now().Add(3*time.Second).Format("15:04"))
+	res := c.message(makeMessage(m0))
+	assert.True(t, res)
+	m1 := fmt.Sprintf("!remind testuser at %s don't fail this test 1",
+		time.Now().Add(2*time.Second).Format("15:04"))
+	res = c.message(makeMessage(m1))
+	assert.True(t, res)
+	time.Sleep(5 * time.Second)
+	assert.Len(t, mb.Messages, 4)
+	assert.Contains(t, mb.Messages[0], "Sure tester, I'll remind testuser.")
+	assert.Contains(t, mb.Messages[1], "Hey testuser, tester wanted you to be reminded: don't fail this test 2")
+	assert.Contains(t, mb.Messages[2], "Sure tester, I'll remind testuser.")
+	assert.Contains(t, mb.Messages[3], "Hey testuser, tester wanted you to be reminded: don't fail this test 1")
+}
+
 func TestReminderReorder(t *testing.T) {
 	c, mb := setup(t)
 	res := c.message(makeMessage("!remind testuser in 2s don't fail this test 2"))

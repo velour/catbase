@@ -10,9 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/olebedev/when"
+	"github.com/olebedev/when/rules/common"
+	"github.com/olebedev/when/rules/en"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
@@ -28,6 +32,7 @@ type ReminderPlugin struct {
 	mutex  *sync.Mutex
 	timer  *time.Timer
 	config *config.Config
+	when   *when.Parser
 }
 
 type Reminder struct {
@@ -55,12 +60,17 @@ func New(b bot.Bot) *ReminderPlugin {
 	timer := time.NewTimer(dur)
 	timer.Stop()
 
+	w := when.New(nil)
+	w.Add(en.All...)
+	w.Add(common.All...)
+
 	plugin := &ReminderPlugin{
 		Bot:    b,
 		db:     b.DB(),
 		mutex:  &sync.Mutex{},
 		timer:  timer,
 		config: b.Config(),
+		when:   w,
 	}
 
 	plugin.queueUpNextReminder()
@@ -77,6 +87,13 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 	channel := message.Channel
 	from := message.User.Name
 
+	var dur, dur2 time.Duration
+	t, err := p.when.Parse(message.Body, time.Now())
+	// Allowing err to fallthrough for other parsing
+	if t != nil && err == nil {
+		t2 := time.Now().Sub(t.Time).String()
+		message.Body = string(message.Body[0:t.Index]) + t2 + string(message.Body[t.Index+len(t.Text):])
+	}
 	parts := strings.Fields(message.Body)
 
 	if len(parts) >= 5 {
@@ -86,17 +103,16 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 				who = from
 			}
 
-			dur, err := time.ParseDuration(parts[3])
+			dur, err = time.ParseDuration(parts[3])
 			if err != nil {
 				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 				return true
 			}
 
 			operator := strings.ToLower(parts[2])
-
 			doConfirm := true
 
-			if operator == "in" {
+			if operator == "in" || operator == "at" || operator == "on" {
 				//one off reminder
 				//remind who in dur blah
 				when := time.Now().UTC().Add(dur)
@@ -114,8 +130,9 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 			} else if operator == "every" && strings.ToLower(parts[4]) == "for" {
 				//batch add, especially for reminding msherms to buy a kit
 				//remind who every dur for dur2 blah
-				dur2, err := time.ParseDuration(parts[5])
+				dur2, err = time.ParseDuration(parts[5])
 				if err != nil {
+					log.Error().Err(err)
 					p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 					return true
 				}
