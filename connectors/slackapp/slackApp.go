@@ -140,6 +140,17 @@ func (s *SlackApp) checkRingOrAdd(ts string) bool {
 }
 
 func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
+	if msg.TimeStamp == "" {
+		log.Debug().
+			Str("type", msg.SubType).
+			Msg("ignoring an unhandled event type")
+		return
+	}
+
+	log.Debug().
+		Str("type", msg.SubType).
+		Msg("accepting a message")
+
 	if s.checkRingOrAdd(msg.TimeStamp) {
 		log.Debug().
 			Str("ts", msg.TimeStamp).
