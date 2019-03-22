@@ -19,6 +19,7 @@ var (
 type TLDRPlugin struct {
 	Bot     bot.Bot
 	History []string
+	Users []string
 	Index   int
 }
 
@@ -26,6 +27,7 @@ func New(b bot.Bot) *TLDRPlugin {
 	plugin := &TLDRPlugin{
 		Bot:     b,
 		History: []string{},
+		Users: []string{},
 		Index:   0,
 	}
 	b.Register(plugin, bot.Message, plugin.message)
@@ -54,6 +56,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 
 		bestScores := make([]float64, nTopics)
 		bestDocs := make([]string, nTopics)
+		bestUsers := make([]string, nTopics)
 
 		dr, dc := docsOverTopics.Dims()
 		for doc := 0; doc < dc; doc++ {
@@ -62,6 +65,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 				if score > bestScores[topic] {
 					bestScores[topic] = score
 					bestDocs[topic] = p.History[doc]
+					bestUsers[topic] = p.Users[doc]
 				}
 			}
 		}
@@ -77,17 +81,17 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		response := "Here you go captain 'too good to read backlog':\n"
 
 		for topic := 0; topic < tr; topic++ {
-			max := -1.
-			best := ""
+			bestScore := -1.
+			bestTopic := ""
 			for word := 0; word < tc; word++ {
 				score := topicsOverWords.At(topic, word)
-				if score > max {
-					max = score
-					best = vocab[word]
+				if score > bestScore {
+					bestScore = score
+					bestTopic = vocab[word]
 				}
 			}
-			response += fmt.Sprintf("Topic #%d : %s\n", topic, best)
-			response += fmt.Sprintf("\t%s\n", bestDocs[topic])
+			response += fmt.Sprintf("Topic #%d : %s\n", topic, bestTopic)
+			response += fmt.Sprintf("\t<%s>%s\n", bestUsers[topic], bestDocs[topic])
 		}
 
 		p.Bot.Send(bot.Message, message.Channel, response)
@@ -100,6 +104,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		maxHistorySize := p.Bot.Config().GetInt("TLDR.HistorySize", 1000)
 		if currentHistorySize < maxHistorySize {
 			p.History = append(p.History, lowercaseMessage)
+			p.Users = append(p.Users, message.User.Name)
 			p.Index = 0
 		} else {
 			if currentHistorySize > maxHistorySize {
@@ -112,6 +117,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 			}
 
 			p.History[p.Index] = lowercaseMessage
+			p.Users[p.Index] = message.User.Name
 			p.Index++
 		}
 	}
