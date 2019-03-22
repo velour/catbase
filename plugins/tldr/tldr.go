@@ -38,10 +38,6 @@ func New(b bot.Bot) *TLDRPlugin {
 func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	lowercaseMessage := strings.ToLower(message.Body)
 	if lowercaseMessage == "tl;dr" {
-		for _, str := range p.History {
-			fmt.Println(str)
-		}
-
 		nTopics := p.Bot.Config().GetInt("TLDR.Topics", 5)
 
 		vectoriser := nlp.NewCountVectoriser(THESE_ARE_NOT_THE_WORDS_YOU_ARE_LOOKING_FOR...)
@@ -102,7 +98,9 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 			}
 			response += fmt.Sprintf("Topic #%d : %s\n", topic, bestTopic)
 			for i := range bestDocs[topic] {
-				response += fmt.Sprintf("\t<%s>%s\n", bestUsers[topic][i], bestDocs[topic][i])
+				if bestUsers[topic][i] != "" {
+					response += fmt.Sprintf("\t<%s>%s [%f]\n", bestUsers[topic][i], bestDocs[topic][i], bestScores[topic][i])
+				}
 			}
 		}
 
