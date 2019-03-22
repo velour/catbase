@@ -59,7 +59,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		bestUsers := make([][]string, nTopics)
 
 		supportingDocs := p.Bot.Config().GetInt("TLDR.Support", 3)
-		for i := 0; i < supportingDocs; i++ {
+		for i := 0; i < nTopics; i++ {
 			bestScores[i] = make([]float64, supportingDocs)
 			bestDocs[i] = make([]string, supportingDocs)
 			bestUsers[i] = make([]string, supportingDocs)
