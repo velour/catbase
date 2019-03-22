@@ -19,6 +19,7 @@ var (
 type TLDRPlugin struct {
 	Bot     bot.Bot
 	History []string
+	Users   []string
 	Index   int
 }
 
@@ -26,6 +27,7 @@ func New(b bot.Bot) *TLDRPlugin {
 	plugin := &TLDRPlugin{
 		Bot:     b,
 		History: []string{},
+		Users:   []string{},
 		Index:   0,
 	}
 	b.Register(plugin, bot.Message, plugin.message)
@@ -52,16 +54,28 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 			return false
 		}
 
-		bestScores := make([]float64, nTopics)
-		bestDocs := make([]string, nTopics)
+		bestScores := make([][]float64, nTopics)
+		bestDocs := make([][]string, nTopics)
+		bestUsers := make([][]string, nTopics)
+
+		supportingDocs := p.Bot.Config().GetInt("TLDR.Support", 3)
+		for i := 0; i < supportingDocs; i++ {
+			bestScores[i] = make([]float64, supportingDocs)
+			bestDocs[i] = make([]string, supportingDocs)
+			bestUsers[i] = make([]string, supportingDocs)
+		}
 
 		dr, dc := docsOverTopics.Dims()
-		for doc := 0; doc < dc; doc++ {
-			for topic := 0; topic < dr; topic++ {
+		for topic := 0; topic < dr; topic++ {
+			minScore, minIndex := min(bestScores[topic])
+
+			for doc := 0; doc < dc; doc++ {
 				score := docsOverTopics.At(topic, doc)
-				if score > bestScores[topic] {
-					bestScores[topic] = score
-					bestDocs[topic] = p.History[doc]
+				if score > minScore {
+					bestScores[topic][minIndex] = score
+					bestDocs[topic][minIndex] = p.History[doc]
+					bestUsers[topic][minIndex] = p.Users[doc]
+					minScore, minIndex = min(bestScores[topic])
 				}
 			}
 		}
@@ -77,17 +91,19 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		response := "Here you go captain 'too good to read backlog':\n"
 
 		for topic := 0; topic < tr; topic++ {
-			max := -1.
-			best := ""
+			bestScore := -1.
+			bestTopic := ""
 			for word := 0; word < tc; word++ {
 				score := topicsOverWords.At(topic, word)
-				if score > max {
-					max = score
-					best = vocab[word]
+				if score > bestScore {
+					bestScore = score
+					bestTopic = vocab[word]
 				}
 			}
-			response += fmt.Sprintf("Topic #%d : %s\n", topic, best)
-			response += fmt.Sprintf("\t%s\n", bestDocs[topic])
+			response += fmt.Sprintf("Topic #%d : %s\n", topic, bestTopic)
+			for i := range bestDocs[topic] {
+				response += fmt.Sprintf("\t<%s>%s\n", bestUsers[topic][i], bestDocs[topic][i])
+			}
 		}
 
 		p.Bot.Send(bot.Message, message.Channel, response)
@@ -100,6 +116,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		maxHistorySize := p.Bot.Config().GetInt("TLDR.HistorySize", 1000)
 		if currentHistorySize < maxHistorySize {
 			p.History = append(p.History, lowercaseMessage)
+			p.Users = append(p.Users, message.User.Name)
 			p.Index = 0
 		} else {
 			if currentHistorySize > maxHistorySize {
@@ -112,6 +129,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 			}
 
 			p.History[p.Index] = lowercaseMessage
+			p.Users[p.Index] = message.User.Name
 			p.Index++
 		}
 	}
@@ -126,4 +144,16 @@ func (p *TLDRPlugin) help(kind bot.Kind, message msg.Message, args ...interface{
 
 func shouldKeepMessage(message string) bool {
 	return true
+}
+
+func min(slice []float64) (float64, int) {
+	minVal := 1.
+	minIndex := -1
+	for index, val := range slice {
+		if val < minVal {
+			minVal = val
+			minIndex = index
+		}
+	}
+	return minVal, minIndex
 }
