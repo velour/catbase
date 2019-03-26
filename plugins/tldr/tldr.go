@@ -157,6 +157,7 @@ func (p *TLDRPlugin) pruneHistory() {
 		}
 	}
 	p.history = out
+	p.index = len(out)
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
