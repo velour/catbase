@@ -1,14 +1,21 @@
 package tldr
 
 import (
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
 )
+
+func init() {
+	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+}
 
 func makeMessageBy(payload, by string) (bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
@@ -41,4 +48,16 @@ func Test(t *testing.T) {
 	res = c.message(makeMessage("tl;dr"))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 1)
+}
+
+func TestDoubleUp(t *testing.T) {
+	c, mb := setup(t)
+	res := c.message(makeMessage("The quick brown fox jumped over the lazy dog"))
+	res = c.message(makeMessage("The cow jumped over the moon"))
+	res = c.message(makeMessage("The little dog laughed to see such fun"))
+	res = c.message(makeMessage("tl;dr"))
+	res = c.message(makeMessage("tl;dr"))
+	assert.True(t, res)
+	assert.Len(t, mb.Messages, 2)
+	assert.Contains(t, mb.Messages[1], "Slow down, cowboy.")
 }
