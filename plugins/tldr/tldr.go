@@ -101,10 +101,11 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 					bestTopic = vocab[word]
 				}
 			}
-			response += fmt.Sprintf("Topic #%d : %s\n", topic, bestTopic)
+			response += fmt.Sprintf("\n*Topic #%d: %s*\n", topic, bestTopic)
 			for i := range bestDocs[topic] {
-				response += fmt.Sprintf("\t<%s>%s [%f]\n", bestDocs[topic][i].user, bestDocs[topic][i].body, bestScores[topic][i])
+				response += fmt.Sprintf("<%s>%s [%f]\n", bestDocs[topic][i].user, bestDocs[topic][i].body, bestScores[topic][i])
 			}
+
 		}
 
 		p.bot.Send(bot.Message, message.Channel, response)
