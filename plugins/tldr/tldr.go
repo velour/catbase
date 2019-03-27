@@ -103,7 +103,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 			}
 			response += fmt.Sprintf("\n*Topic #%d: %s*\n", topic, bestTopic)
 			for i := range bestDocs[topic] {
-				response += fmt.Sprintf("<%s>%s [%f]\n", bestDocs[topic][i].user, bestDocs[topic][i].body, bestScores[topic][i])
+				response += fmt.Sprintf("<%s>%s\n", bestDocs[topic][i].user, bestDocs[topic][i].body)
 			}
 
 		}
