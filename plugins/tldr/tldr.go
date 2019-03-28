@@ -48,7 +48,13 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		p.lastRequest = time.Now()
 		nTopics := p.bot.Config().GetInt("TLDR.Topics", 5)
 
-		vectoriser := nlp.NewCountVectoriser(THESE_ARE_NOT_THE_WORDS_YOU_ARE_LOOKING_FOR...)
+		stopWordSlice := p.bot.Config().GetArray("TLDR.StopWords", []string{})
+		if len(stopWordSlice) == 0 {
+			stopWordSlice = THESE_ARE_NOT_THE_WORDS_YOU_ARE_LOOKING_FOR
+			p.bot.Config().SetArray("TLDR.StopWords", stopWordSlice)
+		}
+
+		vectoriser := nlp.NewCountVectoriser(stopWordSlice...)
 		lda := nlp.NewLatentDirichletAllocation(nTopics)
 		pipeline := nlp.NewPipeline(vectoriser, lda)
 		docsOverTopics, err := pipeline.FitTransform(p.getTopics()...)
