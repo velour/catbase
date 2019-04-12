@@ -119,32 +119,38 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		return true
 	}
 
-	if shouldKeepMessage(lowercaseMessage) {
-		currentHistorySize := len(p.history)
-		maxHistorySize := p.bot.Config().GetInt("TLDR.HistorySize", 1000)
-		hist := history{
-			body:      lowercaseMessage,
-			user:      message.User.Name,
-			timestamp: time.Now(),
-		}
-		if currentHistorySize < maxHistorySize {
-			p.history = append(p.history, hist)
-			p.index = 0
-		} else {
-			if currentHistorySize > maxHistorySize {
-				// We could resize this but we want to prune the oldest stuff, and
-				// I don't care to do this correctly so might as well not do it at all
-			}
+	hist := history{
+		body:      lowercaseMessage,
+		user:      message.User.Name,
+		timestamp: time.Now(),
+	}
+	p.addHistory(hist)
 
-			if p.index >= currentHistorySize {
-				p.index = 0
-			}
+	return false
+}
 
-			p.history[p.index] = hist
-			p.index++
+func (p *TLDRPlugin) addHistory(hist history) {
+	p.history = append(p.history, hist)
+	sz := len(p.history)
+	max := p.bot.Config().GetInt("TLDR.HistorySize", 1000)
+	keepHrs := time.Duration(p.bot.Config().GetInt("TLDR.KeepHours", 24))
+	// Clamp the size of the history
+	if sz > max {
+		p.history = p.history[len(p.history)-max:]
+	}
+	// Remove old entries
+	yesterday := time.Now().Add(-keepHrs * time.Hour)
+	begin := 0
+	for i, m := range p.history {
+		if !m.timestamp.Before(yesterday) {
+			begin = i - 1 // should keep this message
+			if begin < 0 {
+				begin = 0
+			}
+			break
 		}
 	}
-	return false
+	p.history = p.history[begin:]
 }
 
 func (p *TLDRPlugin) getTopics() []string {
@@ -155,25 +161,9 @@ func (p *TLDRPlugin) getTopics() []string {
 	return hist
 }
 
-func (p *TLDRPlugin) pruneHistory() {
-	out := []history{}
-	yesterday := time.Now().Add(-24 * time.Hour)
-	for _, h := range p.history {
-		if yesterday.Before(h.timestamp) {
-			out = append(out, h)
-		}
-	}
-	p.history = out
-	p.index = len(out)
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *TLDRPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	p.bot.Send(bot.Message, message.Channel, "tl;dr")
-	return true
-}
-
-func shouldKeepMessage(message string) bool {
 	return true
 }
 

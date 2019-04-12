@@ -2,8 +2,10 @@ package tldr
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -60,4 +62,39 @@ func TestDoubleUp(t *testing.T) {
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 2)
 	assert.Contains(t, mb.Messages[1], "Slow down, cowboy.")
+}
+
+func TestAddHistoryLimitsMessages(t *testing.T) {
+	c, _ := setup(t)
+	max := 1000
+	c.bot.Config().Set("TLDR.HistorySize", strconv.Itoa(max))
+	c.bot.Config().Set("TLDR.KeepHours", "24")
+	t0 := time.Now().Add(-24 * time.Hour)
+	for i := 0; i < max*2; i++ {
+		hist := history{
+			body:      "test",
+			user:      "tester",
+			timestamp: t0.Add(time.Duration(i) * time.Second),
+		}
+		c.addHistory(hist)
+	}
+	assert.Len(t, c.history, max)
+}
+
+func TestAddHistoryLimitsDays(t *testing.T) {
+	c, _ := setup(t)
+	hrs := 24
+	expected := 24
+	c.bot.Config().Set("TLDR.HistorySize", "100")
+	c.bot.Config().Set("TLDR.KeepHours", strconv.Itoa(hrs))
+	t0 := time.Now().Add(-time.Duration(hrs*2) * time.Hour)
+	for i := 0; i < 48; i++ {
+		hist := history{
+			body:      "test",
+			user:      "tester",
+			timestamp: t0.Add(time.Duration(i) * time.Hour),
+		}
+		c.addHistory(hist)
+	}
+	assert.Len(t, c.history, expected, "%d != %d", len(c.history), expected)
 }
