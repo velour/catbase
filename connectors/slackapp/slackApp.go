@@ -167,11 +167,11 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 				Msg("Ignoring message")
 		} else {
 			s.lastRecieved = m.Time
-			s.event(bot.Message, m)
+			s.event(s, bot.Message, m)
 		}
 	} else if msg.ThreadTimeStamp != "" {
 		//we're throwing away some information here by not parsing the correct reply object type, but that's okay
-		s.event(bot.Reply, s.buildMessage(msg), msg.ThreadTimeStamp)
+		s.event(s, bot.Reply, s.buildMessage(msg), msg.ThreadTimeStamp)
 	} else {
 		log.Debug().
 			Str("text", msg.Text).

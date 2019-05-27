@@ -19,7 +19,7 @@ const (
 )
 
 type SisyphusPlugin struct {
-	Bot       bot.Bot
+	bot       bot.Bot
 	listenFor map[string]*game
 }
 
@@ -38,7 +38,7 @@ type game struct {
 	nextAns  int
 }
 
-func NewRandomGame(b bot.Bot, channel, who string) *game {
+func NewRandomGame(c bot.Connector, b bot.Bot, channel, who string) *game {
 	size := rand.Intn(9) + 2
 	g := game{
 		channel: channel,
@@ -48,32 +48,32 @@ func NewRandomGame(b bot.Bot, channel, who string) *game {
 		size:    size,
 		current: size / 2,
 	}
-	g.id, _ = b.Send(bot.Message, channel, g.toMessageString())
+	g.id, _ = b.Send(c, bot.Message, channel, g.toMessageString())
 
-	g.schedulePush()
-	g.scheduleDecrement()
+	g.schedulePush(c)
+	g.scheduleDecrement(c)
 
 	return &g
 }
 
-func (g *game) scheduleDecrement() {
+func (g *game) scheduleDecrement(c bot.Connector) {
 	if g.timers[0] != nil {
 		g.timers[0].Stop()
 	}
 	minDec := g.bot.Config().GetInt("Sisyphus.MinDecrement", 10)
 	maxDec := g.bot.Config().GetInt("Sisyphus.MaxDecrement", 30)
-	g.nextDec = time.Now().Add(time.Duration((minDec + rand.Intn(maxDec))) * time.Minute)
+	g.nextDec = time.Now().Add(time.Duration(minDec+rand.Intn(maxDec)) * time.Minute)
 	go func() {
 		t := time.NewTimer(g.nextDec.Sub(time.Now()))
 		g.timers[0] = t
 		select {
 		case <-t.C:
-			g.handleDecrement()
+			g.handleDecrement(c)
 		}
 	}()
 }
 
-func (g *game) schedulePush() {
+func (g *game) schedulePush(c bot.Connector) {
 	if g.timers[1] != nil {
 		g.timers[1].Stop()
 	}
@@ -85,7 +85,7 @@ func (g *game) schedulePush() {
 		g.timers[1] = t
 		select {
 		case <-t.C:
-			g.handleNotify()
+			g.handleNotify(c)
 		}
 	}()
 }
@@ -97,21 +97,21 @@ func (g *game) endGame() {
 	g.ended = true
 }
 
-func (g *game) handleDecrement() {
+func (g *game) handleDecrement(c bot.Connector) {
 	g.current++
-	g.bot.Send(bot.Edit, g.channel, g.toMessageString(), g.id)
+	g.bot.Send(c, bot.Edit, g.channel, g.toMessageString(), g.id)
 	if g.current > g.size-2 {
-		g.bot.Send(bot.Reply, g.channel, "you lose", g.id)
+		g.bot.Send(c, bot.Reply, g.channel, "you lose", g.id)
 		msg := fmt.Sprintf("%s just lost the game after %s", g.who, time.Now().Sub(g.start))
-		g.bot.Send(bot.Message, g.channel, msg)
+		g.bot.Send(c, bot.Message, g.channel, msg)
 		g.endGame()
 	} else {
-		g.scheduleDecrement()
+		g.scheduleDecrement(c)
 	}
 }
 
-func (g *game) handleNotify() {
-	g.bot.Send(bot.Reply, g.channel, "You can push now.\n"+g.generateQuestion(), g.id)
+func (g *game) handleNotify(c bot.Connector) {
+	g.bot.Send(c, bot.Reply, g.channel, "You can push now.\n"+g.generateQuestion(), g.id)
 }
 
 func (g *game) generateQuestion() string {
@@ -164,7 +164,7 @@ func (g *game) toMessageString() string {
 
 func New(b bot.Bot) *SisyphusPlugin {
 	sp := &SisyphusPlugin{
-		Bot:       b,
+		bot:       b,
 		listenFor: map[string]*game{},
 	}
 	b.Register(sp, bot.Message, sp.message)
@@ -173,24 +173,24 @@ func New(b bot.Bot) *SisyphusPlugin {
 	return sp
 }
 
-func (p *SisyphusPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *SisyphusPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "start sisyphus" {
-		b := NewRandomGame(p.Bot, message.Channel, message.User.Name)
+		b := NewRandomGame(c, p.bot, message.Channel, message.User.Name)
 		p.listenFor[b.id] = b
-		p.Bot.Send(bot.Reply, message.Channel, "Over here.", b.id)
+		p.bot.Send(c, bot.Reply, message.Channel, "Over here.", b.id)
 		return true
 	}
 	return false
 }
 
-func (p *SisyphusPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "https://en.wikipedia.org/wiki/Sisyphus")
+func (p *SisyphusPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "https://en.wikipedia.org/wiki/Sisyphus")
 	return true
 }
 
-func (p *SisyphusPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *SisyphusPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	identifier := args[0].(string)
-	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {
+	if strings.ToLower(message.User.Name) != strings.ToLower(p.bot.Config().Get("Nick", "bot")) {
 		if g, ok := p.listenFor[identifier]; ok {
 
 			log.Debug().Msgf("got message on %s: %+v", identifier, message)
@@ -206,18 +206,18 @@ func (p *SisyphusPlugin) replyMessage(kind bot.Kind, message msg.Message, args .
 
 			if time.Now().After(g.nextPush) {
 				if g.checkAnswer(message.Body) {
-					p.Bot.Send(bot.Edit, message.Channel, g.toMessageString(), identifier)
-					g.schedulePush()
+					p.bot.Send(c, bot.Edit, message.Channel, g.toMessageString(), identifier)
+					g.schedulePush(c)
 					msg := fmt.Sprintf("Ok. You can push again in %s", g.nextPush.Sub(time.Now()))
-					p.Bot.Send(bot.Reply, message.Channel, msg, identifier)
+					p.bot.Send(c, bot.Reply, message.Channel, msg, identifier)
 				} else {
-					p.Bot.Send(bot.Reply, message.Channel, "you lose", identifier)
+					p.bot.Send(c, bot.Reply, message.Channel, "you lose", identifier)
 					msg := fmt.Sprintf("%s just lost the sisyphus game after %s", g.who, time.Now().Sub(g.start))
-					p.Bot.Send(bot.Message, message.Channel, msg)
+					p.bot.Send(c, bot.Message, message.Channel, msg)
 					g.endGame()
 				}
 			} else {
-				p.Bot.Send(bot.Reply, message.Channel, "you cannot push yet", identifier)
+				p.bot.Send(c, bot.Reply, message.Channel, "you cannot push yet", identifier)
 			}
 			return true
 		}

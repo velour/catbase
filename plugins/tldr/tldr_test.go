@@ -1,6 +1,7 @@
 package tldr
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"os"
 	"strconv"
 	"strings"
@@ -19,12 +20,12 @@ func init() {
 	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 }
 
-func makeMessageBy(payload, by string) (bot.Kind, msg.Message) {
+func makeMessageBy(payload, by string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return bot.Message, msg.Message{
+	return &cli.CliPlugin{}, bot.Message, msg.Message{
 		User:    &user.User{Name: by},
 		Channel: "test",
 		Body:    payload,
@@ -32,7 +33,7 @@ func makeMessageBy(payload, by string) (bot.Kind, msg.Message) {
 	}
 }
 
-func makeMessage(payload string) (bot.Kind, msg.Message) {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	return makeMessageBy(payload, "tester")
 }
 

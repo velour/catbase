@@ -40,7 +40,7 @@ func New(b bot.Bot) *NerdepediaPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *NerdepediaPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *NerdepediaPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	lowerCase := strings.ToLower(message.Body)
 	query := ""
 	if lowerCase == "may the force be with you" || lowerCase == "help me obi-wan" {
@@ -81,7 +81,7 @@ func (p *NerdepediaPlugin) message(kind bot.Kind, message msg.Message, args ...i
 			}
 
 			if description != "" && link != "" {
-				p.bot.Send(bot.Message, message.Channel, fmt.Sprintf("%s (%s)", description, link))
+				p.bot.Send(c, bot.Message, message.Channel, fmt.Sprintf("%s (%s)", description, link))
 				return true
 			}
 		}
@@ -90,7 +90,7 @@ func (p *NerdepediaPlugin) message(kind bot.Kind, message msg.Message, args ...i
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *NerdepediaPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.bot.Send(bot.Message, message.Channel, "nerd stuff")
+func (p *NerdepediaPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "nerd stuff")
 	return true
 }

@@ -12,7 +12,7 @@ import (
 )
 
 type RSSPlugin struct {
-	Bot       bot.Bot
+	bot       bot.Bot
 	cache     map[string]*cacheItem
 	shelfLife time.Duration
 	maxLines  int
@@ -51,7 +51,7 @@ func (c *cacheItem) getCurrentPage(maxLines int) string {
 
 func New(b bot.Bot) *RSSPlugin {
 	rss := &RSSPlugin{
-		Bot:       b,
+		bot:       b,
 		cache:     map[string]*cacheItem{},
 		shelfLife: time.Minute * time.Duration(b.Config().GetInt("rss.shelfLife", 20)),
 		maxLines:  b.Config().GetInt("rss.maxLines", 5),
@@ -61,19 +61,19 @@ func New(b bot.Bot) *RSSPlugin {
 	return rss
 }
 
-func (p *RSSPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RSSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	tokens := strings.Fields(message.Body)
 	numTokens := len(tokens)
 
 	if numTokens == 2 && strings.ToLower(tokens[0]) == "rss" {
 		if item, ok := p.cache[strings.ToLower(tokens[1])]; ok && time.Now().Before(item.expiration) {
-			p.Bot.Send(bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
+			p.bot.Send(c, bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		} else {
 			fp := gofeed.NewParser()
 			feed, err := fp.ParseURL(tokens[1])
 			if err != nil {
-				p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
+				p.bot.Send(c, bot.Message, message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
 				return true
 			}
 			item := &cacheItem{
@@ -89,7 +89,7 @@ func (p *RSSPlugin) message(kind bot.Kind, message msg.Message, args ...interfac
 
 			p.cache[strings.ToLower(tokens[1])] = item
 
-			p.Bot.Send(bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
+			p.bot.Send(c, bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		}
 	}
@@ -98,7 +98,7 @@ func (p *RSSPlugin) message(kind bot.Kind, message msg.Message, args ...interfac
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *RSSPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
+func (p *RSSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
 	return true
 }

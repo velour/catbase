@@ -20,7 +20,7 @@ const (
 )
 
 type RPGPlugin struct {
-	Bot       bot.Bot
+	bot       bot.Bot
 	listenFor map[string]*board
 }
 
@@ -99,7 +99,7 @@ func (b *board) checkAndMove(dx, dy int) int {
 
 func New(b bot.Bot) *RPGPlugin {
 	rpg := &RPGPlugin{
-		Bot:       b,
+		bot:       b,
 		listenFor: map[string]*board{},
 	}
 	b.Register(rpg, bot.Message, rpg.message)
@@ -108,25 +108,25 @@ func New(b bot.Bot) *RPGPlugin {
 	return rpg
 }
 
-func (p *RPGPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RPGPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "start rpg" {
 		b := NewRandomBoard()
-		ts, _ := p.Bot.Send(bot.Message, message.Channel, b.toMessageString())
+		ts, _ := p.bot.Send(c, bot.Message, message.Channel, b.toMessageString())
 		p.listenFor[ts] = b
-		p.Bot.Send(bot.Reply, message.Channel, "Over here.", ts)
+		p.bot.Send(c, bot.Reply, message.Channel, "Over here.", ts)
 		return true
 	}
 	return false
 }
 
-func (p *RPGPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "Go find a walkthrough or something.")
+func (p *RPGPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Go find a walkthrough or something.")
 	return true
 }
 
-func (p *RPGPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RPGPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	identifier := args[0].(string)
-	if strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Get("Nick", "bot")) {
+	if strings.ToLower(message.User.Name) != strings.ToLower(p.bot.Config().Get("Nick", "bot")) {
 		if b, ok := p.listenFor[identifier]; ok {
 
 			var res int
@@ -145,12 +145,12 @@ func (p *RPGPlugin) replyMessage(kind bot.Kind, message msg.Message, args ...int
 
 			switch res {
 			case OK:
-				p.Bot.Send(bot.Edit, message.Channel, b.toMessageString(), identifier)
+				p.bot.Send(c, bot.Edit, message.Channel, b.toMessageString(), identifier)
 			case WIN:
-				p.Bot.Send(bot.Edit, message.Channel, b.toMessageString(), identifier)
-				p.Bot.Send(bot.Reply, message.Channel, "congratulations, you beat the easiest level imaginable.", identifier)
+				p.bot.Send(c, bot.Edit, message.Channel, b.toMessageString(), identifier)
+				p.bot.Send(c, bot.Reply, message.Channel, "congratulations, you beat the easiest level imaginable.", identifier)
 			case INVALID:
-				p.Bot.Send(bot.Reply, message.Channel, fmt.Sprintf("you can't move %s", message.Body), identifier)
+				p.bot.Send(c, bot.Reply, message.Channel, fmt.Sprintf("you can't move %s", message.Body), identifier)
 			}
 			return true
 		}

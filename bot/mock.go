@@ -27,10 +27,12 @@ type MockBot struct {
 	Reactions []string
 }
 
-func (mb *MockBot) Config() *config.Config { return mb.Cfg }
-func (mb *MockBot) DB() *sqlx.DB           { return mb.Cfg.DB }
-func (mb *MockBot) Who(string) []user.User { return []user.User{} }
-func (mb *MockBot) Send(kind Kind, args ...interface{}) (string, error) {
+func (mb *MockBot) Config() *config.Config      { return mb.Cfg }
+func (mb *MockBot) DB() *sqlx.DB                { return mb.Cfg.DB }
+func (mb *MockBot) Who(string) []user.User      { return []user.User{} }
+func (mb *MockBot) WhoAmI() string              { return "tester" }
+func (mb *MockBot) DefaultConnector() Connector { return nil }
+func (mb *MockBot) Send(c Connector, kind Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case Message:
 		mb.Messages = append(mb.Messages, args[1].(string))
@@ -40,27 +42,29 @@ func (mb *MockBot) Send(kind Kind, args ...interface{}) (string, error) {
 		return fmt.Sprintf("a-%d", len(mb.Actions)-1), nil
 	case Edit:
 		ch, m, id := args[0].(string), args[1].(string), args[2].(string)
-		return mb.edit(ch, m, id)
+		return mb.edit(c, ch, m, id)
 	case Reaction:
 		ch, re, msg := args[0].(string), args[1].(string), args[2].(msg.Message)
-		return mb.react(ch, re, msg)
+		return mb.react(c, ch, re, msg)
 	}
 	return "ERR", fmt.Errorf("Mesasge type unhandled")
 }
-func (mb *MockBot) AddPlugin(f Plugin)                                           {}
-func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)                    {}
-func (mb *MockBot) RegisterWeb(_, _ string)                                      {}
-func (mb *MockBot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool { return false }
-func (mb *MockBot) Filter(msg msg.Message, s string) string                      { return s }
-func (mb *MockBot) LastMessage(ch string) (msg.Message, error)                   { return msg.Message{}, nil }
-func (mb *MockBot) CheckAdmin(nick string) bool                                  { return false }
+func (mb *MockBot) AddPlugin(f Plugin)                        {}
+func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback) {}
+func (mb *MockBot) RegisterWeb(_, _ string)                   {}
+func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
+	return false
+}
+func (mb *MockBot) Filter(msg msg.Message, s string) string    { return s }
+func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
+func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
 
-func (mb *MockBot) react(channel, reaction string, message msg.Message) (string, error) {
+func (mb *MockBot) react(c Connector, channel, reaction string, message msg.Message) (string, error) {
 	mb.Reactions = append(mb.Reactions, reaction)
 	return "", nil
 }
 
-func (mb *MockBot) edit(channel, newMessage, identifier string) (string, error) {
+func (mb *MockBot) edit(c Connector, channel, newMessage, identifier string) (string, error) {
 	isMessage := identifier[0] == 'm'
 	if !isMessage && identifier[0] != 'a' {
 		err := fmt.Errorf("failed to parse identifier: %s", identifier)

@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"github.com/velour/catbase/plugins/cli"
 	"math/rand"
 	"net/http"
 	"os"
@@ -121,6 +122,7 @@ func main() {
 	b.AddPlugin(couldashouldawoulda.New(b))
 	b.AddPlugin(nerdepedia.New(b))
 	b.AddPlugin(tldr.New(b))
+	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 

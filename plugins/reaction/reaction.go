@@ -11,38 +11,38 @@ import (
 )
 
 type ReactionPlugin struct {
-	Bot    bot.Bot
-	Config *config.Config
+	bot    bot.Bot
+	config *config.Config
 }
 
 func New(b bot.Bot) *ReactionPlugin {
 	rp := &ReactionPlugin{
-		Bot:    b,
-		Config: b.Config(),
+		bot:    b,
+		config: b.Config(),
 	}
 	b.Register(rp, bot.Message, rp.message)
 	return rp
 }
 
-func (p *ReactionPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	harrass := false
-	for _, nick := range p.Config.GetArray("Reaction.HarrassList", []string{}) {
+	for _, nick := range p.config.GetArray("Reaction.HarrassList", []string{}) {
 		if message.User.Name == nick {
 			harrass = true
 			break
 		}
 	}
 
-	chance := p.Config.GetFloat64("Reaction.GeneralChance", 0.01)
+	chance := p.config.GetFloat64("Reaction.GeneralChance", 0.01)
 	negativeWeight := 1
 	if harrass {
-		chance = p.Config.GetFloat64("Reaction.HarrassChance", 0.05)
-		negativeWeight = p.Config.GetInt("Reaction.NegativeHarrassmentMultiplier", 2)
+		chance = p.config.GetFloat64("Reaction.HarrassChance", 0.05)
+		negativeWeight = p.config.GetInt("Reaction.NegativeHarrassmentMultiplier", 2)
 	}
 
 	if rand.Float64() < chance {
-		numPositiveReactions := len(p.Config.GetArray("Reaction.PositiveReactions", []string{}))
-		numNegativeReactions := len(p.Config.GetArray("Reaction.NegativeReactions", []string{}))
+		numPositiveReactions := len(p.config.GetArray("Reaction.PositiveReactions", []string{}))
+		numNegativeReactions := len(p.config.GetArray("Reaction.NegativeReactions", []string{}))
 
 		maxIndex := numPositiveReactions + numNegativeReactions*negativeWeight
 
@@ -51,14 +51,14 @@ func (p *ReactionPlugin) message(kind bot.Kind, message msg.Message, args ...int
 		reaction := ""
 
 		if index < numPositiveReactions {
-			reaction = p.Config.GetArray("Reaction.PositiveReactions", []string{})[index]
+			reaction = p.config.GetArray("Reaction.PositiveReactions", []string{})[index]
 		} else {
 			index -= numPositiveReactions
 			index %= numNegativeReactions
-			reaction = p.Config.GetArray("Reaction.NegativeReactions", []string{})[index]
+			reaction = p.config.GetArray("Reaction.NegativeReactions", []string{})[index]
 		}
 
-		p.Bot.Send(bot.Reaction, message.Channel, reaction, message)
+		p.bot.Send(c, bot.Reaction, message.Channel, reaction, message)
 	}
 
 	return false

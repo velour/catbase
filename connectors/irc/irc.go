@@ -248,10 +248,10 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 		fallthrough
 
 	case irc.RPL_ENDOFWHO:
-		i.event(bot.Event, botMsg)
+		i.event(i, bot.Event, botMsg)
 
 	case irc.PRIVMSG:
-		i.event(bot.Message, botMsg)
+		i.event(i, bot.Message, botMsg)
 
 	case irc.QUIT:
 		os.Exit(1)

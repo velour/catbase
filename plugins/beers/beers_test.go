@@ -3,6 +3,7 @@
 package beers
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -13,12 +14,13 @@ import (
 	"github.com/velour/catbase/plugins/counter"
 )
 
-func makeMessage(payload string) (bot.Kind, msg.Message) {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return bot.Message, msg.Message{
+	c := &cli.CliPlugin{}
+	return c, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -121,6 +123,6 @@ func TestBeersReport(t *testing.T) {
 
 func TestHelp(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
+	b.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

@@ -47,7 +47,7 @@ var forbiddenKeys = map[string]bool{
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *AdminPlugin) message(k bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Message, args ...interface{}) bool {
 	body := message.Body
 
 	if p.quiet {
@@ -55,7 +55,7 @@ func (p *AdminPlugin) message(k bot.Kind, message msg.Message, args ...interface
 	}
 
 	if len(body) > 0 && body[0] == '$' {
-		return p.handleVariables(message)
+		return p.handleVariables(conn, message)
 	}
 
 	if !message.Command {
@@ -65,7 +65,7 @@ func (p *AdminPlugin) message(k bot.Kind, message msg.Message, args ...interface
 	if strings.ToLower(body) == "shut up" {
 		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
 		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
-		p.Bot.Send(bot.Message, message.Channel, "Okay. I'll be back later.")
+		p.Bot.Send(conn, bot.Message, message.Channel, "Okay. I'll be back later.")
 		p.quiet = true
 		go func() {
 			select {
@@ -79,36 +79,36 @@ func (p *AdminPlugin) message(k bot.Kind, message msg.Message, args ...interface
 
 	parts := strings.Split(body, " ")
 	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
-		p.Bot.Send(bot.Message, message.Channel, "You cannot access that key")
+		p.Bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "set" && len(parts) > 2 {
 		p.cfg.Set(parts[1], strings.Join(parts[2:], " "))
-		p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		p.Bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
 		return true
 	}
 	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
-		p.Bot.Send(bot.Message, message.Channel, "You cannot access that key")
+		p.Bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "get" && len(parts) == 2 {
 		v := p.cfg.Get(parts[1], "<unknown>")
-		p.Bot.Send(bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
+		p.Bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
 		return true
 	}
 
 	return false
 }
 
-func (p *AdminPlugin) handleVariables(message msg.Message) bool {
+func (p *AdminPlugin) handleVariables(conn bot.Connector, message msg.Message) bool {
 	if parts := strings.SplitN(message.Body, "!=", 2); len(parts) == 2 {
 		variable := strings.ToLower(strings.TrimSpace(parts[0]))
 		value := strings.TrimSpace(parts[1])
 
 		_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
 		if err != nil {
-			p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.Bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Error().Err(err)
 		} else {
-			p.Bot.Send(bot.Message, message.Channel, "Removed.")
+			p.Bot.Send(conn, bot.Message, message.Channel, "Removed.")
 		}
 
 		return true
@@ -126,27 +126,27 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 	row := p.db.QueryRow(`select count(*) from variables where value = ?`, variable, value)
 	err := row.Scan(&count)
 	if err != nil {
-		p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+		p.Bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 		log.Error().Err(err)
 		return true
 	}
 
 	if count > 0 {
-		p.Bot.Send(bot.Message, message.Channel, "I've already got that one.")
+		p.Bot.Send(conn, bot.Message, message.Channel, "I've already got that one.")
 	} else {
 		_, err := p.db.Exec(`INSERT INTO variables (name, value) VALUES (?, ?)`, variable, value)
 		if err != nil {
-			p.Bot.Send(bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.Bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Error().Err(err)
 			return true
 		}
-		p.Bot.Send(bot.Message, message.Channel, "Added.")
+		p.Bot.Send(conn, bot.Message, message.Channel, "Added.")
 	}
 	return true
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *AdminPlugin) help(kind bot.Kind, m msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
+func (p *AdminPlugin) help(conn bot.Connector, kind bot.Kind, m msg.Message, args ...interface{}) bool {
+	p.Bot.Send(conn, bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
 	return true
 }

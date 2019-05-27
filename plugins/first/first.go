@@ -132,14 +132,14 @@ func isToday(t time.Time) bool {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FirstPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *FirstPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	// This bot does not reply to anything
 
 	if p.First == nil && p.allowed(message) {
 		log.Debug().
 			Str("body", message.Body).
 			Msg("No previous first. Recording new first")
-		p.recordFirst(message)
+		p.recordFirst(c, message)
 		return false
 	} else if p.First != nil {
 		if isToday(p.First.time) && p.allowed(message) {
@@ -148,7 +148,7 @@ func (p *FirstPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 				Time("t0", p.First.time).
 				Time("t1", time.Now()).
 				Msg("Recording first")
-			p.recordFirst(message)
+			p.recordFirst(c, message)
 			return false
 		}
 	}
@@ -157,7 +157,7 @@ func (p *FirstPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 		"?", "", "!", "")
 	msg := strings.ToLower(message.Body)
 	if r.Replace(msg) == "whos on first" {
-		p.announceFirst(message)
+		p.announceFirst(c, message)
 		return true
 	}
 
@@ -199,7 +199,7 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 	return true
 }
 
-func (p *FirstPlugin) recordFirst(message msg.Message) {
+func (p *FirstPlugin) recordFirst(c bot.Connector, message msg.Message) {
 	log.Info().
 		Str("user", message.User.Name).
 		Str("body", message.Body).
@@ -216,13 +216,13 @@ func (p *FirstPlugin) recordFirst(message msg.Message) {
 		log.Error().Err(err).Msg("Error saving first entry")
 		return
 	}
-	p.announceFirst(message)
+	p.announceFirst(c, message)
 }
 
-func (p *FirstPlugin) announceFirst(message msg.Message) {
-	c := message.Channel
+func (p *FirstPlugin) announceFirst(c bot.Connector, message msg.Message) {
+	ch := message.Channel
 	if p.First != nil {
-		p.Bot.Send(bot.Message, c, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
+		p.Bot.Send(c, bot.Message, ch, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
 			p.First.nick, p.First.time.Format("15:04"), p.First.body))
 	}
 }
@@ -235,7 +235,7 @@ func (p *FirstPlugin) LoadData() {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *FirstPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "Sorry, First does not do a goddamn thing.")
+func (p *FirstPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(c, bot.Message, message.Channel, "Sorry, First does not do a goddamn thing.")
 	return true
 }

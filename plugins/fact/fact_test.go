@@ -1,6 +1,7 @@
 package fact
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
 )
+
+var c = &cli.CliPlugin{}
 
 func makeMessage(nick, payload string) msg.Message {
 	isCmd := strings.HasPrefix(payload, "!")
@@ -37,7 +40,7 @@ func TestReact(t *testing.T) {
 	p, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.message(bot.Message, m)
+		p.message(c, bot.Message, m)
 	}
 	assert.Len(t, mb.Reactions, 1)
 	assert.Contains(t, mb.Reactions[0], "jesus")
@@ -50,7 +53,7 @@ func TestReactCantLearnSpaces(t *testing.T) {
 	p, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.message(bot.Message, m)
+		p.message(c, bot.Message, m)
 	}
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "not a valid")

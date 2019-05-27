@@ -17,7 +17,7 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-var goatse []string = []string{
+var goatse = []string{
 	"```* g o a t s e x * g o a t s e x * g o a t s e x *",
 	"g                                               g",
 	"o /     \\             \\            /    \\       o",
@@ -46,23 +46,23 @@ var goatse []string = []string{
 }
 
 type TalkerPlugin struct {
-	Bot     bot.Bot
+	bot     bot.Bot
 	config  *config.Config
 	sayings []string
 }
 
 func New(b bot.Bot) *TalkerPlugin {
 	tp := &TalkerPlugin{
-		Bot:    b,
+		bot:    b,
 		config: b.Config(),
 	}
 	b.Register(tp, bot.Message, tp.message)
 	b.Register(tp, bot.Help, tp.help)
-	tp.registerWeb()
+	tp.registerWeb(b.DefaultConnector())
 	return tp
 }
 
-func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	channel := message.Channel
 	body := message.Body
 	lowermessage := strings.ToLower(body)
@@ -70,24 +70,24 @@ func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 	if message.Command && strings.HasPrefix(lowermessage, "cowsay") {
 		msg, err := p.cowSay(strings.TrimPrefix(message.Body, "cowsay "))
 		if err != nil {
-			p.Bot.Send(bot.Message, channel, "Error running cowsay: %s", err)
+			p.bot.Send(c, bot.Message, channel, "Error running cowsay: %s", err)
 			return true
 		}
-		p.Bot.Send(bot.Message, channel, msg)
+		p.bot.Send(c, bot.Message, channel, msg)
 		return true
 	}
 
 	if message.Command && strings.HasPrefix(lowermessage, "list cows") {
 		cows := p.allCows()
 		m := fmt.Sprintf("Cows: %s", strings.Join(cows, ", "))
-		p.Bot.Send(bot.Message, channel, m)
+		p.bot.Send(c, bot.Message, channel, m)
 		return true
 	}
 
 	// TODO: This ought to be space split afterwards to remove any punctuation
 	if message.Command && strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
-		p.Bot.Send(bot.Message, channel, msg)
+		p.bot.Send(c, bot.Message, channel, msg)
 		return true
 	}
 
@@ -103,15 +103,15 @@ func (p *TalkerPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 			line = strings.Replace(line, "{nick}", nick, 1)
 			output += line + "\n"
 		}
-		p.Bot.Send(bot.Message, channel, output)
+		p.bot.Send(c, bot.Message, channel, output)
 		return true
 	}
 
 	return false
 }
 
-func (p *TalkerPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
+func (p *TalkerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
 	return true
 }
 
@@ -170,7 +170,7 @@ func (p *TalkerPlugin) allCows() []string {
 	return cows
 }
 
-func (p *TalkerPlugin) registerWeb() {
+func (p *TalkerPlugin) registerWeb(c bot.Connector) {
 	http.HandleFunc("/slash/cowsay", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		log.Debug().Msgf("Cowsay:\n%+v", r.PostForm.Get("text"))
@@ -178,10 +178,10 @@ func (p *TalkerPlugin) registerWeb() {
 		log.Debug().Msgf("channel: %s", channel)
 		msg, err := p.cowSay(r.PostForm.Get("text"))
 		if err != nil {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("Error running cowsay: %s", err))
+			p.bot.Send(c, bot.Message, channel, fmt.Sprintf("Error running cowsay: %s", err))
 			return
 		}
-		p.Bot.Send(bot.Message, channel, msg)
+		p.bot.Send(c, bot.Message, channel, msg)
 		w.WriteHeader(200)
 	})
 }

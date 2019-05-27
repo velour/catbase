@@ -59,7 +59,7 @@ func New(config *config.Config, connector Connector) Bot {
 	msglog.RunNew(logIn, logOut)
 
 	users := []user.User{
-		user.User{
+		{
 			Name: config.Get("Nick", "bot"),
 		},
 	}
@@ -85,6 +85,14 @@ func New(config *config.Config, connector Connector) Bot {
 	connector.RegisterEvent(bot.Receive)
 
 	return bot
+}
+
+func (b *bot) DefaultConnector() Connector {
+	return b.conn
+}
+
+func (b *bot) WhoAmI() string {
+	return b.me.Name
 }
 
 // Config gets the configuration that the bot is using
