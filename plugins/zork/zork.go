@@ -37,7 +37,7 @@ func New(b bot.Bot) bot.Plugin {
 	return z
 }
 
-func (p *ZorkPlugin) runZork(ch string) error {
+func (p *ZorkPlugin) runZork(c bot.Connector, ch string) error {
 	const importString = "github.com/velour/catbase/plugins/zork"
 	pkg, err := build.Import(importString, "", build.FindOnly)
 	if err != nil {
@@ -79,7 +79,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 			m := strings.Replace(s.Text(), ">", "", -1)
 			m = strings.Replace(m, "\n", "\n>", -1)
 			m = ">" + m + "\n"
-			p.bot.Send(bot.Message, ch, m)
+			p.bot.Send(c, bot.Message, ch, m)
 		}
 	}()
 	go func() {
@@ -95,7 +95,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	return nil
 }
 
-func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *ZorkPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := strings.ToLower(message.Body)
 	log.Debug().Msgf("got message [%s]", m)
 	if ts := strings.Fields(m); len(ts) < 1 || ts[0] != "zork" {
@@ -107,8 +107,8 @@ func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 	p.Lock()
 	defer p.Unlock()
 	if p.zorks[ch] == nil {
-		if err := p.runZork(ch); err != nil {
-			p.bot.Send(bot.Message, ch, "failed to run zork: "+err.Error())
+		if err := p.runZork(c, ch); err != nil {
+			p.bot.Send(c, bot.Message, ch, "failed to run zork: "+err.Error())
 			return true
 		}
 	}
@@ -117,7 +117,7 @@ func (p *ZorkPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 	return true
 }
 
-func (p *ZorkPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.bot.Send(bot.Message, message.Channel, "Play zork using 'zork <zork command>'.")
+func (p *ZorkPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Play zork using 'zork <zork command>'.")
 	return true
 }

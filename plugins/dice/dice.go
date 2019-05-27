@@ -35,7 +35,7 @@ func rollDie(sides int) int {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *DicePlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *DicePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !message.Command {
 		return false
 	}
@@ -49,7 +49,7 @@ func (p *DicePlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 	}
 
 	if sides < 2 || nDice < 1 || nDice > 20 {
-		p.Bot.Send(bot.Message, channel, "You're a dick.")
+		p.Bot.Send(c, bot.Message, channel, "You're a dick.")
 		return true
 	}
 
@@ -64,13 +64,13 @@ func (p *DicePlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		}
 	}
 
-	p.Bot.Send(bot.Message, channel, rolls)
+	p.Bot.Send(c, bot.Message, channel, rolls)
 	return true
 
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *DicePlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "Roll dice using notation XdY. Try \"3d20\".")
+func (p *DicePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(c, bot.Message, message.Channel, "Roll dice using notation XdY. Try \"3d20\".")
 	return true
 }

@@ -24,7 +24,7 @@ const (
 )
 
 type TwitchPlugin struct {
-	Bot        bot.Bot
+	bot        bot.Bot
 	config     *config.Config
 	twitchList map[string]*Twitcher
 }
@@ -60,7 +60,7 @@ type stream struct {
 
 func New(b bot.Bot) *TwitchPlugin {
 	p := &TwitchPlugin{
-		Bot:        b,
+		bot:        b,
 		config:     b.Config(),
 		twitchList: map[string]*Twitcher{},
 	}
@@ -74,7 +74,7 @@ func New(b bot.Bot) *TwitchPlugin {
 				}
 			}
 		}
-		go p.twitchLoop(ch)
+		go p.twitchLoop(b.DefaultConnector(), ch)
 	}
 
 	b.Register(p, bot.Message, p.message)
@@ -119,14 +119,14 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *TwitchPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TwitchPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	body := strings.ToLower(message.Body)
 	if body == "twitch status" {
 		channel := message.Channel
 		if users := p.config.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
 			for _, twitcherName := range users {
 				if _, ok := p.twitchList[twitcherName]; ok {
-					p.checkTwitch(channel, p.twitchList[twitcherName], true)
+					p.checkTwitch(c, channel, p.twitchList[twitcherName], true)
 				}
 			}
 		}
@@ -140,18 +140,18 @@ func (p *TwitchPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 	return false
 }
 
-func (p *TwitchPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "You can set the templates for streams with\n"
 	msg += fmt.Sprintf("twitch.istpl (default: %s)\n", isStreamingTplFallback)
 	msg += fmt.Sprintf("twitch.nottpl (default: %s)\n", notStreamingTplFallback)
 	msg += fmt.Sprintf("twitch.stoppedtpl (default: %s)\n", stoppedStreamingTplFallback)
 	msg += "You can reset all messages with `!reset twitch`"
 	msg += "And you can ask who is streaming with `!twitch status`"
-	p.Bot.Send(bot.Message, message.Channel, msg)
+	p.bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
 
-func (p *TwitchPlugin) twitchLoop(channel string) {
+func (p *TwitchPlugin) twitchLoop(c bot.Connector, channel string) {
 	frequency := p.config.GetInt("Twitch.Freq", 60)
 	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.authorization", "") == "" {
 		log.Info().Msgf("Disabling twitch autochecking.")
@@ -164,7 +164,7 @@ func (p *TwitchPlugin) twitchLoop(channel string) {
 		time.Sleep(time.Duration(frequency) * time.Second)
 
 		for _, twitcherName := range p.config.GetArray("Twitch."+channel+".Users", []string{}) {
-			p.checkTwitch(channel, p.twitchList[twitcherName], false)
+			p.checkTwitch(c, channel, p.twitchList[twitcherName], false)
 		}
 	}
 }
@@ -197,7 +197,7 @@ errCase:
 	return []byte{}, false
 }
 
-func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPrintStatus bool) {
+func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) {
 	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
 	if err != nil {
 		log.Error().Msg("Error parsing twitch stream URL")
@@ -255,31 +255,31 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 			t, err := template.New("notStreaming").Parse(notStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.Bot.Send(bot.Message, channel, err)
+				p.bot.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("notStreaming").Parse(notStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.Bot.Send(bot.Message, channel, buf.String())
+			p.bot.Send(c, bot.Message, channel, buf.String())
 		} else {
 			t, err := template.New("isStreaming").Parse(isStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.Bot.Send(bot.Message, channel, err)
+				p.bot.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.Bot.Send(bot.Message, channel, buf.String())
+			p.bot.Send(c, bot.Message, channel, buf.String())
 		}
 	} else if gameID == "" {
 		if twitcher.gameID != "" {
 			t, err := template.New("stoppedStreaming").Parse(stoppedStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.Bot.Send(bot.Message, channel, err)
+				p.bot.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("stoppedStreaming").Parse(stoppedStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.Bot.Send(bot.Message, channel, buf.String())
+			p.bot.Send(c, bot.Message, channel, buf.String())
 		}
 		twitcher.gameID = ""
 	} else {
@@ -287,11 +287,11 @@ func (p *TwitchPlugin) checkTwitch(channel string, twitcher *Twitcher, alwaysPri
 			t, err := template.New("isStreaming").Parse(isStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.Bot.Send(bot.Message, channel, err)
+				p.bot.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.Bot.Send(bot.Message, channel, buf.String())
+			p.bot.Send(c, bot.Message, channel, buf.String())
 		}
 		twitcher.gameID = gameID
 	}

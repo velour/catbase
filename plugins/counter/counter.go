@@ -225,7 +225,7 @@ func New(b bot.Bot) *CounterPlugin {
 // This function returns true if the plugin responds in a meaningful way to the
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
-func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
 	channel := message.Channel
@@ -240,7 +240,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 			log.Error().Err(err)
 			return false
 		}
-		p.Bot.Send(bot.Message, channel, fmt.Sprintf("Created alias %s -> %s",
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("Created alias %s -> %s",
 			parts[1], parts[2]))
 		return true
 	} else if strings.ToLower(parts[0]) == "leaderboard" {
@@ -270,11 +270,11 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 				it.Item,
 			)
 		}
-		p.Bot.Send(bot.Message, channel, out)
+		p.Bot.Send(c, bot.Message, channel, out)
 		return true
 	} else if match := teaMatcher.MatchString(message.Body); match {
 		// check for tea match TTT
-		return p.checkMatch(message)
+		return p.checkMatch(c, message)
 	} else if message.Command && message.Body == "reset me" {
 		items, err := GetItems(p.DB, strings.ToLower(nick))
 		if err != nil {
@@ -282,14 +282,14 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 				Err(err).
 				Str("nick", nick).
 				Msg("Error getting items to reset")
-			p.Bot.Send(bot.Message, channel, "Something is technically wrong with your counters.")
+			p.Bot.Send(c, bot.Message, channel, "Something is technically wrong with your counters.")
 			return true
 		}
 		log.Debug().Msgf("Items: %+v", items)
 		for _, item := range items {
 			item.Delete()
 		}
-		p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
 		return true
 	} else if message.Command && parts[0] == "inspect" && len(parts) == 2 {
 		var subject string
@@ -310,7 +310,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 				Err(err).
 				Str("subject", subject).
 				Msg("Error retrieving items")
-			p.Bot.Send(bot.Message, channel, "Something went wrong finding that counter;")
+			p.Bot.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
 			return true
 		}
 
@@ -330,11 +330,11 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 		resp += "."
 
 		if count == 0 {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has no counters.", subject))
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", subject))
 			return true
 		}
 
-		p.Bot.Send(bot.Message, channel, resp)
+		p.Bot.Send(c, bot.Message, channel, resp)
 		return true
 	} else if message.Command && len(parts) == 2 && parts[0] == "clear" {
 		subject := strings.ToLower(nick)
@@ -347,7 +347,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 				Str("subject", subject).
 				Str("itemName", itemName).
 				Msg("Error getting item to remove")
-			p.Bot.Send(bot.Message, channel, "Something went wrong removing that counter;")
+			p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
 			return true
 		}
 		err = it.Delete()
@@ -357,11 +357,11 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 				Str("subject", subject).
 				Str("itemName", itemName).
 				Msg("Error removing item")
-			p.Bot.Send(bot.Message, channel, "Something went wrong removing that counter;")
+			p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
 			return true
 		}
 
-		p.Bot.Send(bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
+		p.Bot.Send(c, bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
 			itemName))
 		return true
 
@@ -384,7 +384,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 		item, err := GetItem(p.DB, subject, itemName)
 		switch {
 		case err == sql.ErrNoRows:
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("I don't think %s has any %s.",
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("I don't think %s has any %s.",
 				subject, itemName))
 			return true
 		case err != nil:
@@ -396,7 +396,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 			return true
 		}
 
-		p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
 			itemName))
 
 		return true
@@ -431,7 +431,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 			}
 			log.Debug().Msgf("About to update item: %#v", item)
 			item.UpdateDelta(1)
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		} else if strings.HasSuffix(parts[0], "--") {
@@ -447,7 +447,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 				return false
 			}
 			item.UpdateDelta(-1)
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		}
@@ -480,7 +480,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 			n, _ := strconv.Atoi(parts[2])
 			log.Debug().Msgf("About to update item by %d: %#v", n, item)
 			item.UpdateDelta(n)
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		} else if parts[1] == "-=" {
@@ -498,7 +498,7 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 			n, _ := strconv.Atoi(parts[2])
 			log.Debug().Msgf("About to update item by -%d: %#v", n, item)
 			item.UpdateDelta(-n)
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		}
@@ -508,15 +508,15 @@ func (p *CounterPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *CounterPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "You can set counters incrementally by using "+
+func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(c, bot.Message, message.Channel, "You can set counters incrementally by using "+
 		"<noun>++ and <noun>--. You can see all of your counters using "+
 		"\"inspect\", erase them with \"clear\", and view single counters with "+
 		"\"count\".")
 	return true
 }
 
-func (p *CounterPlugin) checkMatch(message msg.Message) bool {
+func (p *CounterPlugin) checkMatch(c bot.Connector, message msg.Message) bool {
 	nick := message.User.Name
 	channel := message.Channel
 
@@ -538,7 +538,7 @@ func (p *CounterPlugin) checkMatch(message msg.Message) bool {
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
 	item.UpdateDelta(1)
-	p.Bot.Send(bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
+	p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
 		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
 }

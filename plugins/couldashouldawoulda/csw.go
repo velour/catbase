@@ -25,7 +25,7 @@ func New(b bot.Bot) *CSWPlugin {
 	return csw
 }
 
-func (p *CSWPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *CSWPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !message.Command {
 		return false
 	}
@@ -65,7 +65,7 @@ func (p *CSWPlugin) message(kind bot.Kind, message msg.Message, args ...interfac
 			}
 		}
 
-		p.Bot.Send(bot.Message, message.Channel, responses[rand.Intn(len(responses))])
+		p.Bot.Send(c, bot.Message, message.Channel, responses[rand.Intn(len(responses))])
 		return true
 	}
 

@@ -27,7 +27,7 @@ const (
 )
 
 type ReminderPlugin struct {
-	Bot    bot.Bot
+	bot    bot.Bot
 	db     *sqlx.DB
 	mutex  *sync.Mutex
 	timer  *time.Timer
@@ -65,7 +65,7 @@ func New(b bot.Bot) *ReminderPlugin {
 	w.Add(common.All...)
 
 	plugin := &ReminderPlugin{
-		Bot:    b,
+		bot:    b,
 		db:     b.DB(),
 		mutex:  &sync.Mutex{},
 		timer:  timer,
@@ -75,7 +75,7 @@ func New(b bot.Bot) *ReminderPlugin {
 
 	plugin.queueUpNextReminder()
 
-	go reminderer(plugin)
+	go reminderer(b.DefaultConnector(), plugin)
 
 	b.Register(plugin, bot.Message, plugin.message)
 	b.Register(plugin, bot.Help, plugin.help)
@@ -83,7 +83,7 @@ func New(b bot.Bot) *ReminderPlugin {
 	return plugin
 }
 
-func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	channel := message.Channel
 	from := message.User.Name
 
@@ -109,7 +109,7 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 
 			dur, err = time.ParseDuration(parts[3])
 			if err != nil {
-				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
+				p.bot.Send(c, bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 				return true
 			}
 
@@ -137,7 +137,7 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 				dur2, err = time.ParseDuration(parts[5])
 				if err != nil {
 					log.Error().Err(err)
-					p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
+					p.bot.Send(c, bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
 					return true
 				}
 
@@ -148,7 +148,7 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 				max := p.config.GetInt("Reminder.MaxBatchAdd", 10)
 				for i := 0; when.Before(endTime); i++ {
 					if i >= max {
-						p.Bot.Send(bot.Message, channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
+						p.bot.Send(c, bot.Message, channel, "Easy cowboy, that's a lot of reminders. I'll add some of them.")
 						doConfirm = false
 						break
 					}
@@ -165,14 +165,14 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 					when = when.Add(dur)
 				}
 			} else {
-				p.Bot.Send(bot.Message, channel, "Easy cowboy, not sure I comprehend what you're asking.")
+				p.bot.Send(c, bot.Message, channel, "Easy cowboy, not sure I comprehend what you're asking.")
 				return true
 			}
 
 			if doConfirm && from == who {
-				p.Bot.Send(bot.Message, channel, fmt.Sprintf("Okay. I'll remind you."))
+				p.bot.Send(c, bot.Message, channel, fmt.Sprintf("Okay. I'll remind you."))
 			} else if doConfirm {
-				p.Bot.Send(bot.Message, channel, fmt.Sprintf("Sure %s, I'll remind %s.", from, who))
+				p.bot.Send(c, bot.Message, channel, fmt.Sprintf("Sure %s, I'll remind %s.", from, who))
 			}
 
 			p.queueUpNextReminder()
@@ -192,22 +192,22 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 			}
 		}
 		if err != nil {
-			p.Bot.Send(bot.Message, channel, "listing failed.")
+			p.bot.Send(c, bot.Message, channel, "listing failed.")
 		} else {
-			p.Bot.Send(bot.Message, channel, response)
+			p.bot.Send(c, bot.Message, channel, response)
 		}
 		return true
 	} else if len(parts) == 3 && strings.ToLower(parts[0]) == "cancel" && strings.ToLower(parts[1]) == "reminder" {
 		id, err := strconv.ParseInt(parts[2], 10, 64)
 		if err != nil {
-			p.Bot.Send(bot.Message, channel, fmt.Sprintf("couldn't parse id: %s", parts[2]))
+			p.bot.Send(c, bot.Message, channel, fmt.Sprintf("couldn't parse id: %s", parts[2]))
 
 		} else {
 			err := p.deleteReminder(id)
 			if err == nil {
-				p.Bot.Send(bot.Message, channel, fmt.Sprintf("successfully canceled reminder: %s", parts[2]))
+				p.bot.Send(c, bot.Message, channel, fmt.Sprintf("successfully canceled reminder: %s", parts[2]))
 			} else {
-				p.Bot.Send(bot.Message, channel, fmt.Sprintf("failed to find and cancel reminder: %s", parts[2]))
+				p.bot.Send(c, bot.Message, channel, fmt.Sprintf("failed to find and cancel reminder: %s", parts[2]))
 			}
 		}
 		return true
@@ -216,8 +216,8 @@ func (p *ReminderPlugin) message(kind bot.Kind, message msg.Message, args ...int
 	return false
 }
 
-func (p *ReminderPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
+func (p *ReminderPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
 	return true
 }
 
@@ -351,7 +351,7 @@ func (p *ReminderPlugin) queueUpNextReminder() {
 	}
 }
 
-func reminderer(p *ReminderPlugin) {
+func reminderer(c bot.Connector, p *ReminderPlugin) {
 	for {
 		<-p.timer.C
 
@@ -366,7 +366,7 @@ func reminderer(p *ReminderPlugin) {
 				message = fmt.Sprintf("Hey %s, %s wanted you to be reminded: %s", reminder.who, reminder.from, reminder.what)
 			}
 
-			p.Bot.Send(bot.Message, reminder.channel, message)
+			p.bot.Send(c, bot.Message, reminder.channel, message)
 
 			if err := p.deleteReminder(reminder.id); err != nil {
 				log.Error().

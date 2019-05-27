@@ -4,6 +4,7 @@ package counter
 
 import (
 	"fmt"
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -22,12 +23,12 @@ func setup(t *testing.T) (*bot.MockBot, *CounterPlugin) {
 	return mb, c
 }
 
-func makeMessage(payload string) (bot.Kind, msg.Message) {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return bot.Message, msg.Message{
+	return &cli.CliPlugin{}, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -250,6 +251,6 @@ func TestInspectMe(t *testing.T) {
 func TestHelp(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.help(bot.Help, msg.Message{Channel: "channel"}, []string{})
+	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

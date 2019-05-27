@@ -78,7 +78,7 @@ func (p *InventoryPlugin) itemFilter(input string) string {
 	return input
 }
 
-func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *InventoryPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := message.Body
 	log.Debug().Msgf("inventory trying to read %+v", message)
 	if message.Command {
@@ -89,7 +89,7 @@ func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...in
 				log.Debug().Msgf("I think I have more than 0 items: %+v, len(items)=%d", items, len(items))
 				say = fmt.Sprintf("I'm currently holding %s", strings.Join(items, ", "))
 			}
-			p.bot.Send(bot.Message, message.Channel, say)
+			p.bot.Send(c, bot.Message, message.Channel, say)
 			return true
 		}
 
@@ -97,11 +97,11 @@ func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...in
 		// <Randall> Bucket[:,] have a (.+)
 		if matches := p.r1.FindStringSubmatch(m); len(matches) > 0 {
 			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(message, matches[1])
+			return p.addItem(c, message, matches[1])
 		}
 		if matches := p.r2.FindStringSubmatch(m); len(matches) > 0 {
 			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(message, matches[1])
+			return p.addItem(c, message, matches[1])
 		}
 	}
 	if message.Action {
@@ -112,15 +112,15 @@ func (p *InventoryPlugin) message(kind bot.Kind, message msg.Message, args ...in
 
 		if matches := p.r3.FindStringSubmatch(m); len(matches) > 0 {
 			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(message, matches[1])
+			return p.addItem(c, message, matches[1])
 		}
 		if matches := p.r4.FindStringSubmatch(m); len(matches) > 0 {
 			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(message, matches[1])
+			return p.addItem(c, message, matches[1])
 		}
 		if matches := p.r5.FindStringSubmatch(m); len(matches) > 0 {
 			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(message, matches[1])
+			return p.addItem(c, message, matches[1])
 		}
 	}
 	return false
@@ -198,9 +198,9 @@ func (p *InventoryPlugin) remove(i string) {
 	}
 }
 
-func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
+func (p *InventoryPlugin) addItem(c bot.Connector, m msg.Message, i string) bool {
 	if p.exists(i) {
-		p.bot.Send(bot.Message, m.Channel, fmt.Sprintf("I already have %s.", i))
+		p.bot.Send(c, bot.Message, m.Channel, fmt.Sprintf("I already have %s.", i))
 		return true
 	}
 	var removed string
@@ -213,9 +213,9 @@ func (p *InventoryPlugin) addItem(m msg.Message, i string) bool {
 		log.Error().Err(err).Msg("Error inserting new inventory item")
 	}
 	if removed != "" {
-		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
+		p.bot.Send(c, bot.Action, m.Channel, fmt.Sprintf("dropped %s and took %s from %s", removed, i, m.User.Name))
 	} else {
-		p.bot.Send(bot.Action, m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
+		p.bot.Send(c, bot.Action, m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
 	}
 	return true
 }

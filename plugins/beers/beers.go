@@ -53,7 +53,7 @@ func New(b bot.Bot) *BeersPlugin {
 		db:  b.DB(),
 	}
 	for _, channel := range b.Config().GetArray("Untappd.Channels", []string{}) {
-		go p.untappdLoop(channel)
+		go p.untappdLoop(b.DefaultConnector(), channel)
 	}
 	b.Register(p, bot.Message, p.message)
 	b.Register(p, bot.Help, p.help)
@@ -63,7 +63,7 @@ func New(b bot.Bot) *BeersPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *BeersPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	parts := strings.Fields(message.Body)
 
 	if len(parts) == 0 {
@@ -83,49 +83,49 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 			count, err := strconv.Atoi(parts[2])
 			if err != nil {
 				// if it's not a number, maybe it's a nick!
-				p.Bot.Send(bot.Message, channel, "Sorry, that didn't make any sense.")
+				p.Bot.Send(c, bot.Message, channel, "Sorry, that didn't make any sense.")
 			}
 
 			if count < 0 {
 				// you can't be negative
 				msg := fmt.Sprintf("Sorry %s, you can't have negative beers!", nick)
-				p.Bot.Send(bot.Message, channel, msg)
+				p.Bot.Send(c, bot.Message, channel, msg)
 				return true
 			}
 			if parts[1] == "+=" {
 				p.addBeers(nick, count)
-				p.randomReply(channel)
+				p.randomReply(c, channel)
 			} else if parts[1] == "=" {
 				if count == 0 {
-					p.puke(nick, channel)
+					p.puke(c, nick, channel)
 				} else {
 					p.setBeers(nick, count)
-					p.randomReply(channel)
+					p.randomReply(c, channel)
 				}
 			} else {
-				p.Bot.Send(bot.Message, channel, "I don't know your math.")
+				p.Bot.Send(c, bot.Message, channel, "I don't know your math.")
 			}
 		} else if len(parts) == 2 {
 			if p.doIKnow(parts[1]) {
-				p.reportCount(parts[1], channel, false)
+				p.reportCount(c, parts[1], channel, false)
 			} else {
 				msg := fmt.Sprintf("Sorry, I don't know %s.", parts[1])
-				p.Bot.Send(bot.Message, channel, msg)
+				p.Bot.Send(c, bot.Message, channel, msg)
 			}
 		} else if len(parts) == 1 {
-			p.reportCount(nick, channel, true)
+			p.reportCount(c, nick, channel, true)
 		}
 
 		// no matter what, if we're in here, then we've responded
 		return true
 	} else if parts[0] == "puke" {
-		p.puke(nick, channel)
+		p.puke(c, nick, channel)
 		return true
 	}
 
 	if message.Command && parts[0] == "imbibe" {
 		p.addBeers(nick, 1)
-		p.randomReply(channel)
+		p.randomReply(c, channel)
 		return true
 	}
 
@@ -134,7 +134,7 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 		channel := message.Channel
 
 		if len(parts) < 2 {
-			p.Bot.Send(bot.Message, channel, "You must also provide a user name.")
+			p.Bot.Send(c, bot.Message, channel, "You must also provide a user name.")
 		} else if len(parts) == 3 {
 			chanNick = parts[2]
 		} else if len(parts) == 4 {
@@ -159,7 +159,7 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 			log.Error().Err(err).Msgf("Error registering untappd")
 		}
 		if count > 0 {
-			p.Bot.Send(bot.Message, channel, "I'm already watching you.")
+			p.Bot.Send(c, bot.Message, channel, "I'm already watching you.")
 			return true
 		}
 		_, err = p.db.Exec(`insert into untappd (
@@ -175,13 +175,13 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 		)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error registering untappd")
-			p.Bot.Send(bot.Message, channel, "I can't see.")
+			p.Bot.Send(c, bot.Message, channel, "I can't see.")
 			return true
 		}
 
-		p.Bot.Send(bot.Message, channel, "I'll be watching you.")
+		p.Bot.Send(c, bot.Message, channel, "I'll be watching you.")
 
-		p.checkUntappd(channel)
+		p.checkUntappd(c, channel)
 
 		return true
 	}
@@ -190,7 +190,7 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 		log.Info().
 			Str("user", message.User.Name).
 			Msgf("Checking untappd at request of user.")
-		p.checkUntappd(channel)
+		p.checkUntappd(c, channel)
 		return true
 	}
 
@@ -198,11 +198,11 @@ func (p *BeersPlugin) message(kind bot.Kind, message msg.Message, args ...interf
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *BeersPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
 		"commands. I'll keep a count of how many beers you've had and then if you want " +
 		"to reset, just !puke it all up!"
-	p.Bot.Send(bot.Message, message.Channel, msg)
+	p.Bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
 
@@ -232,7 +232,7 @@ func (p *BeersPlugin) getBeers(nick string) int {
 	return ub.Count
 }
 
-func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
+func (p *BeersPlugin) reportCount(c bot.Connector, nick, channel string, himself bool) {
 	beers := p.getBeers(nick)
 	msg := fmt.Sprintf("%s has had %d beers so far.", nick, beers)
 	if himself {
@@ -242,13 +242,13 @@ func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
 			msg = fmt.Sprintf("You've had %d beers so far, %s.", beers, nick)
 		}
 	}
-	p.Bot.Send(bot.Message, channel, msg)
+	p.Bot.Send(c, bot.Message, channel, msg)
 }
 
-func (p *BeersPlugin) puke(user string, channel string) {
+func (p *BeersPlugin) puke(c bot.Connector, user string, channel string) {
 	p.setBeers(user, 0)
 	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user)
-	p.Bot.Send(bot.Message, channel, msg)
+	p.Bot.Send(c, bot.Message, channel, msg)
 }
 
 func (p *BeersPlugin) doIKnow(nick string) bool {
@@ -261,9 +261,9 @@ func (p *BeersPlugin) doIKnow(nick string) bool {
 }
 
 // Sends random affirmation to the channel. This could be better (with a datastore for sayings)
-func (p *BeersPlugin) randomReply(channel string) {
+func (p *BeersPlugin) randomReply(c bot.Connector, channel string) {
 	replies := []string{"ZIGGY! ZAGGY!", "HIC!", "Stay thirsty, my friend!"}
-	p.Bot.Send(bot.Message, channel, replies[rand.Intn(len(replies))])
+	p.Bot.Send(c, bot.Message, channel, replies[rand.Intn(len(replies))])
 }
 
 type checkin struct {
@@ -343,7 +343,7 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	return beers.Response.Checkins.Items, nil
 }
 
-func (p *BeersPlugin) checkUntappd(channel string) {
+func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 	token := p.Bot.Config().Get("Untappd.Token", "NONE")
 	if token == "NONE" {
 		log.Info().
@@ -434,11 +434,11 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 			Int("checkin_id", checkin.Checkin_id).
 			Str("msg", msg).
 			Msg("checkin")
-		p.Bot.Send(bot.Message, args...)
+		p.Bot.Send(c, bot.Message, args...)
 	}
 }
 
-func (p *BeersPlugin) untappdLoop(channel string) {
+func (p *BeersPlugin) untappdLoop(c bot.Connector, channel string) {
 	frequency := p.Bot.Config().GetInt("Untappd.Freq", 120)
 	if frequency == 0 {
 		return
@@ -448,6 +448,6 @@ func (p *BeersPlugin) untappdLoop(channel string) {
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
-		p.checkUntappd(channel)
+		p.checkUntappd(c, channel)
 	}
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
-func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool {
+func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
 	log.Debug().
 		Interface("msg", msg).
 		Msg("Received event")
@@ -26,13 +26,13 @@ func (b *bot) Receive(kind Kind, msg msg.Message, args ...interface{}) bool {
 	// do need to look up user and fix it
 	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
-		b.checkHelp(msg.Channel, parts)
+		b.checkHelp(conn, msg.Channel, parts)
 		log.Debug().Msg("Handled a help, returning")
 		goto RET
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.runCallback(b.plugins[name], kind, msg, args...) {
+		if b.runCallback(conn, b.plugins[name], kind, msg, args...) {
 			goto RET
 		}
 	}
@@ -42,10 +42,10 @@ RET:
 	return true
 }
 
-func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
+func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
 	t := reflect.TypeOf(plugin).String()
 	for _, cb := range b.callbacks[t][evt] {
-		if cb(evt, message, args...) {
+		if cb(conn, evt, message, args...) {
 			return true
 		}
 	}
@@ -53,8 +53,8 @@ func (b *bot) runCallback(plugin Plugin, evt Kind, message msg.Message, args ...
 }
 
 // Send a message to the connection
-func (b *bot) Send(kind Kind, args ...interface{}) (string, error) {
-	return b.conn.Send(kind, args...)
+func (b *bot) Send(conn Connector, kind Kind, args ...interface{}) (string, error) {
+	return conn.Send(kind, args...)
 }
 
 func (b *bot) GetEmojiList() map[string]string {
@@ -62,38 +62,38 @@ func (b *bot) GetEmojiList() map[string]string {
 }
 
 // Checks to see if the user is asking for help, returns true if so and handles the situation.
-func (b *bot) checkHelp(channel string, parts []string) {
+func (b *bot) checkHelp(conn Connector, channel string, parts []string) {
 	if len(parts) == 1 {
 		// just print out a list of help topics
 		topics := "Help topics: about variables"
-		for name, _ := range b.plugins {
+		for name := range b.plugins {
 			name = strings.Split(strings.TrimPrefix(name, "*"), ".")[0]
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
-		b.Send(Message, channel, topics)
+		b.Send(conn, Message, channel, topics)
 	} else {
 		// trigger the proper plugin's help response
 		if parts[1] == "about" {
-			b.Help(channel, parts)
+			b.Help(conn, channel, parts)
 			return
 		}
 		if parts[1] == "variables" {
-			b.listVars(channel, parts)
+			b.listVars(conn, channel, parts)
 			return
 		}
 		for name, plugin := range b.plugins {
 			if strings.HasPrefix(name, "*"+parts[1]) {
-				if b.runCallback(plugin, Help, msg.Message{Channel: channel}, channel, parts) {
+				if b.runCallback(conn, plugin, Help, msg.Message{Channel: channel}, channel, parts) {
 					return
 				} else {
 					msg := fmt.Sprintf("I'm sorry, I don't know how to help you with %s.", parts[1])
-					b.Send(Message, channel, msg)
+					b.Send(conn, Message, channel, msg)
 					return
 				}
 			}
 		}
 		msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", strings.Join(parts, " "))
-		b.Send(Message, channel, msg)
+		b.Send(conn, Message, channel, msg)
 	}
 }
 
@@ -178,7 +178,7 @@ func (b *bot) getVar(varName string) (string, error) {
 	return text, nil
 }
 
-func (b *bot) listVars(channel string, parts []string) {
+func (b *bot) listVars(conn Connector, channel string, parts []string) {
 	var variables []string
 	err := b.DB().Select(&variables, `select name from variables group by name`)
 	if err != nil {
@@ -188,18 +188,18 @@ func (b *bot) listVars(channel string, parts []string) {
 	if len(variables) > 0 {
 		msg += ", " + strings.Join(variables, ", ")
 	}
-	b.Send(Message, channel, msg)
+	b.Send(conn, Message, channel, msg)
 }
 
-func (b *bot) Help(channel string, parts []string) {
+func (b *bot) Help(conn Connector, channel string, parts []string) {
 	msg := fmt.Sprintf("Hi, I'm based on godeepintir version %s. I'm written in Go, and you "+
 		"can find my source code on the internet here: "+
 		"http://github.com/velour/catbase", b.version)
-	b.Send(Message, channel, msg)
+	b.Send(conn, Message, channel, msg)
 }
 
 // Send our own musings to the plugins
-func (b *bot) selfSaid(channel, message string, action bool) {
+func (b *bot) selfSaid(conn Connector, channel, message string, action bool) {
 	msg := msg.Message{
 		User:    &b.me, // hack
 		Channel: channel,
@@ -212,7 +212,7 @@ func (b *bot) selfSaid(channel, message string, action bool) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.runCallback(b.plugins[name], SelfMessage, msg) {
+		if b.runCallback(conn, b.plugins[name], SelfMessage, msg) {
 			return
 		}
 	}

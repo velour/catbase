@@ -455,11 +455,11 @@ func (s *Slack) Serve() error {
 					log.Debug().Msgf("Ignoring message: %+v\nlastRecieved: %v msg: %v", msg.ID, s.lastRecieved, m.Time)
 				} else {
 					s.lastRecieved = m.Time
-					s.event(bot.Message, m)
+					s.event(s, bot.Message, m)
 				}
 			} else if msg.ThreadTs != "" {
 				//we're throwing away some information here by not parsing the correct reply object type, but that's okay
-				s.event(bot.Reply, s.buildLightReplyMessage(msg), msg.ThreadTs)
+				s.event(s, bot.Reply, s.buildLightReplyMessage(msg), msg.ThreadTs)
 			} else {
 				log.Debug().Msgf("THAT MESSAGE WAS HIDDEN: %+v", msg.ID)
 			}

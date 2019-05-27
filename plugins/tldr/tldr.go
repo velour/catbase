@@ -38,11 +38,11 @@ func New(b bot.Bot) *TLDRPlugin {
 	return plugin
 }
 
-func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TLDRPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	timeLimit := time.Duration(p.bot.Config().GetInt("TLDR.HourLimit", 1))
 	lowercaseMessage := strings.ToLower(message.Body)
 	if lowercaseMessage == "tl;dr" && p.lastRequest.After(time.Now().Add(-timeLimit*time.Hour)) {
-		p.bot.Send(bot.Message, message.Channel, "Slow down, cowboy. Read that tiny backlog.")
+		p.bot.Send(c, bot.Message, message.Channel, "Slow down, cowboy. Read that tiny backlog.")
 		return true
 	} else if lowercaseMessage == "tl;dr" {
 		p.lastRequest = time.Now()
@@ -114,7 +114,7 @@ func (p *TLDRPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 
 		}
 
-		p.bot.Send(bot.Message, message.Channel, response)
+		p.bot.Send(c, bot.Message, message.Channel, response)
 
 		return true
 	}
@@ -162,8 +162,8 @@ func (p *TLDRPlugin) getTopics() []string {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *TLDRPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.bot.Send(bot.Message, message.Channel, "tl;dr")
+func (p *TLDRPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "tl;dr")
 	return true
 }
 

@@ -1,6 +1,7 @@
 package remember
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -43,7 +44,7 @@ func TestCornerCaseBug(t *testing.T) {
 	p, _, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.message(bot.Message, m)
+		p.message(&cli.CliPlugin{}, bot.Message, m)
 	}
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "horse dick")

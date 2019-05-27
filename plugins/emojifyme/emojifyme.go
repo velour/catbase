@@ -58,7 +58,7 @@ func New(b bot.Bot) *EmojifyMePlugin {
 	return ep
 }
 
-func (p *EmojifyMePlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *EmojifyMePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !p.GotBotEmoji {
 		p.GotBotEmoji = true
 		emojiMap := p.Bot.GetEmojiList()
@@ -93,7 +93,7 @@ func (p *EmojifyMePlugin) message(kind bot.Kind, message msg.Message, args ...in
 
 	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance", 0.02)*emojied {
 		for _, e := range emojys {
-			p.Bot.Send(bot.Reaction, message.Channel, e, message)
+			p.Bot.Send(c, bot.Reaction, message.Channel, e, message)
 		}
 		return false
 	}

@@ -16,13 +16,13 @@ import (
 )
 
 type PickerPlugin struct {
-	Bot bot.Bot
+	bot bot.Bot
 }
 
 // NewPickerPlugin creates a new PickerPlugin with the Plugin interface
 func New(b bot.Bot) *PickerPlugin {
 	pp := &PickerPlugin{
-		Bot: b,
+		bot: b,
 	}
 	b.Register(pp, bot.Message, pp.message)
 	b.Register(pp, bot.Help, pp.help)
@@ -32,21 +32,21 @@ func New(b bot.Bot) *PickerPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *PickerPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !strings.HasPrefix(message.Body, "pick") {
 		return false
 	}
 
 	n, items, err := p.parse(message.Body)
 	if err != nil {
-		p.Bot.Send(bot.Message, message.Channel, err.Error())
+		p.bot.Send(c, bot.Message, message.Channel, err.Error())
 		return true
 	}
 
 	if n == 1 {
 		item := items[rand.Intn(len(items))]
 		out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(item))
-		p.Bot.Send(bot.Message, message.Channel, out)
+		p.bot.Send(c, bot.Message, message.Channel, out)
 		return true
 	}
 
@@ -62,7 +62,7 @@ func (p *PickerPlugin) message(kind bot.Kind, message msg.Message, args ...inter
 		fmt.Fprintf(&b, ", %q", item)
 	}
 	b.WriteString(" }")
-	p.Bot.Send(bot.Message, message.Channel, b.String())
+	p.bot.Send(c, bot.Message, message.Channel, b.String())
 	return true
 }
 
@@ -111,7 +111,7 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *PickerPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(bot.Message, message.Channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
+func (p *PickerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
 	return true
 }

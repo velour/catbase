@@ -7,7 +7,7 @@ package fact
 
 // 2016-01-15 Later note, why are these in plugins and the server is in bot?
 
-var factoidIndex string = `
+var factoidIndex = `
 <!DOCTYPE html>
 <html>
 <head>

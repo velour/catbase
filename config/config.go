@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	sqlite3 "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -98,8 +98,8 @@ func (c *Config) GetArray(key string, fallback []string) []string {
 // Note, this is always a string. Use the SetArray for an array helper
 func (c *Config) Set(key, value string) error {
 	key = strings.ToLower(key)
-	q := (`insert into config (key,value) values (?, ?)
-		on conflict(key) do update set value=?;`)
+	q := `insert into config (key,value) values (?, ?)
+			on conflict(key) do update set value=?;`
 	tx, err := c.Begin()
 	if err != nil {
 		return err

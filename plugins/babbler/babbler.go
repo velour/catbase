@@ -101,7 +101,7 @@ func New(b bot.Bot) *BabblerPlugin {
 	return plugin
 }
 
-func (p *BabblerPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *BabblerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 	numTokens := len(tokens)
@@ -143,12 +143,12 @@ func (p *BabblerPlugin) message(kind bot.Kind, message msg.Message, args ...inte
 	}
 
 	if saidSomething {
-		p.Bot.Send(bot.Message, message.Channel, saidWhat)
+		p.Bot.Send(c, bot.Message, message.Channel, saidWhat)
 	}
 	return saidSomething
 }
 
-func (p *BabblerPlugin) help(kind bot.Kind, msg msg.Message, args ...interface{}) bool {
+func (p *BabblerPlugin) help(c bot.Connector, kind bot.Kind, msg msg.Message, args ...interface{}) bool {
 	commands := []string{
 		"initialize babbler for seabass",
 		"merge babbler drseabass into seabass",
@@ -157,7 +157,7 @@ func (p *BabblerPlugin) help(kind bot.Kind, msg msg.Message, args ...interface{}
 		"seabass says-middle-out ...",
 		"seabass says-bridge ... | ...",
 	}
-	p.Bot.Send(bot.Message, msg.Channel, strings.Join(commands, "\n\n"))
+	p.Bot.Send(c, bot.Message, msg.Channel, strings.Join(commands, "\n\n"))
 	return true
 }
 
@@ -851,7 +851,7 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 		previous      *searchNode
 	}
 
-	open := []*searchNode{&searchNode{startWordNode.NodeId, nil}}
+	open := []*searchNode{{startWordNode.NodeId, nil}}
 	closed := map[int64]*searchNode{startWordNode.NodeId: open[0]}
 	goalNodeId := int64(-1)
 

@@ -32,10 +32,10 @@ func New(b bot.Bot) *RememberPlugin {
 	return p
 }
 
-func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RememberPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if strings.ToLower(message.Body) == "quote" && message.Command {
 		q := p.randQuote()
-		p.bot.Send(bot.Message, message.Channel, q)
+		p.bot.Send(c, bot.Message, message.Channel, q)
 
 		// is it evil not to remember that the user said quote?
 		return true
@@ -82,7 +82,7 @@ func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...int
 				}
 				if err := fact.Save(p.db); err != nil {
 					log.Error().Err(err)
-					p.bot.Send(bot.Message, message.Channel, "Tell somebody I'm broke.")
+					p.bot.Send(c, bot.Message, message.Channel, "Tell somebody I'm broke.")
 				}
 
 				log.Info().
@@ -92,13 +92,13 @@ func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...int
 				// sorry, not creative with names so we're reusing msg
 				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
 					message.User.Name, msg)
-				p.bot.Send(bot.Message, message.Channel, msg)
+				p.bot.Send(c, bot.Message, message.Channel, msg)
 				p.recordMsg(message)
 				return true
 
 			}
 		}
-		p.bot.Send(bot.Message, message.Channel, "Sorry, I don't know that phrase.")
+		p.bot.Send(c, bot.Message, message.Channel, "Sorry, I don't know that phrase.")
 		p.recordMsg(message)
 		return true
 	}
@@ -107,13 +107,13 @@ func (p *RememberPlugin) message(kind bot.Kind, message msg.Message, args ...int
 	return false
 }
 
-func (p *RememberPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RememberPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "remember will let you quote your idiot friends. Just type " +
 		"!remember <nick> <snippet> to remember what they said. Snippet can " +
 		"be any part of their message. Later on, you can ask for a random " +
 		"!quote."
 
-	p.bot.Send(bot.Message, message.Channel, msg)
+	p.bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
 

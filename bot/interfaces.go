@@ -36,7 +36,7 @@ type ImageAttachment struct {
 }
 
 type Kind int
-type Callback func(Kind, msg.Message, ...interface{}) bool
+type Callback func(Connector, Kind, msg.Message, ...interface{}) bool
 type CallbackMap map[string]map[Kind][]Callback
 
 // Bot interface serves to allow mocking of the actual bot
@@ -47,12 +47,14 @@ type Bot interface {
 	DB() *sqlx.DB
 	// Who lists users in a particular channel
 	Who(string) []user.User
+	// WhoAmI gives a nick for the bot
+	WhoAmI() string
 	// AddPlugin registers a new plugin handler
 	AddPlugin(Plugin)
 	// First arg should be one of bot.Message/Reply/Action/etc
-	Send(Kind, ...interface{}) (string, error)
+	Send(Connector, Kind, ...interface{}) (string, error)
 	// First arg should be one of bot.Message/Reply/Action/etc
-	Receive(Kind, msg.Message, ...interface{}) bool
+	Receive(Connector, Kind, msg.Message, ...interface{}) bool
 	// Register a callback
 	Register(Plugin, Kind, Callback)
 
@@ -63,6 +65,7 @@ type Bot interface {
 	GetEmojiList() map[string]string
 	RegisterFilter(string, func(string) string)
 	RegisterWeb(string, string)
+	DefaultConnector() Connector
 }
 
 // Connector represents a server connection to a chat service

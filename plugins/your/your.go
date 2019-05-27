@@ -30,7 +30,7 @@ func New(b bot.Bot) *YourPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *YourPlugin) message(kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *YourPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	maxLen := p.config.GetInt("your.maxlength", 140)
 	if len(message.Body) > maxLen {
 		return false
@@ -46,14 +46,14 @@ func (p *YourPlugin) message(kind bot.Kind, message msg.Message, args ...interfa
 		}
 	}
 	if msg != message.Body {
-		p.bot.Send(bot.Message, message.Channel, msg)
+		p.bot.Send(c, bot.Message, message.Channel, msg)
 		return true
 	}
 	return false
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *YourPlugin) help(kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.bot.Send(bot.Message, message.Channel, "Your corrects people's grammar.")
+func (p *YourPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Your corrects people's grammar.")
 	return true
 }
