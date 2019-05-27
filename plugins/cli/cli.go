@@ -10,7 +10,6 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
-	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -83,13 +82,7 @@ func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *CliPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
-	f, err := ioutil.ReadFile("plugins/cli/index.html")
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-	w.Write(f)
+	fmt.Fprint(w, indexHTML)
 }
 
 // Completing the Connector interface, but will not actually be a connector
