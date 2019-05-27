@@ -4,8 +4,10 @@ package counter
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +43,20 @@ type alias struct {
 	ID       int64
 	Item     string
 	PointsTo string `db:"points_to"`
+}
+
+// GetItems returns all counters
+func GetAllItems(db *sqlx.DB) ([]Item, error) {
+	var items []Item
+	err := db.Select(&items, `select * from counter`)
+	if err != nil {
+		return nil, err
+	}
+	// Don't forget to embed the DB into all of that shiz
+	for i := range items {
+		items[i].DB = db
+	}
+	return items, nil
 }
 
 // GetItems returns all counters for a subject
@@ -201,6 +217,7 @@ func New(b bot.Bot) *CounterPlugin {
 	}
 	b.Register(cp, bot.Message, cp.message)
 	b.Register(cp, bot.Help, cp.help)
+	cp.registerWeb()
 	return cp
 }
 
@@ -533,4 +550,68 @@ func everyDayImShuffling(vals []string) []string {
 		ret[i] = vals[randIndex]
 	}
 	return ret
+}
+
+func (p *CounterPlugin) registerWeb() {
+	http.HandleFunc("/counter/api", p.handleCounterAPI)
+	http.HandleFunc("/counter", p.handleCounter)
+	p.Bot.RegisterWeb("/counter", "Counter")
+}
+
+func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, html)
+}
+
+func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		info := struct {
+			User   string
+			Thing  string
+			Action string
+		}{}
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&info)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprint(w, err)
+			return
+		}
+		log.Debug().
+			Interface("postbody", info).
+			Msg("Got a POST")
+		item, err := GetItem(p.DB, info.User, info.Thing)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("subject", info.User).
+				Str("itemName", info.Thing).
+				Msg("error finding item")
+			w.WriteHeader(404)
+			fmt.Fprint(w, err)
+			return
+		}
+		if info.Action == "++" {
+			item.UpdateDelta(1)
+		} else if info.Action == "--" {
+			item.UpdateDelta(-1)
+		} else {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Invalid increment")
+			return
+		}
+
+	}
+	all, err := GetAllItems(p.DB)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	data, err := json.Marshal(all)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	fmt.Fprint(w, string(data))
 }
