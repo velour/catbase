@@ -810,28 +810,3 @@ func (p *FactoidPlugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, factoidIndex)
 }
-
-func (p *FactoidPlugin) serveQueryOld(w http.ResponseWriter, r *http.Request) {
-	context := make(map[string]interface{})
-	funcMap := template.FuncMap{
-		// The name "title" is what the function will be called in the template text.
-		"linkify": linkify,
-	}
-	if e := r.FormValue("entry"); e != "" {
-		entries, err := getFacts(p.db, e, "")
-		if err != nil {
-			log.Error().Err(err).Msg("Web error searching")
-		}
-		context["Count"] = fmt.Sprintf("%d", len(entries))
-		context["Entries"] = entries
-		context["Search"] = e
-	}
-	t, err := template.New("factoidIndex").Funcs(funcMap).Parse(factoidIndex)
-	if err != nil {
-		log.Error().Err(err)
-	}
-	err = t.Execute(w, context)
-	if err != nil {
-		log.Error().Err(err)
-	}
-}
