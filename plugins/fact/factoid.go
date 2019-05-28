@@ -4,6 +4,7 @@ package fact
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"math/rand"
@@ -759,6 +760,7 @@ func (p *FactoidPlugin) factTimer(c bot.Connector, channel string) {
 
 // Register any web URLs desired
 func (p *FactoidPlugin) registerWeb() {
+	http.HandleFunc("/factoid/api", p.serveAPI)
 	http.HandleFunc("/factoid/req", p.serveQuery)
 	http.HandleFunc("/factoid", p.serveQuery)
 	p.Bot.RegisterWeb("/factoid", "Factoid")
@@ -773,8 +775,43 @@ func linkify(text string) template.HTML {
 	}
 	return template.HTML(strings.Join(parts, " "))
 }
+func (p *FactoidPlugin) serveAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		fmt.Fprintf(w, "Incorrect HTTP method")
+		return
+	}
+	info := struct {
+		Query string `json:"query"`
+	}{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&info)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+
+	entries, err := getFacts(p.db, info.Query, "")
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+
+	data, err := json.Marshal(entries)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	w.Write(data)
+}
 
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, factoidIndex)
+}
+
+func (p *FactoidPlugin) serveQueryOld(w http.ResponseWriter, r *http.Request) {
 	context := make(map[string]interface{})
 	funcMap := template.FuncMap{
 		// The name "title" is what the function will be called in the template text.

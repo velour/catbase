@@ -9,106 +9,101 @@ package fact
 
 var factoidIndex = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>Factoids</title>
-	<link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css" integrity="sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w" crossorigin="anonymous">
+    <!-- Load required Bootstrap and BootstrapVue CSS -->
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" />
 
-	<!-- DataTables CSS -->
-	<link rel="stylesheet" type="text/css" href="https://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
-	 
-	<!-- jQuery -->
-	<script type="text/javascript" charset="utf8" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.2.min.js"></script>
-	 
-	<!-- DataTables -->
-	<script type="text/javascript" charset="utf8" src="https://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+    <!-- Load polyfills to support older browsers -->
+    <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CMutationObserver"></script>
 
+    <!-- Load Vue followed by BootstrapVue -->
+    <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
+    <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
+    <script src="https://unpkg.com/vue-router"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Factoids</title>
 </head>
 <body>
-	<div>
-		<form action="/factoid" method="GET" class="pure-form">
-			<fieldset>
-				<legend>Search for a factoid</legend>
-				<input type="text" name="entry" placeholder="trigger" value="{{.Search}}" />
-				<button type="submit" class="pure-button notice">Find</button>
-			</fieldset>
-		</form>
-	</div>
 
-	<div>
-		<style scoped>
+<div id="app">
+    <h1>Factoids</h1>
+    <b-alert
+            dismissable
+            variant="error"
+            v-if="err"
+            @dismissed="err = ''">
+        {{ err }}
+    </b-alert>
+    <b-form @submit="runQuery">
+    <b-container>
+        <b-row>
+            <b-col cols="10">
+                <b-input v-model="query"></b-input>
+            </b-col>
+            <b-col cols="2">
+                <b-button>Search</b-button>
+            </b-col>
+        </b-row>
+        <b-row>
+            <b-col>
+            <b-table
+                    fixed
+                    :items="results"
+                    :fields="fields"></b-table>
+            </b-col>
+        </b-row>
+    </b-container>
+    </b-form>
+</div>
 
-	        .pure-button-success,
-	        .pure-button-error,
-	        .pure-button-warning,
-	        .pure-button-secondary {
-	            color: white;
-	            border-radius: 4px;
-	            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-	            padding: 2px;
-	        }
-
-	        .pure-button-success {
-	            background: rgb(76, 201, 71); /* this is a green */
-	        }
-
-	        .pure-button-error {
-	            background: rgb(202, 60, 60); /* this is a maroon */
-	        }
-
-	        .pure-button-warning {
-	            background: orange;
-	        }
-
-	        .pure-button-secondary {
-	            background: rgb(95, 198, 218); /* this is a light blue */
-	        }
-
-	    </style>
-
-		{{if .Error}}
-		<span id="error" class="pure-button-error">{{.Error}}</span>
-		{{end}}
-
-		{{if .Count}}
-		<span id="count" class="pure-button-success">Found {{.Count}} entries.</span>
-		{{end}}
-	</div>
-
-	{{if .Entries}}
-	<div style="padding-top: 1em;">
-		<table class="pure-table" id="factTable">
-			<thead>
-				<tr>
-					<th>Trigger</th>
-					<th>Full Text</th>
-					<th>Author</th>
-					<th># Hits</th>
-				</tr>
-			</thead>
-
-			<tbody>
-				{{range .Entries}}
-				<tr>
-					<td>{{linkify .Fact}}</td>
-					<td>{{linkify .Tidbit}}</td>
-					<td>{{linkify .Owner}}</td>
-					<td>{{.Count}}</td>
-				</tr>
-				{{end}}
-			</tbody>
-		</table>
-	</div>
-	{{end}}
-
-	<script>
-	$(document).ready(function(){
-		$('#factTable').dataTable({
-			"bPaginate": false
-		});
-	});
-	</script>
+<script>
+    var router = new VueRouter({
+    mode: 'history',
+    routes: []
+    });
+    var app = new Vue({
+        el: '#app',
+        router,
+        data: {
+            err: '',
+            query: '',
+            results: [],
+            fields: [
+                { key: 'Fact', sortable: true },
+                { key: 'Tidbit', sortable: true },
+                { key: 'Owner', sortable: true },
+                { key: 'Count' }
+            ]
+        },
+        mounted() {
+            if (this.$route.query.query) {
+                this.query = this.$route.query.query;
+                this.runQuery()
+            }
+        },
+        computed: {
+            result0: function() {
+                return this.results[0] || "";
+            }
+        },
+        methods: {
+            runQuery: function(evt) {
+                if (evt) {
+                    evt.preventDefault();
+                    evt.stopPropagation()
+                }
+                axios.post('/factoid/api', {query: this.query})
+                    .then(resp => {
+                        this.results = resp.data;
+                    })
+                    .catch(err => (this.err = err));
+            }
+        }
+    })
+</script>
 </body>
-
 </html>
 `
