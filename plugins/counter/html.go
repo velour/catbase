@@ -14,6 +14,7 @@ var html = `
         <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
         <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
         <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+		<title>Counters</title>
     </head>
     <body>
 
