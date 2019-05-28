@@ -12,7 +12,7 @@ var factoidIndex = `
 <html>
 <head>
 	<title>Factoids</title>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/0.6.0/base-min.css">
+	<link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css" integrity="sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w" crossorigin="anonymous">
 
 	<!-- DataTables CSS -->
 	<link rel="stylesheet" type="text/css" href="https://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
@@ -24,6 +24,7 @@ var factoidIndex = `
 	<script type="text/javascript" charset="utf8" src="https://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
 
 </head>
+<body>
 	<div>
 		<form action="/factoid" method="GET" class="pure-form">
 			<fieldset>
@@ -107,6 +108,7 @@ var factoidIndex = `
 		});
 	});
 	</script>
+</body>
 
 </html>
 `

@@ -117,6 +117,8 @@ var indexHTML = `
             },
             send(evt) {
                 evt.preventDefault();
+				evt.stopPropagation()
+				this.input = "";
                 if (!this.authenticated) {
                     console.log("User is a bot.");
                     this.err = "User appears to be a bot.";
