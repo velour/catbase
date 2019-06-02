@@ -3,7 +3,9 @@
 package admin
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -18,7 +20,7 @@ import (
 // This is a admin plugin to serve as an example and quick copy/paste for new plugins.
 
 type AdminPlugin struct {
-	Bot bot.Bot
+	bot bot.Bot
 	db  *sqlx.DB
 	cfg *config.Config
 
@@ -28,12 +30,13 @@ type AdminPlugin struct {
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface
 func New(b bot.Bot) *AdminPlugin {
 	p := &AdminPlugin{
-		Bot: b,
+		bot: b,
 		db:  b.DB(),
 		cfg: b.Config(),
 	}
 	b.Register(p, bot.Message, p.message)
 	b.Register(p, bot.Help, p.help)
+	p.registerWeb()
 	return p
 }
 
@@ -65,7 +68,7 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 	if strings.ToLower(body) == "shut up" {
 		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
 		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
-		p.Bot.Send(conn, bot.Message, message.Channel, "Okay. I'll be back later.")
+		p.bot.Send(conn, bot.Message, message.Channel, "Okay. I'll be back later.")
 		p.quiet = true
 		go func() {
 			select {
@@ -79,19 +82,19 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 
 	parts := strings.Split(body, " ")
 	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
-		p.Bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
+		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "set" && len(parts) > 2 {
 		p.cfg.Set(parts[1], strings.Join(parts[2:], " "))
-		p.Bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
 		return true
 	}
 	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
-		p.Bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
+		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "get" && len(parts) == 2 {
 		v := p.cfg.Get(parts[1], "<unknown>")
-		p.Bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
 		return true
 	}
 
@@ -105,10 +108,10 @@ func (p *AdminPlugin) handleVariables(conn bot.Connector, message msg.Message) b
 
 		_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
 		if err != nil {
-			p.Bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Error().Err(err)
 		} else {
-			p.Bot.Send(conn, bot.Message, message.Channel, "Removed.")
+			p.bot.Send(conn, bot.Message, message.Channel, "Removed.")
 		}
 
 		return true
@@ -126,27 +129,63 @@ func (p *AdminPlugin) handleVariables(conn bot.Connector, message msg.Message) b
 	row := p.db.QueryRow(`select count(*) from variables where value = ?`, variable, value)
 	err := row.Scan(&count)
 	if err != nil {
-		p.Bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+		p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 		log.Error().Err(err)
 		return true
 	}
 
 	if count > 0 {
-		p.Bot.Send(conn, bot.Message, message.Channel, "I've already got that one.")
+		p.bot.Send(conn, bot.Message, message.Channel, "I've already got that one.")
 	} else {
 		_, err := p.db.Exec(`INSERT INTO variables (name, value) VALUES (?, ?)`, variable, value)
 		if err != nil {
-			p.Bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Error().Err(err)
 			return true
 		}
-		p.Bot.Send(conn, bot.Message, message.Channel, "Added.")
+		p.bot.Send(conn, bot.Message, message.Channel, "Added.")
 	}
 	return true
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *AdminPlugin) help(conn bot.Connector, kind bot.Kind, m msg.Message, args ...interface{}) bool {
-	p.Bot.Send(conn, bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
+	p.bot.Send(conn, bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
 	return true
+}
+
+func (p *AdminPlugin) registerWeb() {
+	http.HandleFunc("/vars/api", p.handleWebAPI)
+	http.HandleFunc("/vars", p.handleWeb)
+	p.bot.RegisterWeb("/vars", "Variables")
+}
+
+func (p *AdminPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, varIndex)
+}
+
+func (p *AdminPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
+	var configEntries []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	q := `select key, value from config`
+	err := p.db.Select(&configEntries, q)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Error getting config entries.")
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	for i, e := range configEntries {
+		if strings.Contains(e.Value, ";;") {
+			e.Value = strings.ReplaceAll(e.Value, ";;", ", ")
+			e.Value = fmt.Sprintf("[%s]", e.Value)
+			configEntries[i] = e
+		}
+	}
+	j, _ := json.Marshal(configEntries)
+	fmt.Fprintf(w, "%s", j)
 }
