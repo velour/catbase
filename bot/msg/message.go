@@ -14,6 +14,7 @@ type Messages []Message
 type Message struct {
 	User           *user.User
 	Channel, Body  string
+	IsIM           bool
 	Raw            string
 	Command        bool
 	Action         bool
