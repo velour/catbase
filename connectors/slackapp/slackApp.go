@@ -87,6 +87,11 @@ func (s *SlackApp) Serve() error {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 		body := buf.String()
+		var raw interface{}
+		json.Unmarshal(json.RawMessage(body), &raw)
+		log.Debug().
+			Interface("raw", raw).
+			Msg("Slack event")
 		eventsAPIEvent, e := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.verification}))
 		if e != nil {
 			log.Error().Err(e)
@@ -148,6 +153,7 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 	}
 
 	log.Debug().
+		Interface("event", msg).
 		Str("type", msg.SubType).
 		Msg("accepting a message")
 
@@ -389,6 +395,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 		Body:    text,
 		Raw:     m.Text,
 		Channel: m.Channel,
+		IsIM:    m.ChannelType == "im",
 		Command: isCmd,
 		Action:  isAction,
 		Time:    tstamp,
