@@ -29,7 +29,7 @@ import (
 )
 
 const DefaultRing = 5
-const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .Action}}* {{.User.Name}}{{else}}<{{.User.Name}}>{{end}} {{.Body}}\n"
+const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .TopicChange}}*** {{.User.Name}}{{else if .Action}}* {{.User.Name}}{{else}}<{{.User.Name}}>{{end}} {{.Body}}\n"
 
 // 11:10AM DBG connectors/slackapp/slackApp.go:496 > Slack event dir=logs raw={"Action":false,"AdditionalData":
 // {"RAW_SLACK_TIMESTAMP":"1559920235.001100"},"Body":"aoeu","Channel":"C0S04SMRC","ChannelName":"test",
@@ -187,15 +187,15 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 	isItMe := msg.BotID != "" && msg.BotID == s.myBotID
 	if !isItMe && msg.ThreadTimeStamp == "" {
 		m := s.buildMessage(msg)
-		if err := s.log(m); err != nil {
-			log.Fatal().Err(err).Msg("Error logging message")
-		}
 		if m.Time.Before(s.lastRecieved) {
 			log.Debug().
 				Time("ts", m.Time).
 				Interface("lastRecv", s.lastRecieved).
 				Msg("Ignoring message")
 		} else {
+			if err := s.log(m); err != nil {
+				log.Fatal().Err(err).Msg("Error logging message")
+			}
 			s.lastRecieved = m.Time
 			s.event(s, bot.Message, m)
 		}
@@ -511,6 +511,25 @@ func (s *SlackApp) Who(id string) []string {
 // log writes to a <slackapp.log.dir>/<channel>.log
 // Uses slackapp.log.format to write entries
 func (s *SlackApp) log(raw msg.Message) error {
+
+	// Do some filtering and fixing up front
+	if raw.Body == "" {
+		return nil
+	}
+
+	data := struct {
+		msg.Message
+		TopicChange bool
+	}{
+		Message: raw,
+	}
+
+	if strings.Contains(raw.Body, "set the channel topic: ") {
+		topic := strings.SplitN(raw.Body, "set the channel topic: ", 2)
+		data.Body = "changed topic to " + topic[1]
+		data.TopicChange = true
+	}
+
 	dir := path.Join(s.config.Get("slackapp.log.dir", "logs"), raw.ChannelName)
 	now := time.Now()
 	fname := now.Format("20060102") + ".log"
@@ -536,7 +555,7 @@ func (s *SlackApp) log(raw msg.Message) error {
 	}
 	defer f.Close()
 
-	if err := s.logFormat.Execute(f, raw); err != nil {
+	if err := s.logFormat.Execute(f, data); err != nil {
 		return err
 	}
 
