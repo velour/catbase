@@ -69,3 +69,4 @@ util/*/files
 util/*/files
 run.sh
 .idea
+logs

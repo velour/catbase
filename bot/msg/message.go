@@ -12,10 +12,14 @@ type Log Messages
 type Messages []Message
 
 type Message struct {
-	User           *user.User
-	Channel, Body  string
+	User *user.User
+	// With Slack, channel is the ID of a channel
+	Channel string
+	// With slack, channelName is the nice name of a channel
+	ChannelName    string
+	Body           string
 	IsIM           bool
-	Raw            string
+	Raw            interface{}
 	Command        bool
 	Action         bool
 	Time           time.Time
