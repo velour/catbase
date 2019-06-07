@@ -37,6 +37,7 @@ import (
 	"github.com/velour/catbase/plugins/rpgORdie"
 	"github.com/velour/catbase/plugins/rss"
 	"github.com/velour/catbase/plugins/sisyphus"
+	"github.com/velour/catbase/plugins/stock"
 	"github.com/velour/catbase/plugins/talker"
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/tldr"
@@ -122,6 +123,7 @@ func main() {
 	b.AddPlugin(couldashouldawoulda.New(b))
 	b.AddPlugin(nerdepedia.New(b))
 	b.AddPlugin(tldr.New(b))
+	b.AddPlugin(stock.New(b))
 	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
