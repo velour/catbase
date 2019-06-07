@@ -9,9 +9,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -25,7 +28,15 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-const DEFAULT_RING = 5
+const DefaultRing = 5
+const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .Action}}* {{.User.Name}}{{else}}<{{.User.Name}}>{{end}} {{.Body}}\n"
+
+// 11:10AM DBG connectors/slackapp/slackApp.go:496 > Slack event dir=logs raw={"Action":false,"AdditionalData":
+// {"RAW_SLACK_TIMESTAMP":"1559920235.001100"},"Body":"aoeu","Channel":"C0S04SMRC","ChannelName":"test",
+// "Command":false,"Host":"","IsIM":false,"Raw":{"channel":"C0S04SMRC","channel_type":"channel",
+// "event_ts":1559920235.001100,"files":null,"text":"aoeu","thread_ts":"","ts":"1559920235.001100",
+// "type":"message","upload":false,"user":"U0RLUDELD"},"Time":"2019-06-07T11:10:35.0000011-04:00",
+// "User":{"Admin":false,"ID":"U0RLUDELD","Name":"flyngpngn"}}
 
 type SlackApp struct {
 	bot    bot.Bot
@@ -39,15 +50,21 @@ type SlackApp struct {
 
 	lastRecieved time.Time
 
-	myBotID string
-	users   map[string]string
-	emoji   map[string]string
+	myBotID  string
+	users    map[string]*slack.User
+	emoji    map[string]string
+	channels map[string]*slack.Channel
 
 	event bot.Callback
 
 	msgIDBuffer *ring.Ring
+
+	logFormat *template.Template
 }
 
+func fixDate(input time.Time, format string) string {
+	return input.Format(format)
+}
 func New(c *config.Config) *SlackApp {
 	token := c.Get("slack.token", "NONE")
 	if token == "NONE" {
@@ -56,11 +73,17 @@ func New(c *config.Config) *SlackApp {
 
 	api := slack.New(token, slack.OptionDebug(false))
 
-	idBuf := ring.New(c.GetInt("ringSize", DEFAULT_RING))
+	idBuf := ring.New(c.GetInt("ringSize", DefaultRing))
 	for i := 0; i < idBuf.Len(); i++ {
 		idBuf.Value = ""
 		idBuf = idBuf.Next()
 	}
+
+	tplTxt := c.GetString("slackapp.log.format", defaultLogFormat)
+	funcs := template.FuncMap{
+		"fixDate": fixDate,
+	}
+	tpl := template.Must(template.New("log").Funcs(funcs).Parse(tplTxt))
 
 	return &SlackApp{
 		api:          api,
@@ -70,9 +93,11 @@ func New(c *config.Config) *SlackApp {
 		verification: c.Get("slack.verification", "NONE"),
 		myBotID:      c.Get("slack.botid", ""),
 		lastRecieved: time.Now(),
-		users:        make(map[string]string),
+		users:        make(map[string]*slack.User),
 		emoji:        make(map[string]string),
+		channels:     make(map[string]*slack.Channel),
 		msgIDBuffer:  idBuf,
+		logFormat:    tpl,
 	}
 }
 
@@ -87,11 +112,6 @@ func (s *SlackApp) Serve() error {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 		body := buf.String()
-		var raw interface{}
-		json.Unmarshal(json.RawMessage(body), &raw)
-		log.Debug().
-			Interface("raw", raw).
-			Msg("Slack event")
 		eventsAPIEvent, e := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.verification}))
 		if e != nil {
 			log.Error().Err(e)
@@ -163,9 +183,13 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 			Msg("Got a duplicate message from server")
 		return
 	}
+
 	isItMe := msg.BotID != "" && msg.BotID == s.myBotID
 	if !isItMe && msg.ThreadTimeStamp == "" {
 		m := s.buildMessage(msg)
+		if err := s.log(m); err != nil {
+			log.Fatal().Err(err).Msg("Error logging message")
+		}
 		if m.Time.Before(s.lastRecieved) {
 			log.Debug().
 				Time("ts", m.Time).
@@ -380,33 +404,57 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 
 	isAction := m.SubType == "me_message"
 
+	// We have to try a few layers to get a valid name for the user because Slack
+	name := "UNKNOWN"
 	u, _ := s.getUser(m.User)
-	if m.Username != "" {
-		u = m.Username
+	if u != nil {
+		name = u.Name
 	}
+	if m.Username != "" && u == nil {
+		name = m.Username
+	}
+	ch, _ := s.getChannel(m.Channel)
 
 	tstamp := slackTStoTime(m.TimeStamp)
 
 	return msg.Message{
 		User: &user.User{
 			ID:   m.User,
-			Name: u,
+			Name: name,
 		},
-		Body:    text,
-		Raw:     m.Text,
-		Channel: m.Channel,
-		IsIM:    m.ChannelType == "im",
-		Command: isCmd,
-		Action:  isAction,
-		Time:    tstamp,
+		Body:        text,
+		Raw:         m,
+		Channel:     m.Channel,
+		ChannelName: ch.Name,
+		IsIM:        m.ChannelType == "im",
+		Command:     isCmd,
+		Action:      isAction,
+		Time:        tstamp,
 		AdditionalData: map[string]string{
 			"RAW_SLACK_TIMESTAMP": m.TimeStamp,
 		},
 	}
 }
 
+func (s *SlackApp) getChannel(id string) (*slack.Channel, error) {
+	if ch, ok := s.channels[id]; ok {
+		return ch, nil
+	}
+
+	log.Debug().
+		Str("id", id).
+		Msg("Channel not known, requesting info")
+
+	ch, err := s.api.GetChannelInfo(id)
+	if err != nil {
+		return nil, err
+	}
+	s.channels[id] = ch
+	return s.channels[id], nil
+}
+
 // Get username for Slack user ID
-func (s *SlackApp) getUser(id string) (string, error) {
+func (s *SlackApp) getUser(id string) (*slack.User, error) {
 	if name, ok := s.users[id]; ok {
 		return name, nil
 	}
@@ -416,9 +464,9 @@ func (s *SlackApp) getUser(id string) (string, error) {
 		Msg("User not already found, requesting info")
 	u, err := s.api.GetUserInfo(id)
 	if err != nil {
-		return "UNKNOWN", err
+		return nil, err
 	}
-	s.users[id] = u.Name
+	s.users[id] = u
 	return s.users[id], nil
 }
 
@@ -453,8 +501,44 @@ func (s *SlackApp) Who(id string) []string {
 				Str("user", m).
 				Msg("Couldn't get user")
 			continue
+			/**/
 		}
-		ret = append(ret, u)
+		ret = append(ret, u.Name)
 	}
 	return ret
+}
+
+// log writes to a <slackapp.log.dir>/<channel>.log
+// Uses slackapp.log.format to write entries
+func (s *SlackApp) log(raw msg.Message) error {
+	dir := path.Join(s.config.Get("slackapp.log.dir", "logs"), raw.ChannelName)
+	now := time.Now()
+	fname := now.Format("20060102") + ".log"
+	path := path.Join(dir, fname)
+
+	log.Debug().
+		Interface("raw", raw).
+		Str("dir", dir).
+		Msg("Slack event")
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Error().
+			Err(err).
+			Msg("Could not create log directory")
+		return err
+	}
+
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal().
+			Err(err).
+			Msg("Error opening log file")
+	}
+	defer f.Close()
+
+	if err := s.logFormat.Execute(f, raw); err != nil {
+		return err
+	}
+
+	return f.Sync()
 }

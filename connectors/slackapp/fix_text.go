@@ -1,6 +1,7 @@
 package slackapp
 
 import (
+	"github.com/nlopes/slack"
 	"unicode/utf8"
 )
 
@@ -13,7 +14,7 @@ import (
 // • Strips < and > surrounding links.
 //
 // This was directly bogarted from velour/chat with emoji conversion removed.
-func fixText(findUser func(id string) (string, error), text string) string {
+func fixText(findUser func(id string) (*slack.User, error), text string) string {
 	var output []rune
 	for len(text) > 0 {
 		r, i := utf8.DecodeRuneInString(text)
@@ -48,7 +49,7 @@ func fixText(findUser func(id string) (string, error), text string) string {
 	return string(output)
 }
 
-func fixTag(findUser func(string) (string, error), tag []rune) ([]rune, bool) {
+func fixTag(findUser func(string) (*slack.User, error), tag []rune) ([]rune, bool) {
 	switch {
 	case hasPrefix(tag, "@U"):
 		if i := indexRune(tag, '|'); i >= 0 {
@@ -56,7 +57,7 @@ func fixTag(findUser func(string) (string, error), tag []rune) ([]rune, bool) {
 		}
 		if findUser != nil {
 			if u, err := findUser(string(tag[1:])); err == nil {
-				return []rune(u), true
+				return []rune(u.Name), true
 			}
 		}
 		return tag, true
