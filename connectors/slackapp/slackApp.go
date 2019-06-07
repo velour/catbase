@@ -185,27 +185,29 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 	}
 
 	isItMe := msg.BotID != "" && msg.BotID == s.myBotID
+	m := s.buildMessage(msg)
+	if m.Time.Before(s.lastRecieved) {
+		log.Debug().
+			Time("ts", m.Time).
+			Interface("lastRecv", s.lastRecieved).
+			Msg("Ignoring message")
+		return
+	}
+	if err := s.log(m); err != nil {
+		log.Fatal().Err(err).Msg("Error logging message")
+	}
 	if !isItMe && msg.ThreadTimeStamp == "" {
-		m := s.buildMessage(msg)
-		if m.Time.Before(s.lastRecieved) {
-			log.Debug().
-				Time("ts", m.Time).
-				Interface("lastRecv", s.lastRecieved).
-				Msg("Ignoring message")
-		} else {
-			if err := s.log(m); err != nil {
-				log.Fatal().Err(err).Msg("Error logging message")
-			}
-			s.lastRecieved = m.Time
-			s.event(s, bot.Message, m)
-		}
+		s.lastRecieved = m.Time
+		s.event(s, bot.Message, m)
 	} else if msg.ThreadTimeStamp != "" {
 		//we're throwing away some information here by not parsing the correct reply object type, but that's okay
 		s.event(s, bot.Reply, s.buildMessage(msg), msg.ThreadTimeStamp)
+	} else if isItMe {
+		s.event(s, bot.SelfMessage, m)
 	} else {
 		log.Debug().
 			Str("text", msg.Text).
-			Msg("THAT MESSAGE WAS HIDDEN")
+			Msg("Unknown message is hidden")
 	}
 }
 
@@ -408,12 +410,16 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	name := "UNKNOWN"
 	u, _ := s.getUser(m.User)
 	if u != nil {
-		name = u.Name
+		name = u.Profile.DisplayName
 	}
 	if m.Username != "" && u == nil {
 		name = m.Username
 	}
-	ch, _ := s.getChannel(m.Channel)
+
+	chName := m.Channel
+	if ch, _ := s.getChannel(m.Channel); ch != nil {
+		chName = ch.Name
+	}
 
 	tstamp := slackTStoTime(m.TimeStamp)
 
@@ -425,7 +431,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 		Body:        text,
 		Raw:         m,
 		Channel:     m.Channel,
-		ChannelName: ch.Name,
+		ChannelName: chName,
 		IsIM:        m.ChannelType == "im",
 		Command:     isCmd,
 		Action:      isAction,
