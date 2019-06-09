@@ -52,6 +52,7 @@ func (mb *MockBot) Send(c Connector, kind Kind, args ...interface{}) (string, er
 func (mb *MockBot) AddPlugin(f Plugin)                        {}
 func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback) {}
 func (mb *MockBot) RegisterWeb(_, _ string)                   {}
+func (mb *MockBot) GetWebNavigation() []EndPoint              { return nil }
 func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
 	return false
 }

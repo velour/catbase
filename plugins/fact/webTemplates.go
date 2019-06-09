@@ -29,13 +29,18 @@ var factoidIndex = `
 <body>
 
 <div id="app">
-    <h1>Factoids</h1>
+	<b-navbar>
+		<b-navbar-brand>Factoids</b-navbar-brand>
+		<b-navbar-nav>
+			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Factoid'">{{ "{{ item.Name }}" }}</b-nav-item>
+		</b-navbar-nav>
+	</b-navbar>
     <b-alert
             dismissable
             variant="error"
             v-if="err"
             @dismissed="err = ''">
-        {{ err }}
+        {{ "{{ err }}" }}
     </b-alert>
     <b-form @submit="runQuery">
     <b-container>
@@ -69,6 +74,7 @@ var factoidIndex = `
         router,
         data: {
             err: '',
+			nav: {{ .Nav }},
             query: '',
             results: [],
             fields: [

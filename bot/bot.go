@@ -3,7 +3,6 @@
 package bot
 
 import (
-	"html/template"
 	"net/http"
 	"reflect"
 	"strings"
@@ -38,12 +37,16 @@ type bot struct {
 	version string
 
 	// The entries to the bot's HTTP interface
-	httpEndPoints map[string]string
+	httpEndPoints []EndPoint
 
 	// filters registered by plugins
 	filters map[string]func(string) string
 
 	callbacks CallbackMap
+}
+
+type EndPoint struct {
+	Name, URL string
 }
 
 // Variable represents a $var replacement
@@ -73,7 +76,7 @@ func New(config *config.Config, connector Connector) Bot {
 		me:             users[0],
 		logIn:          logIn,
 		logOut:         logOut,
-		httpEndPoints:  make(map[string]string),
+		httpEndPoints:  make([]EndPoint, 0),
 		filters:        make(map[string]func(string) string),
 		callbacks:      make(CallbackMap),
 	}
@@ -131,46 +134,6 @@ func (b *bot) Who(channel string) []user.User {
 		users = append(users, user.New(n))
 	}
 	return users
-}
-
-var rootIndex = `
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>Factoids</title>
-		<link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css" integrity="sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w" crossorigin="anonymous">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-	</head>
-	{{if .EndPoints}}
-	<div style="padding-top: 1em;">
-		<table class="pure-table">
-			<thead>
-				<tr>
-					<th>Plugin</th>
-				</tr>
-			</thead>
-
-			<tbody>
-				{{range $key, $value := .EndPoints}}
-				<tr>
-					<td><a href="{{$value}}">{{$key}}</a></td>
-				</tr>
-				{{end}}
-			</tbody>
-		</table>
-	</div>
-	{{end}}
-</html>
-`
-
-func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
-	context := make(map[string]interface{})
-	context["EndPoints"] = b.httpEndPoints
-	t, err := template.New("rootIndex").Parse(rootIndex)
-	if err != nil {
-		log.Error().Err(err)
-	}
-	t.Execute(w, context)
 }
 
 // IsCmd checks if message is a command and returns its curtailed version
@@ -266,5 +229,5 @@ func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
 }
 
 func (b *bot) RegisterWeb(root, name string) {
-	b.httpEndPoints[name] = root
+	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
 }
