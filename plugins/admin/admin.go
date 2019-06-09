@@ -5,6 +5,7 @@ package admin
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -160,8 +161,10 @@ func (p *AdminPlugin) registerWeb() {
 	p.bot.RegisterWeb("/vars", "Variables")
 }
 
+var tpl = template.Must(template.New("factoidIndex").Parse(varIndex))
+
 func (p *AdminPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, varIndex)
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
 }
 
 func (p *AdminPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {

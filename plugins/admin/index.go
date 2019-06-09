@@ -21,13 +21,18 @@ var varIndex = `
 <body>
 
 <div id="app">
-    <h1>Vars</h1>
+	<b-navbar>
+		<b-navbar-brand>Variables</b-navbar-brand>
+		<b-navbar-nav>
+			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Variables'">{{ "{{ item.Name }}" }}</b-nav-item>
+		</b-navbar-nav>
+	</b-navbar>
     <b-alert
             dismissable
             variant="error"
             v-if="err"
             @dismissed="err = ''">
-        {{ err }}
+        {{ "{{ err }}" }}
     </b-alert>
     <b-container>
         <b-table
@@ -42,8 +47,9 @@ var varIndex = `
     var app = new Vue({
         el: '#app',
         data: {
-            vars: [],
             err: '',
+			nav: {{ .Nav }},
+            vars: [],
             sortBy: 'key',
             fields: [
                 { key: { sortable: true } },

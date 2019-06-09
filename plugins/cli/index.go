@@ -21,13 +21,18 @@ var indexHTML = `
 <body>
 
 <div id="app">
-    <h1>CLI</h1>
+	<b-navbar>
+		<b-navbar-brand>CLI</b-navbar-brand>
+		<b-navbar-nav>
+			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'CLI'">{{ "{{ item.Name }}" }}</b-nav-item>
+		</b-navbar-nav>
+	</b-navbar>
     <b-alert
             dismissable
             variant="error"
             v-if="err"
             @dismissed="err = ''">
-        {{ err }}
+        {{ "{{ err }}" }}
     </b-alert>
     <b-container>
         <b-row>
@@ -80,12 +85,13 @@ var indexHTML = `
     var app = new Vue({
         el: '#app',
         data: {
+            err: '',
+			nav: {{ .Nav }},
             answer: '',
             correct: 0,
             textarea: [],
             user: '',
             input: '',
-            err: '',
         },
         computed: {
             authenticated: function() {
