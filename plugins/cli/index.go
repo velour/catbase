@@ -124,15 +124,14 @@ var indexHTML = `
             send(evt) {
                 evt.preventDefault();
 				evt.stopPropagation()
-				this.input = "";
                 if (!this.authenticated) {
                     console.log("User is a bot.");
                     this.err = "User appears to be a bot.";
                     return;
                 }
                 const payload = {user: this.user, payload: this.input};
-                console.log("Would have posted to /cli/api:" + JSON.stringify(payload));
                 this.addText(this.user, this.input);
+				this.input = "";
                 axios.post('/cli/api', payload)
                     .then(resp => {
                         console.log(JSON.stringify(resp.data));
