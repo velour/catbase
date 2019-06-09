@@ -12,7 +12,7 @@ var indexHTML = `
     <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CMutationObserver"></script>
 
     <!-- Load Vue followed by BootstrapVue -->
-    <script src="//unpkg.com/vue@latest/dist/vue.js"></script>
+    <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
     <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <meta charset="UTF-8">
@@ -82,7 +82,6 @@ var indexHTML = `
 </div>
 
 <script>
-	Vue.config.devtools = true;
     var app = new Vue({
         el: '#app',
         data: {
