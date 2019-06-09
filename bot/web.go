@@ -20,7 +20,7 @@ func (b *bot) GetWebNavigation() []EndPoint {
 	endpoints := b.httpEndPoints
 	moreEndpoints := b.config.GetArray("bot.links", []string{})
 	for _, e := range moreEndpoints {
-		link := strings.Split(e, ":")
+		link := strings.SplitN(e, ":", 2)
 		if len(link) != 2 {
 			continue
 		}
@@ -51,12 +51,12 @@ var rootIndex = `
 <body>
 
 <div id="app">
-	<b-container>
-    <h1>catbase</h1>
-	<b-nav vertical class="w-25">
-		<b-nav-item v-for="item in nav" :href="item.URL">{{ "{{ item.Name }}" }}</b-nav-item>
-	</b-nav>
-	</b-container>
+	<b-navbar>
+		<b-navbar-brand>catbase</b-navbar-brand>
+		<b-navbar-nav>
+			<b-nav-item v-for="item in nav" :href="item.URL">{{ "{{ item.Name }}" }}</b-nav-item>
+		</b-navbar-nav>
+	</b-navbar>
 </div>
 
 <script>
