@@ -81,6 +81,11 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 		return true
 	}
 
+	if strings.ToLower(body) == "password" {
+		p.bot.Send(conn, bot.Message, message.Channel, p.bot.GetPassword())
+		return true
+	}
+
 	parts := strings.Split(body, " ")
 	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
 		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
