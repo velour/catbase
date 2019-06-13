@@ -3,9 +3,12 @@
 package bot
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -43,6 +46,9 @@ type bot struct {
 	filters map[string]func(string) string
 
 	callbacks CallbackMap
+
+	password        string
+	passwordCreated time.Time
 }
 
 type EndPoint struct {
@@ -230,4 +236,16 @@ func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
 
 func (b *bot) RegisterWeb(root, name string) {
 	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
+}
+
+func (b *bot) GetPassword() string {
+	if b.passwordCreated.Before(time.Now().Add(-24 * time.Hour)) {
+		adjs := b.config.GetArray("bot.passwordAdjectives", []string{"very"})
+		nouns := b.config.GetArray("bot.passwordNouns", []string{"noun"})
+		verbs := b.config.GetArray("bot.passwordVerbs", []string{"do"})
+		a, n, v := adjs[rand.Intn(len(adjs))], nouns[rand.Intn(len(nouns))], verbs[rand.Intn(len(verbs))]
+		b.passwordCreated = time.Now()
+		b.password = fmt.Sprintf("%s-%s-%s", a, n, v)
+	}
+	return b.password
 }

@@ -566,9 +566,10 @@ func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
 func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		info := struct {
-			User   string
-			Thing  string
-			Action string
+			User     string
+			Thing    string
+			Action   string
+			Password string
 		}{}
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&info)
@@ -580,6 +581,12 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 		log.Debug().
 			Interface("postbody", info).
 			Msg("Got a POST")
+		if info.Password != p.Bot.GetPassword() {
+			w.WriteHeader(http.StatusForbidden)
+			j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
+			w.Write(j)
+			return
+		}
 		item, err := GetItem(p.DB, info.User, info.Thing)
 		if err != nil {
 			log.Error().

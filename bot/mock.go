@@ -32,6 +32,7 @@ func (mb *MockBot) DB() *sqlx.DB                { return mb.Cfg.DB }
 func (mb *MockBot) Who(string) []user.User      { return []user.User{} }
 func (mb *MockBot) WhoAmI() string              { return "tester" }
 func (mb *MockBot) DefaultConnector() Connector { return nil }
+func (mb *MockBot) GetPassword() string         { return "12345" }
 func (mb *MockBot) Send(c Connector, kind Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case Message:
