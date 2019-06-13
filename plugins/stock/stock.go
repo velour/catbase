@@ -69,10 +69,10 @@ func (p *StockPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messag
 
 		response := "Failed to retrieve data for stock symbol: " + tokens[1]
 
-		cleaned := strings.ReplaceAll(string(body), " ", "")
-		regex := regexp.MustCompile("[0-9][0-9]\\.")
+		regex := regexp.MustCompile("[0-9][0-9]\\. ")
 
-		cleaned = regex.ReplaceAllString(cleaned, "")
+		cleaned := regex.ReplaceAllString(string(body), "")
+		cleaned = strings.ReplaceAll(cleaned, " ", "")
 
 		var info GlobalQuote
 		err = json.Unmarshal([]byte(cleaned), &info)
