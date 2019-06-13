@@ -807,6 +807,8 @@ func (p *FactoidPlugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+var tpl = template.Must(template.New("factoidIndex").Parse(factoidIndex))
+
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, factoidIndex)
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.Bot.GetWebNavigation()})
 }

@@ -1,11 +1,10 @@
-// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
-
 package counter
 
 import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -558,16 +557,19 @@ func (p *CounterPlugin) registerWeb() {
 	p.Bot.RegisterWeb("/counter", "Counter")
 }
 
+var tpl = template.Must(template.New("factoidIndex").Parse(html))
+
 func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, html)
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.Bot.GetWebNavigation()})
 }
 
 func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		info := struct {
-			User   string
-			Thing  string
-			Action string
+			User     string
+			Thing    string
+			Action   string
+			Password string
 		}{}
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&info)
@@ -579,6 +581,12 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 		log.Debug().
 			Interface("postbody", info).
 			Msg("Got a POST")
+		if info.Password != p.Bot.GetPassword() {
+			w.WriteHeader(http.StatusForbidden)
+			j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
+			w.Write(j)
+			return
+		}
 		item, err := GetItem(p.DB, info.User, info.Thing)
 		if err != nil {
 			log.Error().

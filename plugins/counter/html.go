@@ -19,32 +19,36 @@ var html = `
     <body>
 
         <div id="app">
-			<h1>Counters</h1>
+			<b-navbar>
+				<b-navbar-brand>Counters</b-navbar-brand>
+				<b-navbar-nav>
+					<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Counter'">{{ "{{ item.Name }}" }}</b-nav-item>
+				</b-navbar-nav>
+			</b-navbar>
             <b-alert
                 dismissable
-                variant="error"
-                v-if="err"
-                @dismissed="err = ''">
-                    {{ err }}
+				:show="err"
+                variant="error">
+                    {{ "{{ err }}" }}
             </b-alert>
             <b-container>
                 <b-row>
-                    <b-col cols="5">Human test: What is {{ equation }}?</b-col>
+                    <b-col cols="5">Password:</b-col>
                     <b-col><b-input v-model="answer"></b-col>
                 </b-row>
                 <b-row v-for="(counter, user) in counters">
-                    {{ user }}:
+                    {{ "{{ user }}" }}:
                     <b-container>
                         <b-row v-for="(count, thing) in counter">
                             <b-col offset="1">
-                            {{ thing }}:
+                            {{ "{{ thing }}" }}:
                             </b-col>
                             <b-col>
-                                {{ count }}
+                                {{ "{{ count }}" }}
                             </b-col>
                             <b-col cols="2">
-                                <button :disabled="!authenticated" @click="subtract(user,thing,count)">-</button>
-                                <button :disabled="!authenticated" @click="add(user,thing,count)">+</button>
+                                <button @click="subtract(user,thing,count)">-</button>
+                                <button @click="add(user,thing,count)">+</button>
                             </b-col>
                         </b-row>
                     </b-container>
@@ -67,59 +71,29 @@ var html = `
         var app = new Vue({
         	el: '#app',
         	data: {
+                err: '',
+				nav: {{ .Nav }},
                 answer: '',
                 correct: 0,
-                err: '',
-                counters: {
-                    stk5: {
-                        beer: 12,
-                        tea: 84,
-                        coffee: 127
-                    },
-                    flyngpngn: {
-                        beer: 123,
-                        mead: 1,
-                        tea: 130
-                    }
-                }
+                counters: {}
         	},
             mounted() {
                 axios.get('/counter/api')
                     .then(resp => (this.counters = convertData(resp.data)))
                     .catch(err => (this.err = err));
             },
-            computed: {
-                authenticated: function() {
-                    if (Number(this.answer) === this.correct)
-                        return true;
-                    return false;
-                },
-                equation: function() {
-                    const x = Math.floor(Math.random() * 100);
-                    const y = Math.floor(Math.random() * 100);
-                    const z = Math.floor(Math.random() * 100);
-                    const ops = ['+', '-', '*'];
-                    const op1 = ops[Math.floor(Math.random()*3)];
-                    const op2 = ops[Math.floor(Math.random()*3)];
-                    const eq = ""+x+op1+y+op2+z;
-                    this.correct = eval(eq);
-                    return eq
-                }
-            },
         	methods: {
         		add(user, thing, count) {
-                    this.counters[user][thing]++;
 					axios.post('/counter/api',
-						{user: user, thing: thing, action: '++'})
-						.then(resp => (this.counters = convertData(resp.data)))
-						.catch(err => (this.err = err));
+						{user: user, thing: thing, action: '++', password: this.answer})
+						.then(resp => {this.counters = convertData(resp.data); this.err = '';})
+						.catch(err => this.err = err);
                 },
         		subtract(user, thing, count) {
-                    this.counters[user][thing]--;
 					axios.post('/counter/api',
-						{user: user, thing: thing, action: '--'})
-						.then(resp => (this.counters = convertData(resp.data)))
-						.catch(err => (this.err = err));
+						{user: user, thing: thing, action: '--', password: this.answer})
+						.then(resp => {this.counters = convertData(resp.data); this.err = '';})
+						.catch(err => this.err = err);
                 }
         	}
         })

@@ -21,24 +21,23 @@ var indexHTML = `
 <body>
 
 <div id="app">
-    <h1>CLI</h1>
+	<b-navbar>
+		<b-navbar-brand>CLI</b-navbar-brand>
+		<b-navbar-nav>
+			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'CLI'">{{ "{{ item.Name }}" }}</b-nav-item>
+		</b-navbar-nav>
+	</b-navbar>
     <b-alert
             dismissable
             variant="error"
-            v-if="err"
-            @dismissed="err = ''">
-        {{ err }}
+			:show="err">
+        {{ "{{ err }}" }}
     </b-alert>
     <b-container>
-        <b-row>
-            <b-form-group
-                    :label="humanTest"
-                    label-for="input-1"
-                    label-cols="8"
-                    autofocus>
-                <b-input v-model="answer" id="input-1" autocomplete="off"></b-input>
-            </b-form-group>
-        </b-row>
+		<b-row>
+			<b-col cols="5">Password:</b-col>
+			<b-col><b-input v-model="answer"></b-col>
+		</b-row>
         <b-row>
             <b-form-textarea
                     v-sticky-scroll
@@ -80,29 +79,19 @@ var indexHTML = `
     var app = new Vue({
         el: '#app',
         data: {
+            err: '',
+			nav: {{ .Nav }},
             answer: '',
             correct: 0,
             textarea: [],
             user: '',
             input: '',
-            err: '',
         },
         computed: {
             authenticated: function() {
-                if (Number(this.answer) === this.correct && this.user !== '')
+                if (this.user !== '')
                     return true;
                 return false;
-            },
-            humanTest: function() {
-                const x = Math.floor(Math.random() * 100);
-                const y = Math.floor(Math.random() * 100);
-                const z = Math.floor(Math.random() * 100);
-                const ops = ['+', '-', '*'];
-                const op1 = ops[Math.floor(Math.random()*3)];
-                const op2 = ops[Math.floor(Math.random()*3)];
-                const eq = ""+x+op1+y+op2+z;
-                this.correct = eval(eq);
-                return "Human test: What is " + eq + "?";
             },
             text: function() {
                 return this.textarea.join('\n');
@@ -118,20 +107,17 @@ var indexHTML = `
             send(evt) {
                 evt.preventDefault();
 				evt.stopPropagation()
-				this.input = "";
                 if (!this.authenticated) {
-                    console.log("User is a bot.");
-                    this.err = "User appears to be a bot.";
                     return;
                 }
-                const payload = {user: this.user, payload: this.input};
-                console.log("Would have posted to /cli/api:" + JSON.stringify(payload));
+                const payload = {user: this.user, payload: this.input, password: this.answer};
                 this.addText(this.user, this.input);
+				this.input = "";
                 axios.post('/cli/api', payload)
                     .then(resp => {
-                        console.log(JSON.stringify(resp.data));
                         const data = resp.data;
                         this.addText(data.user, data.payload.trim());
+						this.err = '';
                     })
                     .catch(err => (this.err = err));
             }

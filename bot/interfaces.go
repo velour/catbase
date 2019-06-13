@@ -66,6 +66,8 @@ type Bot interface {
 	RegisterFilter(string, func(string) string)
 	RegisterWeb(string, string)
 	DefaultConnector() Connector
+	GetWebNavigation() []EndPoint
+	GetPassword() string
 }
 
 // Connector represents a server connection to a chat service

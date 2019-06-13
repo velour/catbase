@@ -10,6 +10,7 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
+	"html/template"
 	"net/http"
 	"time"
 )
@@ -41,8 +42,9 @@ func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	info := struct {
-		User    string `json:"user"`
-		Payload string `json:"payload"`
+		User     string `json:"user"`
+		Payload  string `json:"payload"`
+		Password string `json:"password"`
 	}{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&info)
@@ -54,6 +56,12 @@ func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 	log.Debug().
 		Interface("postbody", info).
 		Msg("Got a POST")
+	if info.Password != p.bot.GetPassword() {
+		w.WriteHeader(http.StatusForbidden)
+		j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
+		w.Write(j)
+		return
+	}
 
 	p.bot.Receive(p, bot.Message, msg.Message{
 		User: &user.User{
@@ -81,8 +89,10 @@ func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+var tpl = template.Must(template.New("factoidIndex").Parse(indexHTML))
+
 func (p *CliPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, indexHTML)
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
 }
 
 // Completing the Connector interface, but will not actually be a connector
