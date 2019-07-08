@@ -27,7 +27,7 @@ func (vp *VelouremonPlugin) getOrAddPlayer(u *user.User) (*Player, error) {
 }
 
 func (p *Player) string() string {
-	message := fmt.Sprintf("%s : %d HP, %d XP\n", p.Name, p.Health, p.Experience)
+	message := fmt.Sprintf("%s: %d HP, %d XP\n", p.Name, p.Health, p.Experience)
 	for _, creature := range p.Creatures {
 		message += "\t" + strings.ReplaceAll(creature.string(), "\n", "\n\t")
 		message = strings.TrimSuffix(message, "\t")

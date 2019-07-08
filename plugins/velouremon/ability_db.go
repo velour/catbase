@@ -16,7 +16,7 @@ func (vp *VelouremonPlugin) loadAbilities() error {
 
 	for rows.Next() {
 		ability := &Ability{}
-		err := rows.Scan(ability)
+		err := rows.StructScan(ability)
 		if err != nil {
 			log.Error().Err(err)
 			return err
@@ -49,7 +49,7 @@ func (vp *VelouremonPlugin) loadAbilityRefsForCreature(ref *CreatureRef) ([]*Abi
 	abilities := []*AbilityRef{}
 	for rows.Next() {
 		ability := &AbilityRef{}
-		err := rows.Scan(ability)
+		err := rows.StructScan(ability)
 
 		if err != nil {
 			log.Error().Err(err)
@@ -81,4 +81,13 @@ func (vp *VelouremonPlugin) loadAbilityFromRef(ref *AbilityRef) (*Ability, error
 		return nil, err
 	}
 	return ability, nil
+}
+
+func (vp *VelouremonPlugin) saveNewAbility(ability *Ability) error {
+	_, err := vp.db.Exec(`insert into velouremon_abilities (name, damage, heal, shield, weaken, critical) values (?, ?, ?, ?, ?, ?);`, ability.Name, ability.Damage, ability.Heal, ability.Shield, ability.Weaken, ability.Critical)
+	if err != nil {
+		log.Error().Err(err)
+		return err
+	}
+	return nil
 }

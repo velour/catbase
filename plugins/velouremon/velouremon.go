@@ -10,13 +10,10 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
-type VelouremonHandler func(bot.Connector, *Player, []string) bool
-
 type VelouremonPlugin struct {
 	bot       bot.Bot
 	db        *sqlx.DB
 	channel   string
-	handlers  map[string]VelouremonHandler
 	threads   map[string]*Interaction
 	players   []*Player
 	creatures []*Creature
@@ -25,28 +22,25 @@ type VelouremonPlugin struct {
 }
 
 func New(b bot.Bot) *VelouremonPlugin {
-	dur, _ := time.ParseDuration("15m")
-	timer := time.NewTimer(dur)
-
 	vp := &VelouremonPlugin{
 		bot:       b,
 		db:        b.DB(),
 		channel:   "",
-		handlers:  map[string]VelouremonHandler{},
 		threads:   map[string]*Interaction{},
 		players:   []*Player{},
 		creatures: []*Creature{},
 		abilities: []*Ability{},
-		timer:     timer,
+		timer:     time.NewTimer(15 * time.Minute),
 	}
 
 	vp.checkAndBuildDBOrFail()
 	vp.loadFromDB()
 
-	vp.handlers["status"] = vp.handleStatus
-
 	b.Register(vp, bot.Message, vp.message)
+	b.Register(vp, bot.Reply, vp.replyMessage)
 	b.Register(vp, bot.Help, vp.help)
+
+	go randomInteraction(b.DefaultConnector(), vp)
 
 	return vp
 }
@@ -63,16 +57,42 @@ func (vp *VelouremonPlugin) message(c bot.Connector, kind bot.Kind, message msg.
 	tokens := strings.Fields(message.Body)
 	command := strings.ToLower(tokens[0])
 
-	if fun, ok := vp.handlers[command]; ok {
+	if command == "status" {
 		player, err := vp.getOrAddPlayer(message.User)
 		if err != nil {
 			return false
 		}
-		return fun(c, player, tokens[1:])
+		return vp.handleStatus(c, player)
+	} else if len(tokens) > 1 {
+		if command == "add_creature" {
+			return vp.handleAddCreature(c, tokens[1:])
+		} else if command == "add_ability" {
+			return vp.handleAddAbility(c, tokens[1:])
+		}
 	}
 
 	return false
 }
+
+func (vp *VelouremonPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	if !message.Command {
+		return false
+	}
+
+	identifier := args[0].(string)
+	if strings.ToLower(message.User.Name) != strings.ToLower(vp.bot.Config().Get("Nick", "bot")) {
+		if interaction, ok := vp.threads[identifier]; ok {
+			player, err := vp.getOrAddPlayer(message.User)
+			if err != nil {
+				return false
+			}
+			tokens := strings.Fields(message.Body)
+			return interaction.handleMessage(vp, c, player, tokens)
+		}
+	}
+	return false
+}
+
 
 func (vp *VelouremonPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	vp.bot.Send(c, bot.Message, message.Channel, "try something else, this is too complicated for you.")

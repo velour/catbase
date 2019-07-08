@@ -16,7 +16,7 @@ func (vp *VelouremonPlugin) loadPlayers() error {
 
 	for rows.Next() {
 		player := &Player{}
-		err := rows.Scan(player)
+		err := rows.StructScan(player)
 		if err != nil {
 			log.Error().Err(err)
 			return err
@@ -35,7 +35,7 @@ func (vp *VelouremonPlugin) addPlayer(p *user.User) (*Player, error) {
 	player := &Player{
 		ChatID:     p.ID,
 		Name:       p.Name,
-		Health:     128,
+		Health:     255,
 		Experience: 0,
 		Creatures:  []*Creature{},
 	}

@@ -19,11 +19,13 @@ func (vp *VelouremonPlugin) loadCreatures() error {
 			Health:     255,
 			Experience: 0,
 		}
-		err := rows.Scan(creature)
+		err := rows.StructScan(creature)
+		log.Print(err)
 		if err != nil {
 			log.Error().Err(err)
 			return err
 		}
+
 		vp.creatures = append(vp.creatures, creature)
 	}
 	return nil
@@ -52,7 +54,7 @@ func (vp *VelouremonPlugin) loadCreatureRefsForPlayer(player *Player) ([]*Creatu
 	creatures := []*CreatureRef{}
 	for rows.Next() {
 		creature := &CreatureRef{}
-		err := rows.Scan(creature)
+		err := rows.StructScan(creature)
 
 		if err != nil {
 			log.Error().Err(err)
@@ -108,6 +110,15 @@ func (vp *VelouremonPlugin) savePlayerCreatures(player *Player) error {
 
 func (vp *VelouremonPlugin) saveCreatureForPlayer(player *Player, creature *Creature) error {
 	_, err := vp.db.Exec(`update velouremon_creature_ref set health = ?, experience = ? where id = ?;`, creature.ID, creature.Health, creature.Experience)
+	if err != nil {
+		log.Error().Err(err)
+		return err
+	}
+	return nil
+}
+
+func (vp *VelouremonPlugin) saveNewCreature(creature *Creature) error {
+	_, err := vp.db.Exec(`insert into velouremon_creatures (name, defense, attack) values (?, ?, ?);`, creature.Name, creature.Defense, creature.Attack)
 	if err != nil {
 		log.Error().Err(err)
 		return err

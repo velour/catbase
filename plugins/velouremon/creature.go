@@ -1,6 +1,8 @@
 package velouremon
 
 import (
+	"math/rand"
+	"math"
 	"fmt"
 )
 
@@ -27,4 +29,26 @@ func (c *Creature) string() string {
 		message += "\t" + ability.string()
 	}
 	return message
+}
+
+func (vp *VelouremonPlugin) buildOutCreature(c *Creature) *Creature {
+	creature := &Creature{
+		ID: c.ID,
+		Name: c.Name,
+		Health: 255,
+		Experience: int(math.Max(1, rand.NormFloat64() * 100 + 250)),
+		Defense: c.Defense,
+		Attack: c.Attack,
+		Abilities: make([]*Ability, rand.Intn(4)),
+	}
+
+	used := map[int]int{}
+	for i := range creature.Abilities {
+		index := rand.Intn(len(vp.abilities))
+		for _, ok := used[index]; ok; _, ok = used[index] {
+			index = rand.Intn(len(vp.abilities))
+		}
+		creature.Abilities[i] = vp.abilities[index]
+	}
+	return creature
 }
