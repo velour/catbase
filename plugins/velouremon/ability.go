@@ -23,3 +23,11 @@ type AbilityRef struct {
 func (a *Ability) string() string {
 	return fmt.Sprintf("%s : %d DM, %d HL, %d SH, %d WK, %d CR\n", a.Name, a.Damage, a.Heal, a.Shield, a.Weaken, a.Critical)
 }
+
+func (a *Ability) applyCreature(creature, targetCreature *Creature) string {
+	return ""
+}
+
+func (a *Ability) applyPlayer(creature *Creature, targetPlayer *Player) string {
+	return ""
+}

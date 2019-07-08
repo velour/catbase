@@ -87,3 +87,14 @@ func (vp *VelouremonPlugin) handleAddAbility(c bot.Connector, tokens []string) b
 	vp.bot.Send(c, bot.Message, vp.channel, "!add_ability [name] [damage 0-255] [heal 0-255] [shield 0-255] [weaken 0-255] [critical 0-255]")
 	return true
 }
+
+func (vp *VelouremonPlugin) handleBattle(c bot.Connector, player *Player) bool {
+	id, _ := vp.bot.Send(c, bot.Message, vp.channel, "Let's get ready to rumble!")
+	vp.threads[id] = &Interaction {
+		id: id,
+		players: []*Player{player},
+		creatures: []*Creature{},
+	}
+	vp.bot.Send(c, bot.Reply, vp.channel, "Let's get ready to rumble!", id)
+	return true
+}

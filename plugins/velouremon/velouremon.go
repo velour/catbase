@@ -63,6 +63,12 @@ func (vp *VelouremonPlugin) message(c bot.Connector, kind bot.Kind, message msg.
 			return false
 		}
 		return vp.handleStatus(c, player)
+	} else if command == "battle" {
+		player, err := vp.getOrAddPlayer(message.User)
+		if err != nil {
+			return false
+		}
+		return vp.handleBattle(c, player)
 	} else if len(tokens) > 1 {
 		if command == "add_creature" {
 			return vp.handleAddCreature(c, tokens[1:])

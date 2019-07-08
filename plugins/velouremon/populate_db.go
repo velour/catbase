@@ -9,9 +9,9 @@ func (vp *VelouremonPlugin) populateDBWithBaseData() {
 	"Charpov", 10, 10)
 
 	vp.db.Exec(`insert into velouremon_abilities (name, damage, heal, shield, weaken, critical) values (?, ?, ?, ?, ?, ?);`,
-	"Procrastinate", 0, 0, 10, 0, 0)
+	"Heal", 0, 10, 0, 0, 0)
 	vp.db.Exec(`insert into velouremon_abilities (name, damage, heal, shield, weaken, critical) values (?, ?, ?, ?, ?, ?);`,
-	"Defend", 0, 0, 5, 0, 0)
+	"Attack", 10, 0, 0, 0, 0)
 	vp.db.Exec(`insert into velouremon_abilities (name, damage, heal, shield, weaken, critical) values (?, ?, ?, ?, ?, ?);`,
 	"Graduate", 0, 255, 0, 0, 0)
 }
