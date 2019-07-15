@@ -24,17 +24,29 @@ type Story struct {
 }
 
 type Bid struct {
-	ID    int
-	User  string
-	Title string
-	URL   string
-	Bid   int
+	ID     int
+	User   string
+	Title  string
+	URL    string
+	Bid    int
+	Placed int64
+}
+
+func (b Bid) PlacedParsed() time.Time {
+	return time.Unix(b.Placed, 0)
+}
+
+type Balance struct {
+	User    string
+	Balance int
+	Score   int
 }
 
 type WeeklyResult struct {
-	User string
-	Won  int
-	Lost int
+	User  string
+	Won   int
+	Lost  int
+	Score int
 }
 
 func New(db *sqlx.DB) *Webshit {
@@ -45,40 +57,36 @@ func New(db *sqlx.DB) *Webshit {
 
 // setup will create any necessary SQL tables and populate them with minimal data
 func (w *Webshit) setup() {
-	if _, err := w.db.Exec(`create table if not exists webshit_bids (
-		id integer primary key,
+	w.db.MustExec(`create table if not exists webshit_bids (
+		id integer primary key autoincrement,
 		user string,
 		title string,
 		url string,
 		bid integer,
-		created integer
-	)`); err != nil {
-		log.Fatal().Err(err)
-	}
-	if _, err := w.db.Exec(`create table if not exists webshit_balances (
+		placed integer
+	)`)
+	w.db.MustExec(`create table if not exists webshit_balances (
 		user string primary key,
 		balance int,
 		score int
-	)`); err != nil {
-		log.Fatal().Err(err)
-	}
+	)`)
 }
 
-func (w *Webshit) Check() (map[string]WeeklyResult, error) {
+func (w *Webshit) Check() ([]WeeklyResult, error) {
 	stories, published, err := w.GetWeekly()
 	if err != nil {
 		return nil, err
 	}
 
 	var bids []Bid
-	if err = w.db.Get(&bids, `select * from webshit_bids where created < ?`,
+	if err = w.db.Select(&bids, `select user,title,url,bid from webshit_bids where placed < ?`,
 		published.Unix()); err != nil {
 		return nil, err
 	}
 
 	// Assuming no bids earlier than the weekly means there hasn't been a new weekly
 	if len(bids) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("there are no bids against the current ngate post")
 	}
 
 	storyMap := map[string]Story{}
@@ -94,7 +102,7 @@ func (w *Webshit) Check() (map[string]WeeklyResult, error) {
 	}
 
 	// Delete all those bids
-	if _, err = w.db.Exec(`delete from webshit_bids where created < ?`,
+	if _, err = w.db.Exec(`delete from webshit_bids where placed < ?`,
 		published.Unix()); err != nil {
 		return nil, err
 	}
@@ -107,10 +115,11 @@ func (w *Webshit) Check() (map[string]WeeklyResult, error) {
 	return wr, nil
 }
 
-func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) map[string]WeeklyResult {
+func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResult {
 	wr := map[string]WeeklyResult{}
 	for _, b := range bids {
 		win, loss := 0, 0
+		score := w.GetScore(b.User)
 		if s, ok := storyMap[b.Title]; ok {
 			log.Info().Interface("story", s).Msg("won bid")
 			win = b.Bid
@@ -120,17 +129,19 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) map[string]We
 		}
 		if res, ok := wr[b.User]; !ok {
 			wr[b.User] = WeeklyResult{
-				User: b.User,
-				Won:  win,
-				Lost: loss,
+				User:  b.User,
+				Won:   win,
+				Lost:  loss,
+				Score: score + win - loss,
 			}
 		} else {
-			res.Won = win
-			res.Lost = loss
+			res.Won += win
+			res.Lost += loss
+			res.Score += win - loss
 			wr[b.User] = res
 		}
 	}
-	return wr
+	return wrMapToSlice(wr)
 }
 
 // GetHeadlines will return the current possible news headlines for bidding
@@ -165,7 +176,7 @@ func (w *Webshit) GetWeekly() ([]Story, *time.Time, error) {
 		return nil, nil, fmt.Errorf("no webshit weekly found")
 	}
 
-	published := feed.PublishedParsed
+	published := feed.Items[0].PublishedParsed
 
 	buf := bytes.NewBufferString(feed.Items[0].Description)
 	doc, err := goquery.NewDocumentFromReader(buf)
@@ -197,6 +208,34 @@ func (w *Webshit) GetBalance(user string) int {
 	return balance
 }
 
+func (w *Webshit) GetScore(user string) int {
+	q := `select score from webshit_balances where user=?`
+	var score int
+	err := w.db.Get(&score, q, user)
+	if err != nil {
+		return 0
+	}
+	return score
+}
+
+func (w *Webshit) GetAllBids() ([]Bid, error) {
+	var bids []Bid
+	err := w.db.Select(&bids, `select * from webshit_bids`)
+	if err != nil {
+		return nil, err
+	}
+	return bids, nil
+}
+
+func (w *Webshit) GetAllBalances() ([]Balance, error) {
+	var balances []Balance
+	err := w.db.Select(&balances, `select * from webshit_balances`)
+	if err != nil {
+		return nil, err
+	}
+	return balances, nil
+}
+
 // Bid allows a user to place a bid on a particular story
 func (w *Webshit) Bid(user string, amount int, URL string) error {
 	bal := w.GetBalance(user)
@@ -209,14 +248,15 @@ func (w *Webshit) Bid(user string, amount int, URL string) error {
 	}
 
 	tx := w.db.MustBegin()
-	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,created) values (?,?,?,?,?)`,
+	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed) values (?,?,?,?,?)`,
 		user, story.Title, story.URL, amount, time.Now().Unix())
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	_, err = tx.Exec(`update webshit_balances set balance=? where user=?`,
-		bal-amount, user)
+	q := `insert into webshit_balances (user,balance,score) values (?,?,0)
+		on conflict(user) do update  set balance=?`
+	_, err = tx.Exec(q, user, bal-amount, bal-amount)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -259,15 +299,23 @@ func (w *Webshit) getStoryByURL(URL string) (Story, error) {
 	}, nil
 }
 
-func (w *Webshit) updateScores(results map[string]WeeklyResult) error {
+func (w *Webshit) updateScores(results []WeeklyResult) error {
 	tx := w.db.MustBegin()
 	for _, res := range results {
-		if _, err := tx.Exec(`update webshit_balances set score=score+? where user=?`,
-			res.Won-res.Lost, res.User); err != nil {
+		if _, err := tx.Exec(`update webshit_balances set score=? where user=?`,
+			res.Score, res.User); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
 	err := tx.Commit()
 	return err
+}
+
+func wrMapToSlice(wr map[string]WeeklyResult) []WeeklyResult {
+	var out = []WeeklyResult{}
+	for _, r := range wr {
+		out = append(out, r)
+	}
+	return out
 }
