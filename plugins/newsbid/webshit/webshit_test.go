@@ -17,7 +17,7 @@ func make(t *testing.T) *Webshit {
 
 func TestWebshit_GetWeekly(t *testing.T) {
 	w := make(t)
-	weekly, err := w.GetWeekly()
+	weekly, _, err := w.GetWeekly()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, weekly)
 }
