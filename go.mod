@@ -1,7 +1,8 @@
 module github.com/velour/catbase
 
 require (
-	github.com/PuerkitoBio/goquery v1.5.0 // indirect
+	github.com/PaulRosset/go-hacknews v0.0.0-20170815075127-4aad99273a3c
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
@@ -26,7 +27,7 @@ require (
 	github.com/velour/chat v0.0.0-20180713122344-fd1d1606cb89
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
 	golang.org/x/exp v0.0.0-20190321205749-f0864edee7f3 // indirect
-	golang.org/x/net v0.0.0-20190326090315-15845e8f865b // indirect
+	golang.org/x/net v0.0.0-20190606173856-1492cefac77f // indirect
 	gonum.org/v1/gonum v0.0.0-20190325211145-e42c1265cdd5 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
