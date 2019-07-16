@@ -123,7 +123,7 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 
 	storyMap := map[string]Story{}
 	for _, s := range stories {
-		storyMap[s.Title] = s
+		storyMap[s.URL] = s
 	}
 
 	wr := w.checkBids(bids, storyMap)
@@ -162,7 +162,7 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 		}
 		rec := wr[b.User]
 
-		if s, ok := storyMap[b.Title]; ok {
+		if s, ok := storyMap[b.URL]; ok {
 			log.Debug().Interface("story", s).Msg("won bid")
 			rec.Won += b.Bid
 			rec.Score += b.Bid
@@ -225,9 +225,13 @@ func (w *Webshit) GetWeekly() ([]Story, *time.Time, error) {
 	doc.Find(".storylink").Each(func(i int, s *goquery.Selection) {
 		story := Story{
 			Title: s.Find("a").Text(),
-			URL:   s.Find("a").AttrOr("src", ""),
+			URL:   s.SiblingsFiltered(".small").First().Find("a").AttrOr("href", ""),
 		}
 		items = append(items, story)
+		log.Debug().
+			Str("URL", story.URL).
+			Str("Title", story.Title).
+			Msg("Parsed webshit story")
 	})
 
 	return items, published, nil
