@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"github.com/velour/catbase/plugins/cli"
+	"github.com/velour/catbase/plugins/newsbid"
 	"math/rand"
 	"net/http"
 	"os"
@@ -124,6 +125,7 @@ func main() {
 	b.AddPlugin(nerdepedia.New(b))
 	b.AddPlugin(tldr.New(b))
 	b.AddPlugin(stock.New(b))
+	b.AddPlugin(newsbid.New(b))
 	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
