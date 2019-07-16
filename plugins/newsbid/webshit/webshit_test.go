@@ -15,7 +15,7 @@ func init() {
 	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 }
 
-func make(t *testing.T) *Webshit {
+func makeWS(t *testing.T) *Webshit {
 	db := sqlx.MustOpen("sqlite3", "file::memory:?mode=memory&cache=shared")
 	w := New(db)
 	assert.Equal(t, w.db, db)
@@ -23,7 +23,7 @@ func make(t *testing.T) *Webshit {
 }
 
 func TestWebshit_GetWeekly(t *testing.T) {
-	w := make(t)
+	w := makeWS(t)
 	weekly, pub, err := w.GetWeekly()
 	t.Logf("Pub: %v", pub)
 	assert.NotNil(t, pub)
@@ -32,14 +32,14 @@ func TestWebshit_GetWeekly(t *testing.T) {
 }
 
 func TestWebshit_GetHeadlines(t *testing.T) {
-	w := make(t)
+	w := makeWS(t)
 	headlines, err := w.GetHeadlines()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, headlines)
 }
 
 func TestWebshit_getStoryByURL(t *testing.T) {
-	w := make(t)
+	w := makeWS(t)
 	expected := "Developer Tropes: “Google Does It”"
 	s, err := w.getStoryByURL("https://news.ycombinator.com/item?id=20432887")
 	assert.Nil(t, err)
@@ -47,26 +47,26 @@ func TestWebshit_getStoryByURL(t *testing.T) {
 }
 
 func TestWebshit_getStoryByURL_BadURL(t *testing.T) {
-	w := make(t)
+	w := makeWS(t)
 	_, err := w.getStoryByURL("https://google.com")
 	assert.Error(t, err)
 }
 
 func TestWebshit_GetBalance(t *testing.T) {
-	w := make(t)
+	w := makeWS(t)
 	expected := 100
 	actual := w.GetBalance("foo")
 	assert.Equal(t, expected, actual)
 }
 
 func TestWebshit_checkBids(t *testing.T) {
-	w := make(t)
+	w := makeWS(t)
 	bids := []Bid{
 		Bid{User: "foo", Title: "bar", URL: "baz", Bid: 10},
 		Bid{User: "foo", Title: "bar2", URL: "baz2", Bid: 10},
 	}
 	storyMap := map[string]Story{
-		"bar": Story{Title: "bar", URL: "baz"},
+		"baz": Story{Title: "bar", URL: "baz"},
 	}
 	result := w.checkBids(bids, storyMap)
 	assert.Len(t, result, 1)

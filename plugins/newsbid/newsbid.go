@@ -81,10 +81,10 @@ func (p *NewsBid) message(conn bot.Connector, k bot.Kind, message msg.Message, a
 		}
 		amount, _ := strconv.Atoi(parts[1])
 		url := parts[2]
-		if err := p.ws.Bid(message.User.Name, amount, url); err != nil {
+		if bid, err := p.ws.Bid(message.User.Name, amount, url); err != nil {
 			p.bot.Send(conn, bot.Message, ch, fmt.Sprintf("Error placing bid: %s", err))
 		} else {
-			p.bot.Send(conn, bot.Message, ch, "Your bid has been placed.")
+			p.bot.Send(conn, bot.Message, ch, fmt.Sprintf("Your bid has been placed on %s", bid.Title))
 		}
 		return true
 	}

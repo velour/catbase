@@ -123,7 +123,7 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 
 	storyMap := map[string]Story{}
 	for _, s := range stories {
-		storyMap[s.Title] = s
+		storyMap[s.URL] = s
 	}
 
 	wr := w.checkBids(bids, storyMap)
@@ -162,7 +162,7 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 		}
 		rec := wr[b.User]
 
-		if s, ok := storyMap[b.Title]; ok {
+		if s, ok := storyMap[b.URL]; ok {
 			log.Debug().Interface("story", s).Msg("won bid")
 			rec.Won += b.Bid
 			rec.Score += b.Bid
@@ -225,9 +225,13 @@ func (w *Webshit) GetWeekly() ([]Story, *time.Time, error) {
 	doc.Find(".storylink").Each(func(i int, s *goquery.Selection) {
 		story := Story{
 			Title: s.Find("a").Text(),
-			URL:   s.Find("a").AttrOr("src", ""),
+			URL:   s.SiblingsFiltered(".small").First().Find("a").AttrOr("href", ""),
 		}
 		items = append(items, story)
+		log.Debug().
+			Str("URL", story.URL).
+			Str("Title", story.Title).
+			Msg("Parsed webshit story")
 	})
 
 	return items, published, nil
@@ -274,33 +278,40 @@ func (w *Webshit) GetAllBalances() ([]Balance, error) {
 }
 
 // Bid allows a user to place a bid on a particular story
-func (w *Webshit) Bid(user string, amount int, URL string) error {
+func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	bal := w.GetBalance(user)
 	if bal < amount {
-		return fmt.Errorf("cannot bid more than balance, %d", bal)
+		return Bid{}, fmt.Errorf("cannot bid more than balance, %d", bal)
 	}
 	story, err := w.getStoryByURL(URL)
 	if err != nil {
-		return err
+		return Bid{}, err
 	}
+
+	ts := time.Now().Unix()
 
 	tx := w.db.MustBegin()
 	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed) values (?,?,?,?,?)`,
-		user, story.Title, story.URL, amount, time.Now().Unix())
+		user, story.Title, story.URL, amount, ts)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return Bid{}, err
 	}
 	q := `insert into webshit_balances (user,balance,score) values (?,?,0)
 		on conflict(user) do update  set balance=?`
 	_, err = tx.Exec(q, user, bal-amount, bal-amount)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return Bid{}, err
 	}
 	tx.Commit()
 
-	return err
+	return Bid{
+		User:   user,
+		Title:  story.Title,
+		URL:    story.URL,
+		Placed: ts,
+	}, err
 }
 
 // getStoryByURL scrapes the URL for a title
