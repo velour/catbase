@@ -278,33 +278,40 @@ func (w *Webshit) GetAllBalances() ([]Balance, error) {
 }
 
 // Bid allows a user to place a bid on a particular story
-func (w *Webshit) Bid(user string, amount int, URL string) error {
+func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	bal := w.GetBalance(user)
 	if bal < amount {
-		return fmt.Errorf("cannot bid more than balance, %d", bal)
+		return Bid{}, fmt.Errorf("cannot bid more than balance, %d", bal)
 	}
 	story, err := w.getStoryByURL(URL)
 	if err != nil {
-		return err
+		return Bid{}, err
 	}
+
+	ts := time.Now().Unix()
 
 	tx := w.db.MustBegin()
 	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed) values (?,?,?,?,?)`,
-		user, story.Title, story.URL, amount, time.Now().Unix())
+		user, story.Title, story.URL, amount, ts)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return Bid{}, err
 	}
 	q := `insert into webshit_balances (user,balance,score) values (?,?,0)
 		on conflict(user) do update  set balance=?`
 	_, err = tx.Exec(q, user, bal-amount, bal-amount)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return Bid{}, err
 	}
 	tx.Commit()
 
-	return err
+	return Bid{
+		User:   user,
+		Title:  story.Title,
+		URL:    story.URL,
+		Placed: ts,
+	}, err
 }
 
 // getStoryByURL scrapes the URL for a title
