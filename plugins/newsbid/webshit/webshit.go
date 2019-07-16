@@ -14,13 +14,39 @@ import (
 	"time"
 )
 
+type Config struct {
+	HNFeed          string
+	HNLimit         int
+	BalanceReferesh int
+}
+
+var DefaultConfig = Config{
+	HNFeed:          "topstories",
+	HNLimit:         10,
+	BalanceReferesh: 100,
+}
+
 type Webshit struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	config Config
 }
 
 type Story struct {
 	Title string
 	URL   string
+}
+
+type Stories []Story
+
+func (s Stories) Titles() string {
+	out := ""
+	for i, v := range s {
+		if i > 0 {
+			out += ", "
+		}
+		out += v.Title
+	}
+	return out
 }
 
 type Bid struct {
@@ -43,14 +69,20 @@ type Balance struct {
 }
 
 type WeeklyResult struct {
-	User  string
-	Won   int
-	Lost  int
-	Score int
+	User            string
+	Won             int
+	WinningArticles Stories
+	Lost            int
+	LosingArticles  Stories
+	Score           int
 }
 
 func New(db *sqlx.DB) *Webshit {
-	w := &Webshit{db}
+	return NewConfig(db, DefaultConfig)
+}
+
+func NewConfig(db *sqlx.DB, cfg Config) *Webshit {
+	w := &Webshit{db: db, config: cfg}
 	w.setup()
 	return w
 }
@@ -108,7 +140,8 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 	}
 
 	// Set all balances to 100
-	if _, err = w.db.Exec(`update webshit_balances set balance=100`); err != nil {
+	if _, err = w.db.Exec(`update webshit_balances set balance=?`,
+		w.config.BalanceReferesh); err != nil {
 		return nil, err
 	}
 
@@ -118,35 +151,39 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResult {
 	wr := map[string]WeeklyResult{}
 	for _, b := range bids {
-		win, loss := 0, 0
 		score := w.GetScore(b.User)
-		if s, ok := storyMap[b.Title]; ok {
-			log.Info().Interface("story", s).Msg("won bid")
-			win = b.Bid
-		} else {
-			log.Info().Interface("story", s).Msg("lost bid")
-			loss = b.Bid
-		}
-		if res, ok := wr[b.User]; !ok {
+		if _, ok := wr[b.User]; !ok {
 			wr[b.User] = WeeklyResult{
 				User:  b.User,
-				Won:   win,
-				Lost:  loss,
-				Score: score + win - loss,
+				Won:   0,
+				Lost:  0,
+				Score: score,
 			}
-		} else {
-			res.Won += win
-			res.Lost += loss
-			res.Score += win - loss
-			wr[b.User] = res
 		}
+		rec := wr[b.User]
+
+		if s, ok := storyMap[b.Title]; ok {
+			log.Debug().Interface("story", s).Msg("won bid")
+			rec.Won += b.Bid
+			rec.Score += b.Bid
+			rec.WinningArticles = append(rec.WinningArticles, s)
+			log.Debug().Interface("story", s).Msg("Appending to winning log")
+		} else {
+			log.Debug().Interface("story", s).Msg("lost bid")
+			rec.Lost += b.Bid
+			rec.Score -= b.Bid
+			rec.LosingArticles = append(rec.LosingArticles, Story{Title: b.Title, URL: b.URL})
+			log.Debug().Interface("story", s).Msg("Appending to losing log")
+		}
+		wr[b.User] = rec
+		log.Debug().Interface("WR User", wr[b.User]).Str("user", b.User).Msg("setting WR")
 	}
 	return wrMapToSlice(wr)
 }
 
 // GetHeadlines will return the current possible news headlines for bidding
 func (w *Webshit) GetHeadlines() ([]Story, error) {
-	news := hacknews.Initializer{Story: "topstories", NbPosts: 10}
+	news := hacknews.Initializer{Story: w.config.HNFeed, NbPosts: w.config.HNLimit}
 	ids, err := news.GetCodesStory()
 	if err != nil {
 		return nil, err

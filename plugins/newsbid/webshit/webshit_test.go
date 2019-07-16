@@ -2,11 +2,18 @@ package webshit
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+func init() {
+	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+}
 
 func make(t *testing.T) *Webshit {
 	db := sqlx.MustOpen("sqlite3", "file::memory:?mode=memory&cache=shared")
@@ -50,4 +57,21 @@ func TestWebshit_GetBalance(t *testing.T) {
 	expected := 100
 	actual := w.GetBalance("foo")
 	assert.Equal(t, expected, actual)
+}
+
+func TestWebshit_checkBids(t *testing.T) {
+	w := make(t)
+	bids := []Bid{
+		Bid{User: "foo", Title: "bar", URL: "baz", Bid: 10},
+		Bid{User: "foo", Title: "bar2", URL: "baz2", Bid: 10},
+	}
+	storyMap := map[string]Story{
+		"bar": Story{Title: "bar", URL: "baz"},
+	}
+	result := w.checkBids(bids, storyMap)
+	assert.Len(t, result, 1)
+	if len(result) > 0 {
+		assert.Len(t, result[0].WinningArticles, 1)
+		assert.Len(t, result[0].LosingArticles, 1)
+	}
 }
