@@ -280,6 +280,9 @@ func (w *Webshit) GetAllBalances() ([]Balance, error) {
 // Bid allows a user to place a bid on a particular story
 func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	bal := w.GetBalance(user)
+	if amount < 0 {
+		return Bid{}, fmt.Errorf("cannot bid less than 0")
+	}
 	if bal < amount {
 		return Bid{}, fmt.Errorf("cannot bid more than balance, %d", bal)
 	}
