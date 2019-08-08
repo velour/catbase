@@ -123,7 +123,13 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 
 	storyMap := map[string]Story{}
 	for _, s := range stories {
-		storyMap[s.URL] = s
+		u, err := url.Parse(s.URL)
+		if err != nil {
+			log.Error().Err(err).Msg("couldn't parse URL")
+			continue
+		}
+		id := u.Query().Get("id")
+		storyMap[id] = s
 	}
 
 	wr := w.checkBids(bids, storyMap)
@@ -162,7 +168,14 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 		}
 		rec := wr[b.User]
 
-		if s, ok := storyMap[b.URL]; ok {
+		u, err := url.Parse(b.URL)
+		if err != nil {
+			log.Error().Err(err).Msg("couldn't parse URL")
+			continue
+		}
+		id := u.Query().Get("id")
+
+		if s, ok := storyMap[id]; ok {
 			log.Debug().Interface("story", s).Msg("won bid")
 			rec.Won += b.Bid
 			rec.Score += b.Bid

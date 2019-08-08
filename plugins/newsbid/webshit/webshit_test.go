@@ -62,11 +62,11 @@ func TestWebshit_GetBalance(t *testing.T) {
 func TestWebshit_checkBids(t *testing.T) {
 	w := makeWS(t)
 	bids := []Bid{
-		Bid{User: "foo", Title: "bar", URL: "baz", Bid: 10},
-		Bid{User: "foo", Title: "bar2", URL: "baz2", Bid: 10},
+		Bid{User: "foo", Title: "bar", URL: "https://baz/?id=1", Bid: 10},
+		Bid{User: "foo", Title: "bar2", URL: "http://baz/?id=2", Bid: 10},
 	}
 	storyMap := map[string]Story{
-		"baz": Story{Title: "bar", URL: "baz"},
+		"1": Story{Title: "bar", URL: "http://baz/?id=1"},
 	}
 	result := w.checkBids(bids, storyMap)
 	assert.Len(t, result, 1)
