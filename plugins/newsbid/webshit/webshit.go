@@ -72,7 +72,6 @@ type WeeklyResult struct {
 	User            string
 	Won             int
 	WinningArticles Stories
-	Lost            int
 	LosingArticles  Stories
 	Score           int
 }
@@ -155,14 +154,16 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 }
 
 func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResult {
+
+	var wins []Bid
+	total, totalWinning := 0, 0
 	wr := map[string]WeeklyResult{}
+
 	for _, b := range bids {
 		score := w.GetScore(b.User)
 		if _, ok := wr[b.User]; !ok {
 			wr[b.User] = WeeklyResult{
 				User:  b.User,
-				Won:   0,
-				Lost:  0,
 				Score: score,
 			}
 		}
@@ -176,21 +177,24 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 		id := u.Query().Get("id")
 
 		if s, ok := storyMap[id]; ok {
-			log.Debug().Interface("story", s).Msg("won bid")
-			rec.Won += b.Bid
-			rec.Score += b.Bid
+			wins = append(wins, b)
 			rec.WinningArticles = append(rec.WinningArticles, s)
-			log.Debug().Interface("story", s).Msg("Appending to winning log")
+			totalWinning += b.Bid
 		} else {
-			log.Debug().Interface("story", s).Msg("lost bid")
-			rec.Lost += b.Bid
-			rec.Score -= b.Bid
-			rec.LosingArticles = append(rec.LosingArticles, Story{Title: b.Title, URL: b.URL})
-			log.Debug().Interface("story", s).Msg("Appending to losing log")
+			rec.LosingArticles = append(rec.LosingArticles, Story{b.Title, b.URL})
 		}
+		total += b.Bid
 		wr[b.User] = rec
-		log.Debug().Interface("WR User", wr[b.User]).Str("user", b.User).Msg("setting WR")
 	}
+
+	for _, b := range wins {
+		payout := b.Bid / totalWinning * total
+		rec := wr[b.User]
+		rec.Won += payout
+		rec.Score += payout
+		wr[b.User] = rec
+	}
+
 	return wrMapToSlice(wr)
 }
 

@@ -102,8 +102,8 @@ func (p *NewsBid) check(conn bot.Connector, ch string) {
 		return
 	}
 	for _, res := range wr {
-		msg := fmt.Sprintf("%s won %d and lost %d for a score of %d",
-			res.User, res.Won, res.Lost, res.Score)
+		msg := fmt.Sprintf("%s won %d for a score of %d",
+			res.User, res.Won, res.Score)
 		if len(res.WinningArticles) > 0 {
 			msg += "\nWinning articles: " + res.WinningArticles.Titles()
 		}
