@@ -3,15 +3,16 @@ package webshit
 import (
 	"bytes"
 	"fmt"
-	"github.com/PaulRosset/go-hacknews"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/jmoiron/sqlx"
-	"github.com/mmcdole/gofeed"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	hacknews "github.com/PaulRosset/go-hacknews"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/jmoiron/sqlx"
+	"github.com/mmcdole/gofeed"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
@@ -156,7 +157,7 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResult {
 
 	var wins []Bid
-	total, totalWinning := 0, 0
+	total, totalWinning := 0.0, 0.0
 	wr := map[string]WeeklyResult{}
 
 	for _, b := range bids {
@@ -179,19 +180,19 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 		if s, ok := storyMap[id]; ok {
 			wins = append(wins, b)
 			rec.WinningArticles = append(rec.WinningArticles, s)
-			totalWinning += b.Bid
+			totalWinning += float64(b.Bid)
 		} else {
 			rec.LosingArticles = append(rec.LosingArticles, Story{b.Title, b.URL})
 		}
-		total += b.Bid
+		total += float64(b.Bid)
 		wr[b.User] = rec
 	}
 
 	for _, b := range wins {
-		payout := b.Bid / totalWinning * total
+		payout := float64(b.Bid) / totalWinning * total
 		rec := wr[b.User]
-		rec.Won += payout
-		rec.Score += payout
+		rec.Won += int(payout)
+		rec.Score += int(payout)
 		wr[b.User] = rec
 	}
 

@@ -75,3 +75,25 @@ func TestWebshit_checkBids(t *testing.T) {
 		assert.Len(t, result[0].LosingArticles, 1)
 	}
 }
+
+func TestWebshit_33PcWinner(t *testing.T) {
+	w := makeWS(t)
+	bids := []Bid{
+		Bid{User: "foo", Title: "bar", URL: "https://baz/?id=1", Bid: 10},
+		Bid{User: "foo", Title: "bar2", URL: "http://baz/?id=2", Bid: 10},
+		Bid{User: "bar", Title: "bar", URL: "http://baz/?id=1", Bid: 5},
+	}
+	storyMap := map[string]Story{
+		"1": Story{Title: "bar", URL: "http://baz/?id=1"},
+	}
+	result := w.checkBids(bids, storyMap)
+	assert.Len(t, result, 2)
+	if len(result) > 0 {
+		assert.Len(t, result[0].WinningArticles, 1)
+		assert.Len(t, result[0].LosingArticles, 1)
+		assert.Len(t, result[1].WinningArticles, 1)
+		assert.Len(t, result[1].LosingArticles, 0)
+		assert.Equal(t, result[0].Won, 16)
+		assert.Equal(t, result[1].Won, 8)
+	}
+}
