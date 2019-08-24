@@ -11,36 +11,38 @@ import (
 )
 
 type ReactionPlugin struct {
-	Bot    bot.Bot
-	Config *config.Config
+	bot    bot.Bot
+	config *config.Config
 }
 
-func New(bot bot.Bot) *ReactionPlugin {
-	return &ReactionPlugin{
-		Bot:    bot,
-		Config: bot.Config(),
+func New(b bot.Bot) *ReactionPlugin {
+	rp := &ReactionPlugin{
+		bot:    b,
+		config: b.Config(),
 	}
+	b.Register(rp, bot.Message, rp.message)
+	return rp
 }
 
-func (p *ReactionPlugin) Message(message msg.Message) bool {
+func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	harrass := false
-	for _, nick := range p.Config.Reaction.HarrassList {
+	for _, nick := range p.config.GetArray("Reaction.HarrassList", []string{}) {
 		if message.User.Name == nick {
 			harrass = true
 			break
 		}
 	}
 
-	chance := p.Config.Reaction.GeneralChance
+	chance := p.config.GetFloat64("Reaction.GeneralChance", 0.01)
 	negativeWeight := 1
 	if harrass {
-		chance = p.Config.Reaction.HarrassChance
-		negativeWeight = p.Config.Reaction.NegativeHarrassmentMultiplier
+		chance = p.config.GetFloat64("Reaction.HarrassChance", 0.05)
+		negativeWeight = p.config.GetInt("Reaction.NegativeHarrassmentMultiplier", 2)
 	}
 
 	if rand.Float64() < chance {
-		numPositiveReactions := len(p.Config.Reaction.PositiveReactions)
-		numNegativeReactions := len(p.Config.Reaction.NegativeReactions)
+		numPositiveReactions := len(p.config.GetArray("Reaction.PositiveReactions", []string{}))
+		numNegativeReactions := len(p.config.GetArray("Reaction.NegativeReactions", []string{}))
 
 		maxIndex := numPositiveReactions + numNegativeReactions*negativeWeight
 
@@ -49,33 +51,15 @@ func (p *ReactionPlugin) Message(message msg.Message) bool {
 		reaction := ""
 
 		if index < numPositiveReactions {
-			reaction = p.Config.Reaction.PositiveReactions[index]
+			reaction = p.config.GetArray("Reaction.PositiveReactions", []string{})[index]
 		} else {
 			index -= numPositiveReactions
 			index %= numNegativeReactions
-			reaction = p.Config.Reaction.NegativeReactions[index]
+			reaction = p.config.GetArray("Reaction.NegativeReactions", []string{})[index]
 		}
 
-		p.Bot.React(message.Channel, reaction, message)
+		p.bot.Send(c, bot.Reaction, message.Channel, reaction, message)
 	}
 
 	return false
 }
-
-func (p *ReactionPlugin) Help(channel string, parts []string) {
-
-}
-
-func (p *ReactionPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *ReactionPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *ReactionPlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *ReactionPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

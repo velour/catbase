@@ -3,6 +3,7 @@
 package your
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -10,15 +11,14 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
-	"github.com/velour/catbase/config"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return &cli.CliPlugin{}, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -26,46 +26,41 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
-func TestReplacement(t *testing.T) {
+func setup(t *testing.T) (*YourPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
-	assert.NotNil(t, c)
-	c.config.Your.MaxLength = 1000
-	c.config.Your.Replacements = []config.Replacement{
-		config.Replacement{
-			This:      "fuck",
-			That:      "duck",
-			Frequency: 1.0,
-		},
-	}
-	res := c.Message(makeMessage("fuck a duck"))
-	assert.Len(t, mb.Messages, 1)
+	mb.DB().MustExec(`delete from config;`)
+	return c, mb
+}
+
+func TestReplacement(t *testing.T) {
+	c, mb := setup(t)
+	c.config.Set("Your.MaxLength", "1000")
+	c.config.SetArray("your.replacements", []string{"0"})
+	c.config.Set("your.replacements.0.freq", "1.0")
+	c.config.Set("your.replacements.0.this", "fuck")
+	c.config.Set("your.replacements.0.that", "duck")
+	res := c.message(makeMessage("fuck a duck"))
 	assert.True(t, res)
+	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "duck a duck")
 }
 
 func TestNoReplacement(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	c.config.Your.MaxLength = 1000
-	c.config.Your.Replacements = []config.Replacement{
-		config.Replacement{
-			This:      "nope",
-			That:      "duck",
-			Frequency: 1.0,
-		},
-		config.Replacement{
-			This:      " fuck",
-			That:      "duck",
-			Frequency: 1.0,
-		},
-		config.Replacement{
-			This:      "Fuck",
-			That:      "duck",
-			Frequency: 1.0,
-		},
-	}
-	c.Message(makeMessage("fuck a duck"))
+	c, mb := setup(t)
+	c.config.Set("Your.MaxLength", "1000")
+	c.config.SetArray("your.replacements", []string{"0", "1", "2"})
+	c.config.Set("your.replacements.0.freq", "1.0")
+	c.config.Set("your.replacements.0.this", "nope")
+	c.config.Set("your.replacements.0.that", "duck")
+
+	c.config.Set("your.replacements.1.freq", "1.0")
+	c.config.Set("your.replacements.1.this", "nope")
+	c.config.Set("your.replacements.1.that", "duck")
+
+	c.config.Set("your.replacements.2.freq", "1.0")
+	c.config.Set("your.replacements.2.this", "Fuck")
+	c.config.Set("your.replacements.2.that", "duck")
+	c.message(makeMessage("fuck a duck"))
 	assert.Len(t, mb.Messages, 0)
 }

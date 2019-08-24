@@ -3,6 +3,7 @@
 package twitch
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return &cli.CliPlugin{}, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -28,12 +29,15 @@ func makeMessage(payload string) msg.Message {
 func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
-	c.config.Twitch.Users = map[string][]string{"test": []string{"drseabass"}}
+	mb.Config().Set("twitch.clientid", "fake")
+	mb.Config().Set("twitch.authorization", "fake")
+	c.config.SetArray("Twitch.Channels", []string{"test"})
+	c.config.SetArray("Twitch.test.Users", []string{"drseabass"})
 	assert.NotNil(t, c)
 
 	c.twitchList["drseabass"] = &Twitcher{
-		name: "drseabass",
-		game: "",
+		name:   "drseabass",
+		gameID: "",
 	}
 
 	return c, mb
@@ -41,6 +45,6 @@ func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 
 func TestTwitch(t *testing.T) {
 	b, mb := makeTwitchPlugin(t)
-	b.Message(makeMessage("!twitch status"))
+	b.message(makeMessage("!twitch status"))
 	assert.NotEmpty(t, mb.Messages)
 }

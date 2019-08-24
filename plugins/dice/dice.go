@@ -19,10 +19,13 @@ type DicePlugin struct {
 }
 
 // NewDicePlugin creates a new DicePlugin with the Plugin interface
-func New(bot bot.Bot) *DicePlugin {
-	return &DicePlugin{
-		Bot: bot,
+func New(b bot.Bot) *DicePlugin {
+	dp := &DicePlugin{
+		Bot: b,
 	}
+	b.Register(dp, bot.Message, dp.message)
+	b.Register(dp, bot.Help, dp.help)
+	return dp
 }
 
 func rollDie(sides int) int {
@@ -32,7 +35,7 @@ func rollDie(sides int) int {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *DicePlugin) Message(message msg.Message) bool {
+func (p *DicePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !message.Command {
 		return false
 	}
@@ -46,7 +49,7 @@ func (p *DicePlugin) Message(message msg.Message) bool {
 	}
 
 	if sides < 2 || nDice < 1 || nDice > 20 {
-		p.Bot.SendMessage(channel, "You're a dick.")
+		p.Bot.Send(c, bot.Message, channel, "You're a dick.")
 		return true
 	}
 
@@ -61,29 +64,13 @@ func (p *DicePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	p.Bot.SendMessage(channel, rolls)
+	p.Bot.Send(c, bot.Message, channel, rolls)
 	return true
 
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *DicePlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Roll dice using notation XdY. Try \"3d20\".")
+func (p *DicePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(c, bot.Message, message.Channel, "Roll dice using notation XdY. Try \"3d20\".")
+	return true
 }
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *DicePlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *DicePlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-// Register any web URLs desired
-func (p *DicePlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *DicePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

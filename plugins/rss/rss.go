@@ -12,7 +12,7 @@ import (
 )
 
 type RSSPlugin struct {
-	Bot       bot.Bot
+	bot       bot.Bot
 	cache     map[string]*cacheItem
 	shelfLife time.Duration
 	maxLines  int
@@ -49,28 +49,31 @@ func (c *cacheItem) getCurrentPage(maxLines int) string {
 	return page
 }
 
-func New(bot bot.Bot) *RSSPlugin {
-	return &RSSPlugin{
-		Bot:       bot,
+func New(b bot.Bot) *RSSPlugin {
+	rss := &RSSPlugin{
+		bot:       b,
 		cache:     map[string]*cacheItem{},
-		shelfLife: time.Minute * 20,
-		maxLines:  5,
+		shelfLife: time.Minute * time.Duration(b.Config().GetInt("rss.shelfLife", 20)),
+		maxLines:  b.Config().GetInt("rss.maxLines", 5),
 	}
+	b.Register(rss, bot.Message, rss.message)
+	b.Register(rss, bot.Help, rss.help)
+	return rss
 }
 
-func (p *RSSPlugin) Message(message msg.Message) bool {
+func (p *RSSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	tokens := strings.Fields(message.Body)
 	numTokens := len(tokens)
 
 	if numTokens == 2 && strings.ToLower(tokens[0]) == "rss" {
 		if item, ok := p.cache[strings.ToLower(tokens[1])]; ok && time.Now().Before(item.expiration) {
-			p.Bot.SendMessage(message.Channel, item.getCurrentPage(p.maxLines))
+			p.bot.Send(c, bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		} else {
 			fp := gofeed.NewParser()
 			feed, err := fp.ParseURL(tokens[1])
 			if err != nil {
-				p.Bot.SendMessage(message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
+				p.bot.Send(c, bot.Message, message.Channel, fmt.Sprintf("RSS error: %s", err.Error()))
 				return true
 			}
 			item := &cacheItem{
@@ -86,7 +89,7 @@ func (p *RSSPlugin) Message(message msg.Message) bool {
 
 			p.cache[strings.ToLower(tokens[1])] = item
 
-			p.Bot.SendMessage(message.Channel, item.getCurrentPage(p.maxLines))
+			p.bot.Send(c, bot.Message, message.Channel, item.getCurrentPage(p.maxLines))
 			return true
 		}
 	}
@@ -94,28 +97,8 @@ func (p *RSSPlugin) Message(message msg.Message) bool {
 	return false
 }
 
-func (p *RSSPlugin) LoadData() {
-	// This bot has no data to load
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *RSSPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
+func (p *RSSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
+	return true
 }
-
-// Empty event handler because this plugin does not do anything on event recv
-func (p *RSSPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *RSSPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-// Register any web URLs desired
-func (p *RSSPlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *RSSPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

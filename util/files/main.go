@@ -5,13 +5,15 @@ import (
 	"flag"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -24,6 +26,7 @@ var (
 
 func main() {
 	flag.Parse()
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	for {
 		files, count := getFiles()
@@ -40,7 +43,7 @@ func main() {
 func getFiles() ([]slackFile, int) {
 	files := fileResp{}
 
-	log.Printf("Getting files")
+	log.Debug().Msg("Getting files")
 	body := mkReq("https://slack.com/api/files.list",
 		"token", *token,
 		"count", strconv.Itoa(*limit),
@@ -50,9 +53,11 @@ func getFiles() ([]slackFile, int) {
 	err := json.Unmarshal(body, &files)
 	checkErr(err)
 
-	log.Printf("Ok: %v, Count: %d", files.Ok, files.Paging.Count)
+	log.Info().
+		Int("count", files.Paging.Count).
+		Bool("ok", files.Ok)
 	if !files.Ok {
-		log.Println(files)
+		log.Error().Interface("files", files)
 	}
 
 	return files.Files, files.Paging.Pages
@@ -69,18 +74,24 @@ func deleteFile(f slackFile) {
 
 	checkErr(err)
 	if !del.Ok {
-		log.Println(body)
-		log.Fatal("Couldn't delete " + f.ID)
+		log.Fatal().
+			Bytes("body", body).
+			Str("id", f.ID).
+			Msg("Couldn't delete")
 	}
 
-	log.Printf("Deleted %s", f.ID)
+	log.Info().
+		Str("id", f.ID).
+		Msg("Deleted")
 }
 
 func downloadFile(f slackFile) {
 	url := strings.Replace(f.URLPrivateDownload, "\\", "", -1) // because fuck slack
 	fname := filepath.Join(*path, f.ID+f.Name)
 
-	log.Printf("Downloading from: %s", url)
+	log.Info().
+		Str("url", url).
+		Msg("Downloading")
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -96,18 +107,20 @@ func downloadFile(f slackFile) {
 	defer out.Close()
 	io.Copy(out, resp.Body)
 
-	log.Printf("Downloaded %s", f.ID)
+	log.Info().
+		Str("id", f.ID).
+		Msg("Downloaded")
 }
 
 func checkErr(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 }
 
 func mkReq(path string, arg ...string) []byte {
 	if len(arg)%2 != 0 {
-		log.Fatal("Bad request arg number.")
+		log.Fatal().Msg("Bad request arg number.")
 	}
 
 	u, err := url.Parse(path)

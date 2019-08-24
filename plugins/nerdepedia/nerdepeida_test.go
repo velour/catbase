@@ -3,6 +3,7 @@
 package nerdepedia
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return &cli.CliPlugin{}, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -25,11 +26,38 @@ func makeMessage(payload string) msg.Message {
 	}
 }
 
-func TestObiWan(t *testing.T) {
+func TestWars(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("help me obi-wan"))
+	res := c.message(makeMessage("help me obi-wan"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+}
+
+func TestTrek(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.message(makeMessage("live long and prosper"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+}
+
+func TestDune(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.message(makeMessage("bless the maker"))
+	assert.Len(t, mb.Messages, 1)
+	assert.True(t, res)
+}
+
+func TestPoke(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	assert.NotNil(t, c)
+	res := c.message(makeMessage("gotta catch em all"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 }

@@ -1,6 +1,7 @@
-package fact
+package remember
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
+	"github.com/velour/catbase/plugins/fact"
 )
 
 func makeMessage(nick, payload string) msg.Message {
@@ -23,10 +25,10 @@ func makeMessage(nick, payload string) msg.Message {
 	}
 }
 
-func makePlugin(t *testing.T) (*RememberPlugin, *Factoid, *bot.MockBot) {
+func makePlugin(t *testing.T) (*RememberPlugin, *fact.FactoidPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
-	f := New(mb) // for DB table
-	p := NewRemember(mb)
+	f := fact.New(mb) // for DB table
+	p := New(mb)
 	assert.NotNil(t, p)
 	return p, f, mb
 }
@@ -42,11 +44,11 @@ func TestCornerCaseBug(t *testing.T) {
 	p, _, mb := makePlugin(t)
 
 	for _, m := range msgs {
-		p.Message(m)
+		p.message(&cli.CliPlugin{}, bot.Message, m)
 	}
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "horse dick")
-	q, err := getSingleFact(mb.DB(), "user1 quotes")
+	q, err := fact.GetSingleFact(mb.DB(), "user1 quotes")
 	assert.Nil(t, err)
 	assert.Contains(t, q.Tidbit, "horse dick")
 }

@@ -17,13 +17,15 @@ type CSWPlugin struct {
 	Config *config.Config
 }
 
-func New(bot bot.Bot) *CSWPlugin {
-	return &CSWPlugin{
-		Bot: bot,
+func New(b bot.Bot) *CSWPlugin {
+	csw := &CSWPlugin{
+		Bot: b,
 	}
+	b.Register(csw, bot.Message, csw.message)
+	return csw
 }
 
-func (p *CSWPlugin) Message(message msg.Message) bool {
+func (p *CSWPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !message.Command {
 		return false
 	}
@@ -63,25 +65,9 @@ func (p *CSWPlugin) Message(message msg.Message) bool {
 			}
 		}
 
-		p.Bot.SendMessage(message.Channel, responses[rand.Intn(len(responses))])
+		p.Bot.Send(c, bot.Message, message.Channel, responses[rand.Intn(len(responses))])
 		return true
 	}
 
 	return false
-}
-
-func (p *CSWPlugin) Help(channel string, parts []string) {}
-
-func (p *CSWPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *CSWPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *CSWPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
-
-func (p *CSWPlugin) RegisterWeb() *string {
-	return nil
 }

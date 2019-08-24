@@ -3,13 +3,15 @@
 package bot
 
 import (
-	"database/sql"
-	"html/template"
-	"log"
+	"fmt"
+	"math/rand"
 	"net/http"
+	"reflect"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/msglog"
 	"github.com/velour/catbase/bot/user"
@@ -20,7 +22,7 @@ import (
 type bot struct {
 	// Each plugin must be registered in our plugins handler. To come: a map so that this
 	// will allow plugins to respond to specific kinds of events
-	plugins        map[string]Handler
+	plugins        map[string]Plugin
 	pluginOrdering []string
 
 	// Users holds information about all of our friends
@@ -32,30 +34,33 @@ type bot struct {
 
 	conn Connector
 
-	// SQL DB
-	// TODO: I think it'd be nice to use https://github.com/jmoiron/sqlx so that
-	//       the select/update/etc statements could be simplified with struct
-	//       marshalling.
-	db        *sqlx.DB
-	dbVersion int64
-
 	logIn  chan msg.Message
 	logOut chan msg.Messages
 
 	version string
 
 	// The entries to the bot's HTTP interface
-	httpEndPoints map[string]string
+	httpEndPoints []EndPoint
 
 	// filters registered by plugins
 	filters map[string]func(string) string
+
+	callbacks CallbackMap
+
+	password        string
+	passwordCreated time.Time
 }
 
+type EndPoint struct {
+	Name, URL string
+}
+
+// Variable represents a $var replacement
 type Variable struct {
 	Variable, Value string
 }
 
-// Newbot creates a bot for a given connection and set of handlers.
+// New creates a bot for a given connection and set of handlers.
 func New(config *config.Config, connector Connector) Bot {
 	logIn := make(chan msg.Message)
 	logOut := make(chan msg.Messages)
@@ -63,39 +68,40 @@ func New(config *config.Config, connector Connector) Bot {
 	msglog.RunNew(logIn, logOut)
 
 	users := []user.User{
-		user.User{
-			Name: config.Nick,
+		{
+			Name: config.Get("Nick", "bot"),
 		},
 	}
 
 	bot := &bot{
 		config:         config,
-		plugins:        make(map[string]Handler),
+		plugins:        make(map[string]Plugin),
 		pluginOrdering: make([]string, 0),
 		conn:           connector,
 		users:          users,
 		me:             users[0],
-		db:             config.DBConn,
 		logIn:          logIn,
 		logOut:         logOut,
-		version:        config.Version,
-		httpEndPoints:  make(map[string]string),
+		httpEndPoints:  make([]EndPoint, 0),
 		filters:        make(map[string]func(string) string),
+		callbacks:      make(CallbackMap),
 	}
 
 	bot.migrateDB()
 
 	http.HandleFunc("/", bot.serveRoot)
-	if config.HttpAddr == "" {
-		config.HttpAddr = "127.0.0.1:1337"
-	}
-	go http.ListenAndServe(config.HttpAddr, nil)
 
-	connector.RegisterMessageReceived(bot.MsgReceived)
-	connector.RegisterEventReceived(bot.EventReceived)
-	connector.RegisterReplyMessageReceived(bot.ReplyMsgReceived)
+	connector.RegisterEvent(bot.Receive)
 
 	return bot
+}
+
+func (b *bot) DefaultConnector() Connector {
+	return b.conn
+}
+
+func (b *bot) WhoAmI() string {
+	return b.me.Name
 }
 
 // Config gets the configuration that the bot is using
@@ -103,54 +109,28 @@ func (b *bot) Config() *config.Config {
 	return b.config
 }
 
-func (b *bot) DBVersion() int64 {
-	return b.dbVersion
-}
-
 func (b *bot) DB() *sqlx.DB {
-	return b.db
+	return b.config.DB
 }
 
 // Create any tables if necessary based on version of DB
 // Plugins should create their own tables, these are only for official bot stuff
 // Note: This does not return an error. Database issues are all fatal at this stage.
 func (b *bot) migrateDB() {
-	_, err := b.db.Exec(`create table if not exists version (version integer);`)
-	if err != nil {
-		log.Fatal("Initial DB migration create version table: ", err)
-	}
-	var version sql.NullInt64
-	err = b.db.QueryRow("select max(version) from version").Scan(&version)
-	if err != nil {
-		log.Fatal("Initial DB migration get version: ", err)
-	}
-	if version.Valid {
-		b.dbVersion = version.Int64
-		log.Printf("Database version: %v\n", b.dbVersion)
-	} else {
-		log.Printf("No versions, we're the first!.")
-		_, err := b.db.Exec(`insert into version (version) values (1)`)
-		if err != nil {
-			log.Fatal("Initial DB migration insert: ", err)
-		}
-	}
-
-	if _, err := b.db.Exec(`create table if not exists variables (
+	if _, err := b.DB().Exec(`create table if not exists variables (
 			id integer primary key,
 			name string,
 			value string
 		);`); err != nil {
-		log.Fatal("Initial DB migration create variables table: ", err)
+		log.Fatal().Err(err).Msgf("Initial DB migration create variables table")
 	}
 }
 
 // Adds a constructed handler to the bots handlers list
-func (b *bot) AddHandler(name string, h Handler) {
+func (b *bot) AddPlugin(h Plugin) {
+	name := reflect.TypeOf(h).String()
 	b.plugins[name] = h
 	b.pluginOrdering = append(b.pluginOrdering, name)
-	if entry := h.RegisterWeb(); entry != nil {
-		b.httpEndPoints[name] = *entry
-	}
 }
 
 func (b *bot) Who(channel string) []user.User {
@@ -162,50 +142,14 @@ func (b *bot) Who(channel string) []user.User {
 	return users
 }
 
-var rootIndex string = `
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>Factoids</title>
-		<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.1.0/pure-min.css">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-	</head>
-	{{if .EndPoints}}
-	<div style="padding-top: 1em;">
-		<table class="pure-table">
-			<thead>
-				<tr>
-					<th>Plugin</th>
-				</tr>
-			</thead>
-
-			<tbody>
-				{{range $key, $value := .EndPoints}}
-				<tr>
-					<td><a href="{{$value}}">{{$key}}</a></td>
-				</tr>
-				{{end}}
-			</tbody>
-		</table>
-	</div>
-	{{end}}
-</html>
-`
-
-func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
-	context := make(map[string]interface{})
-	context["EndPoints"] = b.httpEndPoints
-	t, err := template.New("rootIndex").Parse(rootIndex)
-	if err != nil {
-		log.Println(err)
-	}
-	t.Execute(w, context)
-}
-
-// Checks if message is a command and returns its curtailed version
+// IsCmd checks if message is a command and returns its curtailed version
 func IsCmd(c *config.Config, message string) (bool, string) {
-	cmdcs := c.CommandChar
-	botnick := strings.ToLower(c.Nick)
+	cmdcs := c.GetArray("CommandChar", []string{"!"})
+	botnick := strings.ToLower(c.Get("Nick", "bot"))
+	if botnick == "" {
+		log.Fatal().
+			Msgf(`You must run catbase -set nick -val <your bot nick>`)
+	}
 	iscmd := false
 	lowerMessage := strings.ToLower(message)
 
@@ -237,7 +181,7 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 }
 
 func (b *bot) CheckAdmin(nick string) bool {
-	for _, u := range b.Config().Admins {
+	for _, u := range b.Config().GetArray("Admins", []string{}) {
 		if nick == u {
 			return true
 		}
@@ -265,7 +209,7 @@ func (b *bot) NewUser(nick string) *user.User {
 }
 
 func (b *bot) checkAdmin(nick string) bool {
-	for _, u := range b.Config().Admins {
+	for _, u := range b.Config().GetArray("Admins", []string{}) {
 		if nick == u {
 			return true
 		}
@@ -276,4 +220,32 @@ func (b *bot) checkAdmin(nick string) bool {
 // Register a text filter which every outgoing message is passed through
 func (b *bot) RegisterFilter(name string, f func(string) string) {
 	b.filters[name] = f
+}
+
+// Register a callback
+func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
+	t := reflect.TypeOf(p).String()
+	if _, ok := b.callbacks[t]; !ok {
+		b.callbacks[t] = make(map[Kind][]Callback)
+	}
+	if _, ok := b.callbacks[t][kind]; !ok {
+		b.callbacks[t][kind] = []Callback{}
+	}
+	b.callbacks[t][kind] = append(b.callbacks[t][kind], cb)
+}
+
+func (b *bot) RegisterWeb(root, name string) {
+	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
+}
+
+func (b *bot) GetPassword() string {
+	if b.passwordCreated.Before(time.Now().Add(-24 * time.Hour)) {
+		adjs := b.config.GetArray("bot.passwordAdjectives", []string{"very"})
+		nouns := b.config.GetArray("bot.passwordNouns", []string{"noun"})
+		verbs := b.config.GetArray("bot.passwordVerbs", []string{"do"})
+		a, n, v := adjs[rand.Intn(len(adjs))], nouns[rand.Intn(len(nouns))], verbs[rand.Intn(len(verbs))]
+		b.passwordCreated = time.Now()
+		b.password = fmt.Sprintf("%s-%s-%s", a, n, v)
+	}
+	return b.password
 }

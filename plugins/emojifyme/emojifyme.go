@@ -5,10 +5,11 @@ package emojifyme
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -20,15 +21,15 @@ type EmojifyMePlugin struct {
 	Emoji       map[string]string
 }
 
-func New(bot bot.Bot) *EmojifyMePlugin {
+func New(b bot.Bot) *EmojifyMePlugin {
 	resp, err := http.Get("https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json")
 	if err != nil {
-		log.Fatalf("Error generic emoji list: %s", err)
+		log.Fatal().Err(err).Msg("Error generic emoji list")
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatalf("Error generic emoji list body: %s", err)
+		log.Fatal().Err(err).Msg("Error generic emoji list body")
 	}
 
 	type Emoji struct {
@@ -38,7 +39,7 @@ func New(bot bot.Bot) *EmojifyMePlugin {
 	var emoji []Emoji
 	err = json.Unmarshal(body, &emoji)
 	if err != nil {
-		log.Fatalf("Error parsing emoji list: %s", err)
+		log.Fatal().Err(err).Msg("Error parsing emoji list")
 	}
 
 	emojiMap := map[string]string{}
@@ -48,14 +49,16 @@ func New(bot bot.Bot) *EmojifyMePlugin {
 		}
 	}
 
-	return &EmojifyMePlugin{
-		Bot:         bot,
+	ep := &EmojifyMePlugin{
+		Bot:         b,
 		GotBotEmoji: false,
 		Emoji:       emojiMap,
 	}
+	b.Register(ep, bot.Message, ep.message)
+	return ep
 }
 
-func (p *EmojifyMePlugin) Message(message msg.Message) bool {
+func (p *EmojifyMePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	if !p.GotBotEmoji {
 		p.GotBotEmoji = true
 		emojiMap := p.Bot.GetEmojiList()
@@ -64,60 +67,38 @@ func (p *EmojifyMePlugin) Message(message msg.Message) bool {
 		}
 	}
 
-	inertTokens := p.Bot.Config().Emojify.Scoreless
+	inertTokens := p.Bot.Config().GetArray("Emojify.Scoreless", []string{})
 	emojied := 0.0
-	tokens := strings.Fields(strings.ToLower(message.Body))
-	for i, token := range tokens {
-		if _, ok := p.Emoji[token]; ok {
-			if !stringsContain(inertTokens, token) {
-				emojied++
-			}
-			tokens[i] = ":" + token + ":"
-		} else if strings.HasSuffix(token, "s") {
-			//Check to see if we can strip the trailing "s" off and get an emoji
-			temp := strings.TrimSuffix(token, "s")
-			if _, ok := p.Emoji[temp]; ok {
-				if !stringsContain(inertTokens, temp) {
-					emojied++
-				}
-				tokens[i] = ":" + temp + ":s"
-			} else if strings.HasSuffix(token, "es") {
-				//Check to see if we can strip the trailing "es" off and get an emoji
-				temp := strings.TrimSuffix(token, "es")
-				if _, ok := p.Emoji[temp]; ok {
-					if !stringsContain(inertTokens, temp) {
-						emojied++
-					}
-					tokens[i] = ":" + temp + ":es"
+	emojys := []string{}
+	msg := strings.Replace(strings.ToLower(message.Body), "_", " ", -1)
+	for k, v := range p.Emoji {
+		k = strings.Replace(k, "_", " ", -1)
+		candidates := []string{
+			k,
+			k + "es",
+			k + "s",
+		}
+		for _, c := range candidates {
+			if strings.Contains(msg, " "+c+" ") ||
+				strings.HasPrefix(msg, c+" ") ||
+				strings.HasSuffix(msg, " "+c) ||
+				msg == c {
+				emojys = append(emojys, v)
+				if !stringsContain(inertTokens, k) && len(v) > 2 {
+					emojied += 1
 				}
 			}
 		}
 	}
-	if emojied > 0 && rand.Float64() <= p.Bot.Config().Emojify.Chance*emojied {
-		modified := strings.Join(tokens, " ")
-		p.Bot.SendMessage(message.Channel, modified)
-		return true
+
+	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance", 0.02)*emojied {
+		for _, e := range emojys {
+			p.Bot.Send(c, bot.Reaction, message.Channel, e, message)
+		}
+		return false
 	}
 	return false
 }
-
-func (p *EmojifyMePlugin) Help(channel string, parts []string) {
-
-}
-
-func (p *EmojifyMePlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *EmojifyMePlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *EmojifyMePlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *EmojifyMePlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
 
 func stringsContain(haystack []string, needle string) bool {
 	for _, s := range haystack {

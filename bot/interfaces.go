@@ -9,51 +9,80 @@ import (
 	"github.com/velour/catbase/config"
 )
 
+const (
+	_ = iota
+
+	// Message any standard chat
+	Message
+	// Reply something containing a message reference
+	Reply
+	// Action any /me action
+	Action
+	// Reaction Icon reaction if service supports it
+	Reaction
+	// Edit message ref'd new message to replace
+	Edit
+	// Not sure what event is
+	Event
+	// Help is used when the bot help system is triggered
+	Help
+	// SelfMessage triggers when the bot is sending a message
+	SelfMessage
+)
+
+type ImageAttachment struct {
+	URL    string
+	AltTxt string
+}
+
+type Kind int
+type Callback func(Connector, Kind, msg.Message, ...interface{}) bool
+type CallbackMap map[string]map[Kind][]Callback
+
+// Bot interface serves to allow mocking of the actual bot
 type Bot interface {
+	// Config allows access to the bot's configuration system
 	Config() *config.Config
-	DBVersion() int64
+	// DB gives access to the current database
 	DB() *sqlx.DB
+	// Who lists users in a particular channel
 	Who(string) []user.User
-	AddHandler(string, Handler)
-	SendMessage(string, string) string
-	SendAction(string, string) string
-	ReplyToMessageIdentifier(string, string, string) (string, bool)
-	ReplyToMessage(string, string, msg.Message) (string, bool)
-	React(string, string, msg.Message) bool
-	Edit(string, string, string) bool
-	MsgReceived(msg.Message)
-	ReplyMsgReceived(msg.Message, string)
-	EventReceived(msg.Message)
+	// WhoAmI gives a nick for the bot
+	WhoAmI() string
+	// AddPlugin registers a new plugin handler
+	AddPlugin(Plugin)
+	// First arg should be one of bot.Message/Reply/Action/etc
+	Send(Connector, Kind, ...interface{}) (string, error)
+	// First arg should be one of bot.Message/Reply/Action/etc
+	Receive(Connector, Kind, msg.Message, ...interface{}) bool
+	// Register a callback
+	Register(Plugin, Kind, Callback)
+
 	Filter(msg.Message, string) string
 	LastMessage(string) (msg.Message, error)
+
 	CheckAdmin(string) bool
 	GetEmojiList() map[string]string
 	RegisterFilter(string, func(string) string)
+	RegisterWeb(string, string)
+	DefaultConnector() Connector
+	GetWebNavigation() []EndPoint
+	GetPassword() string
 }
 
+// Connector represents a server connection to a chat service
 type Connector interface {
-	RegisterEventReceived(func(message msg.Message))
-	RegisterMessageReceived(func(message msg.Message))
-	RegisterReplyMessageReceived(func(msg.Message, string))
+	RegisterEvent(Callback)
 
-	SendMessage(channel, message string) string
-	SendAction(channel, message string) string
-	ReplyToMessageIdentifier(string, string, string) (string, bool)
-	ReplyToMessage(string, string, msg.Message) (string, bool)
-	React(string, string, msg.Message) bool
-	Edit(string, string, string) bool
+	Send(Kind, ...interface{}) (string, error)
+
 	GetEmojiList() map[string]string
 	Serve() error
 
 	Who(string) []string
 }
 
-// Interface used for compatibility with the Plugin interface
-type Handler interface {
-	Message(message msg.Message) bool
-	Event(kind string, message msg.Message) bool
-	ReplyMessage(msg.Message, string) bool
-	BotMessage(message msg.Message) bool
-	Help(channel string, parts []string)
-	RegisterWeb() *string
+// Plugin interface used for compatibility with the Plugin interface
+// Uhh it turned empty, but we're still using it to ID plugins
+type Plugin interface {
 }

@@ -5,11 +5,11 @@ package irc
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
@@ -42,9 +42,7 @@ type Irc struct {
 	config *config.Config
 	quit   chan bool
 
-	eventReceived        func(msg.Message)
-	messageReceived      func(msg.Message)
-	replyMessageReceived func(msg.Message, string)
+	event bot.Callback
 }
 
 func New(c *config.Config) *Irc {
@@ -54,24 +52,28 @@ func New(c *config.Config) *Irc {
 	return &i
 }
 
-func (i *Irc) RegisterEventReceived(f func(msg.Message)) {
-	i.eventReceived = f
+func (i *Irc) RegisterEvent(f bot.Callback) {
+	i.event = f
 }
 
-func (i *Irc) RegisterMessageReceived(f func(msg.Message)) {
-	i.messageReceived = f
-}
-
-func (i *Irc) RegisterReplyMessageReceived(f func(msg.Message, string)) {
-	i.replyMessageReceived = f
+func (i *Irc) Send(kind bot.Kind, args ...interface{}) (string, error) {
+	switch kind {
+	case bot.Reply:
+	case bot.Message:
+		return i.sendMessage(args[0].(string), args[1].(string), args...)
+	case bot.Action:
+		return i.sendAction(args[0].(string), args[1].(string), args...)
+	default:
+	}
+	return "", nil
 }
 
 func (i *Irc) JoinChannel(channel string) {
-	log.Printf("Joining channel: %s", channel)
+	log.Info().Msgf("Joining channel: %s", channel)
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
-func (i *Irc) SendMessage(channel, message string) string {
+func (i *Irc) sendMessage(channel, message string, args ...interface{}) (string, error) {
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -87,66 +89,64 @@ func (i *Irc) SendMessage(channel, message string) string {
 		}
 
 		if throttle == nil {
-			ratePerSec := i.config.RatePerSec
+			ratePerSec := i.config.GetInt("RatePerSec", 5)
 			throttle = time.Tick(time.Second / time.Duration(ratePerSec))
 		}
 
 		<-throttle
 
 		i.Client.Out <- m
+
+		if len(args) > 0 {
+			for _, a := range args {
+				switch a := a.(type) {
+				case bot.ImageAttachment:
+					m = irc.Msg{
+						Cmd: "PRIVMSG",
+						Args: []string{channel, fmt.Sprintf("%s: %s",
+							a.AltTxt, a.URL)},
+					}
+
+					<-throttle
+
+					i.Client.Out <- m
+				}
+			}
+		}
 	}
-	return "NO_IRC_IDENTIFIERS"
+	return "NO_IRC_IDENTIFIERS", nil
 }
 
 // Sends action to channel
-func (i *Irc) SendAction(channel, message string) string {
+func (i *Irc) sendAction(channel, message string, args ...interface{}) (string, error) {
 	message = actionPrefix + " " + message + "\x01"
 
-	i.SendMessage(channel, message)
-	return "NO_IRC_IDENTIFIERS"
-}
-
-func (i *Irc) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
-	return "NO_IRC_IDENTIFIERS", false
-}
-
-func (i *Irc) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
-	return "NO_IRC_IDENTIFIERS", false
-}
-
-func (i *Irc) React(channel, reaction string, message msg.Message) bool {
-	//we're not goign to do anything because it's IRC
-	return false
-}
-
-func (i *Irc) Edit(channel, newMessage, identifier string) bool {
-	//we're not goign to do anything because it's IRC
-	return false
+	return i.sendMessage(channel, message, args...)
 }
 
 func (i *Irc) GetEmojiList() map[string]string {
-	//we're not goign to do anything because it's IRC
+	//we're not going to do anything because it's IRC
 	return make(map[string]string)
 }
 
 func (i *Irc) Serve() error {
-	if i.eventReceived == nil || i.messageReceived == nil {
+	if i.event == nil {
 		return fmt.Errorf("Missing an event handler")
 	}
 
 	var err error
 	i.Client, err = irc.DialSSL(
-		i.config.Irc.Server,
-		i.config.Nick,
-		i.config.FullName,
-		i.config.Irc.Pass,
+		i.config.Get("Irc.Server", "localhost"),
+		i.config.Get("Nick", "bot"),
+		i.config.Get("FullName", "bot"),
+		i.config.Get("Irc.Pass", ""),
 		true,
 	)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
-	for _, c := range i.config.Channels {
+	for _, c := range i.config.GetArray("channels", []string{}) {
 		i.JoinChannel(c)
 	}
 
@@ -164,7 +164,7 @@ func (i *Irc) handleConnection() {
 		close(i.Client.Out)
 		for err := range i.Client.Errors {
 			if err != io.EOF {
-				log.Println(err)
+				log.Error().Err(err)
 			}
 		}
 	}()
@@ -186,7 +186,7 @@ func (i *Irc) handleConnection() {
 
 		case err, ok := <-i.Client.Errors:
 			if ok && err != io.EOF {
-				log.Println(err)
+				log.Error().Err(err)
 				i.quit <- true
 				return
 			}
@@ -200,7 +200,7 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 
 	switch msg.Cmd {
 	case irc.ERROR:
-		log.Println(1, "Received error: "+msg.Raw)
+		log.Info().Msgf("Received error: " + msg.Raw)
 
 	case irc.PING:
 		i.Client.Out <- irc.Msg{Cmd: irc.PONG}
@@ -209,56 +209,56 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 		// OK, ignore
 
 	case irc.ERR_NOSUCHNICK:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.ERR_NOSUCHCHANNEL:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.RPL_MOTD:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.RPL_NAMREPLY:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.RPL_TOPIC:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.KICK:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.TOPIC:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.MODE:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.JOIN:
-		i.eventReceived(botMsg)
+		fallthrough
 
 	case irc.PART:
-		i.eventReceived(botMsg)
+		fallthrough
+
+	case irc.NOTICE:
+		fallthrough
+
+	case irc.NICK:
+		fallthrough
+
+	case irc.RPL_WHOREPLY:
+		fallthrough
+
+	case irc.RPL_ENDOFWHO:
+		i.event(i, bot.Event, botMsg)
+
+	case irc.PRIVMSG:
+		i.event(i, bot.Message, botMsg)
 
 	case irc.QUIT:
 		os.Exit(1)
 
-	case irc.NOTICE:
-		i.eventReceived(botMsg)
-
-	case irc.PRIVMSG:
-		i.messageReceived(botMsg)
-
-	case irc.NICK:
-		i.eventReceived(botMsg)
-
-	case irc.RPL_WHOREPLY:
-		i.eventReceived(botMsg)
-
-	case irc.RPL_ENDOFWHO:
-		i.eventReceived(botMsg)
-
 	default:
 		cmd := irc.CmdNames[msg.Cmd]
-		log.Println("(" + cmd + ") " + msg.Raw)
+		log.Debug().Msgf("(%s) %s", cmd, msg.Raw)
 	}
 }
 
@@ -270,7 +270,7 @@ func (i *Irc) buildMessage(inMsg irc.Msg) msg.Message {
 	}
 
 	channel := inMsg.Args[0]
-	if channel == i.config.Nick {
+	if channel == i.config.Get("Nick", "bot") {
 		channel = inMsg.Args[0]
 	}
 

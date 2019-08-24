@@ -6,86 +6,55 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/msg"
 )
 
-// Handles incomming PRIVMSG requests
-func (b *bot) MsgReceived(msg msg.Message) {
-	log.Println("Received message: ", msg)
+func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
+	log.Debug().
+		Interface("msg", msg).
+		Msg("Received event")
 
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
-	if strings.HasPrefix(msg.Body, "help ") && msg.Command {
+	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
-		b.checkHelp(msg.Channel, parts)
+		b.checkHelp(conn, msg.Channel, parts)
+		log.Debug().Msg("Handled a help, returning")
 		goto RET
 	}
 
 	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.Message(msg) {
-			break
+		if b.runCallback(conn, b.plugins[name], kind, msg, args...) {
+			goto RET
 		}
 	}
 
 RET:
 	b.logIn <- msg
-	return
+	return true
 }
 
-// Handle incoming events
-func (b *bot) EventReceived(msg msg.Message) {
-	log.Println("Received event: ", msg)
-	//msg := b.buildMessage(conn, inMsg)
-	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.Event(msg.Body, msg) { // TODO: could get rid of msg.Body
-			break
+func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
+	t := reflect.TypeOf(plugin).String()
+	for _, cb := range b.callbacks[t][evt] {
+		if cb(conn, evt, message, args...) {
+			return true
 		}
 	}
+	return false
 }
 
-// Handle incoming replys
-func (b *bot) ReplyMsgReceived(msg msg.Message, identifier string) {
-	log.Println("Received message: ", msg)
-
-	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.ReplyMessage(msg, identifier) {
-			break
-		}
-	}
-}
-
-func (b *bot) SendMessage(channel, message string) string {
-	return b.conn.SendMessage(channel, message)
-}
-
-func (b *bot) SendAction(channel, message string) string {
-	return b.conn.SendAction(channel, message)
-}
-
-func (b *bot) ReplyToMessageIdentifier(channel, message, identifier string) (string, bool) {
-	return b.conn.ReplyToMessageIdentifier(channel, message, identifier)
-}
-
-func (b *bot) ReplyToMessage(channel, message string, replyTo msg.Message) (string, bool) {
-	return b.conn.ReplyToMessage(channel, message, replyTo)
-}
-
-func (b *bot) React(channel, reaction string, message msg.Message) bool {
-	return b.conn.React(channel, reaction, message)
-}
-
-func (b *bot) Edit(channel, newMessage, identifier string) bool {
-	return b.conn.Edit(channel, newMessage, identifier)
+// Send a message to the connection
+func (b *bot) Send(conn Connector, kind Kind, args ...interface{}) (string, error) {
+	return conn.Send(kind, args...)
 }
 
 func (b *bot) GetEmojiList() map[string]string {
@@ -93,31 +62,38 @@ func (b *bot) GetEmojiList() map[string]string {
 }
 
 // Checks to see if the user is asking for help, returns true if so and handles the situation.
-func (b *bot) checkHelp(channel string, parts []string) {
+func (b *bot) checkHelp(conn Connector, channel string, parts []string) {
 	if len(parts) == 1 {
 		// just print out a list of help topics
 		topics := "Help topics: about variables"
-		for name, _ := range b.plugins {
+		for name := range b.plugins {
+			name = strings.Split(strings.TrimPrefix(name, "*"), ".")[0]
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
-		b.SendMessage(channel, topics)
+		b.Send(conn, Message, channel, topics)
 	} else {
 		// trigger the proper plugin's help response
 		if parts[1] == "about" {
-			b.Help(channel, parts)
+			b.Help(conn, channel, parts)
 			return
 		}
 		if parts[1] == "variables" {
-			b.listVars(channel, parts)
+			b.listVars(conn, channel, parts)
 			return
 		}
-		plugin := b.plugins[parts[1]]
-		if plugin != nil {
-			plugin.Help(channel, parts)
-		} else {
-			msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", parts[1])
-			b.SendMessage(channel, msg)
+		for name, plugin := range b.plugins {
+			if strings.HasPrefix(name, "*"+parts[1]) {
+				if b.runCallback(conn, plugin, Help, msg.Message{Channel: channel}, channel, parts) {
+					return
+				} else {
+					msg := fmt.Sprintf("I'm sorry, I don't know how to help you with %s.", parts[1])
+					b.Send(conn, Message, channel, msg)
+					return
+				}
+			}
 		}
+		msg := fmt.Sprintf("I'm sorry, I don't know what %s is!", strings.Join(parts, " "))
+		b.Send(conn, Message, channel, msg)
 	}
 }
 
@@ -192,38 +168,38 @@ func (b *bot) Filter(message msg.Message, input string) string {
 
 func (b *bot) getVar(varName string) (string, error) {
 	var text string
-	err := b.db.Get(&text, `select value from variables where name=? order by random() limit 1`, varName)
+	err := b.DB().Get(&text, `select value from variables where name=? order by random() limit 1`, varName)
 	switch {
 	case err == sql.ErrNoRows:
 		return "", fmt.Errorf("No factoid found")
 	case err != nil:
-		log.Fatal("getVar error: ", err)
+		log.Fatal().Err(err).Msg("getVar error")
 	}
 	return text, nil
 }
 
-func (b *bot) listVars(channel string, parts []string) {
+func (b *bot) listVars(conn Connector, channel string, parts []string) {
 	var variables []string
-	err := b.db.Select(&variables, `select name from variables group by name`)
+	err := b.DB().Select(&variables, `select name from variables group by name`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	msg := "I know: $who, $someone, $digit, $nonzero"
 	if len(variables) > 0 {
 		msg += ", " + strings.Join(variables, ", ")
 	}
-	b.SendMessage(channel, msg)
+	b.Send(conn, Message, channel, msg)
 }
 
-func (b *bot) Help(channel string, parts []string) {
+func (b *bot) Help(conn Connector, channel string, parts []string) {
 	msg := fmt.Sprintf("Hi, I'm based on godeepintir version %s. I'm written in Go, and you "+
 		"can find my source code on the internet here: "+
 		"http://github.com/velour/catbase", b.version)
-	b.SendMessage(channel, msg)
+	b.Send(conn, Message, channel, msg)
 }
 
 // Send our own musings to the plugins
-func (b *bot) selfSaid(channel, message string, action bool) {
+func (b *bot) selfSaid(conn Connector, channel, message string, action bool) {
 	msg := msg.Message{
 		User:    &b.me, // hack
 		Channel: channel,
@@ -236,9 +212,8 @@ func (b *bot) selfSaid(channel, message string, action bool) {
 	}
 
 	for _, name := range b.pluginOrdering {
-		p := b.plugins[name]
-		if p.BotMessage(msg) {
-			break
+		if b.runCallback(conn, b.plugins[name], SelfMessage, msg) {
+			return
 		}
 	}
 }

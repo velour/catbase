@@ -6,14 +6,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/config"
 )
 
 var (
@@ -25,7 +25,6 @@ var (
 type BabblerPlugin struct {
 	Bot            bot.Bot
 	db             *sqlx.DB
-	config         *config.Config
 	WithGoRoutines bool
 }
 
@@ -54,55 +53,55 @@ type BabblerArc struct {
 	Frequency  int64 `db:"frequency"`
 }
 
-func New(bot bot.Bot) *BabblerPlugin {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	if _, err := bot.DB().Exec(`create table if not exists babblers (
+func New(b bot.Bot) *BabblerPlugin {
+	if _, err := b.DB().Exec(`create table if not exists babblers (
 			id integer primary key,
 			babbler string
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
-	if _, err := bot.DB().Exec(`create table if not exists babblerWords (
+	if _, err := b.DB().Exec(`create table if not exists babblerWords (
 			id integer primary key,
 			word string
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
-	if _, err := bot.DB().Exec(`create table if not exists babblerNodes (
+	if _, err := b.DB().Exec(`create table if not exists babblerNodes (
 			id integer primary key,
 			babblerId integer,
 			wordId integer,
 			root integer,
 			rootFrequency integer
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
-	if _, err := bot.DB().Exec(`create table if not exists babblerArcs (
+	if _, err := b.DB().Exec(`create table if not exists babblerArcs (
 			id integer primary key,
 			fromNodeId integer,
 			toNodeId interger,
 			frequency integer
 		);`); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	plugin := &BabblerPlugin{
-		Bot:            bot,
-		db:             bot.DB(),
-		config:         bot.Config(),
+		Bot:            b,
+		db:             b.DB(),
 		WithGoRoutines: true,
 	}
 
 	plugin.createNewWord("")
 
+	b.Register(plugin, bot.Message, plugin.message)
+	b.Register(plugin, bot.Help, plugin.help)
+
 	return plugin
 }
 
-func (p *BabblerPlugin) Message(message msg.Message) bool {
+func (p *BabblerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
 	numTokens := len(tokens)
@@ -144,12 +143,12 @@ func (p *BabblerPlugin) Message(message msg.Message) bool {
 	}
 
 	if saidSomething {
-		p.Bot.SendMessage(message.Channel, saidWhat)
+		p.Bot.Send(c, bot.Message, message.Channel, saidWhat)
 	}
 	return saidSomething
 }
 
-func (p *BabblerPlugin) Help(channel string, parts []string) {
+func (p *BabblerPlugin) help(c bot.Connector, kind bot.Kind, msg msg.Message, args ...interface{}) bool {
 	commands := []string{
 		"initialize babbler for seabass",
 		"merge babbler drseabass into seabass",
@@ -158,19 +157,8 @@ func (p *BabblerPlugin) Help(channel string, parts []string) {
 		"seabass says-middle-out ...",
 		"seabass says-bridge ... | ...",
 	}
-	p.Bot.SendMessage(channel, strings.Join(commands, "\n\n"))
-}
-
-func (p *BabblerPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-func (p *BabblerPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-func (p *BabblerPlugin) RegisterWeb() *string {
-	return nil
+	p.Bot.Send(c, bot.Message, msg.Channel, strings.Join(commands, "\n\n"))
+	return true
 }
 
 func (p *BabblerPlugin) makeBabbler(name string) (*Babbler, error) {
@@ -178,7 +166,7 @@ func (p *BabblerPlugin) makeBabbler(name string) (*Babbler, error) {
 	if err == nil {
 		id, err := res.LastInsertId()
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, err
 		}
 		return &Babbler{
@@ -194,11 +182,10 @@ func (p *BabblerPlugin) getBabbler(name string) (*Babbler, error) {
 	err := p.db.QueryRowx(`select * from babblers where babbler = ? LIMIT 1;`, name).StructScan(&bblr)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("failed to find babbler")
+			log.Error().Msg("failed to find babbler")
 			return nil, NO_BABBLER
 		}
-		log.Printf("encountered problem in babbler lookup")
-		log.Print(err)
+		log.Error().Err(err).Msg("encountered problem in babbler lookup")
 		return nil, err
 	}
 	return &bblr, nil
@@ -209,13 +196,13 @@ func (p *BabblerPlugin) getOrCreateBabbler(name string) (*Babbler, error) {
 	if err == NO_BABBLER {
 		babbler, err = p.makeBabbler(name)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, err
 		}
 
 		rows, err := p.db.Queryx(fmt.Sprintf("select tidbit from factoid where fact like '%s quotes';", babbler.Name))
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return babbler, nil
 		}
 		defer rows.Close()
@@ -225,10 +212,10 @@ func (p *BabblerPlugin) getOrCreateBabbler(name string) (*Babbler, error) {
 			var tidbit string
 			err := rows.Scan(&tidbit)
 
-			log.Print(tidbit)
+			log.Debug().Str("tidbit", tidbit)
 
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return babbler, err
 			}
 			tidbits = append(tidbits, tidbit)
@@ -236,7 +223,7 @@ func (p *BabblerPlugin) getOrCreateBabbler(name string) (*Babbler, error) {
 
 		for _, tidbit := range tidbits {
 			if err = p.addToMarkovChain(babbler, tidbit); err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 			}
 		}
 	}
@@ -258,12 +245,12 @@ func (p *BabblerPlugin) getWord(word string) (*BabblerWord, error) {
 func (p *BabblerPlugin) createNewWord(word string) (*BabblerWord, error) {
 	res, err := p.db.Exec(`insert into babblerWords (word) values (?);`, word)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 	return &BabblerWord{
@@ -277,7 +264,7 @@ func (p *BabblerPlugin) getOrCreateWord(word string) (*BabblerWord, error) {
 		return p.createNewWord(word)
 	} else {
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 		}
 		return w, err
 	}
@@ -303,19 +290,19 @@ func (p *BabblerPlugin) getBabblerNode(babbler *Babbler, word string) (*BabblerN
 func (p *BabblerPlugin) createBabblerNode(babbler *Babbler, word string) (*BabblerNode, error) {
 	w, err := p.getOrCreateWord(word)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
 	res, err := p.db.Exec(`insert into babblerNodes (babblerId, wordId, root, rootFrequency) values (?, ?, 0, 0)`, babbler.BabblerId, w.WordId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
@@ -338,12 +325,12 @@ func (p *BabblerPlugin) getOrCreateBabblerNode(babbler *Babbler, word string) (*
 func (p *BabblerPlugin) incrementRootWordFrequency(babbler *Babbler, word string) (*BabblerNode, error) {
 	node, err := p.getOrCreateBabblerNode(babbler, word)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 	_, err = p.db.Exec(`update babblerNodes set rootFrequency = rootFrequency + 1, root = 1 where id = ?;`, node.NodeId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 	node.RootFrequency += 1
@@ -365,7 +352,7 @@ func (p *BabblerPlugin) getBabblerArc(fromNode, toNode *BabblerNode) (*BabblerAr
 func (p *BabblerPlugin) incrementWordArc(fromNode, toNode *BabblerNode) (*BabblerArc, error) {
 	res, err := p.db.Exec(`update babblerArcs set frequency = frequency + 1 where fromNodeId = ? and toNodeId = ?;`, fromNode.NodeId, toNode.NodeId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
@@ -377,7 +364,7 @@ func (p *BabblerPlugin) incrementWordArc(fromNode, toNode *BabblerNode) (*Babble
 	if affectedRows == 0 {
 		res, err = p.db.Exec(`insert into babblerArcs (fromNodeId, toNodeId, frequency) values (?, ?, 1);`, fromNode.NodeId, toNode.NodeId)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, err
 		}
 	}
@@ -401,19 +388,19 @@ func (p *BabblerPlugin) addToMarkovChain(babbler *Babbler, phrase string) error 
 
 	curNode, err := p.incrementRootWordFrequency(babbler, words[0])
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return err
 	}
 
 	for i := 1; i < len(words); i++ {
 		nextNode, err := p.getOrCreateBabblerNode(babbler, words[i])
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return err
 		}
 		_, err = p.incrementWordArc(curNode, nextNode)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return err
 		}
 		curNode = nextNode
@@ -426,7 +413,7 @@ func (p *BabblerPlugin) addToMarkovChain(babbler *Babbler, phrase string) error 
 func (p *BabblerPlugin) getWeightedRootNode(babbler *Babbler) (*BabblerNode, *BabblerWord, error) {
 	rows, err := p.db.Queryx(`select * from babblerNodes where babblerId = ? and root = 1;`, babbler.BabblerId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, nil, err
 	}
 	defer rows.Close()
@@ -438,7 +425,7 @@ func (p *BabblerPlugin) getWeightedRootNode(babbler *Babbler) (*BabblerNode, *Ba
 		var node BabblerNode
 		err = rows.StructScan(&node)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, nil, err
 		}
 		rootNodes = append(rootNodes, &node)
@@ -457,21 +444,21 @@ func (p *BabblerPlugin) getWeightedRootNode(babbler *Babbler) (*BabblerNode, *Ba
 			var w BabblerWord
 			err := p.db.QueryRowx(`select * from babblerWords where id = ? LIMIT 1;`, node.WordId).StructScan(&w)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return nil, nil, err
 			}
 			return node, &w, nil
 		}
 
 	}
-	log.Fatalf("shouldn't happen")
-	return nil, nil, errors.New("failed to find weighted root word")
+	log.Fatal().Msg("failed to find weighted root word")
+	return nil, nil, nil
 }
 
 func (p *BabblerPlugin) getWeightedNextWord(fromNode *BabblerNode) (*BabblerNode, *BabblerWord, error) {
 	rows, err := p.db.Queryx(`select * from babblerArcs where fromNodeId = ?;`, fromNode.NodeId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, nil, err
 	}
 	defer rows.Close()
@@ -482,7 +469,7 @@ func (p *BabblerPlugin) getWeightedNextWord(fromNode *BabblerNode) (*BabblerNode
 		var arc BabblerArc
 		err = rows.StructScan(&arc)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, nil, err
 		}
 		arcs = append(arcs, &arc)
@@ -503,28 +490,28 @@ func (p *BabblerPlugin) getWeightedNextWord(fromNode *BabblerNode) (*BabblerNode
 			var node BabblerNode
 			err := p.db.QueryRowx(`select * from babblerNodes where id = ? LIMIT 1;`, arc.ToNodeId).StructScan(&node)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return nil, nil, err
 			}
 
 			var w BabblerWord
 			err = p.db.QueryRowx(`select * from babblerWords where id = ? LIMIT 1;`, node.WordId).StructScan(&w)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return nil, nil, err
 			}
 			return &node, &w, nil
 		}
 
 	}
-	log.Fatalf("shouldn't happen")
-	return nil, nil, errors.New("failed to find weighted next word")
+	log.Fatal().Msg("failed to find weighted next word")
+	return nil, nil, nil
 }
 
 func (p *BabblerPlugin) getWeightedPreviousWord(toNode *BabblerNode) (*BabblerNode, *BabblerWord, bool, error) {
 	rows, err := p.db.Queryx(`select * from babblerArcs where toNodeId = ?;`, toNode.NodeId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, nil, false, err
 	}
 	defer rows.Close()
@@ -535,7 +522,7 @@ func (p *BabblerPlugin) getWeightedPreviousWord(toNode *BabblerNode) (*BabblerNo
 		var arc BabblerArc
 		err = rows.StructScan(&arc)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, nil, false, err
 		}
 		arcs = append(arcs, &arc)
@@ -562,39 +549,39 @@ func (p *BabblerPlugin) getWeightedPreviousWord(toNode *BabblerNode) (*BabblerNo
 			var node BabblerNode
 			err := p.db.QueryRowx(`select * from babblerNodes where id = ? LIMIT 1;`, arc.FromNodeId).StructScan(&node)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return nil, nil, false, err
 			}
 
 			var w BabblerWord
 			err = p.db.QueryRowx(`select * from babblerWords where id = ? LIMIT 1;`, node.WordId).StructScan(&w)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return nil, nil, false, err
 			}
 			return &node, &w, false, nil
 		}
 	}
-	log.Fatalf("shouldn't happen")
-	return nil, nil, false, errors.New("failed to find weighted previous word")
+	log.Fatal().Msg("failed to find weighted previous word")
+	return nil, nil, false, nil
 }
 
 func (p *BabblerPlugin) verifyPhrase(babbler *Babbler, phrase []string) (*BabblerNode, *BabblerNode, error) {
 	curNode, err := p.getBabblerNode(babbler, phrase[0])
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, nil, err
 	}
 	firstNode := curNode
 	for i := 1; i < len(phrase); i++ {
 		nextNode, err := p.getBabblerNode(babbler, phrase[i])
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, nil, err
 		}
 		_, err = p.getBabblerArc(curNode, nextNode)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return nil, nil, err
 		}
 		curNode = nextNode
@@ -610,7 +597,7 @@ func (p *BabblerPlugin) babble(who string) (string, error) {
 func (p *BabblerPlugin) babbleSeed(babblerName string, seed []string) (string, error) {
 	babbler, err := p.getBabbler(babblerName)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", nil
 	}
 
@@ -621,14 +608,14 @@ func (p *BabblerPlugin) babbleSeed(babblerName string, seed []string) (string, e
 	if len(seed) == 0 {
 		curNode, curWord, err = p.getWeightedRootNode(babbler)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return "", err
 		}
 		words = append(words, curWord.Word)
 	} else {
 		_, curNode, err = p.verifyPhrase(babbler, seed)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return "", err
 		}
 	}
@@ -636,7 +623,7 @@ func (p *BabblerPlugin) babbleSeed(babblerName string, seed []string) (string, e
 	for {
 		curNode, curWord, err = p.getWeightedNextWord(curNode)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return "", err
 		}
 		if curWord.Word == " " {
@@ -655,12 +642,12 @@ func (p *BabblerPlugin) babbleSeed(babblerName string, seed []string) (string, e
 func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoName, otherName string) error {
 	intoNode, err := p.getOrCreateBabblerNode(intoBabbler, "<"+intoName+">")
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return err
 	}
 	otherNode, err := p.getOrCreateBabblerNode(otherBabbler, "<"+otherName+">")
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return err
 	}
 
@@ -668,7 +655,7 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 
 	rows, err := p.db.Queryx("select * from babblerNodes where babblerId = ?;", otherBabbler.BabblerId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return err
 	}
 	defer rows.Close()
@@ -679,7 +666,7 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 		var node BabblerNode
 		err = rows.StructScan(&node)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return err
 		}
 		nodes = append(nodes, &node)
@@ -695,12 +682,12 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 		if node.Root > 0 {
 			res, err = p.db.Exec(`update babblerNodes set rootFrequency = rootFrequency + ?, root = 1 where babblerId = ? and wordId = ?;`, node.RootFrequency, intoBabbler.BabblerId, node.WordId)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 			}
 		} else {
 			res, err = p.db.Exec(`update babblerNodes set rootFrequency = rootFrequency + ? where babblerId = ? and wordId = ?;`, node.RootFrequency, intoBabbler.BabblerId, node.WordId)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 			}
 		}
 
@@ -712,7 +699,7 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 		if err != nil || rowsAffected == 0 {
 			res, err = p.db.Exec(`insert into babblerNodes (babblerId, wordId, root, rootFrequency) values (?,?,?,?) ;`, intoBabbler.BabblerId, node.WordId, node.Root, node.RootFrequency)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return err
 			}
 		}
@@ -720,7 +707,7 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 		var updatedNode BabblerNode
 		err = p.db.QueryRowx(`select * from babblerNodes where babblerId = ? and wordId = ? LIMIT 1;`, intoBabbler.BabblerId, node.WordId).StructScan(&updatedNode)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return err
 		}
 
@@ -740,7 +727,7 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 			var arc BabblerArc
 			err = rows.StructScan(&arc)
 			if err != nil {
-				log.Print(err)
+				log.Error().Err(err)
 				return err
 			}
 			arcs = append(arcs, &arc)
@@ -760,13 +747,13 @@ func (p *BabblerPlugin) mergeBabblers(intoBabbler, otherBabbler *Babbler, intoNa
 func (p *BabblerPlugin) babbleSeedSuffix(babblerName string, seed []string) (string, error) {
 	babbler, err := p.getBabbler(babblerName)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", nil
 	}
 
 	firstNode, curNode, err := p.verifyPhrase(babbler, seed)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", err
 	}
 
@@ -777,7 +764,7 @@ func (p *BabblerPlugin) babbleSeedSuffix(babblerName string, seed []string) (str
 	for {
 		curNode, curWord, shouldTerminate, err = p.getWeightedPreviousWord(curNode)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return "", err
 		}
 
@@ -806,7 +793,7 @@ func (p *BabblerPlugin) getNextArcs(babblerNodeId int64) ([]*BabblerArc, error) 
 	arcs := []*BabblerArc{}
 	rows, err := p.db.Queryx(`select * from babblerArcs where fromNodeId = ?;`, babblerNodeId)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return arcs, err
 	}
 	defer rows.Close()
@@ -815,7 +802,7 @@ func (p *BabblerPlugin) getNextArcs(babblerNodeId int64) ([]*BabblerArc, error) 
 		var arc BabblerArc
 		err = rows.StructScan(&arc)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return []*BabblerArc{}, err
 		}
 		arcs = append(arcs, &arc)
@@ -827,7 +814,7 @@ func (p *BabblerPlugin) getBabblerNodeById(nodeId int64) (*BabblerNode, error) {
 	var node BabblerNode
 	err := p.db.QueryRowx(`select * from babblerNodes where id = ? LIMIT 1;`, nodeId).StructScan(&node)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 	return &node, nil
@@ -843,19 +830,19 @@ func shuffle(a []*BabblerArc) {
 func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []string) (string, error) {
 	babbler, err := p.getBabbler(babblerName)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", nil
 	}
 
 	_, startWordNode, err := p.verifyPhrase(babbler, start)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", err
 	}
 
 	endWordNode, _, err := p.verifyPhrase(babbler, end)
 	if err != nil {
-		log.Print(err)
+		log.Error().Err(err)
 		return "", err
 	}
 
@@ -864,7 +851,7 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 		previous      *searchNode
 	}
 
-	open := []*searchNode{&searchNode{startWordNode.NodeId, nil}}
+	open := []*searchNode{{startWordNode.NodeId, nil}}
 	closed := map[int64]*searchNode{startWordNode.NodeId: open[0]}
 	goalNodeId := int64(-1)
 
@@ -909,13 +896,13 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 	for {
 		cur, err := p.getBabblerNodeById(curSearchNode.babblerNodeId)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return "", err
 		}
 		var w BabblerWord
 		err = p.db.QueryRowx(`select * from babblerWords where id = ? LIMIT 1;`, cur.WordId).StructScan(&w)
 		if err != nil {
-			log.Print(err)
+			log.Error().Err(err)
 			return "", err
 		}
 		words = append(words, w.Word)
@@ -937,5 +924,3 @@ func (p *BabblerPlugin) babbleSeedBookends(babblerName string, start, end []stri
 
 	return strings.Join(words, " "), nil
 }
-
-func (p *BabblerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

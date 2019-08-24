@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/plugins/counter"
@@ -37,34 +37,33 @@ type untappdUser struct {
 	chanNick    string
 }
 
-// NewBeersPlugin creates a new BeersPlugin with the Plugin interface
-func New(bot bot.Bot) *BeersPlugin {
-	if bot.DBVersion() == 1 {
-		if _, err := bot.DB().Exec(`create table if not exists untappd (
+// New BeersPlugin creates a new BeersPlugin with the Plugin interface
+func New(b bot.Bot) *BeersPlugin {
+	if _, err := b.DB().Exec(`create table if not exists untappd (
 			id integer primary key,
 			untappdUser string,
 			channel string,
 			lastCheckin integer,
 			chanNick string
 		);`); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal().Err(err)
 	}
-	p := BeersPlugin{
-		Bot: bot,
-		db:  bot.DB(),
+	p := &BeersPlugin{
+		Bot: b,
+		db:  b.DB(),
 	}
-	p.LoadData()
-	for _, channel := range bot.Config().Untappd.Channels {
-		go p.untappdLoop(channel)
+	for _, channel := range b.Config().GetArray("Untappd.Channels", []string{}) {
+		go p.untappdLoop(b.DefaultConnector(), channel)
 	}
-	return &p
+	b.Register(p, bot.Message, p.message)
+	b.Register(p, bot.Help, p.help)
+	return p
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *BeersPlugin) Message(message msg.Message) bool {
+func (p *BeersPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	parts := strings.Fields(message.Body)
 
 	if len(parts) == 0 {
@@ -84,49 +83,49 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 			count, err := strconv.Atoi(parts[2])
 			if err != nil {
 				// if it's not a number, maybe it's a nick!
-				p.Bot.SendMessage(channel, "Sorry, that didn't make any sense.")
+				p.Bot.Send(c, bot.Message, channel, "Sorry, that didn't make any sense.")
 			}
 
 			if count < 0 {
 				// you can't be negative
 				msg := fmt.Sprintf("Sorry %s, you can't have negative beers!", nick)
-				p.Bot.SendMessage(channel, msg)
+				p.Bot.Send(c, bot.Message, channel, msg)
 				return true
 			}
 			if parts[1] == "+=" {
 				p.addBeers(nick, count)
-				p.randomReply(channel)
+				p.randomReply(c, channel)
 			} else if parts[1] == "=" {
 				if count == 0 {
-					p.puke(nick, channel)
+					p.puke(c, nick, channel)
 				} else {
 					p.setBeers(nick, count)
-					p.randomReply(channel)
+					p.randomReply(c, channel)
 				}
 			} else {
-				p.Bot.SendMessage(channel, "I don't know your math.")
+				p.Bot.Send(c, bot.Message, channel, "I don't know your math.")
 			}
 		} else if len(parts) == 2 {
 			if p.doIKnow(parts[1]) {
-				p.reportCount(parts[1], channel, false)
+				p.reportCount(c, parts[1], channel, false)
 			} else {
 				msg := fmt.Sprintf("Sorry, I don't know %s.", parts[1])
-				p.Bot.SendMessage(channel, msg)
+				p.Bot.Send(c, bot.Message, channel, msg)
 			}
 		} else if len(parts) == 1 {
-			p.reportCount(nick, channel, true)
+			p.reportCount(c, nick, channel, true)
 		}
 
 		// no matter what, if we're in here, then we've responded
 		return true
 	} else if parts[0] == "puke" {
-		p.puke(nick, channel)
+		p.puke(c, nick, channel)
 		return true
 	}
 
 	if message.Command && parts[0] == "imbibe" {
 		p.addBeers(nick, 1)
-		p.randomReply(channel)
+		p.randomReply(c, channel)
 		return true
 	}
 
@@ -135,7 +134,7 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 		channel := message.Channel
 
 		if len(parts) < 2 {
-			p.Bot.SendMessage(channel, "You must also provide a user name.")
+			p.Bot.Send(c, bot.Message, channel, "You must also provide a user name.")
 		} else if len(parts) == 3 {
 			chanNick = parts[2]
 		} else if len(parts) == 4 {
@@ -148,16 +147,19 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 			channel:     channel,
 		}
 
-		log.Println("Creating Untappd user:", u.untappdUser, "nick:", u.chanNick)
+		log.Info().
+			Str("untappdUser", u.untappdUser).
+			Str("nick", u.chanNick).
+			Msg("Creating Untappd user")
 
 		var count int
 		err := p.db.QueryRow(`select count(*) from untappd
 			where untappdUser = ?`, u.untappdUser).Scan(&count)
 		if err != nil {
-			log.Println("Error registering untappd: ", err)
+			log.Error().Err(err).Msgf("Error registering untappd")
 		}
 		if count > 0 {
-			p.Bot.SendMessage(channel, "I'm already watching you.")
+			p.Bot.Send(c, bot.Message, channel, "I'm already watching you.")
 			return true
 		}
 		_, err = p.db.Exec(`insert into untappd (
@@ -172,45 +174,36 @@ func (p *BeersPlugin) Message(message msg.Message) bool {
 			u.chanNick,
 		)
 		if err != nil {
-			log.Println("Error registering untappd: ", err)
-			p.Bot.SendMessage(channel, "I can't see.")
+			log.Error().Err(err).Msgf("Error registering untappd")
+			p.Bot.Send(c, bot.Message, channel, "I can't see.")
 			return true
 		}
 
-		p.Bot.SendMessage(channel, "I'll be watching you.")
+		p.Bot.Send(c, bot.Message, channel, "I'll be watching you.")
 
-		p.checkUntappd(channel)
+		p.checkUntappd(c, channel)
 
 		return true
 	}
 
 	if message.Command && parts[0] == "checkuntappd" {
-		log.Println("Checking untappd at request of user.")
-		p.checkUntappd(channel)
+		log.Info().
+			Str("user", message.User.Name).
+			Msgf("Checking untappd at request of user.")
+		p.checkUntappd(c, channel)
 		return true
 	}
 
 	return false
 }
 
-// Empty event handler because this plugin does not do anything on event recv
-func (p *BeersPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
-func (p *BeersPlugin) LoadData() {
-	rand.Seed(time.Now().Unix())
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *BeersPlugin) Help(channel string, parts []string) {
+func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
 		"commands. I'll keep a count of how many beers you've had and then if you want " +
 		"to reset, just !puke it all up!"
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(c, bot.Message, message.Channel, msg)
+	return true
 }
 
 func getUserBeers(db *sqlx.DB, user string) counter.Item {
@@ -222,7 +215,7 @@ func (p *BeersPlugin) setBeers(user string, amount int) {
 	ub := getUserBeers(p.db, user)
 	err := ub.Update(amount)
 	if err != nil {
-		log.Println("Error saving beers: ", err)
+		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
@@ -230,7 +223,7 @@ func (p *BeersPlugin) addBeers(user string, delta int) {
 	ub := getUserBeers(p.db, user)
 	err := ub.UpdateDelta(delta)
 	if err != nil {
-		log.Println("Error saving beers: ", err)
+		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
@@ -239,7 +232,7 @@ func (p *BeersPlugin) getBeers(nick string) int {
 	return ub.Count
 }
 
-func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
+func (p *BeersPlugin) reportCount(c bot.Connector, nick, channel string, himself bool) {
 	beers := p.getBeers(nick)
 	msg := fmt.Sprintf("%s has had %d beers so far.", nick, beers)
 	if himself {
@@ -249,13 +242,13 @@ func (p *BeersPlugin) reportCount(nick, channel string, himself bool) {
 			msg = fmt.Sprintf("You've had %d beers so far, %s.", beers, nick)
 		}
 	}
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(c, bot.Message, channel, msg)
 }
 
-func (p *BeersPlugin) puke(user string, channel string) {
+func (p *BeersPlugin) puke(c bot.Connector, user string, channel string) {
 	p.setBeers(user, 0)
 	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user)
-	p.Bot.SendMessage(channel, msg)
+	p.Bot.Send(c, bot.Message, channel, msg)
 }
 
 func (p *BeersPlugin) doIKnow(nick string) bool {
@@ -268,9 +261,9 @@ func (p *BeersPlugin) doIKnow(nick string) bool {
 }
 
 // Sends random affirmation to the channel. This could be better (with a datastore for sayings)
-func (p *BeersPlugin) randomReply(channel string) {
+func (p *BeersPlugin) randomReply(c bot.Connector, channel string) {
 	replies := []string{"ZIGGY! ZAGGY!", "HIC!", "Stay thirsty, my friend!"}
-	p.Bot.SendMessage(channel, replies[rand.Intn(len(replies))])
+	p.Bot.Send(c, bot.Message, channel, replies[rand.Intn(len(replies))])
 }
 
 type checkin struct {
@@ -316,7 +309,12 @@ type Beers struct {
 }
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
-	access_token := "?access_token=" + p.Bot.Config().Untappd.Token
+	token := p.Bot.Config().Get("Untappd.Token", "NONE")
+	if token == "NONE" {
+		return []checkin{}, fmt.Errorf("No untappd token")
+	}
+
+	access_token := "?access_token=" + token
 	baseUrl := "https://api.untappd.com/v4/checkin/recent/"
 
 	url := baseUrl + access_token + "&limit=25"
@@ -332,55 +330,54 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	}
 
 	if resp.StatusCode == 500 {
-		log.Printf("Error querying untappd: %s, %s", resp.Status, body)
+		log.Error().Msgf("Error querying untappd: %s, %s", resp.Status, body)
 		return []checkin{}, errors.New(resp.Status)
 	}
 
 	var beers Beers
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 		return []checkin{}, err
 	}
 	return beers.Response.Checkins.Items, nil
 }
 
-func (p *BeersPlugin) checkUntappd(channel string) {
-	token := p.Bot.Config().Untappd.Token
-	if token == "" || token == "<Your Token>" {
-		log.Println("No Untappd token, cannot enable plugin.")
+func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
+	token := p.Bot.Config().Get("Untappd.Token", "NONE")
+	if token == "NONE" {
+		log.Info().
+			Msg(`Set config value "untappd.token" if you wish to enable untappd`)
 		return
 	}
 
 	userMap := make(map[string]untappdUser)
 	rows, err := p.db.Query(`select id, untappdUser, channel, lastCheckin, chanNick from untappd;`)
 	if err != nil {
-		log.Println("Error getting untappd users: ", err)
+		log.Error().Err(err).Msg("Error getting untappd users")
 		return
 	}
 	for rows.Next() {
 		u := untappdUser{}
 		err := rows.Scan(&u.id, &u.untappdUser, &u.channel, &u.lastCheckin, &u.chanNick)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err)
 		}
 		userMap[u.untappdUser] = u
-		log.Printf("Found untappd user: %#v", u)
 		if u.chanNick == "" {
-			log.Fatal("Empty chanNick for no good reason.")
+			log.Fatal().Msg("Empty chanNick for no good reason.")
 		}
 	}
 
 	chks, err := p.pullUntappd()
 	if err != nil {
-		log.Println("Untappd ERROR: ", err)
+		log.Error().Err(err).Msg("Untappd ERROR")
 		return
 	}
 	for i := len(chks); i > 0; i-- {
 		checkin := chks[i-1]
 
 		if checkin.Checkin_id <= userMap[checkin.User.User_name].lastCheckin {
-			log.Printf("User %s already check in >%d", checkin.User.User_name, checkin.Checkin_id)
 			continue
 		}
 
@@ -395,8 +392,9 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 		if !ok {
 			continue
 		}
-		log.Printf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
-			user.chanNick, user.untappdUser, checkin.User.User_name)
+		log.Debug().
+			Msgf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
+				user.chanNick, user.untappdUser, checkin.User.User_name)
 		p.addBeers(user.chanNick, 1)
 		drunken := p.getBeers(user.chanNick)
 
@@ -410,11 +408,18 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 				msg, checkin.Checkin_comment)
 		}
 
+		args := []interface{}{
+			channel,
+			msg,
+		}
 		if checkin.Media.Count > 0 {
 			if strings.Contains(checkin.Media.Items[0].Photo.Photo_img_lg, "photos-processing") {
 				continue
 			}
-			msg += "\nHere's a photo: " + checkin.Media.Items[0].Photo.Photo_img_lg
+			args = append(args, bot.ImageAttachment{
+				URL:    checkin.Media.Items[0].Photo.Photo_img_lg,
+				AltTxt: "Here's a photo",
+			})
 		}
 
 		user.lastCheckin = checkin.Checkin_id
@@ -422,33 +427,27 @@ func (p *BeersPlugin) checkUntappd(channel string) {
 			lastCheckin = ?
 		where id = ?`, user.lastCheckin, user.id)
 		if err != nil {
-			log.Println("UPDATE ERROR!:", err)
+			log.Error().Err(err).Msg("UPDATE ERROR!")
 		}
 
-		log.Println("checkin id:", checkin.Checkin_id, "Message:", msg)
-		p.Bot.SendMessage(channel, msg)
+		log.Debug().
+			Int("checkin_id", checkin.Checkin_id).
+			Str("msg", msg).
+			Msg("checkin")
+		p.Bot.Send(c, bot.Message, args...)
 	}
 }
 
-func (p *BeersPlugin) untappdLoop(channel string) {
-	frequency := p.Bot.Config().Untappd.Freq
+func (p *BeersPlugin) untappdLoop(c bot.Connector, channel string) {
+	frequency := p.Bot.Config().GetInt("Untappd.Freq", 120)
+	if frequency == 0 {
+		return
+	}
 
-	log.Println("Checking every ", frequency, " seconds")
+	log.Info().Msgf("Checking every %v seconds", frequency)
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
-		p.checkUntappd(channel)
+		p.checkUntappd(c, channel)
 	}
 }
-
-// Handler for bot's own messages
-func (p *BeersPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-// Register any web URLs desired
-func (p *BeersPlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *BeersPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

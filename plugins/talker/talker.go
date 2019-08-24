@@ -4,14 +4,20 @@ package talker
 
 import (
 	"fmt"
-	"math/rand"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
-var goatse []string = []string{
+var goatse = []string{
 	"```* g o a t s e x * g o a t s e x * g o a t s e x *",
 	"g                                               g",
 	"o /     \\             \\            /    \\       o",
@@ -40,28 +46,48 @@ var goatse []string = []string{
 }
 
 type TalkerPlugin struct {
-	Bot          bot.Bot
-	enforceNicks bool
-	sayings      []string
+	bot     bot.Bot
+	config  *config.Config
+	sayings []string
 }
 
-func New(bot bot.Bot) *TalkerPlugin {
-	return &TalkerPlugin{
-		Bot:          bot,
-		enforceNicks: bot.Config().EnforceNicks,
-		sayings:      bot.Config().WelcomeMsgs,
+func New(b bot.Bot) *TalkerPlugin {
+	tp := &TalkerPlugin{
+		bot:    b,
+		config: b.Config(),
 	}
+	b.Register(tp, bot.Message, tp.message)
+	b.Register(tp, bot.Help, tp.help)
+	tp.registerWeb(b.DefaultConnector())
+	return tp
 }
 
-func (p *TalkerPlugin) Message(message msg.Message) bool {
+func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	channel := message.Channel
 	body := message.Body
 	lowermessage := strings.ToLower(body)
 
+	if message.Command && strings.HasPrefix(lowermessage, "cowsay") {
+		msg, err := p.cowSay(strings.TrimPrefix(message.Body, "cowsay "))
+		if err != nil {
+			p.bot.Send(c, bot.Message, channel, "Error running cowsay: %s", err)
+			return true
+		}
+		p.bot.Send(c, bot.Message, channel, msg)
+		return true
+	}
+
+	if message.Command && strings.HasPrefix(lowermessage, "list cows") {
+		cows := p.allCows()
+		m := fmt.Sprintf("Cows: %s", strings.Join(cows, ", "))
+		p.bot.Send(c, bot.Message, channel, m)
+		return true
+	}
+
 	// TODO: This ought to be space split afterwards to remove any punctuation
 	if message.Command && strings.HasPrefix(lowermessage, "say") {
 		msg := strings.TrimSpace(body[3:])
-		p.Bot.SendMessage(channel, msg)
+		p.bot.Send(c, bot.Message, channel, msg)
 		return true
 	}
 
@@ -77,45 +103,85 @@ func (p *TalkerPlugin) Message(message msg.Message) bool {
 			line = strings.Replace(line, "{nick}", nick, 1)
 			output += line + "\n"
 		}
-		p.Bot.SendMessage(channel, output)
-		return true
-	}
-
-	if p.enforceNicks && len(message.User.Name) != 9 {
-		msg := fmt.Sprintf("Hey %s, we really like to have 9 character nicks because we're crazy OCD and stuff.",
-			message.User.Name)
-		p.Bot.SendMessage(message.Channel, msg)
+		p.bot.Send(c, bot.Message, channel, output)
 		return true
 	}
 
 	return false
 }
 
-func (p *TalkerPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "Hi, this is talker. I like to talk about FredFelps!")
+func (p *TalkerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
+	return true
 }
 
-// Empty event handler because this plugin does not do anything on event recv
-func (p *TalkerPlugin) Event(kind string, message msg.Message) bool {
-	if kind == "JOIN" && strings.ToLower(message.User.Name) != strings.ToLower(p.Bot.Config().Nick) {
-		if len(p.sayings) == 0 {
-			return false
+func (p *TalkerPlugin) cowSay(text string) (string, error) {
+	fields := strings.Split(text, " ")
+	cow := "default"
+	if len(fields) > 1 && p.hasCow(fields[0]) {
+		cow = fields[0]
+		text = strings.Join(fields[1:], " ")
+	}
+	cmd := exec.Command("cowsay", "-f", cow, text)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+
+	if err = cmd.Start(); err != nil {
+		return "", err
+	}
+
+	output, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("```%s```", output), nil
+}
+
+func (p *TalkerPlugin) hasCow(cow string) bool {
+	cows := p.allCows()
+	for _, c := range cows {
+		if strings.ToLower(cow) == c {
+			return true
 		}
-		msg := fmt.Sprintf(p.sayings[rand.Intn(len(p.sayings))], message.User.Name)
-		p.Bot.SendMessage(message.Channel, msg)
-		return true
 	}
 	return false
 }
 
-// Handler for bot's own messages
-func (p *TalkerPlugin) BotMessage(message msg.Message) bool {
-	return false
+func (p *TalkerPlugin) allCows() []string {
+	f, err := os.Open(p.config.Get("talker.cowpath", "/usr/local/share/cows"))
+	if err != nil {
+		return []string{"default"}
+	}
+
+	files, err := f.Readdir(0)
+	if err != nil {
+		return []string{"default"}
+	}
+
+	cows := []string{}
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".cow") {
+			cows = append(cows, strings.TrimSuffix(f.Name(), ".cow"))
+		}
+	}
+	return cows
 }
 
-// Register any web URLs desired
-func (p *TalkerPlugin) RegisterWeb() *string {
-	return nil
+func (p *TalkerPlugin) registerWeb(c bot.Connector) {
+	http.HandleFunc("/slash/cowsay", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		log.Debug().Msgf("Cowsay:\n%+v", r.PostForm.Get("text"))
+		channel := r.PostForm.Get("channel_id")
+		log.Debug().Msgf("channel: %s", channel)
+		msg, err := p.cowSay(r.PostForm.Get("text"))
+		if err != nil {
+			p.bot.Send(c, bot.Message, channel, fmt.Sprintf("Error running cowsay: %s", err))
+			return
+		}
+		p.bot.Send(c, bot.Message, channel, msg)
+		w.WriteHeader(200)
+	})
 }
-
-func (p *TalkerPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

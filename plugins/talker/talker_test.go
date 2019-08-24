@@ -3,6 +3,7 @@
 package talker
 
 import (
+	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) msg.Message {
+func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return msg.Message{
+	return &cli.CliPlugin{}, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -29,7 +30,7 @@ func TestGoatse(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("goatse"))
+	res := c.message(makeMessage("goatse"))
 	assert.Len(t, mb.Messages, 0)
 	assert.False(t, res)
 }
@@ -38,7 +39,7 @@ func TestGoatseCommand(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!goatse"))
+	res := c.message(makeMessage("!goatse"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "g o a t s e")
@@ -48,7 +49,7 @@ func TestGoatseWithNickCommand(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!goatse seabass"))
+	res := c.message(makeMessage("!goatse seabass"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "g o a t s e")
@@ -59,7 +60,7 @@ func TestSay(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("say hello"))
+	res := c.message(makeMessage("say hello"))
 	assert.Len(t, mb.Messages, 0)
 	assert.False(t, res)
 }
@@ -68,78 +69,16 @@ func TestSayCommand(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.Message(makeMessage("!say hello"))
+	res := c.message(makeMessage("!say hello"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "hello")
-}
-
-func TestNineChars(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.enforceNicks = true
-	assert.NotNil(t, c)
-	res := c.Message(makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 1)
-	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "OCD")
-}
-
-func TestWelcome(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.sayings = []string{"Hi"}
-	assert.NotNil(t, c)
-	res := c.Event("JOIN", makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 1)
-	assert.True(t, res)
-	assert.Contains(t, mb.Messages[0], "Hi")
-}
-
-func TestNoSayings(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	c.sayings = []string{}
-	assert.NotNil(t, c)
-	res := c.Event("JOIN", makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 0)
-	assert.False(t, res)
-}
-
-func TestNonJoinEvent(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	res := c.Event("SPLURT", makeMessage("hello there"))
-	assert.Len(t, mb.Messages, 0)
-	assert.False(t, res)
 }
 
 func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	c.Help("channel", []string{})
+	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
-}
-
-func TestBotMessage(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	assert.False(t, c.BotMessage(makeMessage("test")))
-}
-
-func TestEvent(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	assert.False(t, c.Event("dummy", makeMessage("test")))
-}
-
-func TestRegisterWeb(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	assert.Nil(t, c.RegisterWeb())
 }

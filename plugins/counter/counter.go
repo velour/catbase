@@ -1,14 +1,17 @@
-// © 2013 the CatBase Authors under the WTFPL. See AUTHORS for the list of authors.
-
 package counter
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
-	"log"
+	"html/template"
+	"math/rand"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -39,6 +42,20 @@ type alias struct {
 	ID       int64
 	Item     string
 	PointsTo string `db:"points_to"`
+}
+
+// GetItems returns all counters
+func GetAllItems(db *sqlx.DB) ([]Item, error) {
+	var items []Item
+	err := db.Select(&items, `select * from counter`)
+	if err != nil {
+		return nil, err
+	}
+	// Don't forget to embed the DB into all of that shiz
+	for i := range items {
+		items[i].DB = db
+	}
+	return items, nil
 }
 
 // GetItems returns all counters for a subject
@@ -111,7 +128,7 @@ func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	if err := db.Get(&a, `select * from counter_alias where item=?`, itemName); err == nil {
 		itemName = a.PointsTo
 	} else {
-		log.Println(err, a)
+		log.Error().Err(err).Interface("alias", a)
 	}
 
 	err := db.Get(&item, `select * from counter where nick = ? and item= ?`,
@@ -125,7 +142,11 @@ func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	default:
 		return Item{}, err
 	}
-	log.Printf("Got item %s.%s: %#v", nick, itemName, item)
+	log.Debug().
+		Str("nick", nick).
+		Str("itemName", itemName).
+		Interface("item", item).
+		Msg("got item")
 	return item, nil
 }
 
@@ -133,6 +154,9 @@ func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 func (i *Item) Create() error {
 	res, err := i.Exec(`insert into counter (nick, item, count) values (?, ?, ?);`,
 		i.Nick, i.Item, i.Count)
+	if err != nil {
+		return err
+	}
 	id, _ := res.LastInsertId()
 	// hackhackhack?
 	i.ID = id
@@ -149,7 +173,10 @@ func (i *Item) Update(value int) error {
 	if i.ID == -1 {
 		i.Create()
 	}
-	log.Printf("Updating item: %#v, value: %d", i, value)
+	log.Debug().
+		Interface("i", i).
+		Int("value", value).
+		Msg("Updating item")
 	_, err := i.Exec(`update counter set count = ? where id = ?`, i.Count, i.ID)
 	return err
 }
@@ -169,33 +196,35 @@ func (i *Item) Delete() error {
 }
 
 // NewCounterPlugin creates a new CounterPlugin with the Plugin interface
-func New(bot bot.Bot) *CounterPlugin {
-	if _, err := bot.DB().Exec(`create table if not exists counter (
+func New(b bot.Bot) *CounterPlugin {
+	tx := b.DB().MustBegin()
+	b.DB().MustExec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
 			count integer
-		);`); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := bot.DB().Exec(`create table if not exists counter_alias (
+		);`)
+	b.DB().MustExec(`create table if not exists counter_alias (
 			id integer PRIMARY KEY AUTOINCREMENT,
 			item string NOT NULL UNIQUE,
 			points_to string NOT NULL
-		);`); err != nil {
-		log.Fatal(err)
+		);`)
+	tx.Commit()
+	cp := &CounterPlugin{
+		Bot: b,
+		DB:  b.DB(),
 	}
-	return &CounterPlugin{
-		Bot: bot,
-		DB:  bot.DB(),
-	}
+	b.Register(cp, bot.Message, cp.message)
+	b.Register(cp, bot.Help, cp.help)
+	cp.registerWeb()
+	return cp
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the
 // users message. Otherwise, the function returns false and the bot continues
 // execution of other plugins.
-func (p *CounterPlugin) Message(message msg.Message) bool {
+func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	// This bot does not reply to anything
 	nick := message.User.Name
 	channel := message.Channel
@@ -207,10 +236,10 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 
 	if len(parts) == 3 && strings.ToLower(parts[0]) == "mkalias" {
 		if _, err := MkAlias(p.DB, parts[1], parts[2]); err != nil {
-			log.Println(err)
+			log.Error().Err(err)
 			return false
 		}
-		p.Bot.SendMessage(channel, fmt.Sprintf("Created alias %s -> %s",
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("Created alias %s -> %s",
 			parts[1], parts[2]))
 		return true
 	} else if strings.ToLower(parts[0]) == "leaderboard" {
@@ -226,7 +255,7 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 
 		its, err := cmd()
 		if err != nil {
-			log.Println(err)
+			log.Error().Err(err)
 			return false
 		} else if len(its) == 0 {
 			return false
@@ -240,23 +269,26 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 				it.Item,
 			)
 		}
-		p.Bot.SendMessage(channel, out)
+		p.Bot.Send(c, bot.Message, channel, out)
 		return true
 	} else if match := teaMatcher.MatchString(message.Body); match {
 		// check for tea match TTT
-		return p.checkMatch(message)
+		return p.checkMatch(c, message)
 	} else if message.Command && message.Body == "reset me" {
 		items, err := GetItems(p.DB, strings.ToLower(nick))
 		if err != nil {
-			log.Printf("Error getting items to reset %s: %s", nick, err)
-			p.Bot.SendMessage(channel, "Something is technically wrong with your counters.")
+			log.Error().
+				Err(err).
+				Str("nick", nick).
+				Msg("Error getting items to reset")
+			p.Bot.Send(c, bot.Message, channel, "Something is technically wrong with your counters.")
 			return true
 		}
-		log.Printf("Items: %+v", items)
+		log.Debug().Msgf("Items: %+v", items)
 		for _, item := range items {
 			item.Delete()
 		}
-		p.Bot.SendMessage(channel, fmt.Sprintf("%s, you are as new, my son.", nick))
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
 		return true
 	} else if message.Command && parts[0] == "inspect" && len(parts) == 2 {
 		var subject string
@@ -267,12 +299,17 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 			subject = strings.ToLower(parts[1])
 		}
 
-		log.Printf("Getting counter for %s", subject)
+		log.Debug().
+			Str("subject", subject).
+			Msg("Getting counter")
 		// pull all of the items associated with "subject"
 		items, err := GetItems(p.DB, subject)
 		if err != nil {
-			log.Fatalf("Error retrieving items for %s: %s", subject, err)
-			p.Bot.SendMessage(channel, "Something went wrong finding that counter;")
+			log.Error().
+				Err(err).
+				Str("subject", subject).
+				Msg("Error retrieving items")
+			p.Bot.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
 			return true
 		}
 
@@ -292,11 +329,11 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		resp += "."
 
 		if count == 0 {
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has no counters.", subject))
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", subject))
 			return true
 		}
 
-		p.Bot.SendMessage(channel, resp)
+		p.Bot.Send(c, bot.Message, channel, resp)
 		return true
 	} else if message.Command && len(parts) == 2 && parts[0] == "clear" {
 		subject := strings.ToLower(nick)
@@ -304,18 +341,26 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 
 		it, err := GetItem(p.DB, subject, itemName)
 		if err != nil {
-			log.Printf("Error getting item to remove %s.%s: %s", subject, itemName, err)
-			p.Bot.SendMessage(channel, "Something went wrong removing that counter;")
+			log.Error().
+				Err(err).
+				Str("subject", subject).
+				Str("itemName", itemName).
+				Msg("Error getting item to remove")
+			p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
 			return true
 		}
 		err = it.Delete()
 		if err != nil {
-			log.Printf("Error removing item %s.%s: %s", subject, itemName, err)
-			p.Bot.SendMessage(channel, "Something went wrong removing that counter;")
+			log.Error().
+				Err(err).
+				Str("subject", subject).
+				Str("itemName", itemName).
+				Msg("Error removing item")
+			p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
 			return true
 		}
 
-		p.Bot.SendAction(channel, fmt.Sprintf("chops a few %s out of his brain",
+		p.Bot.Send(c, bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
 			itemName))
 		return true
 
@@ -338,16 +383,19 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 		item, err := GetItem(p.DB, subject, itemName)
 		switch {
 		case err == sql.ErrNoRows:
-			p.Bot.SendMessage(channel, fmt.Sprintf("I don't think %s has any %s.",
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("I don't think %s has any %s.",
 				subject, itemName))
 			return true
 		case err != nil:
-			log.Printf("Error retrieving item count for %s.%s: %s",
-				subject, itemName, err)
+			log.Error().
+				Err(err).
+				Str("subject", subject).
+				Str("itemName", itemName).
+				Msg("Error retrieving item count")
 			return true
 		}
 
-		p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
 			itemName))
 
 		return true
@@ -372,25 +420,33 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 			// ++ those fuckers
 			item, err := GetItem(p.DB, subject, itemName)
 			if err != nil {
-				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				log.Error().
+					Err(err).
+					Str("subject", subject).
+					Str("itemName", itemName).
+					Msg("error finding item")
 				// Item ain't there, I guess
 				return false
 			}
-			log.Printf("About to update item: %#v", item)
+			log.Debug().Msgf("About to update item: %#v", item)
 			item.UpdateDelta(1)
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		} else if strings.HasSuffix(parts[0], "--") {
 			// -- those fuckers
 			item, err := GetItem(p.DB, subject, itemName)
 			if err != nil {
-				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				log.Error().
+					Err(err).
+					Str("subject", subject).
+					Str("itemName", itemName).
+					Msg("Error finding item")
 				// Item ain't there, I guess
 				return false
 			}
 			item.UpdateDelta(-1)
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		}
@@ -412,28 +468,36 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 			// += those fuckers
 			item, err := GetItem(p.DB, subject, itemName)
 			if err != nil {
-				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				log.Error().
+					Err(err).
+					Str("subject", subject).
+					Str("itemName", itemName).
+					Msg("Error finding item")
 				// Item ain't there, I guess
 				return false
 			}
 			n, _ := strconv.Atoi(parts[2])
-			log.Printf("About to update item by %d: %#v", n, item)
+			log.Debug().Msgf("About to update item by %d: %#v", n, item)
 			item.UpdateDelta(n)
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		} else if parts[1] == "-=" {
 			// -= those fuckers
 			item, err := GetItem(p.DB, subject, itemName)
 			if err != nil {
-				log.Printf("Error finding item %s.%s: %s.", subject, itemName, err)
+				log.Error().
+					Err(err).
+					Str("subject", subject).
+					Str("itemName", itemName).
+					Msg("Error finding item")
 				// Item ain't there, I guess
 				return false
 			}
 			n, _ := strconv.Atoi(parts[2])
-			log.Printf("About to update item by -%d: %#v", n, item)
+			log.Debug().Msgf("About to update item by -%d: %#v", n, item)
 			item.UpdateDelta(-n)
-			p.Bot.SendMessage(channel, fmt.Sprintf("%s has %d %s.", subject,
+			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
 				item.Count, item.Item))
 			return true
 		}
@@ -443,31 +507,15 @@ func (p *CounterPlugin) Message(message msg.Message) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *CounterPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "You can set counters incrementally by using "+
+func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.Bot.Send(c, bot.Message, message.Channel, "You can set counters incrementally by using "+
 		"<noun>++ and <noun>--. You can see all of your counters using "+
 		"\"inspect\", erase them with \"clear\", and view single counters with "+
 		"\"count\".")
+	return true
 }
 
-// Empty event handler because this plugin does not do anything on event recv
-func (p *CounterPlugin) Event(kind string, message msg.Message) bool {
-	return false
-}
-
-// Handler for bot's own messages
-func (p *CounterPlugin) BotMessage(message msg.Message) bool {
-	return false
-}
-
-// Register any web URLs desired
-func (p *CounterPlugin) RegisterWeb() *string {
-	return nil
-}
-
-func (p *CounterPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
-
-func (p *CounterPlugin) checkMatch(message msg.Message) bool {
+func (p *CounterPlugin) checkMatch(c bot.Connector, message msg.Message) bool {
 	nick := message.User.Name
 	channel := message.Channel
 
@@ -480,13 +528,98 @@ func (p *CounterPlugin) checkMatch(message msg.Message) bool {
 	// We will specifically allow :tea: to keep compatability
 	item, err := GetItem(p.DB, nick, itemName)
 	if err != nil || (item.Count == 0 && item.Item != ":tea:") {
-		log.Printf("Error finding item %s.%s: %s.", nick, itemName, err)
+		log.Error().
+			Err(err).
+			Str("itemName", itemName).
+			Msg("Error finding item")
 		// Item ain't there, I guess
 		return false
 	}
-	log.Printf("About to update item: %#v", item)
+	log.Debug().Msgf("About to update item: %#v", item)
 	item.UpdateDelta(1)
-	p.Bot.SendMessage(channel, fmt.Sprintf("bleep-bloop-blop... %s has %d %s",
-		nick, item.Count, itemName))
+	p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
+		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
+}
+
+func everyDayImShuffling(vals []string) []string {
+	ret := make([]string, len(vals))
+	perm := rand.Perm(len(vals))
+	for i, randIndex := range perm {
+		ret[i] = vals[randIndex]
+	}
+	return ret
+}
+
+func (p *CounterPlugin) registerWeb() {
+	http.HandleFunc("/counter/api", p.handleCounterAPI)
+	http.HandleFunc("/counter", p.handleCounter)
+	p.Bot.RegisterWeb("/counter", "Counter")
+}
+
+var tpl = template.Must(template.New("factoidIndex").Parse(html))
+
+func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.Bot.GetWebNavigation()})
+}
+
+func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		info := struct {
+			User     string
+			Thing    string
+			Action   string
+			Password string
+		}{}
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&info)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprint(w, err)
+			return
+		}
+		log.Debug().
+			Interface("postbody", info).
+			Msg("Got a POST")
+		if info.Password != p.Bot.GetPassword() {
+			w.WriteHeader(http.StatusForbidden)
+			j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
+			w.Write(j)
+			return
+		}
+		item, err := GetItem(p.DB, info.User, info.Thing)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("subject", info.User).
+				Str("itemName", info.Thing).
+				Msg("error finding item")
+			w.WriteHeader(404)
+			fmt.Fprint(w, err)
+			return
+		}
+		if info.Action == "++" {
+			item.UpdateDelta(1)
+		} else if info.Action == "--" {
+			item.UpdateDelta(-1)
+		} else {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Invalid increment")
+			return
+		}
+
+	}
+	all, err := GetAllItems(p.DB)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	data, err := json.Marshal(all)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	fmt.Fprint(w, string(data))
 }

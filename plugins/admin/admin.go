@@ -3,55 +3,121 @@
 package admin
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"net/http"
 	"strings"
+	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/config"
 )
 
 // This is a admin plugin to serve as an example and quick copy/paste for new plugins.
 
 type AdminPlugin struct {
-	Bot bot.Bot
+	bot bot.Bot
 	db  *sqlx.DB
+	cfg *config.Config
+
+	quiet bool
 }
 
 // NewAdminPlugin creates a new AdminPlugin with the Plugin interface
-func New(bot bot.Bot) *AdminPlugin {
+func New(b bot.Bot) *AdminPlugin {
 	p := &AdminPlugin{
-		Bot: bot,
-		db:  bot.DB(),
+		bot: b,
+		db:  b.DB(),
+		cfg: b.Config(),
 	}
-	p.LoadData()
+	b.Register(p, bot.Message, p.message)
+	b.Register(p, bot.Help, p.help)
+	p.registerWeb()
 	return p
+}
+
+var forbiddenKeys = map[string]bool{
+	"twitch.authorization": true,
+	"twitch.clientid":      true,
+	"untappd.token":        true,
+	"slack.token":          true,
 }
 
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *AdminPlugin) Message(message msg.Message) bool {
+func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Message, args ...interface{}) bool {
 	body := message.Body
 
+	if p.quiet {
+		return true
+	}
+
 	if len(body) > 0 && body[0] == '$' {
-		return p.handleVariables(message)
+		return p.handleVariables(conn, message)
+	}
+
+	if !message.Command {
+		return false
+	}
+
+	if strings.ToLower(body) == "shut up" {
+		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
+		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
+		p.bot.Send(conn, bot.Message, message.Channel, "Okay. I'll be back later.")
+		p.quiet = true
+		go func() {
+			select {
+			case <-time.After(dur):
+				p.quiet = false
+				log.Info().Msg("Waking up from nap.")
+			}
+		}()
+		return true
+	}
+
+	if strings.ToLower(body) == "password" {
+		p.bot.Send(conn, bot.Message, message.Channel, p.bot.GetPassword())
+		return true
+	}
+
+	parts := strings.Split(body, " ")
+	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
+		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
+		return true
+	} else if parts[0] == "set" && len(parts) > 2 {
+		p.cfg.Set(parts[1], strings.Join(parts[2:], " "))
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		return true
+	}
+	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
+		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
+		return true
+	} else if parts[0] == "get" && len(parts) == 2 {
+		v := p.cfg.Get(parts[1], "<unknown>")
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
+		return true
 	}
 
 	return false
 }
 
-func (p *AdminPlugin) handleVariables(message msg.Message) bool {
+func (p *AdminPlugin) handleVariables(conn bot.Connector, message msg.Message) bool {
 	if parts := strings.SplitN(message.Body, "!=", 2); len(parts) == 2 {
 		variable := strings.ToLower(strings.TrimSpace(parts[0]))
 		value := strings.TrimSpace(parts[1])
 
 		_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
 		if err != nil {
-			p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
-			log.Println("[admin]: ", err)
+			p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			log.Error().Err(err)
 		} else {
-			p.Bot.SendMessage(message.Channel, "Removed.")
+			p.bot.Send(conn, bot.Message, message.Channel, "Removed.")
 		}
 
 		return true
@@ -69,50 +135,65 @@ func (p *AdminPlugin) handleVariables(message msg.Message) bool {
 	row := p.db.QueryRow(`select count(*) from variables where value = ?`, variable, value)
 	err := row.Scan(&count)
 	if err != nil {
-		p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
-		log.Println("[admin]: ", err)
+		p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+		log.Error().Err(err)
 		return true
 	}
 
 	if count > 0 {
-		p.Bot.SendMessage(message.Channel, "I've already got that one.")
+		p.bot.Send(conn, bot.Message, message.Channel, "I've already got that one.")
 	} else {
 		_, err := p.db.Exec(`INSERT INTO variables (name, value) VALUES (?, ?)`, variable, value)
 		if err != nil {
-			p.Bot.SendMessage(message.Channel, "I'm broke and need attention in my variable creation code.")
-			log.Println("[admin]: ", err)
+			p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			log.Error().Err(err)
 			return true
 		}
-		p.Bot.SendMessage(message.Channel, "Added.")
+		p.bot.Send(conn, bot.Message, message.Channel, "Added.")
 	}
 	return true
 }
 
-// LoadData imports any configuration data into the plugin. This is not strictly necessary other
-// than the fact that the Plugin interface demands it exist. This may be deprecated at a later
-// date.
-func (p *AdminPlugin) LoadData() {
-	// This bot has no data to load
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *AdminPlugin) Help(channel string, parts []string) {
-	p.Bot.SendMessage(channel, "This does super secret things that you're not allowed to know about.")
+func (p *AdminPlugin) help(conn bot.Connector, kind bot.Kind, m msg.Message, args ...interface{}) bool {
+	p.bot.Send(conn, bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
+	return true
 }
 
-// Empty event handler because this plugin does not do anything on event recv
-func (p *AdminPlugin) Event(kind string, message msg.Message) bool {
-	return false
+func (p *AdminPlugin) registerWeb() {
+	http.HandleFunc("/vars/api", p.handleWebAPI)
+	http.HandleFunc("/vars", p.handleWeb)
+	p.bot.RegisterWeb("/vars", "Variables")
 }
 
-// Handler for bot's own messages
-func (p *AdminPlugin) BotMessage(message msg.Message) bool {
-	return false
+var tpl = template.Must(template.New("factoidIndex").Parse(varIndex))
+
+func (p *AdminPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
 }
 
-// Register any web URLs desired
-func (p *AdminPlugin) RegisterWeb() *string {
-	return nil
+func (p *AdminPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
+	var configEntries []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	q := `select key, value from config`
+	err := p.db.Select(&configEntries, q)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Error getting config entries.")
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+	for i, e := range configEntries {
+		if strings.Contains(e.Value, ";;") {
+			e.Value = strings.ReplaceAll(e.Value, ";;", ", ")
+			e.Value = fmt.Sprintf("[%s]", e.Value)
+			configEntries[i] = e
+		}
+	}
+	j, _ := json.Marshal(configEntries)
+	fmt.Fprintf(w, "%s", j)
 }
-
-func (p *AdminPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }

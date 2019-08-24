@@ -8,11 +8,12 @@ import (
 	"bytes"
 	"go/build"
 	"io"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -26,14 +27,17 @@ type ZorkPlugin struct {
 	zorks map[string]io.WriteCloser
 }
 
-func New(b bot.Bot) bot.Handler {
-	return &ZorkPlugin{
+func New(b bot.Bot) bot.Plugin {
+	z := &ZorkPlugin{
 		bot:   b,
 		zorks: make(map[string]io.WriteCloser),
 	}
+	b.Register(z, bot.Message, z.message)
+	b.Register(z, bot.Help, z.help)
+	return z
 }
 
-func (p *ZorkPlugin) runZork(ch string) error {
+func (p *ZorkPlugin) runZork(c bot.Connector, ch string) error {
 	const importString = "github.com/velour/catbase/plugins/zork"
 	pkg, err := build.Import(importString, "", build.FindOnly)
 	if err != nil {
@@ -49,7 +53,7 @@ func (p *ZorkPlugin) runZork(ch string) error {
 	var w io.WriteCloser
 	cmd.Stdin, w = io.Pipe()
 
-	log.Printf("zork running %v\n", cmd)
+	log.Info().Msgf("zork running %v", cmd)
 	if err := cmd.Start(); err != nil {
 		w.Close()
 		return err
@@ -75,25 +79,25 @@ func (p *ZorkPlugin) runZork(ch string) error {
 			m := strings.Replace(s.Text(), ">", "", -1)
 			m = strings.Replace(m, "\n", "\n>", -1)
 			m = ">" + m + "\n"
-			p.bot.SendMessage(ch, m)
+			p.bot.Send(c, bot.Message, ch, m)
 		}
 	}()
 	go func() {
 		if err := cmd.Wait(); err != nil {
-			log.Printf("zork exited: %v\n", err)
+			log.Error().Err(err).Msg("zork exited")
 		}
 		p.Lock()
 		p.zorks[ch] = nil
 		p.Unlock()
 	}()
-	log.Printf("zork is running in %s\n", ch)
+	log.Info().Msgf("zork is running in %s\n", ch)
 	p.zorks[ch] = w
 	return nil
 }
 
-func (p *ZorkPlugin) Message(message msg.Message) bool {
+func (p *ZorkPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	m := strings.ToLower(message.Body)
-	log.Printf("got message [%s]\n", m)
+	log.Debug().Msgf("got message [%s]", m)
 	if ts := strings.Fields(m); len(ts) < 1 || ts[0] != "zork" {
 		return false
 	}
@@ -103,24 +107,17 @@ func (p *ZorkPlugin) Message(message msg.Message) bool {
 	p.Lock()
 	defer p.Unlock()
 	if p.zorks[ch] == nil {
-		if err := p.runZork(ch); err != nil {
-			p.bot.SendMessage(ch, "failed to run zork: "+err.Error())
+		if err := p.runZork(c, ch); err != nil {
+			p.bot.Send(c, bot.Message, ch, "failed to run zork: "+err.Error())
 			return true
 		}
 	}
-	log.Printf("zorking, [%s]\n", m)
+	log.Debug().Msgf("zorking, [%s]", m)
 	io.WriteString(p.zorks[ch], m+"\n")
 	return true
 }
 
-func (p *ZorkPlugin) Event(_ string, _ msg.Message) bool { return false }
-
-func (p *ZorkPlugin) BotMessage(_ msg.Message) bool { return false }
-
-func (p *ZorkPlugin) Help(ch string, _ []string) {
-	p.bot.SendMessage(ch, "Play zork using 'zork <zork command>'.")
+func (p *ZorkPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	p.bot.Send(c, bot.Message, message.Channel, "Play zork using 'zork <zork command>'.")
+	return true
 }
-
-func (p *ZorkPlugin) RegisterWeb() *string { return nil }
-
-func (p *ZorkPlugin) ReplyMessage(message msg.Message, identifier string) bool { return false }
