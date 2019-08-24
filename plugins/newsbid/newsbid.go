@@ -101,9 +101,29 @@ func (p *NewsBid) check(conn bot.Connector, ch string) {
 		p.bot.Send(conn, bot.Message, ch, fmt.Sprintf("Error checking ngate: %s", err))
 		return
 	}
+
+	topWon := 0
+	topSpread := 0
+
 	for _, res := range wr {
-		msg := fmt.Sprintf("%s won %d for a score of %d",
-			res.User, res.Won, res.Score)
+		if res.Won > topWon {
+			topWon = res.Won
+		}
+		if len(res.WinningArticles) > topSpread {
+			topSpread = len(res.WinningArticles)
+		}
+	}
+
+	for _, res := range wr {
+		icon := ""
+		if res.Won == topWon {
+			icon += "🏆 "
+		}
+		if len(res.WinningArticles) == topSpread {
+			icon += "⭐️ "
+		}
+		msg := fmt.Sprintf("%s%s won %d for a score of %d",
+			icon, res.User, res.Won, res.Score)
 		if len(res.WinningArticles) > 0 {
 			msg += "\nWinning articles: " + res.WinningArticles.Titles()
 		}
