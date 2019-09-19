@@ -28,7 +28,8 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-const DefaultRing = 5
+const DefaultIDRing = 10
+const DefaultMsgRing = 50
 const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .TopicChange}}*** {{.User.Name}}{{else if .Action}}* {{.User.Name}}{{else}}<{{.User.Name}}>{{end}} {{.Body}}\n"
 
 // 11:10AM DBG connectors/slackapp/slackApp.go:496 > Slack event dir=logs raw={"Action":false,"AdditionalData":
@@ -58,6 +59,7 @@ type SlackApp struct {
 	event bot.Callback
 
 	msgIDBuffer *ring.Ring
+	msgBuffer   *ring.Ring
 
 	logFormat *template.Template
 }
@@ -73,17 +75,11 @@ func New(c *config.Config) *SlackApp {
 
 	api := slack.New(token, slack.OptionDebug(false))
 
-	idBuf := ring.New(c.GetInt("ringSize", DefaultRing))
-	for i := 0; i < idBuf.Len(); i++ {
-		idBuf.Value = ""
-		idBuf = idBuf.Next()
-	}
-
-	tplTxt := c.GetString("slackapp.log.format", defaultLogFormat)
+	tplTxt := c.GetString("slackapp.logMessage.format", defaultLogFormat)
 	funcs := template.FuncMap{
 		"fixDate": fixDate,
 	}
-	tpl := template.Must(template.New("log").Funcs(funcs).Parse(tplTxt))
+	tpl := template.Must(template.New("logMessage").Funcs(funcs).Parse(tplTxt))
 
 	return &SlackApp{
 		api:          api,
@@ -96,7 +92,8 @@ func New(c *config.Config) *SlackApp {
 		users:        make(map[string]*slack.User),
 		emoji:        make(map[string]string),
 		channels:     make(map[string]*slack.Channel),
-		msgIDBuffer:  idBuf,
+		msgIDBuffer:  ring.New(c.GetInt("idRingSize", DefaultIDRing)),
+		msgBuffer:    ring.New(c.GetInt("msgRingSize", DefaultMsgRing)),
 		logFormat:    tpl,
 	}
 }
@@ -130,12 +127,22 @@ func (s *SlackApp) Serve() error {
 		} else if eventsAPIEvent.Type == slackevents.CallbackEvent {
 			innerEvent := eventsAPIEvent.InnerEvent
 			switch ev := innerEvent.Data.(type) {
+			case *slackevents.MessageAction:
+				log.Debug().Interface("ev", ev).Msg("MessageAction")
+			case *slackevents.MessageActionResponse:
+				log.Debug().Interface("ev", ev).Msg("MessageActionResponse")
 			case *slackevents.AppMentionEvent:
 				// This is a bit of a problem. AppMentionEvent also needs to
 				// End up in msgReceived
 				//s.msgReceivd(ev)
 			case *slackevents.MessageEvent:
 				s.msgReceivd(ev)
+			case *slack.ReactionAddedEvent:
+				s.reactionReceived(ev)
+			default:
+				log.Debug().
+					Interface("ev", ev).
+					Msg("Unknown CallbackEvent")
 			}
 		} else {
 			log.Debug().
@@ -152,6 +159,9 @@ func (s *SlackApp) Serve() error {
 func (s *SlackApp) checkRingOrAdd(ts string) bool {
 	found := false
 	s.msgIDBuffer.Do(func(p interface{}) {
+		if p == nil {
+			return
+		}
 		if p.(string) == ts {
 			found = true
 		}
@@ -193,7 +203,7 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 			Msg("Ignoring message")
 		return
 	}
-	if err := s.log(m); err != nil {
+	if err := s.logMessage(m); err != nil {
 		log.Fatal().Err(err).Msg("Error logging message")
 	}
 	if !isItMe && msg.ThreadTimeStamp == "" {
@@ -209,6 +219,9 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 			Str("text", msg.Text).
 			Msg("Unknown message is hidden")
 	}
+
+	s.msgBuffer.Value = msg
+	s.msgBuffer = s.msgBuffer.Next()
 }
 
 func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
@@ -407,12 +420,8 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	isAction := m.SubType == "me_message"
 
 	// We have to try a few layers to get a valid name for the user because Slack
-	name := "UNKNOWN"
-	u, _ := s.getUser(m.User)
-	if u != nil {
-		name = u.Profile.DisplayName
-	}
-	if m.Username != "" && u == nil {
+	name := s.getUser(m.User, "unknown")
+	if m.Username != "" && name == "unknown" {
 		name = m.Username
 	}
 
@@ -459,21 +468,29 @@ func (s *SlackApp) getChannel(id string) (*slack.Channel, error) {
 	return s.channels[id], nil
 }
 
+func stringForUser(user *slack.User) string {
+	if user.Profile.DisplayName != "" {
+		return user.Profile.DisplayName
+	}
+	return user.Name
+}
+
 // Get username for Slack user ID
-func (s *SlackApp) getUser(id string) (*slack.User, error) {
-	if name, ok := s.users[id]; ok {
-		return name, nil
+func (s *SlackApp) getUser(id, defaultName string) string {
+	if u, ok := s.users[id]; ok {
+		return stringForUser(u)
 	}
 
 	log.Debug().
 		Str("id", id).
 		Msg("User not already found, requesting info")
+
 	u, err := s.api.GetUserInfo(id)
 	if err != nil {
-		return nil, err
+		return defaultName
 	}
 	s.users[id] = u
-	return s.users[id], nil
+	return stringForUser(u)
 }
 
 // Who gets usernames out of a channel
@@ -500,8 +517,8 @@ func (s *SlackApp) Who(id string) []string {
 
 	ret := []string{}
 	for _, m := range members {
-		u, err := s.getUser(m)
-		if err != nil {
+		u := s.getUser(m, "unknown")
+		if u != "unknown" {
 			log.Error().
 				Err(err).
 				Str("user", m).
@@ -509,15 +526,14 @@ func (s *SlackApp) Who(id string) []string {
 			continue
 			/**/
 		}
-		ret = append(ret, u.Name)
+		ret = append(ret, u)
 	}
 	return ret
 }
 
-// log writes to a <slackapp.log.dir>/<channel>.log
-// Uses slackapp.log.format to write entries
-func (s *SlackApp) log(raw msg.Message) error {
-
+// logMessage writes to a <slackapp.logMessage.dir>/<channel>.logMessage
+// Uses slackapp.logMessage.format to write entries
+func (s *SlackApp) logMessage(raw msg.Message) error {
 	// Do some filtering and fixing up front
 	if raw.Body == "" {
 		return nil
@@ -536,20 +552,29 @@ func (s *SlackApp) log(raw msg.Message) error {
 		data.TopicChange = true
 	}
 
-	dir := path.Join(s.config.Get("slackapp.log.dir", "logs"), raw.ChannelName)
+	buf := bytes.Buffer{}
+	if err := s.logFormat.Execute(&buf, data); err != nil {
+		return err
+	}
+
+	return s.log(buf.String(), raw.ChannelName)
+}
+
+func (s *SlackApp) log(msg, channel string) error {
+	dir := path.Join(s.config.Get("slackapp.logMessage.dir", "logs"), channel)
 	now := time.Now()
 	fname := now.Format("20060102") + ".log"
 	path := path.Join(dir, fname)
 
 	log.Debug().
-		Interface("raw", raw).
+		Interface("raw", msg).
 		Str("dir", dir).
 		Msg("Slack event")
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		log.Error().
 			Err(err).
-			Msg("Could not create log directory")
+			Msg("Could not create logMessage directory")
 		return err
 	}
 
@@ -557,13 +582,46 @@ func (s *SlackApp) log(raw msg.Message) error {
 	if err != nil {
 		log.Fatal().
 			Err(err).
-			Msg("Error opening log file")
+			Msg("Error opening logMessage file")
 	}
 	defer f.Close()
 
-	if err := s.logFormat.Execute(f, data); err != nil {
+	if _, err := fmt.Fprint(f, msg); err != nil {
 		return err
 	}
 
 	return f.Sync()
+}
+
+func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
+	name := s.getUser(event.User, "unknown")
+
+	ch, err := s.getChannel(event.Item.Channel)
+	if err != nil {
+		return err
+	}
+	channel := ch.Name
+
+	body := "unknown message"
+
+	// Iterate through the ring and print its contents
+	s.msgBuffer.Do(func(p interface{}) {
+		switch m := p.(type) {
+		case nil:
+		case *slackevents.MessageEvent:
+			if m.TimeStamp == event.Item.Timestamp {
+				u := s.getUser(m.User, "unknown")
+				body = fmt.Sprintf("%s: %s", u, m.Text)
+			}
+		default:
+			log.Debug().Interface("msg", m).Msg("Unexpected type")
+		}
+	})
+
+	tstamp := slackTStoTime(event.EventTimestamp)
+	msg := fmt.Sprintf("[%s] <%s> reacted to %s with :%s:\n",
+		fixDate(tstamp, "2006-01-02 15:04:05"),
+		name, body, event.Reaction)
+
+	return s.log(msg, channel)
 }
