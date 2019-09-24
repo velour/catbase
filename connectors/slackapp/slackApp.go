@@ -420,7 +420,11 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	isAction := m.SubType == "me_message"
 
 	// We have to try a few layers to get a valid name for the user because Slack
-	name := s.getUser(m.User, "unknown")
+	defaultName := "unknown"
+	if m.BotID != "" {
+		defaultName = m.Username
+	}
+	name := s.getUser(m.User, defaultName)
 	if m.Username != "" && name == "unknown" {
 		name = m.Username
 	}
@@ -517,6 +521,9 @@ func (s *SlackApp) Who(id string) []string {
 
 	ret := []string{}
 	for _, m := range members {
+		if m == "" {
+			log.Error().Msg("empty member")
+		}
 		u := s.getUser(m, "unknown")
 		if u != "unknown" {
 			log.Error().
@@ -610,7 +617,11 @@ func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
 		case nil:
 		case *slackevents.MessageEvent:
 			if m.TimeStamp == event.Item.Timestamp {
-				u := s.getUser(m.User, "unknown")
+				defaultName := "unknown"
+				if m.BotID != "" {
+					defaultName = m.Username
+				}
+				u := s.getUser(m.User, defaultName)
 				body = fmt.Sprintf("%s: %s", u, m.Text)
 			}
 		default:
