@@ -298,12 +298,10 @@ func (s *SlackApp) sendMessage(channel, message string, meMessage bool, args ...
 
 func (s *SlackApp) replyToMessageIdentifier(channel, message, identifier string) (string, error) {
 	nick := s.config.Get("Nick", "bot")
-	icon := s.config.Get("IconURL", "https://placekitten.com/128/128")
 
 	resp, err := http.PostForm("https://slack.com/api/chat.postMessage",
 		url.Values{"token": {s.botToken},
 			"username":  {nick},
-			"icon_url":  {icon},
 			"channel":   {channel},
 			"text":      {message},
 			"thread_ts": {identifier},
