@@ -525,7 +525,7 @@ func (s *SlackApp) Who(id string) []string {
 			log.Error().Msg("empty member")
 		}
 		u := s.getUser(m, "unknown")
-		if u != "unknown" {
+		if u == "unknown" {
 			log.Error().
 				Err(err).
 				Str("user", m).
