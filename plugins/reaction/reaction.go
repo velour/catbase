@@ -3,8 +3,10 @@
 package reaction
 
 import (
+	"github.com/rs/zerolog/log"
 	"math/rand"
 
+	"github.com/chrissexton/sentiment"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
@@ -13,50 +15,42 @@ import (
 type ReactionPlugin struct {
 	bot    bot.Bot
 	config *config.Config
+
+	model sentiment.Models
 }
 
 func New(b bot.Bot) *ReactionPlugin {
+	model, err := sentiment.Restore()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Couldn't restore sentiment model")
+	}
 	rp := &ReactionPlugin{
 		bot:    b,
 		config: b.Config(),
+		model:  model,
 	}
 	b.Register(rp, bot.Message, rp.message)
 	return rp
 }
 
 func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	harrass := false
-	for _, nick := range p.config.GetArray("Reaction.HarrassList", []string{}) {
-		if message.User.Name == nick {
-			harrass = true
-			break
-		}
-	}
-
 	chance := p.config.GetFloat64("Reaction.GeneralChance", 0.01)
-	negativeWeight := 1
-	if harrass {
-		chance = p.config.GetFloat64("Reaction.HarrassChance", 0.05)
-		negativeWeight = p.config.GetInt("Reaction.NegativeHarrassmentMultiplier", 2)
-	}
-
 	if rand.Float64() < chance {
-		numPositiveReactions := len(p.config.GetArray("Reaction.PositiveReactions", []string{}))
-		numNegativeReactions := len(p.config.GetArray("Reaction.NegativeReactions", []string{}))
+		analysis := p.model.SentimentAnalysis(message.Body, sentiment.English)
 
-		maxIndex := numPositiveReactions + numNegativeReactions*negativeWeight
+		log.Debug().
+			Uint8("score", analysis.Score).
+			Str("body", message.Body).
+			Msg("sentiment of statement")
 
-		index := rand.Intn(maxIndex)
-
-		reaction := ""
-
-		if index < numPositiveReactions {
-			reaction = p.config.GetArray("Reaction.PositiveReactions", []string{})[index]
+		var reactions []string
+		if analysis.Score > 0 {
+			reactions = p.config.GetArray("Reaction.PositiveReactions", []string{})
 		} else {
-			index -= numPositiveReactions
-			index %= numNegativeReactions
-			reaction = p.config.GetArray("Reaction.NegativeReactions", []string{})[index]
+			reactions = p.config.GetArray("Reaction.NegativeReactions", []string{})
 		}
+
+		reaction := reactions[rand.Intn(len(reactions))]
 
 		p.bot.Send(c, bot.Reaction, message.Channel, reaction, message)
 	}
