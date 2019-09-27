@@ -10,8 +10,12 @@ github.com/andybalholm/cascadia v1.0.0 h1:hOCXnnZ5A+3eVDX8pvgl4kofXv2ELss0bKcqRy
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/armon/go-radix v1.0.0 h1:F4z6KzEeeQIMeLFa97iZU6vupzoecKdU5TX24SNppXI=
 github.com/armon/go-radix v1.0.0/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
+github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598 h1:j2XRGH5Y5uWtBYXGwmrjKeM/kfu/jh7ZcnrGvyN5Ttk=
+github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598/go.mod h1:sduMkaHcXDIWurl/Bd/z0rNEUHw5tr6LUA9IO8E9o0o=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff h1:+TEqaP0eO1unI7XHHFeMDhsxhLDIb0x8KYuZbqbAmxA=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff/go.mod h1:QCRjR0b4qiJiNjuP7RFM89bh4UExGJalcWmYeSvlnRc=
+github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035 h1:3+eJGFTbUgOMDCpa8PTmJABs1Z3EDHRrcz6d3oXfZm0=
+github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035/go.mod h1:5V55omeg+mdO+zAi38c3S9I1m5IZgdNPqiSKSXIdo88=
 github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

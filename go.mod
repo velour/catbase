@@ -5,6 +5,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
+	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gonum/floats v0.0.0-20181209220543-c233463c7e82 // indirect
 	github.com/gonum/internal v0.0.0-20181124074243-f884aa714029 // indirect
