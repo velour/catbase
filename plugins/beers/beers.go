@@ -287,6 +287,14 @@ type checkin struct {
 			}
 		}
 	}
+	Badges struct {
+		Count int
+		Items []struct {
+			BadgeName        string `json:"badge_name"`
+			BadgeDescription string `json:"badge_description"`
+			BadgeImage       string `json:"badge_image"`
+		}
+	}
 }
 
 type mrUntappd struct {
@@ -420,6 +428,16 @@ func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 				URL:    checkin.Media.Items[0].Photo.Photo_img_lg,
 				AltTxt: "Here's a photo",
 			})
+		}
+		if checkin.Badges.Count > 0 {
+			msg = msg + "\nThis checkin earned the following badge(s): "
+			for _, b := range checkin.Badges.Items {
+				msg = msg + b.BadgeName
+				args = append(args, bot.ImageAttachment{
+					URL:    b.BadgeImage,
+					AltTxt: b.BadgeDescription,
+				})
+			}
 		}
 
 		user.lastCheckin = checkin.Checkin_id
