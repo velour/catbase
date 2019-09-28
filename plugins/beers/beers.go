@@ -415,6 +415,12 @@ func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 			msg = fmt.Sprintf("%s -- %s",
 				msg, checkin.Checkin_comment)
 		}
+		if checkin.Badges.Count > 0 {
+			msg = msg + "\nThis checkin earned the following badge(s): "
+			for _, b := range checkin.Badges.Items {
+				msg = msg + b.BadgeName
+			}
+		}
 
 		args := []interface{}{
 			channel,
@@ -430,9 +436,7 @@ func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 			})
 		}
 		if checkin.Badges.Count > 0 {
-			msg = msg + "\nThis checkin earned the following badge(s): "
 			for _, b := range checkin.Badges.Items {
-				msg = msg + b.BadgeName
 				args = append(args, bot.ImageAttachment{
 					URL:    b.BadgeImage,
 					AltTxt: b.BadgeDescription,
