@@ -292,7 +292,11 @@ type checkin struct {
 		Items []struct {
 			BadgeName        string `json:"badge_name"`
 			BadgeDescription string `json:"badge_description"`
-			BadgeImage       string `json:"badge_image"`
+			BadgeImage       struct {
+				Sm string
+				Md string
+				Lg string
+			} `json:"badge_image"`
 		}
 	}
 }
@@ -438,7 +442,7 @@ func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 		if checkin.Badges.Count > 0 {
 			for _, b := range checkin.Badges.Items {
 				args = append(args, bot.ImageAttachment{
-					URL:    b.BadgeImage,
+					URL:    b.BadgeImage.Lg,
 					AltTxt: b.BadgeDescription,
 				})
 			}
