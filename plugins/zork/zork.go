@@ -39,12 +39,17 @@ func New(b bot.Bot) bot.Plugin {
 
 func (p *ZorkPlugin) runZork(c bot.Connector, ch string) error {
 	const importString = "github.com/velour/catbase/plugins/zork"
+	pkgPath := ""
 	pkg, err := build.Import(importString, "", build.FindOnly)
-	if err != nil {
-		return err
+	if err == nil {
+		pkgPath = pkg.Dir
 	}
-	zorkdat := filepath.Join(pkg.Dir, "ZORK1.DAT")
-	cmd := exec.Command("dfrotz", zorkdat)
+	zorkPath := p.bot.Config().GetString("zork.path", pkgPath)
+	zorkdat := filepath.Join(zorkPath, "ZORK1.DAT")
+	zorkFlags := p.bot.Config().GetArray("zork.args", []string{"-p"})
+	zorkExec := p.bot.Config().GetString("zork.binary", "frotz")
+	zorkFlags = append(zorkFlags, zorkdat)
+	cmd := exec.Command(zorkExec, zorkFlags...)
 
 	var r io.ReadCloser
 	r, cmd.Stdout = io.Pipe()
