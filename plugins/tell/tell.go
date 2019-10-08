@@ -91,11 +91,26 @@ func (t *TellPlugin) checkValidTarget(ch, target string) bool {
 	return false
 }
 
+func (t *TellPlugin) troll(who string) bool {
+	targets := t.b.Config().GetArray("tell.troll", []string{})
+	for _, target := range targets {
+		if who == target {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *TellPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if strings.HasPrefix(strings.ToLower(message.Body), "tell ") {
+	if strings.HasPrefix(strings.ToLower(message.Body), "tell ") ||
+		strings.HasPrefix(strings.ToLower(message.Body), "tellah ") {
 		parts := strings.Split(message.Body, " ")
 		target := strings.ToLower(parts[1])
 		if !t.checkValidTarget(message.Channel, target) {
+			if t.troll(message.User.Name) {
+				t.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("Okay. I'll tell %s.", target))
+				return true
+			}
 			return false
 		}
 		newMessage := strings.Join(parts[2:], " ")
