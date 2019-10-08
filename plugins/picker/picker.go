@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"fmt"
 	"math/rand"
 
@@ -66,8 +68,7 @@ func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 	return true
 }
 
-var pickerListPrologue = regexp.MustCompile(`^pick[ \t]+([0-9]*)[ \t]*\{[ \t]*`)
-var pickerListItem = regexp.MustCompile(`^([^,]+),[ \t]*`)
+var pickerListPrologue = regexp.MustCompile(`^pick([^ \t]*)[ \t]+([0-9]*)[ \t]*\{[ \t]*`)
 var pickerListFinalItem = regexp.MustCompile(`^([^,}]+),?[ \t]*\}[ \t]*`)
 
 func (p *PickerPlugin) parse(body string) (int, []string, error) {
@@ -76,14 +77,26 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 		return 0, nil, errors.New("saddle up for a syntax error")
 	}
 
+	log.Debug().
+		Str("body", body).
+		Interface("subs", subs).
+		Msg("subs")
+
 	n := 1
+	delim := ","
 	var err error
+
 	if subs[1] != "" {
-		n, err = strconv.Atoi(subs[1])
+		delim = subs[1]
+	}
+
+	if subs[2] != "" {
+		n, err = strconv.Atoi(subs[2])
 		if err != nil {
 			return 0, nil, err
 		}
 	}
+	pickerListItem := regexp.MustCompile(`^([^` + delim + `]+)` + delim + `[ \t]*`)
 
 	var items []string
 	rest := body[len(subs[0]):]
