@@ -1,11 +1,17 @@
 module github.com/velour/catbase
 
 require (
+	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
+	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
 	github.com/PaulRosset/go-hacknews v0.0.0-20170815075127-4aad99273a3c
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/armon/go-radix v1.0.0 // indirect
+	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
+	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
+	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
+	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gonum/floats v0.0.0-20181209220543-c233463c7e82 // indirect
 	github.com/gonum/internal v0.0.0-20181124074243-f884aa714029 // indirect
@@ -35,3 +41,5 @@ require (
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 )
+
+go 1.13

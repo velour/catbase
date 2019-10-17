@@ -4,12 +4,15 @@ package main
 
 import (
 	"flag"
-	"github.com/velour/catbase/plugins/cli"
-	"github.com/velour/catbase/plugins/newsbid"
 	"math/rand"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/velour/catbase/plugins/twitter"
+
+	"github.com/velour/catbase/plugins/cli"
+	"github.com/velour/catbase/plugins/newsbid"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -126,6 +129,7 @@ func main() {
 	b.AddPlugin(tldr.New(b))
 	b.AddPlugin(stock.New(b))
 	b.AddPlugin(newsbid.New(b))
+	b.AddPlugin(twitter.New(b))
 	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
