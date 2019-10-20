@@ -44,7 +44,7 @@ import (
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/tldr"
 	"github.com/velour/catbase/plugins/twitch"
-	"github.com/velour/catbase/plugins/twitter"
+	// "github.com/velour/catbase/plugins/twitter"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
 )
