@@ -17,15 +17,12 @@ type Twitter struct {
 	c   *config.Config
 	b   bot.Bot
 	api *anaconda.TwitterApi
-
-	tweetLog map[string]int64
 }
 
 func New(b bot.Bot) *Twitter {
 	t := Twitter{
-		c:        b.Config(),
-		b:        b,
-		tweetLog: map[string]int64{},
+		c: b.Config(),
+		b: b,
 	}
 	token := t.c.GetString("twitter.accesstoken", "")
 	secret := t.c.GetString("twitter.accesssecret", "")
@@ -72,14 +69,16 @@ func (t *Twitter) check(c bot.Connector) {
 			continue
 		}
 		for _, tweet := range tweets {
-			if last, ok := t.tweetLog[u]; !ok || last < tweet.Id {
+			userKey := fmt.Sprintf("twitter.last.%s", u)
+			lastTweet := int64(t.c.GetInt(userKey, 0))
+			if lastTweet < tweet.Id {
 				link := fmt.Sprintf("https://twitter.com/%s/status/%s", u, tweet.IdStr)
 				log.Debug().Str("tweet", link).Msg("Unknown tweet")
 				for _, ch := range chs {
 					log.Debug().Str("ch", ch).Msg("Sending tweet")
 					t.b.Send(c, bot.Message, ch, link)
 				}
-				t.tweetLog[u] = tweet.Id
+				t.c.Set(userKey, string(tweet.Id))
 			}
 		}
 	}
