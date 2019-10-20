@@ -58,8 +58,16 @@ func (p *Fuck) message(c bot.Connector, kind bot.Kind, message msg.Message, args
 		m := gofuck.New(stdin, stdout)
 
 		m.InstructionLimit = p.c.GetInt("fuck.limit.instr", 100000)
+		if m.InstructionLimit < 1 {
+			m.InstructionLimit = 1
+		}
+		maxOut := p.c.GetInt("fuck.limit.output", 1000)
 
-		if err := m.Run([]byte(pgm)); err != nil {
+		err := m.Run([]byte(pgm))
+		if stdout.Len() > maxOut {
+			stdout.Truncate(maxOut)
+		}
+		if err != nil {
 			p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("Error running program: %s", err))
 			if stdout.Len() > 0 {
 				p.b.Send(c, bot.Message, message.Channel,
