@@ -9,11 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/velour/catbase/plugins/twitter"
-
-	"github.com/velour/catbase/plugins/cli"
-	"github.com/velour/catbase/plugins/newsbid"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -25,15 +20,18 @@ import (
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
+	"github.com/velour/catbase/plugins/cli"
 	"github.com/velour/catbase/plugins/couldashouldawoulda"
 	"github.com/velour/catbase/plugins/counter"
 	"github.com/velour/catbase/plugins/dice"
 	"github.com/velour/catbase/plugins/emojifyme"
 	"github.com/velour/catbase/plugins/fact"
 	"github.com/velour/catbase/plugins/first"
+	"github.com/velour/catbase/plugins/fuck"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/leftpad"
 	"github.com/velour/catbase/plugins/nerdepedia"
+	"github.com/velour/catbase/plugins/newsbid"
 	"github.com/velour/catbase/plugins/picker"
 	"github.com/velour/catbase/plugins/reaction"
 	"github.com/velour/catbase/plugins/remember"
@@ -46,6 +44,7 @@ import (
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/tldr"
 	"github.com/velour/catbase/plugins/twitch"
+	"github.com/velour/catbase/plugins/twitter"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
 )
@@ -107,6 +106,7 @@ func main() {
 	b.AddPlugin(emojifyme.New(b))
 	b.AddPlugin(first.New(b))
 	b.AddPlugin(leftpad.New(b))
+	b.AddPlugin(fuck.New(b))
 	b.AddPlugin(talker.New(b))
 	b.AddPlugin(dice.New(b))
 	b.AddPlugin(picker.New(b))
