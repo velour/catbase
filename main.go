@@ -129,7 +129,7 @@ func main() {
 	b.AddPlugin(tldr.New(b))
 	b.AddPlugin(stock.New(b))
 	b.AddPlugin(newsbid.New(b))
-	b.AddPlugin(twitter.New(b))
+	// b.AddPlugin(twitter.New(b))
 	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
