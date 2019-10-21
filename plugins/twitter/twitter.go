@@ -3,6 +3,7 @@ package twitter
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -78,7 +79,7 @@ func (t *Twitter) check(c bot.Connector) {
 					log.Debug().Str("ch", ch).Msg("Sending tweet")
 					t.b.Send(c, bot.Message, ch, link)
 				}
-				t.c.Set(userKey, string(tweet.Id))
+				t.c.Set(userKey, strconv.FormatInt(tweet.Id, 10))
 			}
 		}
 	}

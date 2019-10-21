@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
+	sqlite3 "github.com/mattn/go-sqlite3"
+
 	"github.com/jmoiron/sqlx"
-	"github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -34,6 +35,19 @@ func (c *Config) GetFloat64(key string, fallback float64) float64 {
 		return 0.0
 	}
 	return f
+}
+
+// GetInt64 returns the config value for a string key
+// It will first look in the env vars for the key
+// It will check the DB for the key if an env DNE
+// Finally, it will return a zero value if the key does not exist
+// It will attempt to convert the value to an int if it exists
+func (c *Config) GetInt64(key string, fallback int64) int64 {
+	i, err := strconv.ParseInt(c.GetString(key, strconv.FormatInt(fallback, 10)), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return i
 }
 
 // GetInt returns the config value for a string key

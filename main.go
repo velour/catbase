@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/plugins/twitter"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -44,7 +46,6 @@ import (
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/tldr"
 	"github.com/velour/catbase/plugins/twitch"
-	// "github.com/velour/catbase/plugins/twitter"
 	"github.com/velour/catbase/plugins/your"
 	"github.com/velour/catbase/plugins/zork"
 )
@@ -129,7 +130,7 @@ func main() {
 	b.AddPlugin(tldr.New(b))
 	b.AddPlugin(stock.New(b))
 	b.AddPlugin(newsbid.New(b))
-	// b.AddPlugin(twitter.New(b))
+	b.AddPlugin(twitter.New(b))
 	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
