@@ -322,7 +322,7 @@ type Beers struct {
 
 func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	token := p.Bot.Config().Get("Untappd.Token", "NONE")
-	if token == "NONE" {
+	if token == "NONE" || token == "" {
 		return []checkin{}, fmt.Errorf("No untappd token")
 	}
 

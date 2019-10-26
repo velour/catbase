@@ -38,6 +38,7 @@ require (
 	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582 // indirect
 	gonum.org/v1/gonum v0.6.0 // indirect
+	gopkg.in/go-playground/webhooks.v5 v5.13.0
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
