@@ -30,6 +30,7 @@ import (
 	"github.com/velour/catbase/plugins/fact"
 	"github.com/velour/catbase/plugins/first"
 	"github.com/velour/catbase/plugins/fuck"
+	"github.com/velour/catbase/plugins/git"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/leftpad"
 	"github.com/velour/catbase/plugins/nerdepedia"
@@ -131,6 +132,7 @@ func main() {
 	b.AddPlugin(stock.New(b))
 	b.AddPlugin(newsbid.New(b))
 	b.AddPlugin(twitter.New(b))
+	b.AddPlugin(git.New(b))
 	b.AddPlugin(cli.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
