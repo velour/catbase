@@ -133,10 +133,6 @@ func isNotToday(f *FirstEntry) bool {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *FirstPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	log.Debug().
-		Interface("msg", message).
-		Msg("First is looking at a message")
-
 	if message.IsIM {
 		log.Debug().Msg("Skipping IM")
 		return false
@@ -166,6 +162,10 @@ func (p *FirstPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messag
 	r := strings.NewReplacer("’", "", "'", "", "\"", "", ",", "", ".", "", ":", "",
 		"?", "", "!", "")
 	m := strings.ToLower(message.Body)
+	if r.Replace(m) == "whos on first the most" && first != nil {
+		p.leaderboard(c, message.Channel)
+		return true
+	}
 	if r.Replace(m) == "whos on first" && first != nil {
 		p.announceFirst(c, first)
 		return true
@@ -229,6 +229,30 @@ func (p *FirstPlugin) recordFirst(c bot.Connector, message msg.Message) {
 		return
 	}
 	p.announceFirst(c, first)
+}
+
+func (p *FirstPlugin) leaderboard(c bot.Connector, ch string) error {
+	q := `select max(channel) channel, max(nick) nick, count(id) count
+		from first
+		group by channel, nick
+		having channel = ?
+		limit 3`
+	res := []struct {
+		Channel string
+		Nick    string
+		Count   int
+	}{}
+	err := p.db.Select(&res, q, ch)
+	if err != nil {
+		return err
+	}
+	talismans := []string{":gold-trophy:", ":silver-trophy:", ":bronze-trophy:"}
+	msg := "First leaderboard:\n"
+	for i, e := range res {
+		msg += fmt.Sprintf("%s %d %s\n", talismans[i], e.Count, e.Nick)
+	}
+	p.Bot.Send(c, bot.Message, ch, msg)
+	return nil
 }
 
 func (p *FirstPlugin) announceFirst(c bot.Connector, first *FirstEntry) {
