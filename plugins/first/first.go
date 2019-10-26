@@ -236,6 +236,7 @@ func (p *FirstPlugin) leaderboard(c bot.Connector, ch string) error {
 		from first
 		group by channel, nick
 		having channel = ?
+		order by count desc
 		limit 3`
 	res := []struct {
 		Channel string
