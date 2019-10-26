@@ -68,13 +68,18 @@ func (p *GitPlugin) gitlabEvent(w http.ResponseWriter, r *http.Request) {
 	case gitlab.PushEventPayload:
 		push := payload.(gitlab.PushEventPayload)
 		repo = push.Repository.Name
-		user := push.UserName
 		commits := ""
 		for _, c := range push.Commits {
 			m := strings.Split(c.Message, "\n")[0]
-			commits += fmt.Sprintf("%s (%s) %s", c.Author.Name, c.ID[:5], m)
+			commits += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
+				c.Author.Name,
+				repo,
+				c.URL,
+				c.ID[:7],
+				m,
+			)
 		}
-		msg = fmt.Sprintf("%s pushed to %s:\n%s", user, repo, commits)
+		msg = commits
 	default:
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "unknown payload: %+v", payload)
@@ -113,9 +118,15 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		commits := ""
 		for _, c := range push.Commits {
 			m := strings.Split(c.Message, "\n")[0]
-			commits += fmt.Sprintf("%s (%s) %s", c.Author.Name, c.Sha[:5], m)
+			commits += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
+				c.Author.Name,
+				repo,
+				c.URL,
+				c.ID[:7],
+				m,
+			)
 		}
-		msg = fmt.Sprintf("%s pushed to %s: \n%s", push.Pusher.Name, push.Repository.Name, commits)
+		msg = commits
 	case github.PullRequestPayload:
 		pr := payload.(github.PullRequestPayload)
 		if pr.Action != "opened" {
