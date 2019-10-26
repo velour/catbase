@@ -108,6 +108,23 @@ func (c *Config) GetArray(key string, fallback []string) []string {
 	return strings.Split(val, ";;")
 }
 
+func (c *Config) Unset(key string) error {
+	q := `delete from config where key=?`
+	tx, err := c.Begin()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(q, key)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Set changes the value for a configuration in the database
 // Note, this is always a string. Use the SetArray for an array helper
 func (c *Config) Set(key, value string) error {

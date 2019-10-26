@@ -90,8 +90,18 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
 		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
+	} else if parts[0] == "unset" && len(parts) > 1 {
+		if err := p.cfg.Unset(parts[1]); err != nil {
+			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Unset error: %s", err))
+			return true
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Unset %s", parts[1]))
+		return true
 	} else if parts[0] == "set" && len(parts) > 2 {
-		p.cfg.Set(parts[1], strings.Join(parts[2:], " "))
+		if err := p.cfg.Set(parts[1], strings.Join(parts[2:], " ")); err != nil {
+			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
+			return true
+		}
 		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
 		return true
 	}
