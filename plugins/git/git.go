@@ -118,6 +118,11 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		msg = fmt.Sprintf("%s pushed to %s: \n%s", push.Pusher.Name, push.Repository.Name, commits)
 	case github.PullRequestPayload:
 		pr := payload.(github.PullRequestPayload)
+		if pr.Action != "opened" {
+			w.WriteHeader(200)
+			fmt.Fprintf(w, "ignoring action %s", pr.Action)
+			return
+		}
 		repo = pr.Repository.Name
 		msg = fmt.Sprintf("%s opened new pull request \"%s\" on %s: %s",
 			pr.PullRequest.User.Login,
