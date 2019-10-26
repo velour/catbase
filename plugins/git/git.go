@@ -43,7 +43,7 @@ func New(b bot.Bot) *GitPlugin {
 
 func (p *GitPlugin) registerWeb() {
 	http.HandleFunc("/git/github/event", p.githubEvent)
-	http.HandleFunc("/git/github/gitlabEvent", p.gitlabEvent)
+	http.HandleFunc("/git/gitlab/event", p.gitlabEvent)
 	p.b.RegisterWeb("/git", "Git")
 }
 
