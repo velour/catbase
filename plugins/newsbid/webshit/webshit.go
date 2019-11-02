@@ -45,7 +45,7 @@ func (s Stories) Titles() string {
 		if i > 0 {
 			out += ", "
 		}
-		out += v.Title
+		out += fmt.Sprintf("<%s|%s>", v.URL, v.Title)
 	}
 	return out
 }

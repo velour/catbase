@@ -2,13 +2,14 @@ package newsbid
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/plugins/newsbid/webshit"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 type NewsBid struct {
@@ -50,7 +51,7 @@ func (p *NewsBid) message(conn bot.Connector, k bot.Kind, message msg.Message, a
 		sort.Slice(bids, func(i, j int) bool { return bids[i].User < bids[j].User })
 		out := "Bids:\n"
 		for _, b := range bids {
-			out += fmt.Sprintf("%s bid %d on %s\n", b.User, b.Bid, b.Title)
+			out += fmt.Sprintf("%s bid %d on <%s|%s> \n", b.User, b.Bid, b.URL, b.Title)
 		}
 		p.bot.Send(conn, bot.Message, ch, out)
 		return true
