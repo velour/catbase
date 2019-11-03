@@ -44,7 +44,7 @@ func (p *GitPlugin) gitlabEvent(w http.ResponseWriter, r *http.Request) {
 				m,
 			)
 		}
-		msg = commits
+		msg += commits
 	default:
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "unknown payload: %+v", payload)
