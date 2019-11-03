@@ -36,6 +36,10 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		repo = push.Repository.Name
 		owner = push.Repository.Owner.Login
 		commits := ""
+		if len(push.Commits) == 0 {
+			log.Debug().Msg("GitHub sent an empty changeset")
+			return
+		}
 		for _, c := range push.Commits {
 			m := strings.Split(c.Message, "\n")[0]
 			commits += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
