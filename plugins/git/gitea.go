@@ -11,7 +11,7 @@ import (
 )
 
 func (p *GitPlugin) giteaEvent(w http.ResponseWriter, r *http.Request) {
-	icon := p.c.Get("gitlab.icon", ":tea:")
+	icon := p.c.Get("gitea.icon", ":tea:")
 	evt := GiteaPush{}
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&evt)
