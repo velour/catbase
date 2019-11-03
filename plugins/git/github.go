@@ -46,7 +46,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 				m,
 			)
 		}
-		msg = commits
+		msg += commits
 	case github.PullRequestPayload:
 		pr := payload.(github.PullRequestPayload)
 		if pr.Action != "opened" {
@@ -56,7 +56,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		repo = pr.Repository.Name
 		owner = pr.Repository.Owner.Login
-		msg = fmt.Sprintf("%s opened new pull request \"%s\" on %s: %s",
+		msg += fmt.Sprintf("%s opened new pull request \"%s\" on %s: %s",
 			pr.PullRequest.User.Login,
 			pr.PullRequest.Title,
 			pr.Repository.Name,
@@ -66,7 +66,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		ping := payload.(github.PingPayload)
 		repo = ping.Repository.Name
 		owner = ping.Repository.Owner.Login
-		msg = fmt.Sprintf(icon+"Got a ping request on %s", repo)
+		msg += fmt.Sprintf(icon+"Got a ping request on %s", repo)
 	default:
 		log.Error().Interface("payload", payload).Msg("unknown event payload")
 		w.WriteHeader(500)
