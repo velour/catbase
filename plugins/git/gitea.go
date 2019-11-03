@@ -1,68 +1,43 @@
 package git
 
-type GiteaPush struct {
-	Secret     string `json:"secret"`
-	Ref        string `json:"ref"`
-	Before     string `json:"before"`
-	After      string `json:"after"`
-	CompareURL string `json:"compare_url"`
-	Commits    []struct {
-		ID      string `json:"id"`
-		Message string `json:"message"`
-		URL     string `json:"url"`
-		Author  struct {
-			Name     string `json:"name"`
-			Email    string `json:"email"`
-			Username string `json:"username"`
-		} `json:"author"`
-		Committer struct {
-			Name     string `json:"name"`
-			Email    string `json:"email"`
-			Username string `json:"username"`
-		} `json:"committer"`
-		Timestamp string `json:"timestamp"`
-	} `json:"commits"`
-	Repository struct {
-		ID    int `json:"id"`
-		Owner struct {
-			ID        int    `json:"id"`
-			Login     string `json:"login"`
-			FullName  string `json:"full_name"`
-			Email     string `json:"email"`
-			AvatarURL string `json:"avatar_url"`
-			Username  string `json:"username"`
-		} `json:"owner"`
-		Name            string `json:"name"`
-		FullName        string `json:"full_name"`
-		Description     string `json:"description"`
-		Private         bool   `json:"private"`
-		Fork            bool   `json:"fork"`
-		HTMLURL         string `json:"html_url"`
-		SSHURL          string `json:"ssh_url"`
-		CloneURL        string `json:"clone_url"`
-		Website         string `json:"website"`
-		StarsCount      int    `json:"stars_count"`
-		ForksCount      int    `json:"forks_count"`
-		WatchersCount   int    `json:"watchers_count"`
-		OpenIssuesCount int    `json:"open_issues_count"`
-		DefaultBranch   string `json:"default_branch"`
-		CreatedAt       string `json:"created_at"`
-		UpdatedAt       string `json:"updated_at"`
-	} `json:"repository"`
-	Pusher struct {
-		ID        int    `json:"id"`
-		Login     string `json:"login"`
-		FullName  string `json:"full_name"`
-		Email     string `json:"email"`
-		AvatarURL string `json:"avatar_url"`
-		Username  string `json:"username"`
-	} `json:"pusher"`
-	Sender struct {
-		ID        int    `json:"id"`
-		Login     string `json:"login"`
-		FullName  string `json:"full_name"`
-		Email     string `json:"email"`
-		AvatarURL string `json:"avatar_url"`
-		Username  string `json:"username"`
-	} `json:"sender"`
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/bot"
+)
+
+func (p *GitPlugin) giteaEvent(w http.ResponseWriter, r *http.Request) {
+	icon := p.c.Get("gitlab.icon", ":tea:")
+	evt := GiteaPush{}
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(&evt)
+	if err != nil {
+		log.Error().Err(err).Msg("could not decode gitea push")
+		w.WriteHeader(500)
+		fmt.Fprintf(w, " Error parsing event: %s", err)
+		return
+	}
+	org := evt.Repository.Owner.Username
+	repo := evt.Repository.Name
+
+	msg := icon + " "
+	for _, c := range evt.Commits {
+		m := strings.Split(c.Message, "\n")[0]
+		msg += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
+			c.Author.Name,
+			repo,
+			c.URL,
+			c.ID[:7],
+			m,
+		)
+	}
+
+	chs := p.c.GetArray(fmt.Sprintf("gitea.%s.%s.channels", org, repo), []string{})
+	for _, ch := range chs {
+		p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+	}
 }
