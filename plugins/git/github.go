@@ -29,7 +29,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "unknown event: %+v", err)
 		return
 	}
-	msg, repo, owner := icon+" ", "", ""
+	msg, repo, owner := " ", "", ""
 	switch payload.(type) {
 	case github.PushPayload:
 		push := payload.(github.PushPayload)
@@ -42,7 +42,8 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, c := range push.Commits {
 			m := strings.Split(c.Message, "\n")[0]
-			commits += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
+			commits += fmt.Sprintf("%s %s pushed to %s (<%s|%s>) %s\n",
+				icon,
 				c.Author.Name,
 				repo,
 				c.URL,
@@ -60,7 +61,8 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		repo = pr.Repository.Name
 		owner = pr.Repository.Owner.Login
-		msg += fmt.Sprintf("%s opened new pull request \"%s\" on %s: %s",
+		msg += fmt.Sprintf("%s %s opened new pull request \"%s\" on %s: %s",
+			icon,
 			pr.PullRequest.User.Login,
 			pr.PullRequest.Title,
 			pr.Repository.Name,
@@ -70,7 +72,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		ping := payload.(github.PingPayload)
 		repo = ping.Repository.Name
 		owner = ping.Repository.Owner.Login
-		msg += fmt.Sprintf(icon+"Got a ping request on %s", repo)
+		msg += fmt.Sprintf(icon+" Got a ping request on %s", repo)
 	default:
 		log.Error().Interface("payload", payload).Msg("unknown event payload")
 		w.WriteHeader(500)

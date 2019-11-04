@@ -27,7 +27,7 @@ func (p *GitPlugin) gitlabEvent(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "unknown event: %s", err)
 		return
 	}
-	msg, repo, owner := icon+" ", "", ""
+	msg, repo, owner := " ", "", ""
 	switch payload.(type) {
 	case gitlab.PushEventPayload:
 		push := payload.(gitlab.PushEventPayload)
@@ -36,7 +36,8 @@ func (p *GitPlugin) gitlabEvent(w http.ResponseWriter, r *http.Request) {
 		commits := ""
 		for _, c := range push.Commits {
 			m := strings.Split(c.Message, "\n")[0]
-			commits += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
+			commits += fmt.Sprintf("%s %s pushed to %s (<%s|%s>) %s\n",
+				icon,
 				c.Author.Name,
 				repo,
 				c.URL,
