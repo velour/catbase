@@ -24,10 +24,11 @@ func (p *GitPlugin) giteaEvent(w http.ResponseWriter, r *http.Request) {
 	org := evt.Repository.Owner.Username
 	repo := evt.Repository.Name
 
-	msg := icon + " "
+	msg := " "
 	for _, c := range evt.Commits {
 		m := strings.Split(c.Message, "\n")[0]
-		msg += fmt.Sprintf("%s pushed to %s (<%s|%s>) %s\n",
+		msg += fmt.Sprintf("%s %s pushed to %s (<%s|%s>) %s\n",
+			icon,
 			c.Author.Name,
 			repo,
 			c.URL,
