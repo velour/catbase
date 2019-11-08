@@ -51,12 +51,12 @@ func (s Stories) Titles() string {
 }
 
 type Bid struct {
-	ID     int
-	User   string
-	Title  string
-	URL    string
-	Bid    int
-	Placed int64
+	ID        int
+	User      string
+	Title     string
+	URL       string
+	Bid       int
+	Placed    int64
 	Processed int64
 }
 
