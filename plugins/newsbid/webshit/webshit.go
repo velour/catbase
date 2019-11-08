@@ -57,6 +57,7 @@ type Bid struct {
 	URL    string
 	Bid    int
 	Placed int64
+	Processed int64
 }
 
 func (b Bid) PlacedParsed() time.Time {
@@ -96,6 +97,7 @@ func (w *Webshit) setup() {
 		url string,
 		bid integer,
 		placed integer
+		processed integer
 	)`)
 	w.db.MustExec(`create table if not exists webshit_balances (
 		user string primary key,
@@ -111,7 +113,7 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 	}
 
 	var bids []Bid
-	if err = w.db.Select(&bids, `select user,title,url,bid from webshit_bids where placed < ?`,
+	if err = w.db.Select(&bids, `select user,title,url,bid from webshit_bids where placed < ? and processed=0`,
 		published.Unix()); err != nil {
 		return nil, err
 	}
@@ -140,8 +142,8 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 	}
 
 	// Delete all those bids
-	if _, err = w.db.Exec(`delete from webshit_bids where placed < ?`,
-		published.Unix()); err != nil {
+	if _, err = w.db.Exec(`update webshit_bids set processed=? where placed < ?`,
+		time.Now().Unix(), published.Unix()); err != nil {
 		return nil, err
 	}
 
@@ -279,7 +281,7 @@ func (w *Webshit) GetScore(user string) int {
 
 func (w *Webshit) GetAllBids() ([]Bid, error) {
 	var bids []Bid
-	err := w.db.Select(&bids, `select * from webshit_bids`)
+	err := w.db.Select(&bids, `select * from webshit_bids where processed=0`)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +314,7 @@ func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	ts := time.Now().Unix()
 
 	tx := w.db.MustBegin()
-	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed) values (?,?,?,?,?)`,
+	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed,processed) values (?,?,?,?,?,0)`,
 		user, story.Title, story.URL, amount, ts)
 	if err != nil {
 		tx.Rollback()
