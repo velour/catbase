@@ -3,8 +3,10 @@
 package reaction
 
 import (
-	"github.com/rs/zerolog/log"
 	"math/rand"
+	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/chrissexton/sentiment"
 	"github.com/velour/catbase/bot"
@@ -55,5 +57,21 @@ func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 		p.bot.Send(c, bot.Reaction, message.Channel, reaction, message)
 	}
 
+	p.checkReactions(c, message)
+
 	return false
+}
+
+// Bot will always react if a message contains a check word
+// Note that reactions must not be enclosed in :
+func (p *ReactionPlugin) checkReactions(c bot.Connector, m msg.Message) {
+	checkWords := p.config.GetArray("reaction.checkwords", []string{})
+	reactions := p.config.GetArray("reaction.checkedreactions", []string{})
+
+	for i, w := range checkWords {
+		if strings.Contains(strings.ToLower(m.Body), w) {
+			react := strings.Trim(reactions[i], ":")
+			p.bot.Send(c, bot.Reaction, m.Channel, react, m)
+		}
+	}
 }
