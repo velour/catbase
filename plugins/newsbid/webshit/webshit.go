@@ -3,10 +3,14 @@ package webshit
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gocolly/colly"
 
 	hacknews "github.com/PaulRosset/go-hacknews"
 	"github.com/PuerkitoBio/goquery"
@@ -184,14 +188,19 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 			rec.WinningArticles = append(rec.WinningArticles, s)
 			totalWinning += float64(b.Bid)
 		} else {
-			rec.LosingArticles = append(rec.LosingArticles, Story{b.Title, b.URL})
+			rec.LosingArticles = append(rec.LosingArticles, Story{Title: b.Title, URL: b.URL})
 		}
 		total += float64(b.Bid)
 		wr[b.User] = rec
 	}
 
 	for _, b := range wins {
-		payout := float64(b.Bid) / totalWinning * total
+		score, comments, err := scrapeScoreAndComments(b.URL)
+		ratio := 1.0
+		if err != nil {
+			ratio = float64(score) / math.Max(float64(comments), 1.0)
+		}
+		payout := float64(b.Bid) / totalWinning * total * ratio
 		rec := wr[b.User]
 		rec.Won += int(payout)
 		rec.Score += int(payout)
@@ -199,6 +208,41 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 	}
 
 	return wrMapToSlice(wr)
+}
+
+func scrapeScoreAndComments(url string) (int, int, error) {
+	c := colly.NewCollector()
+
+	// why do I need this to break out of these stupid callbacks?
+	c.Async = true
+
+	finished := make(chan bool)
+
+	score := 0
+	comments := 0
+	var err error = nil
+
+	c.OnHTML("td.subtext > span.score", func(r *colly.HTMLElement) {
+		score, _ = strconv.Atoi(strings.Fields(r.Text)[0])
+	})
+
+	c.OnHTML("td.subtext > a[href*='item?id=']:last-of-type", func(r *colly.HTMLElement) {
+		comments, _ = strconv.Atoi(strings.Fields(r.Text)[0])
+	})
+
+	c.OnScraped(func(r *colly.Response) {
+		finished <- true
+	})
+
+	c.OnError(func(r *colly.Response, e error) {
+		log.Error().Err(err).Msgf("could not scrape %s", r.Request.URL)
+		err = e
+		finished <- true
+	})
+
+	c.Visit(url)
+	<-finished
+	return score, comments, err
 }
 
 // GetHeadlines will return the current possible news headlines for bidding
