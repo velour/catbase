@@ -6,14 +6,10 @@ import (
 	"math"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/velour/catbase/plugins/newsbid/webshit/hn"
 
-	"github.com/gocolly/colly"
-
-	hacknews "github.com/PaulRosset/go-hacknews"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jmoiron/sqlx"
 	"github.com/mmcdole/gofeed"
@@ -182,7 +178,11 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyRes
 	}
 
 	for _, b := range wins {
-		score, comments, err := scrapeScoreAndComments(b.URL)
+		u, _ := url.Parse(b.URL)
+		id, _ := strconv.Atoi(u.Query().Get("id"))
+		item, err := hn.GetItem(id)
+		score := item.Score
+		comments := item.Descendants
 		ratio := 1.0
 		if err != nil {
 			ratio = float64(score) / math.Max(float64(comments), 1.0)
@@ -195,62 +195,6 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyRes
 	}
 
 	return wrMapToSlice(wr)
-}
-
-func scrapeScoreAndComments(url string) (int, int, error) {
-	c := colly.NewCollector()
-
-	// why do I need this to break out of these stupid callbacks?
-	c.Async = true
-
-	finished := make(chan bool)
-
-	score := 0
-	comments := 0
-	var err error = nil
-
-	c.OnHTML("td.subtext > span.score", func(r *colly.HTMLElement) {
-		score, _ = strconv.Atoi(strings.Fields(r.Text)[0])
-	})
-
-	c.OnHTML("td.subtext > a[href*='item?id=']:last-of-type", func(r *colly.HTMLElement) {
-		comments, _ = strconv.Atoi(strings.Fields(r.Text)[0])
-	})
-
-	c.OnScraped(func(r *colly.Response) {
-		finished <- true
-	})
-
-	c.OnError(func(r *colly.Response, e error) {
-		log.Error().Err(err).Msgf("could not scrape %s", r.Request.URL)
-		err = e
-		finished <- true
-	})
-
-	c.Visit(url)
-	<-finished
-	return score, comments, err
-}
-
-// GetHeadlines will return the current possible news headlines for bidding
-func (w *Webshit) GetHeadlines() (hn.Items, error) {
-	news := hacknews.Initializer{Story: w.config.HNFeed, NbPosts: w.config.HNLimit}
-	ids, err := news.GetCodesStory()
-	if err != nil {
-		return nil, err
-	}
-	posts, err := news.GetPostStory(ids)
-	if err != nil {
-		return nil, err
-	}
-	var stories hn.Items
-	for _, p := range posts {
-		stories = append(stories, hn.Item{
-			Title: p.Title,
-			URL:   p.Url,
-		})
-	}
-	return stories, nil
 }
 
 // GetWeekly will return the headlines in the last webshit weekly report
@@ -348,7 +292,9 @@ func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed,processed) values (?,?,?,?,?,0)`,
 		user, story.Title, story.URL, amount, ts)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return Bid{}, err
+		}
 		return Bid{}, err
 	}
 	q := `insert into webshit_balances (user,balance,score) values (?,?,0)
@@ -358,7 +304,7 @@ func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 		tx.Rollback()
 		return Bid{}, err
 	}
-	tx.Commit()
+	err = tx.Commit()
 
 	return Bid{
 		User:   user,
@@ -377,7 +323,10 @@ func (w *Webshit) getStoryByURL(URL string) (hn.Item, error) {
 	if u.Host != "news.ycombinator.com" {
 		return hn.Item{}, fmt.Errorf("expected HN link")
 	}
-	id, _ := strconv.Atoi(u.Query().Get("id"))
+	id, err := strconv.Atoi(u.Query().Get("id"))
+	if id == 0 || err != nil {
+		return hn.Item{}, fmt.Errorf("invalid item ID")
+	}
 	return hn.GetItem(id)
 }
 
@@ -386,7 +335,9 @@ func (w *Webshit) updateScores(results []WeeklyResult) error {
 	for _, res := range results {
 		if _, err := tx.Exec(`update webshit_balances set score=? where user=?`,
 			res.Score, res.User); err != nil {
-			tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				return err
+			}
 			return err
 		}
 	}
