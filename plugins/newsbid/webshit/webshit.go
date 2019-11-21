@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/velour/catbase/plugins/newsbid/webshit/hn"
 
 	"github.com/gocolly/colly"
 
@@ -36,32 +37,16 @@ type Webshit struct {
 	config Config
 }
 
-type Story struct {
-	Title string
-	URL   string
-}
-
-type Stories []Story
-
-func (s Stories) Titles() string {
-	out := ""
-	for i, v := range s {
-		if i > 0 {
-			out += ", "
-		}
-		out += fmt.Sprintf("<%s|%s>", v.URL, v.Title)
-	}
-	return out
-}
-
 type Bid struct {
-	ID        int
-	User      string
-	Title     string
-	URL       string
-	Bid       int
-	Placed    int64
-	Processed int64
+	ID             int
+	User           string
+	Title          string
+	URL            string
+	Bid            int
+	PlacedScore    int
+	ProcessedScore int
+	Placed         int64
+	Processed      int64
 }
 
 func (b Bid) PlacedParsed() time.Time {
@@ -77,8 +62,8 @@ type Balance struct {
 type WeeklyResult struct {
 	User            string
 	Won             int
-	WinningArticles Stories
-	LosingArticles  Stories
+	WinningArticles hn.Items
+	LosingArticles  hn.Items
 	Score           int
 }
 
@@ -100,7 +85,9 @@ func (w *Webshit) setup() {
 		title string,
 		url string,
 		bid integer,
-		placed integer
+		placed_score integer,
+		processed_score integer,
+		placed integer,
 		processed integer
 	)`)
 	w.db.MustExec(`create table if not exists webshit_balances (
@@ -127,7 +114,7 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 		return nil, fmt.Errorf("there are no bids against the current ngate post")
 	}
 
-	storyMap := map[string]Story{}
+	storyMap := map[string]hn.Item{}
 	for _, s := range stories {
 		u, err := url.Parse(s.URL)
 		if err != nil {
@@ -160,7 +147,7 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 	return wr, nil
 }
 
-func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResult {
+func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyResult {
 
 	var wins []Bid
 	total, totalWinning := 0.0, 0.0
@@ -188,7 +175,7 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]Story) []WeeklyResul
 			rec.WinningArticles = append(rec.WinningArticles, s)
 			totalWinning += float64(b.Bid)
 		} else {
-			rec.LosingArticles = append(rec.LosingArticles, Story{Title: b.Title, URL: b.URL})
+			rec.LosingArticles = append(rec.LosingArticles, hn.Item{Title: b.Title, URL: b.URL})
 		}
 		total += float64(b.Bid)
 		wr[b.User] = rec
@@ -246,7 +233,7 @@ func scrapeScoreAndComments(url string) (int, int, error) {
 }
 
 // GetHeadlines will return the current possible news headlines for bidding
-func (w *Webshit) GetHeadlines() ([]Story, error) {
+func (w *Webshit) GetHeadlines() (hn.Items, error) {
 	news := hacknews.Initializer{Story: w.config.HNFeed, NbPosts: w.config.HNLimit}
 	ids, err := news.GetCodesStory()
 	if err != nil {
@@ -256,9 +243,9 @@ func (w *Webshit) GetHeadlines() ([]Story, error) {
 	if err != nil {
 		return nil, err
 	}
-	var stories []Story
+	var stories hn.Items
 	for _, p := range posts {
-		stories = append(stories, Story{
+		stories = append(stories, hn.Item{
 			Title: p.Title,
 			URL:   p.Url,
 		})
@@ -267,7 +254,7 @@ func (w *Webshit) GetHeadlines() ([]Story, error) {
 }
 
 // GetWeekly will return the headlines in the last webshit weekly report
-func (w *Webshit) GetWeekly() ([]Story, *time.Time, error) {
+func (w *Webshit) GetWeekly() (hn.Items, *time.Time, error) {
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL("http://n-gate.com/hackernews/index.rss")
 	if err != nil {
@@ -285,9 +272,9 @@ func (w *Webshit) GetWeekly() ([]Story, *time.Time, error) {
 		return nil, nil, err
 	}
 
-	var items []Story
+	var items hn.Items
 	doc.Find(".storylink").Each(func(i int, s *goquery.Selection) {
-		story := Story{
+		story := hn.Item{
 			Title: s.Find("a").Text(),
 			URL:   s.SiblingsFiltered(".small").First().Find("a").AttrOr("href", ""),
 		}
@@ -382,36 +369,16 @@ func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 }
 
 // getStoryByURL scrapes the URL for a title
-func (w *Webshit) getStoryByURL(URL string) (Story, error) {
+func (w *Webshit) getStoryByURL(URL string) (hn.Item, error) {
 	u, err := url.Parse(URL)
 	if err != nil {
-		return Story{}, err
+		return hn.Item{}, err
 	}
 	if u.Host != "news.ycombinator.com" {
-		return Story{}, fmt.Errorf("expected HN link")
+		return hn.Item{}, fmt.Errorf("expected HN link")
 	}
-	res, err := http.Get(URL)
-	if err != nil {
-		return Story{}, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return Story{}, fmt.Errorf("bad response code: %d", res.StatusCode)
-	}
-
-	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		return Story{}, err
-	}
-
-	// Find the review items
-	title := doc.Find("title").Text()
-	title = strings.ReplaceAll(title, " | Hacker News", "")
-	return Story{
-		Title: title,
-		URL:   URL,
-	}, nil
+	id, _ := strconv.Atoi(u.Query().Get("id"))
+	return hn.GetItem(id)
 }
 
 func (w *Webshit) updateScores(results []WeeklyResult) error {
