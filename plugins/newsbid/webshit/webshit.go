@@ -39,8 +39,8 @@ type Bid struct {
 	Title          string
 	URL            string
 	Bid            int
-	PlacedScore    int
-	ProcessedScore int
+	PlacedScore    int `db:"placed_score"`
+	ProcessedScore int `db:"processed_score"`
 	Placed         int64
 	Processed      int64
 }
@@ -93,31 +93,29 @@ func (w *Webshit) setup() {
 	)`)
 }
 
-func (w *Webshit) Check() ([]WeeklyResult, error) {
+func (w *Webshit) Check(last int64) ([]WeeklyResult, int64, error) {
 	stories, published, err := w.GetWeekly()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	if published.Unix() <= last {
+		return nil, 0, fmt.Errorf("no new ngate")
 	}
 
 	var bids []Bid
-	if err = w.db.Select(&bids, `select user,title,url,bid from webshit_bids where placed < ? and processed=0`,
-		published.Unix()); err != nil {
-		return nil, err
+	if err = w.db.Select(&bids, `select user,title,url,bid from webshit_bids where processed=0`); err != nil {
+		return nil, 0, err
 	}
 
 	// Assuming no bids earlier than the weekly means there hasn't been a new weekly
 	if len(bids) == 0 {
-		return nil, fmt.Errorf("there are no bids against the current ngate post")
+		return nil, 0, fmt.Errorf("there are no bids against the current ngate post")
 	}
 
 	storyMap := map[string]hn.Item{}
 	for _, s := range stories {
-		u, err := url.Parse(s.URL)
-		if err != nil {
-			log.Error().Err(err).Msg("couldn't parse URL")
-			continue
-		}
-		id := u.Query().Get("id")
+		id := strconv.Itoa(s.ID)
 		storyMap[id] = s
 	}
 
@@ -125,22 +123,22 @@ func (w *Webshit) Check() ([]WeeklyResult, error) {
 
 	// Update all balance scores in a tx
 	if err := w.updateScores(wr); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Delete all those bids
 	if _, err = w.db.Exec(`update webshit_bids set processed=? where placed < ?`,
 		time.Now().Unix(), published.Unix()); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Set all balances to 100
 	if _, err = w.db.Exec(`update webshit_balances set balance=?`,
 		w.config.BalanceReferesh); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return wr, nil
+	return wr, published.Unix(), nil
 }
 
 func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyResult {
@@ -218,15 +216,18 @@ func (w *Webshit) GetWeekly() (hn.Items, *time.Time, error) {
 
 	var items hn.Items
 	doc.Find(".storylink").Each(func(i int, s *goquery.Selection) {
-		story := hn.Item{
-			Title: s.Find("a").Text(),
-			URL:   s.SiblingsFiltered(".small").First().Find("a").AttrOr("href", ""),
+		url, err := url.Parse(s.SiblingsFiltered(".small").First().Find("a").AttrOr("href", ""))
+		if err != nil {
+			log.Error().Err(err).Msg("Could not parse URL from ngate")
+			return
 		}
-		items = append(items, story)
-		log.Debug().
-			Str("URL", story.URL).
-			Str("Title", story.Title).
-			Msg("Parsed webshit story")
+		id, _ := strconv.Atoi(url.Query().Get("id"))
+		item, err := hn.GetItem(id)
+		if err != nil {
+			log.Error().Err(err).Msg("Could not get story from ngate")
+			return
+		}
+		items = append(items, item)
 	})
 
 	return items, published, nil
@@ -289,8 +290,8 @@ func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	ts := time.Now().Unix()
 
 	tx := w.db.MustBegin()
-	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed,processed) values (?,?,?,?,?,0)`,
-		user, story.Title, story.URL, amount, ts)
+	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed,processed,placed_score,processed_score) values (?,?,?,?,?,0,?,0)`,
+		user, story.Title, story.URL, amount, ts, story.Score)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			return Bid{}, err
