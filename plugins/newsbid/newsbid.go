@@ -97,11 +97,13 @@ func (p *NewsBid) message(conn bot.Connector, k bot.Kind, message msg.Message, a
 }
 
 func (p *NewsBid) check(conn bot.Connector, ch string) {
-	wr, err := p.ws.Check()
+	last := p.bot.Config().GetInt64("newsbid.lastprocessed", 0)
+	wr, pubTime, err := p.ws.Check(last)
 	if err != nil {
 		p.bot.Send(conn, bot.Message, ch, fmt.Sprintf("Error checking ngate: %s", err))
 		return
 	}
+	p.bot.Config().Set("newsbid.lastprocessed", strconv.FormatInt(pubTime, 10))
 
 	topWon := 0
 	topSpread := 0

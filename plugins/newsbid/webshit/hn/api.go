@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
 )
 
-const BASE = "https://hacker-news.firebaseio.com/v0/"
+const BASE = `https://hacker-news.firebaseio.com/v0`
 
 func get(url string) (*http.Response, error) {
 	c := &http.Client{}
@@ -17,7 +16,7 @@ func get(url string) (*http.Response, error) {
 }
 
 func GetItem(id int) (Item, error) {
-	u := path.Join(BASE, "item", fmt.Sprintf("%d.json", id))
+	u := fmt.Sprintf("%s/item/%d.json", BASE, id)
 	resp, err := get(u)
 	if err != nil {
 		return Item{}, err
