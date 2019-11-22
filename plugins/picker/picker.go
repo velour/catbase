@@ -68,11 +68,11 @@ func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 	return true
 }
 
-var pickerListPrologue = regexp.MustCompile(`^pick([^ \t]*)[ \t]+([0-9]*)[ \t]*\{[ \t]*`)
-var pickerListFinalItem = regexp.MustCompile(`^([^,}]+),?[ \t]*\}[ \t]*`)
+var pickRegex = regexp.MustCompile(`^pick([^\s]+)?(\s\d)?\s+{(.*)}$`)
 
 func (p *PickerPlugin) parse(body string) (int, []string, error) {
-	subs := pickerListPrologue.FindStringSubmatch(body)
+	subs := pickRegex.FindStringSubmatch(body)
+	log.Debug().Str("body", body).Strs("subs", subs).Msg("parse")
 	if subs == nil {
 		return 0, nil, errors.New("saddle up for a syntax error")
 	}
@@ -82,39 +82,21 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 		Interface("subs", subs).
 		Msg("subs")
 
-	n := 1
 	delim := ","
-	var err error
-
 	if subs[1] != "" {
 		delim = subs[1]
 	}
 
-	if subs[2] != "" {
-		n, err = strconv.Atoi(subs[2])
+	n := 1
+	var err error
+	if num := strings.TrimSpace(subs[2]); num != "" {
+		n, err = strconv.Atoi(num)
 		if err != nil {
 			return 0, nil, err
 		}
 	}
-	pickerListItem := regexp.MustCompile(`^([^` + delim + `]+)` + delim + `[ \t]*`)
 
-	var items []string
-	rest := body[len(subs[0]):]
-	for {
-		subs = pickerListItem.FindStringSubmatch(rest)
-		if subs == nil {
-			break
-		}
-
-		items = append(items, subs[1])
-		rest = rest[len(subs[0]):]
-	}
-
-	subs = pickerListFinalItem.FindStringSubmatch(rest)
-	if subs == nil {
-		return 0, nil, errors.New("lasso yerself that final curly brace, compadre")
-	}
-	items = append(items, subs[1])
+	items := strings.Split(subs[3], delim)
 
 	if n < 1 || n > len(items) {
 		return 0, nil, errors.New("whoah there, bucko, I can't create something out of nothing")
