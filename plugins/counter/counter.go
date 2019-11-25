@@ -122,6 +122,7 @@ func MkAlias(db *sqlx.DB, item, pointsTo string) (*alias, error) {
 
 // GetItem returns a specific counter for a subject
 func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
+	itemName = trimUnicode(itemName)
 	var item Item
 	item.DB = db
 	var a alias
@@ -218,6 +219,15 @@ func New(b bot.Bot) *CounterPlugin {
 	b.Register(cp, bot.Help, cp.help)
 	cp.registerWeb()
 	return cp
+}
+
+func trimUnicode(s string) string {
+	return strings.TrimFunc(s, func(r rune) bool {
+		if r == rune(0xFE0F) {
+			return false
+		}
+		return true
+	})
 }
 
 // Message responds to the bot hook on recieving messages.
