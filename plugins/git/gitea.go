@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -25,7 +26,11 @@ func (p *GitPlugin) giteaEvent(w http.ResponseWriter, r *http.Request) {
 	repo := evt.Repository.Name
 
 	msg := " "
-	for _, c := range evt.Commits {
+	commits := evt.Commits
+	sort.Slice(commits, func(i, j int) bool {
+		return commits[i].Timestamp.Before(commits[j].Timestamp)
+	})
+	for _, c := range commits {
 		m := strings.Split(c.Message, "\n")[0]
 		msg += fmt.Sprintf("%s %s pushed to %s (<%s|%s>) %s\n",
 			icon,
