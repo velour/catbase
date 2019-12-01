@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/plugins/aoc"
 	"github.com/velour/catbase/plugins/twitter"
 
 	"github.com/rs/zerolog"
@@ -134,6 +135,7 @@ func main() {
 	b.AddPlugin(twitter.New(b))
 	b.AddPlugin(git.New(b))
 	b.AddPlugin(cli.New(b))
+	b.AddPlugin(aoc.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
