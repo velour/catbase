@@ -3,6 +3,7 @@ module github.com/velour/catbase
 go 1.13
 
 require (
+	code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d
 	github.com/AlekSi/pointer v1.1.0 // indirect
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
