@@ -90,6 +90,9 @@ func (p *AOC) message(c bot.Connector, kind bot.Kind, message msg.Message, args 
 
 		msg := "AoC Leaderboard:\n"
 		for _, m := range members {
+			if m.Stars == 0 {
+				continue
+			}
 			trophy := ""
 			switch m.ID {
 			case goldID:
