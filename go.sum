@@ -1,3 +1,7 @@
+code.chrissexton.org/cws/getaoc v0.0.0-20191201041923-dc696067b57c h1:X5c+asGWxR/Whkgl/YYXDanC4n2RHYeFcC7mT37+uZ4=
+code.chrissexton.org/cws/getaoc v0.0.0-20191201041923-dc696067b57c/go.mod h1:rEpfJR9MplF2TUj2Oy+u4XAaLve2kwB8I2zlzeIQxl8=
+code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d h1:XS13tP+cMAvXYHQiYqcst64wQ854pueMRZSU4+6puU4=
+code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d/go.mod h1:rEpfJR9MplF2TUj2Oy+u4XAaLve2kwB8I2zlzeIQxl8=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/AlekSi/pointer v1.0.0 h1:KWCWzsvFxNLcmM5XmiqHsGTTsuwZMsLFwWF9Y+//bNE=
 github.com/AlekSi/pointer v1.0.0/go.mod h1:1kjywbfcPFCmncIxtk6fIEub6LKrfMz3gc5QKVOSOA8=
@@ -29,8 +33,6 @@ github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 h1:ekDALXAVvY/Ub1UtNta
 github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330/go.mod h1:nH+k0SvAt3HeiYyOlJpLLv1HG1p7KWP7qU9QPp2/pCo=
 github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598 h1:j2XRGH5Y5uWtBYXGwmrjKeM/kfu/jh7ZcnrGvyN5Ttk=
 github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598/go.mod h1:sduMkaHcXDIWurl/Bd/z0rNEUHw5tr6LUA9IO8E9o0o=
-github.com/chrissexton/gofuck v0.0.0-20191020114617-e7a1e23dde7e h1:JXogTwz6EUZbanZNfUsKcomEkFOTo0tSIVlbd2o8u9c=
-github.com/chrissexton/gofuck v0.0.0-20191020114617-e7a1e23dde7e/go.mod h1:voOFh7xp5oNB4N516blAUT0Vh2JQq/cFX9autdChv9o=
 github.com/chrissexton/gofuck v1.0.0 h1:vxg/tIfI2HunJOErSotmMqMRNfLRVO+BTjSKpFoAizA=
 github.com/chrissexton/gofuck v1.0.0/go.mod h1:voOFh7xp5oNB4N516blAUT0Vh2JQq/cFX9autdChv9o=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff h1:+TEqaP0eO1unI7XHHFeMDhsxhLDIb0x8KYuZbqbAmxA=
@@ -156,9 +158,11 @@ golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8T
 gonum.org/v1/gonum v0.0.0-20180816165407-929014505bf4/go.mod h1:Y+Yx5eoAFn32cQvJDxZx5Dpnq+c3wtXuadVZAcxbbBo=
 gonum.org/v1/gonum v0.6.0 h1:DJy6UzXbahnGUf1ujUNkh/NEtK14qMo2nvlBPs4U5yw=
 gonum.org/v1/gonum v0.6.0/go.mod h1:9mxDZsDKxgMAuccQkewq682L+0eCu4dCN2yonUJTCLU=
+gonum.org/v1/netlib v0.0.0-20190313105609-8cb42192e0e0 h1:OE9mWmgKkjJyEmDAAtGMPjXu+YNeGvK9VTSHY6+Qihc=
 gonum.org/v1/netlib v0.0.0-20190313105609-8cb42192e0e0/go.mod h1:wa6Ws7BG/ESfp6dHfk7C6KdzKA7wR7u/rKwOGE66zvw=
 gonum.org/v1/plot v0.0.0-20190515093506-e2840ee46a6b/go.mod h1:Wt8AAjI+ypCyYX3nZBvf6cAIx93T+c/OS2HFAYskSZc=
 google.golang.org/appengine v1.6.5/go.mod h1:8WjMMxjGQR8xUklV/ARdw2HLXBOI7O7uCIDZVag1xfc=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/go-playground/webhooks.v5 v5.13.0 h1:e9vtkQZK464+UdL3YjRox2yR8JSmh2094PUBMvdriFs=
 gopkg.in/go-playground/webhooks.v5 v5.13.0/go.mod h1:LZbya/qLVdbqDR1aKrGuWV6qbia2zCYSR5dpom2SInQ=

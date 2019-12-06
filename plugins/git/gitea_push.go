@@ -1,5 +1,7 @@
 package git
 
+import "time"
+
 type GiteaPush struct {
 	Secret     string `json:"secret"`
 	Ref        string `json:"ref"`
@@ -20,7 +22,7 @@ type GiteaPush struct {
 			Email    string `json:"email"`
 			Username string `json:"username"`
 		} `json:"committer"`
-		Timestamp string `json:"timestamp"`
+		Timestamp time.Time `json:"timestamp"`
 	} `json:"commits"`
 	Repository struct {
 		ID    int `json:"id"`
