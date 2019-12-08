@@ -88,7 +88,7 @@ func (p *AOC) message(c bot.Connector, kind bot.Kind, message msg.Message, args 
 			}
 		}
 
-		msg := "AoC Leaderboard:\n"
+		msg := fmt.Sprintf("AoC <https://adventofcode.com/%d/leaderboard/private/view/%d|Leaderboard>:\n", year, boardId)
 		for _, m := range members {
 			if m.Stars == 0 {
 				continue
