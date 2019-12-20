@@ -16,4 +16,9 @@ type Item struct {
 	Title       string `json:"title"`
 	Parts       []int  `json:"parts"`
 	Descendants int    `json:"descendants"`
+
+	// This is not in the API but it's
+	// easier to hack it in here than
+	// fix my code.
+	Bid string `json:"bid"`
 }

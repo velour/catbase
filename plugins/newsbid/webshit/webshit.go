@@ -38,7 +38,9 @@ type Bid struct {
 	User           string
 	Title          string
 	URL            string
+	HNID           int `db:"hnid"`
 	Bid            int
+	BidStr         string
 	PlacedScore    int `db:"placed_score"`
 	ProcessedScore int `db:"processed_score"`
 	Placed         int64
@@ -80,7 +82,9 @@ func (w *Webshit) setup() {
 		user string,
 		title string,
 		url string,
+		hnid string,
 		bid integer,
+		bidstr string,
 		placed_score integer,
 		processed_score integer,
 		placed integer,
@@ -100,13 +104,20 @@ func (w *Webshit) Check(last int64) ([]WeeklyResult, int64, error) {
 	}
 
 	if published.Unix() <= last {
+		log.Debug().Msgf("No new ngate: %v vs %v", published.Unix(), last)
 		return nil, 0, fmt.Errorf("no new ngate")
 	}
 
 	var bids []Bid
-	if err = w.db.Select(&bids, `select user,title,url,bid from webshit_bids where processed=0`); err != nil {
+	if err = w.db.Select(&bids, `select user,title,url,hnid,bid,bidstr from webshit_bids where processed=0`); err != nil {
 		return nil, 0, err
 	}
+
+	log.Debug().
+		Interface("bids", bids).
+		Interface("ngate", stories).
+		Interface("published", published).
+		Msg("checking ngate")
 
 	// Assuming no bids earlier than the weekly means there hasn't been a new weekly
 	if len(bids) == 0 {
@@ -115,8 +126,7 @@ func (w *Webshit) Check(last int64) ([]WeeklyResult, int64, error) {
 
 	storyMap := map[string]hn.Item{}
 	for _, s := range stories {
-		id := strconv.Itoa(s.ID)
-		storyMap[id] = s
+		storyMap[s.URL] = s
 	}
 
 	wr := w.checkBids(bids, storyMap)
@@ -127,8 +137,8 @@ func (w *Webshit) Check(last int64) ([]WeeklyResult, int64, error) {
 	}
 
 	// Delete all those bids
-	if _, err = w.db.Exec(`update webshit_bids set processed=? where placed < ?`,
-		time.Now().Unix(), published.Unix()); err != nil {
+	if _, err = w.db.Exec(`update webshit_bids set processed=? where processed=0`,
+		time.Now().Unix()); err != nil {
 		return nil, 0, err
 	}
 
@@ -157,19 +167,19 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyRes
 		}
 		rec := wr[b.User]
 
-		u, err := url.Parse(b.URL)
-		if err != nil {
-			log.Error().Err(err).Msg("couldn't parse URL")
-			continue
-		}
-		id := u.Query().Get("id")
-
-		if s, ok := storyMap[id]; ok {
+		if s, ok := storyMap[b.URL]; ok {
 			wins = append(wins, b)
+			s.Bid = b.BidStr
 			rec.WinningArticles = append(rec.WinningArticles, s)
 			totalWinning += float64(b.Bid)
 		} else {
-			rec.LosingArticles = append(rec.LosingArticles, hn.Item{Title: b.Title, URL: b.URL})
+			bid := hn.Item{
+				ID:    b.HNID,
+				URL:   b.URL,
+				Title: b.Title,
+				Bid:   b.BidStr,
+			}
+			rec.LosingArticles = append(rec.LosingArticles, bid)
 		}
 		total += float64(b.Bid)
 		wr[b.User] = rec
@@ -274,7 +284,7 @@ func (w *Webshit) GetAllBalances() ([]Balance, error) {
 }
 
 // Bid allows a user to place a bid on a particular story
-func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
+func (w *Webshit) Bid(user string, amount int, bidStr, URL string) (Bid, error) {
 	bal := w.GetBalance(user)
 	if amount < 0 {
 		return Bid{}, fmt.Errorf("cannot bid less than 0")
@@ -290,8 +300,8 @@ func (w *Webshit) Bid(user string, amount int, URL string) (Bid, error) {
 	ts := time.Now().Unix()
 
 	tx := w.db.MustBegin()
-	_, err = tx.Exec(`insert into webshit_bids (user,title,url,bid,placed,processed,placed_score,processed_score) values (?,?,?,?,?,0,?,0)`,
-		user, story.Title, story.URL, amount, ts, story.Score)
+	_, err = tx.Exec(`insert into webshit_bids (user,title,url,hnid,bid,bidstr,placed,processed,placed_score,processed_score) values (?,?,?,?,?,?,?,0,?,0)`,
+		user, story.Title, story.URL, story.ID, amount, bidStr, ts, story.Score)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			return Bid{}, err

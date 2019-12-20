@@ -33,11 +33,9 @@ type Items []Item
 
 func (is Items) Titles() string {
 	out := ""
-	for i, v := range is {
-		if i > 0 {
-			out += ", "
-		}
-		out += fmt.Sprintf("<%s|%s>", v.URL, v.Title)
+	for _, v := range is {
+		hnURL := fmt.Sprintf("https://news.ycombinator.com/item?id=%d", v.ID)
+		out += fmt.Sprintf("• %s <%s|%s> (<%s|Comments>)\n", v.Bid, v.URL, v.Title, hnURL)
 	}
 	return out
 }
