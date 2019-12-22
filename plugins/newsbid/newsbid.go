@@ -48,10 +48,16 @@ func (p *NewsBid) message(conn bot.Connector, k bot.Kind, message msg.Message, a
 			p.bot.Send(conn, bot.Message, ch, "No bids to report.")
 			return true
 		}
-		sort.Slice(bids, func(i, j int) bool { return bids[i].User < bids[j].User })
+		sort.Slice(bids, func(i, j int) bool {
+			if bids[i].User == bids[j].User {
+				return bids[i].Bid > bids[j].Bid
+			}
+			return bids[i].User < bids[j].User
+		})
 		out := "Bids:\n"
 		for _, b := range bids {
-			out += fmt.Sprintf("%s bid %s on <%s|%s> \n", b.User, b.BidStr, b.URL, b.Title)
+			hnURL := fmt.Sprintf("https://news.ycombinator.com/item?id=%d", b.HNID)
+			out += fmt.Sprintf("• %s bid %s <%s|%s> (<%s|Comments>)\n", b.User, b.BidStr, b.URL, b.Title, hnURL)
 		}
 		p.bot.Send(conn, bot.Message, ch, out)
 		return true
