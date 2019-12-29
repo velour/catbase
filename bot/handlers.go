@@ -141,6 +141,22 @@ func (b *bot) Filter(message msg.Message, input string) string {
 		input = strings.Replace(input, "$nonzero", num, 1)
 	}
 
+	for strings.Contains(input, "$time") {
+		hrs := rand.Intn(23)
+		mins := rand.Intn(59)
+		input = strings.Replace(input, "$time", fmt.Sprintf("%0.2d:%0.2d", hrs, mins), 1)
+	}
+
+	for strings.Contains(input, "$now") {
+		now := time.Now().Format("15:04")
+		input = strings.Replace(input, "$now", now, 1)
+	}
+
+	for strings.Contains(input, "$msg") {
+		msg := message.Body
+		input = strings.Replace(input, "$msg", msg, 1)
+	}
+
 	r, err := regexp.Compile("\\$[A-z]+")
 	if err != nil {
 		panic(err)
@@ -184,7 +200,7 @@ func (b *bot) listVars(conn Connector, channel string, parts []string) {
 	if err != nil {
 		log.Fatal().Err(err)
 	}
-	msg := "I know: $who, $someone, $digit, $nonzero"
+	msg := "I know: $who, $someone, $digit, $nonzero, $time, $now, $msg"
 	if len(variables) > 0 {
 		msg += ", " + strings.Join(variables, ", ")
 	}
