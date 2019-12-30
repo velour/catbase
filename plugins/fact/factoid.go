@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 )
@@ -419,6 +421,8 @@ func (p *FactoidPlugin) sayFact(c bot.Connector, message msg.Message, fact Facto
 			p.Bot.Send(c, bot.Reaction, message.Channel, msg, message)
 		} else if fact.Verb == "reply" {
 			p.Bot.Send(c, bot.Message, message.Channel, msg)
+		} else if fact.Verb == "image" {
+			p.sendImage(c, message, msg)
 		} else {
 			p.Bot.Send(c, bot.Message, message.Channel, full)
 		}
@@ -435,6 +439,34 @@ func (p *FactoidPlugin) sayFact(c bot.Connector, message msg.Message, fact Facto
 			Msg("could not update fact")
 	}
 	p.LastFact = &fact
+}
+
+func (p *FactoidPlugin) sendImage(c bot.Connector, message msg.Message, msg string) {
+	imgSrc := ""
+	txt := ""
+	for _, w := range strings.Split(msg, " ") {
+		if _, err := url.Parse(w); err == nil && strings.HasPrefix(w, "http") {
+			log.Debug().Msgf("Valid image found: %s", w)
+			imgSrc = w
+		} else {
+			txt = txt + " " + w
+			log.Debug().Msgf("Adding %s to txt %s", w, txt)
+		}
+	}
+	log.Debug().
+		Str("imgSrc", imgSrc).
+		Str("txt", txt).
+		Str("msg", msg).
+		Msg("Sending image attachment")
+	if imgSrc != "" {
+		img := bot.ImageAttachment{
+			URL:    imgSrc,
+			AltTxt: txt,
+		}
+		p.Bot.Send(c, bot.Message, message.Channel, "", img)
+		return
+	}
+	p.Bot.Send(c, bot.Message, message.Channel, txt)
 }
 
 // trigger checks the message for its fitness to be a factoid and then hauls
