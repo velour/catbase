@@ -98,3 +98,20 @@ func TestKnownBrokenPick(t *testing.T) {
 	assert.NotContains(t, mb.Messages[0], "hot picks")
 	log.Debug().Str("resp", mb.Messages[0]).Msg("choose")
 }
+
+func TestPickIsCommand(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	_ = c.message(makeMessage("!pick⌘ { bagel/egg/smoked turkey/butte/cheese ⌘ fuck all that, just have a bagel and cream cheese }"))
+	assert.Len(t, mb.Messages, 1)
+	assert.Contains(t, mb.Messages[0], "I've chosen")
+	assert.NotContains(t, mb.Messages[0], "hot picks")
+	log.Debug().Str("resp", mb.Messages[0]).Msg("choose")
+}
+
+func TestPickMustBeCommand(t *testing.T) {
+	mb := bot.NewMockBot()
+	c := New(mb)
+	_ = c.message(makeMessage("pick⌘ { bagel/egg/smoked turkey/butte/cheese ⌘ fuck all that, just have a bagel and cream cheese }"))
+	assert.Len(t, mb.Messages, 0)
+}
