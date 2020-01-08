@@ -35,7 +35,7 @@ func New(b bot.Bot) *PickerPlugin {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if !strings.HasPrefix(message.Body, "pick") {
+	if !strings.HasPrefix(message.Body, "pick") || !message.Command {
 		return false
 	}
 
