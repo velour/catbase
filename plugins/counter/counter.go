@@ -541,7 +541,11 @@ func (p *CounterPlugin) checkMatch(c bot.Connector, message msg.Message) bool {
 		return false
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
-	item.UpdateDelta(1)
+	delta := 1
+	if item.Count < 0 {
+		delta = -1
+	}
+	item.UpdateDelta(delta)
 	p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
 		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
