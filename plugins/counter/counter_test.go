@@ -4,9 +4,10 @@ package counter
 
 import (
 	"fmt"
-	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
+
+	"github.com/velour/catbase/plugins/cli"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"

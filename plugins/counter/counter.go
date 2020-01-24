@@ -73,10 +73,11 @@ func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
 }
 
 func LeaderAll(db *sqlx.DB) ([]Item, error) {
-	s := `select id,item,nick,max(count) as count from counter group by item having count(nick) > 1 and max(count) > 1 order by count desc`
+	s := `select id,item,nick,count from (select id,item,nick,count,max(abs(count)) from counter group by item having count(nick) > 1 and max(abs(count)) > 1) order by count desc`
 	var items []Item
 	err := db.Select(&items, s)
 	if err != nil {
+		log.Error().Msgf("Error querying leaderboard: %w", err)
 		return nil, err
 	}
 	for i := range items {
@@ -260,7 +261,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 
 		its, err := cmd()
 		if err != nil {
-			log.Error().Err(err)
+			log.Error().Err(err).Msg("Error with leaderboard")
 			return false
 		} else if len(its) == 0 {
 			return false
