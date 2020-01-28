@@ -72,7 +72,7 @@ func (t *Twitter) check(c bot.Connector) {
 		for _, tweet := range tweets {
 			userKey := fmt.Sprintf("twitter.last.%s", u)
 			lastTweet := int64(t.c.GetInt(userKey, 0))
-			if lastTweet < tweet.Id {
+			if lastTweet < tweet.Id && tweet.RetweetedStatus != nil {
 				link := fmt.Sprintf("https://twitter.com/%s/status/%s", u, tweet.IdStr)
 				log.Debug().Str("tweet", link).Msg("Unknown tweet")
 				for _, ch := range chs {
