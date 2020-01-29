@@ -104,7 +104,17 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 		}
 		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
 		return true
+	} else if parts[0] == "push" && len(parts) > 2 {
+		items := p.cfg.GetArray(parts[1], []string{})
+		items = append(items, strings.Join(parts[2:], ""))
+		if err := p.cfg.Set(parts[1], strings.Join(items, ";;")); err != nil {
+			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
+			return true
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		return true
 	}
+
 	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
 		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
