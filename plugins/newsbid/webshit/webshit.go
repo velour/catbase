@@ -61,7 +61,7 @@ type Balances []Balance
 
 func (b Balances) Len() int           { return len(b) }
 func (b Balances) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-func (b Balances) Less(i, j int) bool { return b[i].Score < b[j].Score }
+func (b Balances) Less(i, j int) bool { return b[i].Score > b[j].Score }
 
 type WeeklyResult struct {
 	User            string
