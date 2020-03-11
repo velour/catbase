@@ -73,6 +73,7 @@ func (p *NewsBid) message(conn bot.Connector, k bot.Kind, message msg.Message, a
 			return true
 		}
 		out := "NGate balances:\n"
+		sort.Sort(bals)
 		for _, b := range bals {
 			out += fmt.Sprintf("%s has a total score of %d with %d left to bid this session\n", b.User, b.Score, b.Balance)
 		}
