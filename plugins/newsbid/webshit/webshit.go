@@ -57,6 +57,12 @@ type Balance struct {
 	Score   int
 }
 
+type Balances []Balance
+
+func (b Balances) Len() int           { return len(b) }
+func (b Balances) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b Balances) Less(i, j int) bool { return b[i].Score < b[j].Score }
+
 type WeeklyResult struct {
 	User            string
 	Won             int
@@ -274,8 +280,8 @@ func (w *Webshit) GetAllBids() ([]Bid, error) {
 	return bids, nil
 }
 
-func (w *Webshit) GetAllBalances() ([]Balance, error) {
-	var balances []Balance
+func (w *Webshit) GetAllBalances() (Balances, error) {
+	var balances Balances
 	err := w.db.Select(&balances, `select * from webshit_balances`)
 	if err != nil {
 		return nil, err
