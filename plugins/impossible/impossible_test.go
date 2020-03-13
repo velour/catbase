@@ -1,7 +1,7 @@
 package impossible
 
 import (
-  "fmt"
+	"fmt"
 	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
@@ -37,23 +37,23 @@ func makePlugin(t *testing.T) (*Impossible, *bot.MockBot) {
 func TestNothing(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.message(makeMessage("hi"))
-  p.message(makeMessage("nothing"))
+	p.message(makeMessage("nothing"))
 	assert.Len(t, mb.Messages, 1)
 }
 
 func TestHint(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.message(makeMessage("hi"))
-  p.message(makeMessage("!hint"))
+	p.message(makeMessage("!hint"))
 	assert.Len(t, mb.Messages, 2)
 }
 
 func TestCorrect(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.message(makeMessage("hi"))
-  p.message(makeMessage(mb.Messages[0]))
+	p.message(makeMessage(mb.Messages[0]))
 
-  congrats := fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", mb.Messages[0])
+	congrats := fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", mb.Messages[0])
 
 	assert.Contains(t, mb.Messages[1], congrats)
 }
