@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
-	"math/rand"
 	"regexp"
 	"strings"
-  "time"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -25,7 +25,7 @@ type Impossible struct {
 	title   string
 	content []string
 	updated time.Time
-  testing bool
+	testing bool
 }
 
 func New(b bot.Bot) *Impossible {
@@ -35,7 +35,7 @@ func New(b bot.Bot) *Impossible {
 		title:   "",
 		content: []string{},
 		updated: getTodaysMidnight().Add(time.Hour * -24),
-    testing: false,
+		testing: false,
 	}
 
 	b.Register(i, bot.Help, i.help)
@@ -51,7 +51,7 @@ func newTesting(b bot.Bot) *Impossible {
 		title:   "",
 		content: []string{},
 		updated: getTodaysMidnight().Add(time.Hour * -24),
-    testing: true,
+		testing: true,
 	}
 
 	b.Register(i, bot.Help, i.help)
@@ -72,12 +72,13 @@ func (p *Impossible) message(c bot.Connector, kind bot.Kind, message msg.Message
 			p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("The last impossible wikipedia article was: \"%s\"", p.title))
 			messaged = true
 		}
-		for !p.refreshImpossible() {}
+		for !p.refreshImpossible() {
+		}
 
-    if p.testing {
-      p.b.Send(c, bot.Message, message.Channel, p.title)
+		if p.testing {
+			p.b.Send(c, bot.Message, message.Channel, p.title)
 			messaged = true
-    }
+		}
 	}
 
 	lowercase := strings.ToLower(message.Body)
@@ -87,7 +88,8 @@ func (p *Impossible) message(c bot.Connector, kind bot.Kind, message msg.Message
 	} else if strings.Contains(lowercase, strings.ToLower(p.title)) {
 		messaged = true
 		p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", p.title))
-		for !p.refreshImpossible() {}
+		for !p.refreshImpossible() {
+		}
 	}
 
 	return messaged
@@ -103,12 +105,12 @@ func (p *Impossible) refreshImpossible() bool {
 	body, err := ioutil.ReadAll(resp.Body)
 
 	titleRegex := regexp.MustCompile(`id="firstHeading"[^>]*(?P<Title>[^<]*)`)
-  results := titleRegex.FindStringSubmatch(string(body))
-  title := results[1][1:] //remove the leading <
+	results := titleRegex.FindStringSubmatch(string(body))
+	title := results[1][1:] //remove the leading <
 
-  if title == "" {
-    return false
-  }
+	if title == "" {
+		return false
+	}
 
 	p.title = title
 	p.content = []string{}
@@ -138,7 +140,7 @@ func (p *Impossible) refreshImpossible() bool {
 			p.content = append(p.content, censored)
 		}
 	}
-  return true
+	return true
 }
 
 func getTodaysMidnight() time.Time {
