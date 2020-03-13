@@ -7,7 +7,6 @@ require (
 	github.com/AlekSi/pointer v1.1.0 // indirect
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
-	github.com/PaulRosset/go-hacknews v0.0.0-20170815075127-4aad99273a3c
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/andybalholm/cascadia v1.1.0 // indirect
 	github.com/antchfx/htmlquery v1.2.0 // indirect

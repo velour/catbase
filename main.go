@@ -32,6 +32,7 @@ import (
 	"github.com/velour/catbase/plugins/first"
 	"github.com/velour/catbase/plugins/fuck"
 	"github.com/velour/catbase/plugins/git"
+	"github.com/velour/catbase/plugins/impossible"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/leftpad"
 	"github.com/velour/catbase/plugins/nerdepedia"
@@ -134,6 +135,7 @@ func main() {
 	b.AddPlugin(newsbid.New(b))
 	b.AddPlugin(twitter.New(b))
 	b.AddPlugin(git.New(b))
+	b.AddPlugin(impossible.New(b))
 	b.AddPlugin(cli.New(b))
 	b.AddPlugin(aoc.New(b))
 	// catches anything left, will always return true
