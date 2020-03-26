@@ -90,6 +90,11 @@ func (p *Impossible) message(c bot.Connector, kind bot.Kind, message msg.Message
 		p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", p.title))
 		for !p.refreshImpossible() {
 		}
+	} else if strings.Contains(lowercase, "i friggin give up") {
+		messaged = true
+		p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("You're a failure the last impossible wikipedia article: \"%s\"", p.title))
+		for !p.refreshImpossible() {
+		}
 	}
 
 	return messaged
