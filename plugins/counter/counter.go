@@ -77,7 +77,7 @@ func LeaderAll(db *sqlx.DB) ([]Item, error) {
 	var items []Item
 	err := db.Select(&items, s)
 	if err != nil {
-		log.Error().Msgf("Error querying leaderboard: %w", err)
+		log.Error().Msgf("Error querying leaderboard: %s", err)
 		return nil, err
 	}
 	for i := range items {
