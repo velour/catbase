@@ -10,6 +10,7 @@ import (
 	"github.com/velour/catbase/plugins/cli"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
@@ -35,6 +36,27 @@ func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 		Body:    payload,
 		Command: isCmd,
 	}
+}
+
+func TestMkAlias(t *testing.T) {
+	mb, c := setup(t)
+	assert.NotNil(t, c)
+	c.message(makeMessage("mkalias fuck mornings"))
+	c.message(makeMessage("fuck++"))
+	item, err := GetItem(mb.DB(), "tester", "mornings")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, item.Count)
+}
+
+func TestRmAlias(t *testing.T) {
+	mb, c := setup(t)
+	assert.NotNil(t, c)
+	c.message(makeMessage("mkalias fuck mornings"))
+	c.message(makeMessage("rmalias fuck"))
+	c.message(makeMessage("fuck++"))
+	item, err := GetItem(mb.DB(), "tester", "mornings")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, item.Count)
 }
 
 func TestThreeSentencesExists(t *testing.T) {
@@ -253,5 +275,5 @@ func TestHelp(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
-	assert.Len(t, mb.Messages, 1)
+	assert.Greater(t, len(mb.Messages), 1)
 }
