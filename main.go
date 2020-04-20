@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
 	"github.com/velour/catbase/plugins/twitter"
 
@@ -138,6 +139,7 @@ func main() {
 	b.AddPlugin(impossible.New(b))
 	b.AddPlugin(cli.New(b))
 	b.AddPlugin(aoc.New(b))
+	b.AddPlugin(achievements.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
