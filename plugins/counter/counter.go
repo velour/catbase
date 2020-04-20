@@ -100,25 +100,42 @@ func Leader(db *sqlx.DB, itemName string) ([]Item, error) {
 	return items, nil
 }
 
-func MkAlias(db *sqlx.DB, item, pointsTo string) (*alias, error) {
-	item = strings.ToLower(item)
+func RmAlias(db *sqlx.DB, aliasName string) error {
+	q := `delete from counter_alias where item = ?`
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(q, aliasName)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+	err = tx.Commit()
+	return err
+}
+
+func MkAlias(db *sqlx.DB, aliasName, pointsTo string) (*alias, error) {
+	aliasName = strings.ToLower(aliasName)
 	pointsTo = strings.ToLower(pointsTo)
 	res, err := db.Exec(`insert into counter_alias (item, points_to) values (?, ?)`,
-		item, pointsTo)
+		aliasName, pointsTo)
 	if err != nil {
-		_, err := db.Exec(`update counter_alias set points_to=? where item=?`, pointsTo, item)
+		_, err := db.Exec(`update counter_alias set points_to=? where item=?`, pointsTo, aliasName)
 		if err != nil {
 			return nil, err
 		}
 		var a alias
-		if err := db.Get(&a, `select * from counter_alias where item=?`, item); err != nil {
+		if err := db.Get(&a, `select * from counter_alias where item=?`, aliasName); err != nil {
 			return nil, err
 		}
 		return &a, nil
 	}
 	id, _ := res.LastInsertId()
 
-	return &alias{db, id, item, pointsTo}, nil
+	return &alias{db, id, aliasName, pointsTo}, nil
 }
 
 // GetItem returns a specific counter for a subject
@@ -242,11 +259,20 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 
 	if len(parts) == 3 && strings.ToLower(parts[0]) == "mkalias" {
 		if _, err := MkAlias(p.DB, parts[1], parts[2]); err != nil {
-			log.Error().Err(err)
-			return false
+			log.Error().Err(err).Msg("Could not mkalias")
+			p.Bot.Send(c, bot.Message, channel, "We're gonna need too much DB space to make an alias for your mom.")
+			return true
 		}
 		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("Created alias %s -> %s",
 			parts[1], parts[2]))
+		return true
+	} else if len(parts) == 2 && strings.ToLower(parts[0]) == "rmalias" {
+		if err := RmAlias(p.DB, parts[1]); err != nil {
+			log.Error().Err(err).Msg("could not RmAlias")
+			p.Bot.Send(c, bot.Message, channel, "`sudo rm your mom` => Nope, she's staying with me.")
+			return true
+		}
+		p.Bot.Send(c, bot.Message, channel, "`sudo rm your mom`")
 		return true
 	} else if strings.ToLower(parts[0]) == "leaderboard" {
 		var cmd func() ([]Item, error)
@@ -515,9 +541,11 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	p.Bot.Send(c, bot.Message, message.Channel, "You can set counters incrementally by using "+
-		"<noun>++ and <noun>--. You can see all of your counters using "+
-		"\"inspect\", erase them with \"clear\", and view single counters with "+
-		"\"count\".")
+		"`<noun>++` and `<noun>--`. You can see all of your counters using "+
+		"`inspect`, erase them with `clear`, and view single counters with "+
+		"`count`.")
+	p.Bot.Send(c, bot.Message, message.Channel, "You can create aliases with `!mkalias <alias> <original>`")
+	p.Bot.Send(c, bot.Message, message.Channel, "You can remove aliases with `!rmalias <alias>`")
 	return true
 }
 
