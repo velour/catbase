@@ -2,6 +2,7 @@ package achievements
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -45,9 +46,15 @@ func New(b bot.Bot) *AchievementsPlugin {
 }
 
 func (p *AchievementsPlugin) mkDB() error {
-	q := `
-	create table if not exists achievements
-	`
+	q := `create table if not exists achievements (
+		id integer primary key,
+		achievement string,
+		emojy string,
+		image_url string,
+		current_holder string,
+		amount integer,
+		expires integer
+	);`
 	tx, err := p.db.Beginx()
 	if err != nil {
 		return err
@@ -76,6 +83,20 @@ func (p *AchievementsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Me
 }
 
 // Award is used by other plugins to register a particular award for a user
-func Award(nick, thing string, category Category) error {
+func Grant(nick, thing string, category Category) error {
+	return nil
+}
+
+type Award struct {
+	ID            int
+	Achievement   string
+	Emojy         string
+	ImageURL      string
+	CurrentHolder string
+	Amount        int
+	Expires       *time.Time
+}
+
+func (a *Award) Save() error {
 	return nil
 }
