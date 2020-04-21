@@ -39,7 +39,7 @@ func New(b bot.Bot) *EmojifyMePlugin {
 	var emoji []Emoji
 	err = json.Unmarshal(body, &emoji)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error parsing emoji list")
+		log.Error().Err(err).Msg("Error parsing emoji list")
 	}
 
 	emojiMap := map[string]string{}
