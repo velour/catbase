@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -142,10 +143,16 @@ func (b *bot) Who(channel string) []user.User {
 	return users
 }
 
+var suffixRegex *regexp.Regexp
+
 // IsCmd checks if message is a command and returns its curtailed version
 func IsCmd(c *config.Config, message string) (bool, string) {
 	cmdcs := c.GetArray("CommandChar", []string{"!"})
 	botnick := strings.ToLower(c.Get("Nick", "bot"))
+	r := fmt.Sprintf(`(?i)\s*\W*\s*?%s\W*$`, botnick)
+	if suffixRegex == nil {
+		suffixRegex = regexp.MustCompile(r)
+	}
 	if botnick == "" {
 		log.Fatal().
 			Msgf(`You must run catbase -set nick -val <your bot nick>`)
@@ -164,6 +171,9 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 		if message[0] == ':' || message[0] == ',' {
 			message = message[1:]
 		}
+	} else if suffixRegex.MatchString(message) {
+		iscmd = true
+		message = suffixRegex.ReplaceAllString(message, "")
 	} else {
 		for _, cmdc := range cmdcs {
 			if strings.HasPrefix(lowerMessage, cmdc) && len(cmdc) > 0 {
