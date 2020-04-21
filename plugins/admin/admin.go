@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -64,6 +65,11 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 
 	if !message.Command {
 		return false
+	}
+
+	if strings.ToLower(body) == "reboot" {
+		log.Info().Msgf("Got reboot command")
+		os.Exit(0)
 	}
 
 	if strings.ToLower(body) == "shut up" {
