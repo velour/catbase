@@ -125,6 +125,9 @@ func (p *AchievementsPlugin) message(c bot.Connector, kind bot.Kind, message msg
 			msg := fmt.Sprintf("Congrats %s. You just got the %s award for %s.",
 				receiver, emojy, a.Description)
 			p.bot.Send(c, bot.Message, message.Channel, msg)
+		} else {
+			msg := fmt.Sprintf("Sorry, %s. %s owns that trophy.", nick, trophy.Creator)
+			p.bot.Send(c, bot.Message, message.Channel, msg)
 		}
 		return true
 	}
