@@ -4,6 +4,7 @@ package config
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -92,6 +93,19 @@ func (c *Config) GetString(key, fallback string) string {
 		return fallback
 	}
 	return configValue
+}
+
+func (c *Config) GetMap(key string, fallback map[string]string) map[string]string {
+	content := c.Get(key, "")
+	if content == "" {
+		return fallback
+	}
+	vals := map[string]string{}
+	err := json.Unmarshal([]byte(content), &vals)
+	if err != nil {
+		return fallback
+	}
+	return vals
 }
 
 // GetArray returns the string slice config value for a string key
