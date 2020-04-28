@@ -123,9 +123,12 @@ func (p *MemePlugin) genMeme(meme, text string) string {
 	}
 
 	u, err := url.Parse(imgName)
-	if err != nil {
+	if err != nil || u.Scheme == "" {
+		log.Debug().Err(err).Str("imgName", imgName).Msgf("url not detected")
 		u, _ = url.Parse("https://imgflip.com/s/meme/" + imgName)
 	}
+
+	log.Debug().Msgf("Attempting to download url: %s", u.String())
 
 	img := DownloadTemplate(u)
 	r := img.Bounds()
