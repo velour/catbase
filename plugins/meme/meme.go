@@ -2,6 +2,7 @@ package meme
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -73,7 +74,7 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 		log.Debug().Msgf("image is at %s", u.String())
 		p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
 			URL:    u.String(),
-			AltTxt: user,
+			AltTxt: fmt.Sprintf("%s: %s", user, parts[1]),
 		})
 		w.Write(nil)
 	})
