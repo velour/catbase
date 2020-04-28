@@ -2,7 +2,6 @@ package meme
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -87,16 +86,15 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 	})
 }
 
-func DownloadTemplate(file string) image.Image {
-	url := fmt.Sprintf("https://imgflip.com/s/meme/%s", file)
-	res, err := http.Get(url)
+func DownloadTemplate(u *url.URL) image.Image {
+	res, err := http.Get(u.String())
 	if err != nil {
-		log.Error().Msgf("%s template from %s failed because of %v", file, url, err)
+		log.Error().Msgf("template from %s failed because of %v", u.String(), err)
 	}
 	defer res.Body.Close()
 	image, _, err := image.Decode(res.Body)
 	if err != nil {
-		log.Error().Msgf("Could not decode %s because of %v", file, err)
+		log.Error().Msgf("Could not decode %v because of %v", u, err)
 	}
 	return image
 }
@@ -122,7 +120,13 @@ func (p *MemePlugin) genMeme(meme, text string) string {
 	if !ok {
 		imgName = meme
 	}
-	img := DownloadTemplate(imgName)
+
+	u, err := url.Parse(imgName)
+	if err != nil {
+		u, _ = url.Parse("https://imgflip.com/s/meme/" + imgName)
+	}
+
+	img := DownloadTemplate(u)
 	r := img.Bounds()
 	w := r.Dx()
 	h := r.Dy()
@@ -130,7 +134,7 @@ func (p *MemePlugin) genMeme(meme, text string) string {
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
 	fontLocation := p.c.Get("meme.font", "impact.ttf")
-	err := m.LoadFontFace(fontLocation, fontSize) // problem
+	err = m.LoadFontFace(fontLocation, fontSize) // problem
 	if err != nil {
 		log.Error().Err(err).Msg("could not load font")
 	}
