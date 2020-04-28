@@ -59,6 +59,7 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 		r.ParseForm()
 		log.Debug().Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		channel := r.PostForm.Get("channel_id")
+		user := r.PostForm.Get("user_name")
 		log.Debug().Msgf("channel: %s", channel)
 
 		parts := strings.SplitN(r.PostForm.Get("text"), " ", 2)
@@ -73,7 +74,7 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 		log.Debug().Msgf("image is at %s", u.String())
 		p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
 			URL:    u.String(),
-			AltTxt: parts[1],
+			AltTxt: user,
 		})
 		w.Write(nil)
 	})
