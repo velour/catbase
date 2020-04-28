@@ -11,6 +11,7 @@ import (
 
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
+	"github.com/velour/catbase/plugins/meme"
 	"github.com/velour/catbase/plugins/twitter"
 
 	"github.com/rs/zerolog"
@@ -139,6 +140,7 @@ func main() {
 	b.AddPlugin(impossible.New(b))
 	b.AddPlugin(cli.New(b))
 	b.AddPlugin(aoc.New(b))
+	b.AddPlugin(meme.New(b))
 	b.AddPlugin(achievements.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
