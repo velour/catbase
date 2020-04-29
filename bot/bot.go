@@ -50,6 +50,8 @@ type bot struct {
 
 	password        string
 	passwordCreated time.Time
+
+	quiet bool
 }
 
 type EndPoint struct {
@@ -258,4 +260,8 @@ func (b *bot) GetPassword() string {
 		b.password = fmt.Sprintf("%s-%s-%s", a, n, v)
 	}
 	return b.password
+}
+
+func (b *bot) SetQuiet(status bool) {
+	b.quiet = status
 }

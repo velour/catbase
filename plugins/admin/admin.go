@@ -55,7 +55,7 @@ var forbiddenKeys = map[string]bool{
 func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Message, args ...interface{}) bool {
 	body := message.Body
 
-	if p.quiet {
+	if p.quiet && message.Body != "come back" {
 		return true
 	}
 
@@ -67,6 +67,14 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 		return false
 	}
 
+	if p.quiet && message.Body == "come back" {
+		p.quiet = false
+		p.bot.SetQuiet(false)
+		backMsg := p.bot.Config().Get("admin.comeback", "Okay, I'm back.")
+		p.bot.Send(conn, bot.Message, message.Channel, backMsg)
+		return true
+	}
+
 	if strings.ToLower(body) == "reboot" {
 		p.bot.Send(conn, bot.Message, message.Channel, "brb")
 		log.Info().Msgf("Got reboot command")
@@ -76,13 +84,18 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 	if strings.ToLower(body) == "shut up" {
 		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
 		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
-		p.bot.Send(conn, bot.Message, message.Channel, "Okay. I'll be back later.")
+		leaveMsg := p.bot.Config().Get("admin.shutup", "Okay. I'll be back later.")
+		p.bot.Send(conn, bot.Message, message.Channel, leaveMsg)
 		p.quiet = true
+		p.bot.SetQuiet(true)
 		go func() {
 			select {
 			case <-time.After(dur):
 				p.quiet = false
+				p.bot.SetQuiet(false)
 				log.Info().Msg("Waking up from nap.")
+				backMsg := p.bot.Config().Get("admin.backmsg", "I'm back, bitches.")
+				p.bot.Send(conn, bot.Message, message.Channel, backMsg)
 			}
 		}()
 		return true

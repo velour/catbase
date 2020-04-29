@@ -54,6 +54,9 @@ func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.M
 
 // Send a message to the connection
 func (b *bot) Send(conn Connector, kind Kind, args ...interface{}) (string, error) {
+	if b.quiet {
+		return "", nil
+	}
 	return conn.Send(kind, args...)
 }
 
