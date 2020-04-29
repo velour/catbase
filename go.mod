@@ -35,6 +35,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/mmcdole/gofeed v1.0.0-beta2
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/nlopes/slack v0.6.0
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
 	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d // indirect

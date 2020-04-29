@@ -13,6 +13,7 @@ import (
 
 	"github.com/fogleman/gg"
 	"github.com/google/uuid"
+	"github.com/nfnt/resize"
 	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
@@ -90,38 +91,40 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 
 		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		w.WriteHeader(200)
-
-		top, bottom := "", message
-		parts = strings.Split(message, "\n")
-		if len(parts) > 1 {
-			top, bottom = parts[0], parts[1]
-		}
-
-		id := p.genMeme(format, top, bottom)
-		baseURL := p.c.Get("BaseURL", `https://catbase.velour.ninja`)
-		u, _ := url.Parse(baseURL)
-		u.Path = path.Join(u.Path, "meme", "img", id)
-
-		log.Debug().Msgf("image is at %s", u.String())
-		p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
-			URL:    u.String(),
-			AltTxt: fmt.Sprintf("%s: %s", from, message),
-		})
 		w.Write(nil)
-		m := msg.Message{
-			User: &user.User{
-				ID:    from,
-				Name:  from,
-				Admin: false,
-			},
-			Channel:     channel,
-			ChannelName: channelName,
-			Body:        message,
-			Command:     isCmd,
-			Time:        time.Now(),
-		}
 
-		p.bot.Receive(c, bot.Message, m)
+		go func() {
+			top, bottom := "", message
+			parts = strings.Split(message, "\n")
+			if len(parts) > 1 {
+				top, bottom = parts[0], parts[1]
+			}
+
+			id := p.genMeme(format, top, bottom)
+			baseURL := p.c.Get("BaseURL", `https://catbase.velour.ninja`)
+			u, _ := url.Parse(baseURL)
+			u.Path = path.Join(u.Path, "meme", "img", id)
+
+			log.Debug().Msgf("image is at %s", u.String())
+			p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
+				URL:    u.String(),
+				AltTxt: fmt.Sprintf("%s: %s", from, message),
+			})
+			m := msg.Message{
+				User: &user.User{
+					ID:    from,
+					Name:  from,
+					Admin: false,
+				},
+				Channel:     channel,
+				ChannelName: channelName,
+				Body:        message,
+				Command:     isCmd,
+				Time:        time.Now(),
+			}
+
+			p.bot.Receive(c, bot.Message, m)
+		}()
 	})
 
 	http.HandleFunc("/meme/img/", func(w http.ResponseWriter, r *http.Request) {
@@ -182,9 +185,29 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) string {
 	log.Debug().Msgf("Attempting to download url: %s", u.String())
 
 	img := DownloadTemplate(u)
+
 	r := img.Bounds()
 	w := r.Dx()
 	h := r.Dy()
+
+	maxSz := 750.0
+
+	if w > h {
+		scale := maxSz / float64(w)
+		w = int(float64(w) * scale)
+		h = int(float64(h) * scale)
+	} else {
+		scale := maxSz / float64(h)
+		w = int(float64(w) * scale)
+		h = int(float64(h) * scale)
+	}
+
+	log.Debug().Msgf("trynig to resize to %v, %v", w, h)
+	img = resize.Resize(uint(w), uint(h), img, resize.Lanczos3)
+	r = img.Bounds()
+	w = r.Dx()
+	h = r.Dy()
+	log.Debug().Msgf("resized to %v, %v", w, h)
 
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
