@@ -161,7 +161,7 @@ var defaultFormats = map[string]string{
 }
 
 func (p *MemePlugin) genMeme(meme, top, bottom string) string {
-	fontSizes := []float64{96, 48, 24, 12}
+	fontSizes := []float64{48, 36, 24, 16, 12}
 	fontSize := fontSizes[0]
 
 	formats := p.c.GetMap("meme.memes", defaultFormats)
@@ -213,7 +213,8 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) string {
 			}
 			x := float64(w/2 + dx)
 			y := float64(h) - fontSize + float64(dy)
-			m.DrawStringAnchored(top, x, fontSize, 0.5, 0.5)
+			y0 := fontSize + float64(dy)
+			m.DrawStringAnchored(top, x, y0, 0.5, 0.5)
 			m.DrawStringAnchored(bottom, x, y, 0.5, 0.5)
 		}
 	}
