@@ -86,11 +86,18 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 
 		parts := strings.SplitN(r.PostForm.Get("text"), " ", 2)
 		isCmd, message := bot.IsCmd(p.c, parts[1])
+		format := parts[0]
 
 		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		w.WriteHeader(200)
 
-		id := p.genMeme(parts[0], message)
+		top, bottom := "", message
+		parts = strings.Split(message, "\n")
+		if len(parts) > 1 {
+			top, bottom = parts[0], parts[1]
+		}
+
+		id := p.genMeme(format, top, bottom)
 		baseURL := p.c.Get("BaseURL", `https://catbase.velour.ninja`)
 		u, _ := url.Parse(baseURL)
 		u.Path = path.Join(u.Path, "meme", "img", id)
@@ -153,8 +160,9 @@ var defaultFormats = map[string]string{
 	"raptor": "Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) genMeme(meme, text string) string {
-	const fontSize = 36
+func (p *MemePlugin) genMeme(meme, top, bottom string) string {
+	fontSizes := []float64{96, 48, 24, 12}
+	fontSize := fontSizes[0]
 
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 
@@ -181,9 +189,17 @@ func (p *MemePlugin) genMeme(meme, text string) string {
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
 	fontLocation := p.c.Get("meme.font", "impact.ttf")
-	err = m.LoadFontFace(fontLocation, fontSize) // problem
-	if err != nil {
-		log.Error().Err(err).Msg("could not load font")
+	for _, sz := range fontSizes {
+		err = m.LoadFontFace(fontLocation, sz) // problem
+		if err != nil {
+			log.Error().Err(err).Msg("could not load font")
+		}
+		topW, _ := m.MeasureString(top)
+		botW, _ := m.MeasureString(bottom)
+		if topW < float64(w) && botW < float64(w) {
+			fontSize = sz
+			break
+		}
 	}
 
 	// Apply black stroke
@@ -196,14 +212,16 @@ func (p *MemePlugin) genMeme(meme, text string) string {
 				continue
 			}
 			x := float64(w/2 + dx)
-			y := float64(h - fontSize + dy)
-			m.DrawStringAnchored(text, x, y, 0.5, 0.5)
+			y := float64(h) - fontSize + float64(dy)
+			m.DrawStringAnchored(top, x, fontSize, 0.5, 0.5)
+			m.DrawStringAnchored(bottom, x, y, 0.5, 0.5)
 		}
 	}
 
 	// Apply white fill
 	m.SetHexColor("#FFF")
-	m.DrawStringAnchored(text, float64(w)/2, float64(h)-fontSize, 0.5, 0.5)
+	m.DrawStringAnchored(top, float64(w)/2, fontSize, 0.5, 0.5)
+	m.DrawStringAnchored(bottom, float64(w)/2, float64(h)-fontSize, 0.5, 0.5)
 
 	i := bytes.Buffer{}
 	png.Encode(&i, m.Image())
