@@ -25,15 +25,34 @@ type MemePlugin struct {
 	bot bot.Bot
 	c   *config.Config
 
-	images map[string][]byte
+	images cachedImages
+}
+
+type cachedImage struct {
+	created time.Time
+	repr    []byte
+}
+
+var horizon = 24 * 7
+
+type cachedImages map[string]*cachedImage
+
+func (ci cachedImages) cleanup() {
+	for key, img := range ci {
+		if time.Now().After(img.created.Add(time.Hour * time.Duration(horizon))) {
+			delete(ci, key)
+		}
+	}
 }
 
 func New(b bot.Bot) *MemePlugin {
 	mp := &MemePlugin{
 		bot:    b,
 		c:      b.Config(),
-		images: make(map[string][]byte),
+		images: make(cachedImages),
 	}
+
+	horizon = mp.c.GetInt("meme.horizon", horizon)
 
 	b.Register(mp, bot.Message, mp.message)
 	b.Register(mp, bot.Help, mp.help)
@@ -101,8 +120,13 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 	http.HandleFunc("/meme/img/", func(w http.ResponseWriter, r *http.Request) {
 		_, file := path.Split(r.URL.Path)
 		id := file
-		img := p.images[id]
-		w.Write(img)
+		if img, ok := p.images[id]; ok {
+			w.Write(img.repr)
+		} else {
+			w.WriteHeader(404)
+			w.Write([]byte("not found"))
+		}
+		p.images.cleanup()
 	})
 }
 
@@ -183,7 +207,7 @@ func (p *MemePlugin) genMeme(meme, text string) string {
 
 	i := bytes.Buffer{}
 	png.Encode(&i, m.Image())
-	p.images[path] = i.Bytes()
+	p.images[path] = &cachedImage{time.Now(), i.Bytes()}
 
 	log.Debug().Msgf("Saved to %s\n", path)
 
