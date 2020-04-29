@@ -68,6 +68,7 @@ type Bot interface {
 	DefaultConnector() Connector
 	GetWebNavigation() []EndPoint
 	GetPassword() string
+	SetQuiet(bool)
 }
 
 // Connector represents a server connection to a chat service
