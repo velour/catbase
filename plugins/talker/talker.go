@@ -70,7 +70,7 @@ func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 	if message.Command && strings.HasPrefix(lowermessage, "cowsay") {
 		msg, err := p.cowSay(strings.TrimPrefix(message.Body, "cowsay "))
 		if err != nil {
-			p.bot.Send(c, bot.Message, channel, "Error running cowsay: %s", err)
+			p.bot.Send(c, bot.Message, channel, fmt.Sprintf("Error running cowsay: %s", err))
 			return true
 		}
 		p.bot.Send(c, bot.Message, channel, msg)

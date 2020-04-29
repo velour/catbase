@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/fogleman/gg"
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
 )
 
@@ -59,14 +61,17 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 		r.ParseForm()
 		log.Debug().Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		channel := r.PostForm.Get("channel_id")
-		user := r.PostForm.Get("user_name")
+		channelName := r.PostForm.Get("channel_name")
+		from := r.PostForm.Get("user_name")
 		log.Debug().Msgf("channel: %s", channel)
 
 		parts := strings.SplitN(r.PostForm.Get("text"), " ", 2)
+		isCmd, message := bot.IsCmd(p.c, parts[1])
+
 		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		w.WriteHeader(200)
 
-		id := p.genMeme(parts[0], parts[1])
+		id := p.genMeme(parts[0], message)
 		baseURL := p.c.Get("BaseURL", `https://catbase.velour.ninja`)
 		u, _ := url.Parse(baseURL)
 		u.Path = path.Join(u.Path, "meme", "img", id)
@@ -74,9 +79,23 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 		log.Debug().Msgf("image is at %s", u.String())
 		p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
 			URL:    u.String(),
-			AltTxt: fmt.Sprintf("%s: %s", user, parts[1]),
+			AltTxt: fmt.Sprintf("%s: %s", from, message),
 		})
 		w.Write(nil)
+		m := msg.Message{
+			User: &user.User{
+				ID:    from,
+				Name:  from,
+				Admin: false,
+			},
+			Channel:     channel,
+			ChannelName: channelName,
+			Body:        message,
+			Command:     isCmd,
+			Time:        time.Now(),
+		}
+
+		p.bot.Receive(c, bot.Message, m)
 	})
 
 	http.HandleFunc("/meme/img/", func(w http.ResponseWriter, r *http.Request) {
