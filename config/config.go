@@ -160,6 +160,14 @@ func (c *Config) Set(key, value string) error {
 	return nil
 }
 
+func (c *Config) SetMap(key string, values map[string]string) error {
+	b, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+	return c.Set(key, string(b))
+}
+
 func (c *Config) SetArray(key string, values []string) error {
 	vals := strings.Join(values, ";;")
 	return c.Set(key, vals)

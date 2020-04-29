@@ -68,6 +68,7 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 	}
 
 	if strings.ToLower(body) == "reboot" {
+		p.bot.Send(conn, bot.Message, message.Channel, "brb")
 		log.Info().Msgf("Got reboot command")
 		os.Exit(0)
 	}
@@ -114,6 +115,15 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 		items := p.cfg.GetArray(parts[1], []string{})
 		items = append(items, strings.Join(parts[2:], ""))
 		if err := p.cfg.Set(parts[1], strings.Join(items, ";;")); err != nil {
+			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
+			return true
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
+		return true
+	} else if parts[0] == "setkey" && len(parts) > 3 {
+		items := p.cfg.GetMap(parts[1], map[string]string{})
+		items[parts[2]] = strings.Join(parts[3:], " ")
+		if err := p.cfg.SetMap(parts[1], items); err != nil {
 			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
 			return true
 		}
