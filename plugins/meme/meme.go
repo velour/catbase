@@ -69,6 +69,7 @@ func (p *MemePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message
 func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 	msg := "Use `/meme [format] [text]` to create a meme.\nI know the following formats:"
+	msg += "\n`[format]` can be a URL"
 	for k := range formats {
 		msg += "\n" + k
 	}
@@ -106,7 +107,12 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 				top, bottom = parts[0], parts[1]
 			}
 
-			id := p.genMeme(format, top, bottom)
+			id, err := p.genMeme(format, top, bottom)
+			if err != nil {
+				msg := fmt.Sprintf("Hey %s, I couldn't download that image you asked for.", from)
+				p.bot.Send(c, bot.Message, channel, msg)
+				return
+			}
 			baseURL := p.c.Get("BaseURL", `https://catbase.velour.ninja`)
 			u, _ := url.Parse(baseURL)
 			u.Path = path.Join(u.Path, "meme", "img", id)
@@ -146,17 +152,19 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 	})
 }
 
-func DownloadTemplate(u *url.URL) image.Image {
+func DownloadTemplate(u *url.URL) (image.Image, error) {
 	res, err := http.Get(u.String())
 	if err != nil {
 		log.Error().Msgf("template from %s failed because of %v", u.String(), err)
+		return nil, err
 	}
 	defer res.Body.Close()
 	image, _, err := image.Decode(res.Body)
 	if err != nil {
 		log.Error().Msgf("Could not decode %v because of %v", u, err)
+		return nil, err
 	}
-	return image
+	return image, nil
 }
 
 var defaultFormats = map[string]string{
@@ -169,7 +177,7 @@ var defaultFormats = map[string]string{
 	"raptor": "Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) genMeme(meme, top, bottom string) string {
+func (p *MemePlugin) genMeme(meme, top, bottom string) (string, error) {
 	fontSizes := []float64{48, 36, 24, 16, 12}
 	fontSize := fontSizes[0]
 
@@ -190,7 +198,11 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) string {
 
 	log.Debug().Msgf("Attempting to download url: %s", u.String())
 
-	img := DownloadTemplate(u)
+	img, err := DownloadTemplate(u)
+	if err != nil {
+		log.Debug().Msgf("failed to download image: %s", err)
+		return "", err
+	}
 
 	r := img.Bounds()
 	w := r.Dx()
@@ -259,5 +271,5 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) string {
 
 	log.Debug().Msgf("Saved to %s\n", path)
 
-	return path
+	return path, nil
 }
