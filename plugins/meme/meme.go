@@ -83,13 +83,19 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 		channel := r.PostForm.Get("channel_id")
 		channelName := r.PostForm.Get("channel_name")
 		from := r.PostForm.Get("user_name")
+		text := r.PostForm.Get("text")
 		log.Debug().Msgf("channel: %s", channel)
 
-		parts := strings.SplitN(r.PostForm.Get("text"), " ", 2)
+		parts := strings.SplitN(text, " ", 2)
+		if len(parts) != 2 {
+			log.Debug().Msgf("Bad meme request: %s, %s", from, text)
+			p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%s tried to send me a bad meme request.", from))
+			return
+		}
 		isCmd, message := bot.IsCmd(p.c, parts[1])
 		format := parts[0]
 
-		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", r.PostForm.Get("text"))
+		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
 		w.WriteHeader(200)
 		w.Write(nil)
 
