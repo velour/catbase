@@ -2,12 +2,15 @@ package meme
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"image"
 	"image/png"
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -67,18 +70,110 @@ func (p *MemePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message
 }
 
 func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	webRoot := p.c.Get("BaseURL", "https://catbase.velour.ninja")
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 	msg := "Use `/meme [format] [text]` to create a meme.\nI know the following formats:"
 	msg += "\n`[format]` can be a URL"
 	for k := range formats {
 		msg += "\n" + k
 	}
+	msg += fmt.Sprintf("\nHead over to %s/meme to add new meme formats", webRoot)
 	p.bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
 
 func (p *MemePlugin) registerWeb(c bot.Connector) {
-	http.HandleFunc("/slash/meme", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/slash/meme", p.slashMeme(c))
+	http.HandleFunc("/meme/img/", p.img)
+	http.HandleFunc("/meme/all", p.all)
+	http.HandleFunc("/meme/add", p.addMeme)
+	http.HandleFunc("/meme", p.webRoot)
+	p.bot.RegisterWeb("/meme", "Memes")
+}
+
+type webResp struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type webResps []webResp
+
+func (w webResps) Len() int      { return len(w) }
+func (w webResps) Swap(i, j int) { w[i], w[j] = w[j], w[i] }
+
+type ByName struct{ webResps }
+
+func (s ByName) Less(i, j int) bool { return s.webResps[i].Name < s.webResps[j].Name }
+
+func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
+	memes := p.c.GetMap("meme.memes", defaultFormats)
+	values := webResps{}
+	for n, u := range memes {
+
+		realURL, err := url.Parse(u)
+		if err != nil || realURL.Scheme == "" {
+			realURL, _ = url.Parse("https://imgflip.com/s/meme/" + u)
+		}
+		sort.Sort(ByName{values})
+		values = append(values, webResp{n, realURL.String()})
+	}
+
+	out, err := json.Marshal(values)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Error().Err(err).Msgf("could not serve all memes route")
+		return
+	}
+	w.Write(out)
+}
+
+func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		fmt.Fprintf(w, "Incorrect HTTP method")
+		return
+	}
+	checkError := func(err error) bool {
+		if err != nil {
+			log.Error().Err(err).Msgf("addMeme failed")
+			w.WriteHeader(500)
+			e, _ := json.Marshal(err)
+			w.Write(e)
+			return true
+		}
+		return false
+	}
+	decoder := json.NewDecoder(r.Body)
+	values := webResp{}
+	err := decoder.Decode(&values)
+	if checkError(err) {
+		return
+	}
+	formats := p.c.GetMap("meme.memes", defaultFormats)
+	formats[values.Name] = values.URL
+	err = p.c.SetMap("meme.memes", formats)
+	checkError(err)
+}
+
+func (p *MemePlugin) webRoot(w http.ResponseWriter, r *http.Request) {
+	var tpl = template.Must(template.New("factoidIndex").Parse(string(memeIndex)))
+	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
+}
+
+func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {
+	_, file := path.Split(r.URL.Path)
+	id := file
+	if img, ok := p.images[id]; ok {
+		w.Write(img.repr)
+	} else {
+		w.WriteHeader(404)
+		w.Write([]byte("not found"))
+	}
+	p.images.cleanup()
+}
+
+func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		log.Debug().Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		channel := r.PostForm.Get("channel_id")
@@ -137,19 +232,7 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 
 			p.bot.Receive(c, bot.Message, m)
 		}()
-	})
-
-	http.HandleFunc("/meme/img/", func(w http.ResponseWriter, r *http.Request) {
-		_, file := path.Split(r.URL.Path)
-		id := file
-		if img, ok := p.images[id]; ok {
-			w.Write(img.repr)
-		} else {
-			w.WriteHeader(404)
-			w.Write([]byte("not found"))
-		}
-		p.images.cleanup()
-	})
+	}
 }
 
 func DownloadTemplate(u *url.URL) (image.Image, error) {

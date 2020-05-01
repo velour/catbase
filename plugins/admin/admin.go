@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
@@ -47,6 +48,7 @@ var forbiddenKeys = map[string]bool{
 	"twitch.clientid":      true,
 	"untappd.token":        true,
 	"slack.token":          true,
+	"meme.memes":           true,
 }
 
 // Message responds to the bot hook on recieving messages.
