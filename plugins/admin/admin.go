@@ -108,8 +108,14 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 		return true
 	}
 
+	verbs := map[string]bool{
+		"set":    true,
+		"push":   true,
+		"setkey": true,
+	}
+
 	parts := strings.Split(body, " ")
-	if parts[0] == "set" && len(parts) > 2 && forbiddenKeys[parts[1]] {
+	if verbs[parts[0]] && len(parts) > 2 && forbiddenKeys[parts[1]] {
 		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
 		return true
 	} else if parts[0] == "unset" && len(parts) > 1 {
