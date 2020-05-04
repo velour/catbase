@@ -39,10 +39,10 @@ var memeIndex = `
         <b-container>
             <b-row>
                 <b-col cols="5">
-                    <b-input v-model="name"></b-input>
+                    <b-input placeholder="Name..." v-model="name"></b-input>
                 </b-col>
                 <b-col cols="5">
-                    <b-input v-model="url"></b-input>
+                    <b-input placeholder="URL..." v-model="url"></b-input>
                 </b-col>
                 <b-col cols="2">
                     <b-button type="submit">Add Meme</b-button>
