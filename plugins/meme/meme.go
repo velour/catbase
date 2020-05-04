@@ -74,10 +74,9 @@ func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 	msg := "Use `/meme [format] [text]` to create a meme.\nI know the following formats:"
 	msg += "\n`[format]` can be a URL"
-	for k := range formats {
-		msg += "\n" + k
-	}
-	msg += fmt.Sprintf("\nHead over to %s/meme to add new meme formats", webRoot)
+	msg += fmt.Sprintf("\nor a format from the list of %d pre-made memes listed on the website", len(formats))
+	msg += fmt.Sprintf("\nHead over to %s/meme to view and add new meme formats", webRoot)
+	msg += "\nYou can use `_` as a placeholder for empty text and a newline to separate top vs bottom."
 	p.bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
@@ -202,6 +201,12 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 				top, bottom = parts[0], parts[1]
 			}
 
+			if top == "_" {
+				message = bottom
+			} else if bottom == "_" {
+				message = top
+			}
+
 			id, err := p.genMeme(format, top, bottom)
 			if err != nil {
 				msg := fmt.Sprintf("Hey %s, I couldn't download that image you asked for.", from)
@@ -324,6 +329,13 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) (string, error) {
 			fontSize = sz
 			break
 		}
+	}
+
+	if top == "_" {
+		top = ""
+	}
+	if bottom == "_" {
+		bottom = ""
 	}
 
 	// Apply black stroke
