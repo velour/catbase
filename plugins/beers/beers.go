@@ -15,6 +15,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/plugins/counter"
@@ -27,6 +28,8 @@ const itemName = ":beer:"
 type BeersPlugin struct {
 	Bot bot.Bot
 	db  *sqlx.DB
+
+	untapdCache map[int]bool
 }
 
 type untappdUser struct {
@@ -51,6 +54,8 @@ func New(b bot.Bot) *BeersPlugin {
 	p := &BeersPlugin{
 		Bot: b,
 		db:  b.DB(),
+
+		untapdCache: make(map[int]bool),
 	}
 	for _, channel := range b.Config().GetArray("Untappd.Channels", []string{}) {
 		go p.untappdLoop(b.DefaultConnector(), channel)
@@ -440,6 +445,14 @@ func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 				URL:    checkin.Media.Items[0].Photo.Photo_img_lg,
 				AltTxt: "Here's a photo",
 			})
+		} else if !p.untapdCache[checkin.Checkin_id] {
+			// Mark checkin as "seen" but not complete, continue to next checkin
+			log.Debug().Msgf("Deferring checkin: %#v", checkin)
+			p.untapdCache[checkin.Checkin_id] = true
+			continue
+		} else {
+			// We've seen this checkin, so unmark and accept that there's no media
+			delete(p.untapdCache, checkin.Checkin_id)
 		}
 
 		user.lastCheckin = checkin.Checkin_id
