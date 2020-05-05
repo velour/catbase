@@ -86,6 +86,7 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 	http.HandleFunc("/meme/img/", p.img)
 	http.HandleFunc("/meme/all", p.all)
 	http.HandleFunc("/meme/add", p.addMeme)
+	http.HandleFunc("/meme/rm", p.rmMeme)
 	http.HandleFunc("/meme", p.webRoot)
 	p.bot.RegisterWeb("/meme", "Memes")
 }
@@ -113,9 +114,9 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 		if err != nil || realURL.Scheme == "" {
 			realURL, _ = url.Parse("https://imgflip.com/s/meme/" + u)
 		}
-		sort.Sort(ByName{values})
 		values = append(values, webResp{n, realURL.String()})
 	}
+	sort.Sort(ByName{values})
 
 	out, err := json.Marshal(values)
 	if err != nil {
@@ -126,15 +127,10 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 	w.Write(out)
 }
 
-func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "Incorrect HTTP method")
-		return
-	}
-	checkError := func(err error) bool {
+func mkCheckError(w http.ResponseWriter) func(error) bool {
+	return func(err error) bool {
 		if err != nil {
-			log.Error().Err(err).Msgf("addMeme failed")
+			log.Error().Err(err).Msgf("meme failed")
 			w.WriteHeader(500)
 			e, _ := json.Marshal(err)
 			w.Write(e)
@@ -142,6 +138,34 @@ func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
 		}
 		return false
 	}
+}
+
+func (p *MemePlugin) rmMeme(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		w.WriteHeader(405)
+		fmt.Fprintf(w, "Incorrect HTTP method")
+		return
+	}
+	checkError := mkCheckError(w)
+	decoder := json.NewDecoder(r.Body)
+	values := webResp{}
+	err := decoder.Decode(&values)
+	if checkError(err) {
+		return
+	}
+	formats := p.c.GetMap("meme.memes", defaultFormats)
+	delete(formats, values.Name)
+	err = p.c.SetMap("meme.memes", formats)
+	checkError(err)
+}
+
+func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		fmt.Fprintf(w, "Incorrect HTTP method")
+		return
+	}
+	checkError := mkCheckError(w)
 	decoder := json.NewDecoder(r.Body)
 	values := webResp{}
 	err := decoder.Decode(&values)
@@ -189,6 +213,14 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 		}
 		isCmd, message := bot.IsCmd(p.c, parts[1])
 		format := parts[0]
+
+		for _, bully := range p.c.GetArray("meme.bully", []string{}) {
+			if format == bully {
+				formats := p.c.GetMap("meme.memes", defaultFormats)
+				format = randEntry(formats)
+				break
+			}
+		}
 
 		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
 		w.WriteHeader(200)
@@ -238,6 +270,13 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 			p.bot.Receive(c, bot.Message, m)
 		}()
 	}
+}
+
+func randEntry(m map[string]string) string {
+	for _, e := range m {
+		return e
+	}
+	return ""
 }
 
 func DownloadTemplate(u *url.URL) (image.Image, error) {
