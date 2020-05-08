@@ -439,8 +439,10 @@ func (p *MemePlugin) applyBully(img image.Image, bully string) image.Image {
 
 	scaleFactor := p.c.GetFloat64("meme.bullyScale", 0.1)
 
-	newSzX := uint(float64(img.Bounds().Max.X) * scaleFactor)
-	newSzY := uint(float64(img.Bounds().Max.Y) * scaleFactor)
+	scaleFactor = float64(img.Bounds().Max.X) * scaleFactor / float64(bullyImg.Bounds().Max.X)
+
+	newSzX := uint(float64(bullyImg.Bounds().Max.X) * scaleFactor)
+	newSzY := uint(float64(bullyImg.Bounds().Max.Y) * scaleFactor)
 
 	bullyImg = resize.Resize(newSzX, newSzY, bullyImg, resize.Lanczos3)
 
@@ -452,7 +454,6 @@ func (p *MemePlugin) applyBully(img image.Image, bully string) image.Image {
 	pt := image.Point{srcSz.X - w, srcSz.Y - h}
 	rect := image.Rect(pt.X, pt.Y, srcSz.X, srcSz.Y)
 
-	//draw.Draw(dst, image.Rect(srcSz.X-128, srcSz.Y-128, srcSz.X, srcSz.Y), bullyImg, image.Point{}, draw.Src)
 	draw.DrawMask(dst, rect, bullyImg, image.Point{}, &circle{image.Point{w / 2, h / 2}, w / 2}, image.Point{}, draw.Over)
 	return dst
 }
