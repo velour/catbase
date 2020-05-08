@@ -422,7 +422,12 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	if m.BotID != "" {
 		defaultName = m.Username
 	}
+	icon := ""
+	log.Debug().Msgf("Getting user %s", m.User)
 	name, u := s.getUser(m.User, defaultName)
+	if u != nil {
+		icon = u.Profile.Image192
+	}
 	if m.Username != "" && name == "unknown" {
 		name = m.Username
 	}
@@ -438,7 +443,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 		User: &user.User{
 			ID:   m.User,
 			Name: name,
-			Icon: u.Profile.Image192,
+			Icon: icon,
 		},
 		Body:        text,
 		Raw:         m,
@@ -637,14 +642,23 @@ func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
 }
 
 func (s *SlackApp) Profile(name string) (user.User, error) {
-	n, u := s.getUser(name, "unknown")
-	if n == "unknown" {
-		return user.User{}, fmt.Errorf("user %s is not known to us", name)
+	log.Debug().Msgf("Getting profile for %s", name)
+
+	users, err := s.api.GetUsers()
+	if err != nil {
+		return user.User{}, err
 	}
-	return user.User{
-		ID:    u.ID,
-		Name:  n,
-		Admin: false,
-		Icon:  u.Profile.Image192,
-	}, nil
+
+	for _, u := range users {
+		if u.Name == name {
+			return user.User{
+				ID:    u.ID,
+				Name:  stringForUser(&u),
+				Admin: false,
+				Icon:  u.Profile.Image192,
+			}, nil
+		}
+	}
+
+	return user.User{}, fmt.Errorf("user %s not found", err)
 }

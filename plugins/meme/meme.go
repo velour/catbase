@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"html/template"
 	"image"
+	"image/color"
+	"image/draw"
 	"image/png"
 	"net/http"
 	"net/url"
@@ -214,12 +216,23 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 		isCmd, message := bot.IsCmd(p.c, parts[1])
 		format := parts[0]
 
+		bullyIcon := ""
+
 		for _, bully := range p.c.GetArray("meme.bully", []string{}) {
 			if format == bully {
+				if u, err := c.Profile(bully); err == nil {
+					bullyIcon = u.Icon
+				} else {
+					log.Debug().Err(err).Msgf("could not get profile for %s", format)
+				}
 				formats := p.c.GetMap("meme.memes", defaultFormats)
 				format = randEntry(formats)
 				break
 			}
+		}
+
+		if u, err := c.Profile(from); bullyIcon == "" && err == nil {
+			bullyIcon = u.Icon
 		}
 
 		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
@@ -239,7 +252,7 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 				message = top
 			}
 
-			id, err := p.genMeme(format, top, bottom)
+			id, err := p.genMeme(format, top, bottom, bullyIcon)
 			if err != nil {
 				msg := fmt.Sprintf("Hey %s, I couldn't download that image you asked for.", from)
 				p.bot.Send(c, bot.Message, channel, msg)
@@ -304,7 +317,7 @@ var defaultFormats = map[string]string{
 	"raptor": "Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) genMeme(meme, top, bottom string) (string, error) {
+func (p *MemePlugin) genMeme(meme, top, bottom, bully string) (string, error) {
 	fontSizes := []float64{48, 36, 24, 16, 12}
 	fontSize := fontSizes[0]
 
@@ -353,6 +366,10 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) (string, error) {
 	w = r.Dx()
 	h = r.Dy()
 	log.Debug().Msgf("resized to %v, %v", w, h)
+
+	if bully != "" {
+		img = p.applyBully(img, bully)
+	}
 
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
@@ -406,4 +423,58 @@ func (p *MemePlugin) genMeme(meme, top, bottom string) (string, error) {
 	log.Debug().Msgf("Saved to %s\n", path)
 
 	return path, nil
+}
+
+func (p *MemePlugin) applyBully(img image.Image, bully string) image.Image {
+	log.Debug().Msgf("applying bully: %s", bully)
+	dst := image.NewRGBA(img.Bounds())
+	u, err := url.Parse(bully)
+	if err != nil {
+		return img
+	}
+	bullyImg, err := DownloadTemplate(u)
+	if err != nil {
+		return img
+	}
+
+	scaleFactor := p.c.GetFloat64("meme.bullyScale", 0.1)
+
+	newSzX := uint(float64(img.Bounds().Max.X) * scaleFactor)
+	newSzY := uint(float64(img.Bounds().Max.Y) * scaleFactor)
+
+	bullyImg = resize.Resize(newSzX, newSzY, bullyImg, resize.Lanczos3)
+
+	draw.Draw(dst, img.Bounds(), img, image.Point{}, draw.Src)
+	srcSz := img.Bounds().Size()
+
+	w, h := bullyImg.Bounds().Max.X, bullyImg.Bounds().Max.Y
+
+	pt := image.Point{srcSz.X - w, srcSz.Y - h}
+	rect := image.Rect(pt.X, pt.Y, srcSz.X, srcSz.Y)
+
+	//draw.Draw(dst, image.Rect(srcSz.X-128, srcSz.Y-128, srcSz.X, srcSz.Y), bullyImg, image.Point{}, draw.Src)
+	draw.DrawMask(dst, rect, bullyImg, image.Point{}, &circle{image.Point{w / 2, h / 2}, w / 2}, image.Point{}, draw.Over)
+	return dst
+}
+
+// the following is ripped off of https://blog.golang.org/image-draw
+type circle struct {
+	p image.Point
+	r int
+}
+
+func (c *circle) ColorModel() color.Model {
+	return color.AlphaModel
+}
+
+func (c *circle) Bounds() image.Rectangle {
+	return image.Rect(c.p.X-c.r, c.p.Y-c.r, c.p.X+c.r, c.p.Y+c.r)
+}
+
+func (c *circle) At(x, y int) color.Color {
+	xx, yy, rr := float64(x-c.p.X)+0.5, float64(y-c.p.Y)+0.5, float64(c.r)
+	if xx*xx+yy*yy < rr*rr {
+		return color.Alpha{255}
+	}
+	return color.Alpha{0}
 }
