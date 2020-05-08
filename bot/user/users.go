@@ -9,6 +9,7 @@ type User struct {
 	ID    string
 	Name  string
 	Admin bool
+	Icon  string
 }
 
 func New(name string) User {

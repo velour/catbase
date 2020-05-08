@@ -2,6 +2,8 @@ package slackapp
 
 import (
 	"unicode/utf8"
+
+	"github.com/nlopes/slack"
 )
 
 // fixText strips all of the Slack-specific annotations from message text,
@@ -13,7 +15,7 @@ import (
 // • Strips < and > surrounding links.
 //
 // This was directly bogarted from velour/chat with emoji conversion removed.
-func fixText(findUser func(id, defaultName string) string, text string) string {
+func fixText(findUser func(id, defaultName string) (string, *slack.User), text string) string {
 	var output []rune
 	for len(text) > 0 {
 		r, i := utf8.DecodeRuneInString(text)
@@ -48,14 +50,14 @@ func fixText(findUser func(id, defaultName string) string, text string) string {
 	return string(output)
 }
 
-func fixTag(findUser func(string, string) string, tag []rune) ([]rune, bool) {
+func fixTag(findUser func(string, string) (string, *slack.User), tag []rune) ([]rune, bool) {
 	switch {
 	case hasPrefix(tag, "@U"):
 		if i := indexRune(tag, '|'); i >= 0 {
 			return tag[i+1:], true
 		}
 		if findUser != nil {
-			u := findUser(string(tag[1:]), "unknown")
+			u, _ := findUser(string(tag[1:]), "unknown")
 			return []rune(u), true
 		}
 		return tag, true

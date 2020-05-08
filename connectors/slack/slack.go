@@ -730,3 +730,7 @@ func (s *Slack) Who(id string) []string {
 	log.Debug().Msgf("Returning %d handles", len(handles))
 	return handles
 }
+
+func (s *Slack) Profile(string) (user.User, error) {
+	return user.User{}, fmt.Errorf("unimplemented")
+}
