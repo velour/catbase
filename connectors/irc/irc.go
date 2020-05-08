@@ -310,3 +310,7 @@ func (i *Irc) buildMessage(inMsg irc.Msg) msg.Message {
 func (i Irc) Who(channel string) []string {
 	return []string{}
 }
+
+func (i Irc) Profile(string) (user.User, error) {
+	return user.User{}, fmt.Errorf("unimplemented")
+}

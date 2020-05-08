@@ -5,14 +5,16 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/rs/zerolog/log"
-	"github.com/velour/catbase/bot"
-	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/bot/user"
 	"html/template"
 	"net/http"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
+
+	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/bot/user"
 )
 
 type CliPlugin struct {
@@ -115,3 +117,6 @@ func (p *CliPlugin) Send(kind bot.Kind, args ...interface{}) (string, error) {
 func (p *CliPlugin) GetEmojiList() map[string]string { return nil }
 func (p *CliPlugin) Serve() error                    { return nil }
 func (p *CliPlugin) Who(s string) []string           { return nil }
+func (s *CliPlugin) Profile(name string) (user.User, error) {
+	return user.User{}, fmt.Errorf("unimplemented")
+}

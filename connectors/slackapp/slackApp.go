@@ -422,7 +422,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	if m.BotID != "" {
 		defaultName = m.Username
 	}
-	name := s.getUser(m.User, defaultName)
+	name, u := s.getUser(m.User, defaultName)
 	if m.Username != "" && name == "unknown" {
 		name = m.Username
 	}
@@ -438,6 +438,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 		User: &user.User{
 			ID:   m.User,
 			Name: name,
+			Icon: u.Profile.Image192,
 		},
 		Body:        text,
 		Raw:         m,
@@ -478,9 +479,9 @@ func stringForUser(user *slack.User) string {
 }
 
 // Get username for Slack user ID
-func (s *SlackApp) getUser(id, defaultName string) string {
+func (s *SlackApp) getUser(id, defaultName string) (string, *slack.User) {
 	if u, ok := s.users[id]; ok {
-		return stringForUser(u)
+		return stringForUser(u), u
 	}
 
 	log.Debug().
@@ -489,10 +490,10 @@ func (s *SlackApp) getUser(id, defaultName string) string {
 
 	u, err := s.api.GetUserInfo(id)
 	if err != nil {
-		return defaultName
+		return defaultName, nil
 	}
 	s.users[id] = u
-	return stringForUser(u)
+	return stringForUser(u), u
 }
 
 // Who gets usernames out of a channel
@@ -522,7 +523,7 @@ func (s *SlackApp) Who(id string) []string {
 		if m == "" {
 			log.Error().Msg("empty member")
 		}
-		u := s.getUser(m, "unknown")
+		u, _ := s.getUser(m, "unknown")
 		if u == "unknown" {
 			log.Error().
 				Err(err).
@@ -599,7 +600,7 @@ func (s *SlackApp) log(msg, channel string) error {
 }
 
 func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
-	name := s.getUser(event.User, "unknown")
+	name, _ := s.getUser(event.User, "unknown")
 
 	ch, err := s.getChannel(event.Item.Channel)
 	if err != nil {
@@ -619,7 +620,7 @@ func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
 				if m.BotID != "" {
 					defaultName = m.Username
 				}
-				u := s.getUser(m.User, defaultName)
+				u, _ := s.getUser(m.User, defaultName)
 				body = fmt.Sprintf("%s: %s", u, m.Text)
 			}
 		default:
@@ -633,4 +634,17 @@ func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
 		name, body, event.Reaction)
 
 	return s.log(msg, channel)
+}
+
+func (s *SlackApp) Profile(name string) (user.User, error) {
+	n, u := s.getUser(name, "unknown")
+	if n == "unknown" {
+		return user.User{}, fmt.Errorf("user %s is not known to us", name)
+	}
+	return user.User{
+		ID:    u.ID,
+		Name:  n,
+		Admin: false,
+		Icon:  u.Profile.Image192,
+	}, nil
 }

@@ -81,6 +81,7 @@ type Connector interface {
 	Serve() error
 
 	Who(string) []string
+	Profile(string) (user.User, error)
 }
 
 // Plugin interface used for compatibility with the Plugin interface
