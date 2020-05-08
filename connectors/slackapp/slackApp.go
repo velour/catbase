@@ -19,8 +19,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/nlopes/slack"
-	"github.com/nlopes/slack/slackevents"
+	"github.com/slack-go/slack"
+	"github.com/slack-go/slack/slackevents"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"

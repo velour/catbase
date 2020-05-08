@@ -3,7 +3,7 @@ package slackapp
 import (
 	"unicode/utf8"
 
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 )
 
 // fixText strips all of the Slack-specific annotations from message text,
