@@ -21,6 +21,7 @@ require (
 	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
 	github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
+	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gocolly/colly v1.2.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
@@ -28,10 +29,16 @@ require (
 	github.com/gonum/internal v0.0.0-20181124074243-f884aa714029 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.1 // indirect
+	github.com/inconshreveable/log15 v0.0.0-20200109203555-b30bc20e4fd1 // indirect
 	github.com/james-bowman/nlp v0.0.0-20191016091239-d9dbfaff30c6
 	github.com/james-bowman/sparse v0.0.0-20190423065201-80c6877364c7 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/kennygrant/sanitize v1.2.4 // indirect
+	github.com/kevinburke/go-types v0.0.0-20200309064045-f2d4aea18a7a // indirect
+	github.com/kevinburke/go.uuid v1.2.0 // indirect
+	github.com/kevinburke/rest v0.0.0-20200429221318-0d2892b400f8 // indirect
+	github.com/kevinburke/twilio-go v0.0.0-20200424172635-4f0b2357b852
+	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/mmcdole/gofeed v1.0.0-beta2
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
@@ -45,6 +52,8 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/temoto/robotstxt v1.1.1 // indirect
+	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
+	github.com/ttacon/libphonenumber v1.1.0 // indirect
 	github.com/velour/chat v0.0.0-20180713122344-fd1d1606cb89
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
 	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
