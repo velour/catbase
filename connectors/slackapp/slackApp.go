@@ -413,6 +413,9 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 
 	text = fixText(s.getUser, text)
 
+	// Slack likes to put these NBSP in and it screws with matching later
+	text = strings.ReplaceAll(text, "\u00a0", " ")
+
 	isCmd, text := bot.IsCmd(s.config, text)
 
 	isAction := m.SubType == "me_message"
