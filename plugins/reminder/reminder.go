@@ -20,6 +20,7 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
+	"github.com/velour/catbase/plugins/sms"
 )
 
 const (
@@ -367,6 +368,10 @@ func reminderer(c bot.Connector, p *ReminderPlugin) {
 			}
 
 			p.bot.Send(c, bot.Message, reminder.channel, message)
+			smsPlugin := sms.New(p.bot)
+			if err := smsPlugin.Send(reminder.who, message); err != nil {
+				log.Error().Err(err).Msgf("could not send reminder")
+			}
 
 			if err := p.deleteReminder(reminder.id); err != nil {
 				log.Error().
