@@ -135,7 +135,13 @@ func (p *SMSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message,
 
 func (p *SMSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	ch := message.Channel
-	p.b.Send(c, bot.Message, ch, "There is no help for you.")
+	m := fmt.Sprintf("You can register your number with: `%s`", regRegex)
+	m += fmt.Sprintf("\nYou can send a message to a user with: `%s`", sendRegex)
+	m += "\nYou can deregister with: `delete my sms`"
+	m += fmt.Sprintf("\nAll messages sent to %s will come to the channel.",
+		p.c.Get("TWILIONUMBER", "unknown"))
+	m += "\nAll reminders with registered users will be sent to their SMS number."
+	p.b.Send(c, bot.Message, ch, m)
 	return true
 }
 
