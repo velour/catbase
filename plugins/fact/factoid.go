@@ -459,6 +459,9 @@ func (p *FactoidPlugin) sendImage(c bot.Connector, message msg.Message, msg stri
 		Str("msg", msg).
 		Msg("Sending image attachment")
 	if imgSrc != "" {
+		if txt == "" {
+			txt = imgSrc
+		}
 		img := bot.ImageAttachment{
 			URL:    imgSrc,
 			AltTxt: txt,
