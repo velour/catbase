@@ -11,6 +11,7 @@ import (
 
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
+	"github.com/velour/catbase/plugins/counter/goals"
 	"github.com/velour/catbase/plugins/meme"
 	"github.com/velour/catbase/plugins/sms"
 	"github.com/velour/catbase/plugins/twitter"
@@ -121,6 +122,7 @@ func main() {
 	b.AddPlugin(remember.New(b))
 	b.AddPlugin(your.New(b))
 	b.AddPlugin(counter.New(b))
+	b.AddPlugin(goals.New(b))
 	b.AddPlugin(reminder.New(b))
 	b.AddPlugin(babbler.New(b))
 	b.AddPlugin(zork.New(b))
