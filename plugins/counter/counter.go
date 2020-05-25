@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 )
@@ -197,6 +198,9 @@ func (i *Item) Update(value int) error {
 		Int("value", value).
 		Msg("Updating item")
 	_, err := i.Exec(`update counter set count = ? where id = ?`, i.Count, i.ID)
+	if err == nil {
+		sendUpdate(i.Nick, i.Item, i.Count)
+	}
 	return err
 }
 
@@ -236,6 +240,7 @@ func New(b bot.Bot) *CounterPlugin {
 	b.Register(cp, bot.Message, cp.message)
 	b.Register(cp, bot.Help, cp.help)
 	cp.registerWeb()
+
 	return cp
 }
 
@@ -660,4 +665,25 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	fmt.Fprint(w, string(data))
+}
+
+type Update struct {
+	Who    string
+	What   string
+	Amount int
+}
+
+type updateFunc func(Update)
+
+var updateFuncs = []updateFunc{}
+
+func RegisterUpdate(f updateFunc) {
+	log.Debug().Msgf("registering update func")
+	updateFuncs = append(updateFuncs, f)
+}
+func sendUpdate(who, what string, amount int) {
+	log.Debug().Msgf("sending updates to %d places", len(updateFuncs))
+	for _, f := range updateFuncs {
+		f(Update{who, what, amount})
+	}
 }
