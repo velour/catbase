@@ -62,7 +62,7 @@ func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 	return false
 }
 
-// Bot will always react if a message contains a check word
+// b will always react if a message contains a check word
 // Note that reactions must not be enclosed in :
 func (p *ReactionPlugin) checkReactions(c bot.Connector, m msg.Message) {
 	checkWords := p.config.GetArray("reaction.checkwords", []string{})

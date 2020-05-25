@@ -348,7 +348,7 @@ func (p *MemePlugin) genMeme(meme, top, bottom, bully string) (string, error) {
 	w := r.Dx()
 	h := r.Dy()
 
-	maxSz := 750.0
+	maxSz := p.c.GetFloat64("maxImgSz", 750.0)
 
 	if w > h {
 		scale := maxSz / float64(w)

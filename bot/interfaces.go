@@ -39,7 +39,7 @@ type Kind int
 type Callback func(Connector, Kind, msg.Message, ...interface{}) bool
 type CallbackMap map[string]map[Kind][]Callback
 
-// Bot interface serves to allow mocking of the actual bot
+// b interface serves to allow mocking of the actual bot
 type Bot interface {
 	// Config allows access to the bot's configuration system
 	Config() *config.Config
