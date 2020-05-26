@@ -75,6 +75,12 @@ func New(b bot.Bot) *BeersPlugin {
 
 	p.registerWeb()
 
+	token := p.c.Get("Untappd.Token", "NONE")
+	if token == "NONE" || token == "" {
+		log.Error().Msgf("No untappd token. Checking disabled.")
+		return p
+	}
+
 	for _, channel := range p.c.GetArray("Untappd.Channels", []string{}) {
 		go p.untappdLoop(b.DefaultConnector(), channel)
 	}
@@ -229,7 +235,7 @@ func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, 
 }
 
 func getUserBeers(db *sqlx.DB, user string) counter.Item {
-	booze, _ := counter.GetItem(db, user, itemName)
+	booze, _ := counter.GetUserItem(db, user, itemName)
 	return booze
 }
 

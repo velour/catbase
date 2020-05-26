@@ -43,7 +43,7 @@ func TestMkAlias(t *testing.T) {
 	assert.NotNil(t, c)
 	c.message(makeMessage("mkalias fuck mornings"))
 	c.message(makeMessage("fuck++"))
-	item, err := GetItem(mb.DB(), "tester", "mornings")
+	item, err := GetUserItem(mb.DB(), "tester", "mornings")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, item.Count)
 }
@@ -54,7 +54,7 @@ func TestRmAlias(t *testing.T) {
 	c.message(makeMessage("mkalias fuck mornings"))
 	c.message(makeMessage("rmalias fuck"))
 	c.message(makeMessage("fuck++"))
-	item, err := GetItem(mb.DB(), "tester", "mornings")
+	item, err := GetUserItem(mb.DB(), "tester", "mornings")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
 }
@@ -64,7 +64,7 @@ func TestThreeSentencesExists(t *testing.T) {
 	assert.NotNil(t, c)
 	c.message(makeMessage(":beer:++"))
 	c.message(makeMessage(":beer:. Earl Grey. Hot."))
-	item, err := GetItem(mb.DB(), "tester", ":beer:")
+	item, err := GetUserItem(mb.DB(), "tester", ":beer:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
 }
@@ -72,9 +72,9 @@ func TestThreeSentencesExists(t *testing.T) {
 func TestThreeSentencesNotExists(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	item, err := GetItem(mb.DB(), "tester", ":beer:")
+	item, err := GetUserItem(mb.DB(), "tester", ":beer:")
 	c.message(makeMessage(":beer:. Earl Grey. Hot."))
-	item, err = GetItem(mb.DB(), "tester", ":beer:")
+	item, err = GetUserItem(mb.DB(), "tester", ":beer:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
 }
@@ -84,7 +84,7 @@ func TestTeaEarlGreyHot(t *testing.T) {
 	assert.NotNil(t, c)
 	c.message(makeMessage("Tea. Earl Grey. Hot."))
 	c.message(makeMessage("Tea. Earl Grey. Hot."))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
 }
@@ -94,7 +94,7 @@ func TestTeaTwoPeriods(t *testing.T) {
 	assert.NotNil(t, c)
 	c.message(makeMessage("Tea. Earl Grey."))
 	c.message(makeMessage("Tea. Earl Grey."))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
 }
@@ -104,7 +104,7 @@ func TestTeaMultiplePeriods(t *testing.T) {
 	assert.NotNil(t, c)
 	c.message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
 	c.message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
 }
@@ -115,7 +115,7 @@ func TestTeaGreenHot(t *testing.T) {
 	c.message(makeMessage("Tea. Green. Hot."))
 	c.message(makeMessage("Tea. Green. Hot"))
 	c.message(makeMessage("Tea. Green. Iced."))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, item.Count)
 }
@@ -125,7 +125,7 @@ func TestTeaUnrelated(t *testing.T) {
 	assert.NotNil(t, c)
 	c.message(makeMessage("Tea."))
 	c.message(makeMessage("Tea. It's great."))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
 }
@@ -134,7 +134,7 @@ func TestTeaSkieselQuote(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.message(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed"))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
 }
@@ -142,7 +142,7 @@ func TestTeaUnicodeJapanese(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	c.message(makeMessage("Tea. おちや. Hot."))
-	item, err := GetItem(mb.DB(), "tester", ":tea:")
+	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, item.Count)
 }

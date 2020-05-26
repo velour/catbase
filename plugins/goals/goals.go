@@ -3,6 +3,7 @@ package goals
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -64,97 +65,135 @@ func (p *GoalsPlugin) message(conn bot.Connector, kind bot.Kind, message msg.Mes
 	if registerSelf.MatchString(body) {
 		c := parseCmd(registerSelf, body)
 		amount, _ := strconv.Atoi(c["amount"])
-		return p.register(conn, ch, c["type"], c["what"], who, amount)
-	}
-	if registerOther.MatchString(body) {
+		p.register(conn, ch, c["type"], c["what"], who, amount)
+	} else if registerOther.MatchString(body) {
 		c := parseCmd(registerSelf, body)
 		amount, _ := strconv.Atoi(c["amount"])
-		return p.register(conn, ch, c["type"], c["what"], c["who"], amount)
-	}
-	if deRegisterSelf.MatchString(body) {
+		p.register(conn, ch, c["type"], c["what"], c["who"], amount)
+	} else if deRegisterSelf.MatchString(body) {
 		c := parseCmd(deRegisterSelf, body)
-		return p.deregister(conn, ch, c["type"], c["what"], who)
-	}
-	if deRegisterOther.MatchString(body) {
+		p.deregister(conn, ch, c["type"], c["what"], who)
+	} else if deRegisterOther.MatchString(body) {
 		c := parseCmd(deRegisterOther, body)
-		return p.deregister(conn, ch, c["type"], c["what"], c["who"])
-	}
-	if checkSelf.MatchString(body) {
+		p.deregister(conn, ch, c["type"], c["what"], c["who"])
+	} else if checkSelf.MatchString(body) {
 		c := parseCmd(checkSelf, body)
-		return p.check(conn, ch, c["type"], c["what"], who)
-	}
-	if checkOther.MatchString(body) {
+		p.check(conn, ch, c["type"], c["what"], who)
+	} else if checkOther.MatchString(body) {
 		c := parseCmd(checkOther, body)
-		return p.check(conn, ch, c["type"], c["what"], c["who"])
+		p.check(conn, ch, c["type"], c["what"], c["who"])
+	} else {
+		return false
 	}
-	return false
+	return true
 }
 
-func (p *GoalsPlugin) register(c bot.Connector, ch, kind, what, who string, howMuch int) bool {
-	p.b.Send(c, bot.Message, ch, fmt.Sprintf("registering %s %s for %s in amount %d", kind, what, who, howMuch))
+func (p *GoalsPlugin) register(c bot.Connector, ch, kind, what, who string, howMuch int) {
 	if kind == "goal" && howMuch == 0 {
 		p.b.Send(c, bot.Message, ch,
 			fmt.Sprintf("%s, you need to have a goal amount if you want to have a goal for %s.", who, what))
-		return true
+		return
 	}
 	g := p.newGoal(kind, who, what, howMuch)
 	err := g.Save()
 	if err != nil {
 		log.Error().Err(err).Msgf("could not create goal")
 		p.b.Send(c, bot.Message, ch, "I couldn't create that goal for some reason.")
-		return true
+		return
 	}
 	p.b.Send(c, bot.Message, ch, fmt.Sprintf("%s created", kind))
-	return true
 }
 
-func (p *GoalsPlugin) deregister(c bot.Connector, ch, kind, what, who string) bool {
-	p.b.Send(c, bot.Message, ch, fmt.Sprintf("deregistering %s for %s", what, who))
-	g, err := p.getGoal(kind, who, what)
+func (p *GoalsPlugin) deregister(c bot.Connector, ch, kind, what, who string) {
+	g, err := p.getGoalKind(kind, who, what)
 	if err != nil {
 		log.Error().Err(err).Msgf("could not find goal to delete")
 		p.b.Send(c, bot.Message, ch, "I couldn't find that item to deregister.")
-		return true
+		return
 	}
 	err = g.Delete()
 	if err != nil {
 		log.Error().Err(err).Msgf("could not delete goal")
 		p.b.Send(c, bot.Message, ch, "I couldn't deregister that.")
-		return true
+		return
 	}
 	p.b.Send(c, bot.Message, ch, fmt.Sprintf("%s %s deregistered", kind, what))
-	return true
 }
 
-func (p *GoalsPlugin) check(c bot.Connector, ch, kind, what, who string) bool {
-	return p.checkGoal(c, ch, what, who)
+func (p *GoalsPlugin) check(c bot.Connector, ch, kind, what, who string) {
+	if kind == "goal" {
+		p.checkGoal(c, ch, what, who)
+		return
+	}
+	p.checkCompetition(c, ch, what, who)
 }
 
-func (p *GoalsPlugin) checkCompetition(c bot.Connector, ch, what, who string) bool {
-	return true
-}
-
-func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) bool {
-	kind := "goal"
-	p.b.Send(c, bot.Message, ch, fmt.Sprintf("checking %s for %s", what, who))
-	g, err := p.getGoal(kind, who, what)
-	if err != nil {
-		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find %s %s", kind, what))
+func (p *GoalsPlugin) checkCompetition(c bot.Connector, ch, what, who string) {
+	items, err := counter.GetItem(p.db, what)
+	if err != nil || len(items) == 0 {
+		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find any %s", what))
+		return
 	}
 
-	item, err := counter.GetItem(p.db, who, what)
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Count == items[j].Count && who == items[i].Nick {
+			return true
+		}
+		if items[i].Count > items[j].Count {
+			return true
+		}
+		return false
+	})
+
+	if items[0].Nick == who && len(items) > 1 && items[1].Count == items[0].Count {
+		p.b.Send(c, bot.Message, ch,
+			fmt.Sprintf("Congratulations! You're in the lead for %s with %d, but you're tied with %s",
+				what, items[0].Count, items[1].Nick))
+		return
+	}
+
+	if items[0].Nick == who {
+		p.b.Send(c, bot.Message, ch, fmt.Sprintf("Congratulations! You're in the lead for %s with %d.",
+			what, items[0].Count))
+		return
+	}
+
+	count := 0
+	for _, i := range items {
+		if i.Nick == who {
+			count = i.Count
+		}
+	}
+
+	p.b.Send(c, bot.Message, ch, fmt.Sprintf("%s is in the lead for %s with %d. You have %d to catch up.",
+		items[0].Nick, what, items[0].Count, items[0].Count-count))
+}
+
+func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
+	g, err := p.getGoalKind("goal", who, what)
+	if err != nil {
+		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find %s", what))
+	}
+
+	item, err := counter.GetUserItem(p.db, who, what)
 	if err != nil {
 		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find any %s", what))
-		return true
+		return
 	}
 
 	perc := float64(item.Count) / float64(g.Amount) * 100.0
 
-	m := fmt.Sprintf("You have %d out of %d for %s. You're %.2f%% of the way there!",
-		item.Count, g.Amount, what, perc)
-	p.b.Send(c, bot.Message, ch, m)
+	if perc >= 100 {
+		p.deregister(c, ch, g.Kind, g.What, g.Who)
+		m := fmt.Sprintf("You made it! You have %.2f%% of %s and now it's done.", perc, what)
+		p.b.Send(c, bot.Message, ch, m)
+	} else {
+		m := fmt.Sprintf("You have %d out of %d for %s. You're %.2f%% of the way there!",
+			item.Count, g.Amount, what, perc)
+		p.b.Send(c, bot.Message, ch, m)
+	}
 
-	return true
+	return
 }
 
 func (p *GoalsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
@@ -205,7 +244,20 @@ func (p *GoalsPlugin) newGoal(kind, who, what string, amount int) goal {
 	}
 }
 
-func (p *GoalsPlugin) getGoal(kind, who, what string) (*goal, error) {
+func (p *GoalsPlugin) getGoal(who, what string) ([]*goal, error) {
+	gs := []*goal{}
+	err := p.db.Select(&gs, `select * from goals where who = ? and what = ?`,
+		who, what)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range gs {
+		g.gp = p
+	}
+	return gs, nil
+}
+
+func (p *GoalsPlugin) getGoalKind(kind, who, what string) (*goal, error) {
 	g := &goal{gp: p}
 	err := p.db.Get(g, `select * from goals where kind = ? and who = ? and what = ?`,
 		kind, who, what)
@@ -238,14 +290,20 @@ func (g goal) Delete() error {
 
 func (p *GoalsPlugin) update(u counter.Update) {
 	log.Debug().Msgf("entered update for %#v", u)
-	_, err := p.getGoal("goal", u.Who, u.What)
+	gs, err := p.getGoal(u.Who, u.What)
 	if err != nil {
 		log.Error().Err(err).Msgf("could not get goal for %#v", u)
 		return
 	}
 	chs := p.cfg.GetArray("channels", []string{})
 	c := p.b.DefaultConnector()
-	for _, ch := range chs {
-		p.checkGoal(c, ch, u.What, u.Who)
+	for _, g := range gs {
+		for _, ch := range chs {
+			if g.Kind == "goal" {
+				p.checkGoal(c, ch, u.What, u.Who)
+			} else {
+				p.checkCompetition(c, ch, u.What, u.Who)
+			}
+		}
 	}
 }

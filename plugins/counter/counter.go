@@ -139,8 +139,33 @@ func MkAlias(db *sqlx.DB, aliasName, pointsTo string) (*alias, error) {
 	return &alias{db, id, aliasName, pointsTo}, nil
 }
 
-// GetItem returns a specific counter for a subject
-func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
+// GetUserItem returns a specific counter for all subjects
+func GetItem(db *sqlx.DB, itemName string) ([]Item, error) {
+	itemName = trimUnicode(itemName)
+	var items []Item
+	var a alias
+	if err := db.Get(&a, `select * from counter_alias where item=?`, itemName); err == nil {
+		itemName = a.PointsTo
+	} else {
+		log.Error().Err(err).Interface("alias", a)
+	}
+
+	err := db.Select(&items, `select * from counter where item= ?`, itemName)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().
+		Str("itemName", itemName).
+		Interface("items", items).
+		Msg("got item")
+	for _, i := range items {
+		i.DB = db
+	}
+	return items, nil
+}
+
+// GetUserItem returns a specific counter for a subject
+func GetUserItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	itemName = trimUnicode(itemName)
 	var item Item
 	item.DB = db
@@ -170,6 +195,7 @@ func GetItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 	return item, nil
 }
 
+// GetUserItem returns a specific counter for a subject
 // Create saves a counter
 func (i *Item) Create() error {
 	res, err := i.Exec(`insert into counter (nick, item, count) values (?, ?, ?);`,
@@ -376,7 +402,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 		subject := strings.ToLower(nick)
 		itemName := strings.ToLower(parts[1])
 
-		it, err := GetItem(p.DB, subject, itemName)
+		it, err := GetUserItem(p.DB, subject, itemName)
 		if err != nil {
 			log.Error().
 				Err(err).
@@ -417,7 +443,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 		}
 
 		var item Item
-		item, err := GetItem(p.DB, subject, itemName)
+		item, err := GetUserItem(p.DB, subject, itemName)
 		switch {
 		case err == sql.ErrNoRows:
 			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("I don't think %s has any %s.",
@@ -455,7 +481,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 
 		if strings.HasSuffix(parts[0], "++") {
 			// ++ those fuckers
-			item, err := GetItem(p.DB, subject, itemName)
+			item, err := GetUserItem(p.DB, subject, itemName)
 			if err != nil {
 				log.Error().
 					Err(err).
@@ -472,7 +498,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 			return true
 		} else if strings.HasSuffix(parts[0], "--") {
 			// -- those fuckers
-			item, err := GetItem(p.DB, subject, itemName)
+			item, err := GetUserItem(p.DB, subject, itemName)
 			if err != nil {
 				log.Error().
 					Err(err).
@@ -503,7 +529,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 
 		if parts[1] == "+=" {
 			// += those fuckers
-			item, err := GetItem(p.DB, subject, itemName)
+			item, err := GetUserItem(p.DB, subject, itemName)
 			if err != nil {
 				log.Error().
 					Err(err).
@@ -521,7 +547,7 @@ func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mess
 			return true
 		} else if parts[1] == "-=" {
 			// -= those fuckers
-			item, err := GetItem(p.DB, subject, itemName)
+			item, err := GetUserItem(p.DB, subject, itemName)
 			if err != nil {
 				log.Error().
 					Err(err).
@@ -565,7 +591,7 @@ func (p *CounterPlugin) checkMatch(c bot.Connector, message msg.Message) bool {
 	itemName := strings.ToLower(submatches[1])
 
 	// We will specifically allow :tea: to keep compatability
-	item, err := GetItem(p.DB, nick, itemName)
+	item, err := GetUserItem(p.DB, nick, itemName)
 	if err != nil || (item.Count == 0 && item.Item != ":tea:") {
 		log.Error().
 			Err(err).
@@ -630,7 +656,7 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 			w.Write(j)
 			return
 		}
-		item, err := GetItem(p.DB, info.User, info.Thing)
+		item, err := GetUserItem(p.DB, info.User, info.Thing)
 		if err != nil {
 			log.Error().
 				Err(err).
