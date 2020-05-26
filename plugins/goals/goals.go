@@ -62,26 +62,26 @@ func (p *GoalsPlugin) message(conn bot.Connector, kind bot.Kind, message msg.Mes
 	who := message.User.Name
 	ch := message.Channel
 
-	if registerSelf.MatchString(body) {
+	if registerOther.MatchString(body) {
+		c := parseCmd(registerOther, body)
+		amount, _ := strconv.Atoi(c["amount"])
+		p.register(conn, ch, c["type"], c["what"], c["who"], amount)
+	} else if registerSelf.MatchString(body) {
 		c := parseCmd(registerSelf, body)
 		amount, _ := strconv.Atoi(c["amount"])
 		p.register(conn, ch, c["type"], c["what"], who, amount)
-	} else if registerOther.MatchString(body) {
-		c := parseCmd(registerSelf, body)
-		amount, _ := strconv.Atoi(c["amount"])
-		p.register(conn, ch, c["type"], c["what"], c["who"], amount)
-	} else if deRegisterSelf.MatchString(body) {
-		c := parseCmd(deRegisterSelf, body)
-		p.deregister(conn, ch, c["type"], c["what"], who)
 	} else if deRegisterOther.MatchString(body) {
 		c := parseCmd(deRegisterOther, body)
 		p.deregister(conn, ch, c["type"], c["what"], c["who"])
-	} else if checkSelf.MatchString(body) {
-		c := parseCmd(checkSelf, body)
-		p.check(conn, ch, c["type"], c["what"], who)
+	} else if deRegisterSelf.MatchString(body) {
+		c := parseCmd(deRegisterSelf, body)
+		p.deregister(conn, ch, c["type"], c["what"], who)
 	} else if checkOther.MatchString(body) {
 		c := parseCmd(checkOther, body)
 		p.check(conn, ch, c["type"], c["what"], c["who"])
+	} else if checkSelf.MatchString(body) {
+		c := parseCmd(checkSelf, body)
+		p.check(conn, ch, c["type"], c["what"], who)
 	} else {
 		return false
 	}
