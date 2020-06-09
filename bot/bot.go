@@ -26,6 +26,9 @@ type bot struct {
 	plugins        map[string]Plugin
 	pluginOrdering []string
 
+	// channel -> plugin
+	pluginBlacklist map[string]bool
+
 	// Users holds information about all of our friends
 	users []user.User
 	// Represents the bot
@@ -77,20 +80,23 @@ func New(config *config.Config, connector Connector) Bot {
 	}
 
 	bot := &bot{
-		config:         config,
-		plugins:        make(map[string]Plugin),
-		pluginOrdering: make([]string, 0),
-		conn:           connector,
-		users:          users,
-		me:             users[0],
-		logIn:          logIn,
-		logOut:         logOut,
-		httpEndPoints:  make([]EndPoint, 0),
-		filters:        make(map[string]func(string) string),
-		callbacks:      make(CallbackMap),
+		config:          config,
+		plugins:         make(map[string]Plugin),
+		pluginOrdering:  make([]string, 0),
+		pluginBlacklist: make(map[string]bool),
+		conn:            connector,
+		users:           users,
+		me:              users[0],
+		logIn:           logIn,
+		logOut:          logOut,
+		httpEndPoints:   make([]EndPoint, 0),
+		filters:         make(map[string]func(string) string),
+		callbacks:       make(CallbackMap),
 	}
 
 	bot.migrateDB()
+
+	bot.RefreshPluginBlacklist()
 
 	http.HandleFunc("/", bot.serveRoot)
 
@@ -124,6 +130,13 @@ func (b *bot) migrateDB() {
 			id integer primary key,
 			name string,
 			value string
+		);`); err != nil {
+		log.Fatal().Err(err).Msgf("Initial DB migration create variables table")
+	}
+	if _, err := b.DB().Exec(`create table if not exists pluginBlacklist (
+			channel string,
+			name string,
+			primary key (channel, name)
 		);`); err != nil {
 		log.Fatal().Err(err).Msgf("Initial DB migration create variables table")
 	}
@@ -264,4 +277,36 @@ func (b *bot) GetPassword() string {
 
 func (b *bot) SetQuiet(status bool) {
 	b.quiet = status
+}
+
+func (b *bot) RefreshPluginBlacklist() error {
+	blacklistItems := []struct {
+		Channel string
+		Name    string
+	}{}
+	if err := b.DB().Select(&blacklistItems, `select channel, name from pluginBlacklist`); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	b.pluginBlacklist = make(map[string]bool)
+	for _, i := range blacklistItems {
+		b.pluginBlacklist[i.Channel+i.Name] = true
+	}
+	log.Debug().Interface("blacklist", b.pluginBlacklist).Msgf("Refreshed plugin blacklist")
+	return nil
+}
+
+func (b *bot) GetPluginNames() []string {
+	names := []string{}
+	for _, name := range b.pluginOrdering {
+		names = append(names, pluginNameStem(name))
+	}
+	return names
+}
+
+func (b *bot) onBlacklist(channel, plugin string) bool {
+	return b.pluginBlacklist[channel+plugin]
+}
+
+func pluginNameStem(name string) string {
+	return strings.Split(strings.TrimPrefix(name, "*"), ".")[0]
 }

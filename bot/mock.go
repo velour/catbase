@@ -112,3 +112,6 @@ func NewMockBot() *MockBot {
 	http.DefaultServeMux = new(http.ServeMux)
 	return &b
 }
+
+func (mb *MockBot) GetPluginNames() []string      { return nil }
+func (mb *MockBot) RefreshPluginBlacklist() error { return nil }
