@@ -4,6 +4,7 @@ package bot
 
 import (
 	"github.com/jmoiron/sqlx"
+
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
@@ -69,6 +70,8 @@ type Bot interface {
 	GetWebNavigation() []EndPoint
 	GetPassword() string
 	SetQuiet(bool)
+	GetPluginNames() []string
+	RefreshPluginBlacklist() error
 }
 
 // Connector represents a server connection to a chat service

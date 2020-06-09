@@ -31,7 +31,11 @@ func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interf
 		goto RET
 	}
 
+	log.Debug().Msgf("checking blacklist %v", b.pluginBlacklist)
 	for _, name := range b.pluginOrdering {
+		if b.onBlacklist(msg.Channel, pluginNameStem(name)) {
+			continue
+		}
 		if b.runCallback(conn, b.plugins[name], kind, msg, args...) {
 			goto RET
 		}
@@ -70,7 +74,7 @@ func (b *bot) checkHelp(conn Connector, channel string, parts []string) {
 		// just print out a list of help topics
 		topics := "Help topics: about variables"
 		for name := range b.plugins {
-			name = strings.Split(strings.TrimPrefix(name, "*"), ".")[0]
+			name = pluginNameStem(name)
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
 		b.Send(conn, Message, channel, topics)
