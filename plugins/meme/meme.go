@@ -114,7 +114,12 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 
 		realURL, err := url.Parse(u)
 		if err != nil || realURL.Scheme == "" {
-			realURL, _ = url.Parse("https://imgflip.com/s/meme/" + u)
+			realURL, err = url.Parse("https://imgflip.com/s/meme/" + u)
+			if err != nil {
+				values = append(values, webResp{n, "404.png"})
+				log.Error().Err(err).Msgf("invalid URL")
+				continue
+			}
 		}
 		values = append(values, webResp{n, realURL.String()})
 	}
