@@ -24,7 +24,7 @@ jobs:
     - name: Build and push to Docker
       uses: docker/build-push-action@v1.1.0
       with:
-        username: ${{ sercrets.DOCKER_USERNAME }}
-        password: ${{ sercrets.DOCKER_PASSWORD }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
         repository: chrissexton/private
         tags: latest,catbase
