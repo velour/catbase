@@ -442,23 +442,8 @@ func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdU
 	log.Debug().
 		Msgf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
 			user.chanNick, user.untappdUser, checkin.User.User_name)
-	p.addBeers(user.chanNick, 1)
-	drunken := p.getBeers(user.chanNick)
 
-	msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
-		user.chanNick, beerName, breweryName, venue, drunken)
-	if checkin.Rating_score > 0 {
-		msg = fmt.Sprintf("%s. Rating: %.2f", msg, checkin.Rating_score)
-	}
-	if checkin.Checkin_comment != "" {
-		msg = fmt.Sprintf("%s -- %s",
-			msg, checkin.Checkin_comment)
-	}
-
-	args := []interface{}{
-		channel,
-		msg,
-	}
+	args := []interface{}{}
 	if checkin.Badges.Count > 0 {
 		for _, b := range checkin.Badges.Items {
 			args = append(args, bot.ImageAttachment{
@@ -485,6 +470,22 @@ func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdU
 		// We've seen this checkin, so unmark and accept that there's no media
 		delete(p.untapdCache, checkin.Checkin_id)
 	}
+
+	// Don't add beers till after a photo has been detected (or failed once)
+	p.addBeers(user.chanNick, 1)
+	drunken := p.getBeers(user.chanNick)
+
+	msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
+		user.chanNick, beerName, breweryName, venue, drunken)
+	if checkin.Rating_score > 0 {
+		msg = fmt.Sprintf("%s. Rating: %.2f", msg, checkin.Rating_score)
+	}
+	if checkin.Checkin_comment != "" {
+		msg = fmt.Sprintf("%s -- %s",
+			msg, checkin.Checkin_comment)
+	}
+
+	args = append([]interface{}{channel, msg}, args...)
 
 	user.lastCheckin = checkin.Checkin_id
 	_, err := p.db.Exec(`update untappd set
