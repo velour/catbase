@@ -105,10 +105,14 @@ func New(config *config.Config, connector Connector) Bot {
 	return bot
 }
 
+// DefaultConnector is the main connector used for the bot
+// If more than one connector is on, some users may not see all messages if this is used.
+// Usage should be limited to out-of-band communications such as timed messages.
 func (b *bot) DefaultConnector() Connector {
 	return b.conn
 }
 
+// WhoAmI returns the bot's current registered name
 func (b *bot) WhoAmI() string {
 	return b.me.Name
 }
@@ -149,6 +153,8 @@ func (b *bot) AddPlugin(h Plugin) {
 	b.pluginOrdering = append(b.pluginOrdering, name)
 }
 
+// Who returns users for a channel the bot is in
+// Check the particular connector for channel values
 func (b *bot) Who(channel string) []user.User {
 	names := b.conn.Who(channel)
 	users := []user.User{}
@@ -263,6 +269,8 @@ func (b *bot) RegisterWeb(root, name string) {
 	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
 }
 
+// GetPassword returns a random password generated for the bot
+// Passwords expire in 24h and are used for the web interface
 func (b *bot) GetPassword() string {
 	if b.passwordCreated.Before(time.Now().Add(-24 * time.Hour)) {
 		adjs := b.config.GetArray("bot.passwordAdjectives", []string{"very"})
@@ -275,10 +283,12 @@ func (b *bot) GetPassword() string {
 	return b.password
 }
 
+// SetQuiet is called to silence the bot from sending channel messages
 func (b *bot) SetQuiet(status bool) {
 	b.quiet = status
 }
 
+// RefreshPluginBlacklist loads data for which plugins are disabled for particular channels
 func (b *bot) RefreshPluginBlacklist() error {
 	blacklistItems := []struct {
 		Channel string
@@ -295,6 +305,7 @@ func (b *bot) RefreshPluginBlacklist() error {
 	return nil
 }
 
+// GetPluginNames returns an ordered list of plugins loaded (used for blacklisting)
 func (b *bot) GetPluginNames() []string {
 	names := []string{}
 	for _, name := range b.pluginOrdering {
