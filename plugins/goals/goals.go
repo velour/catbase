@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -182,14 +183,15 @@ func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
 	}
 
 	perc := float64(item.Count) / float64(g.Amount) * 100.0
+	remaining := p.remainingText(item, g)
 
 	if perc >= 100 {
 		p.deregister(c, ch, g.Kind, g.What, g.Who)
 		m := fmt.Sprintf("You made it! You have %.2f%% of %s and now it's done.", perc, what)
 		p.b.Send(c, bot.Message, ch, m)
 	} else {
-		m := fmt.Sprintf("You have %d out of %d for %s. You're %.2f%% of the way there!",
-			item.Count, g.Amount, what, perc)
+		m := fmt.Sprintf("You have %d out of %d for %s. You're %.2f%% of the way there! %s",
+			item.Count, g.Amount, what, perc, remaining)
 		p.b.Send(c, bot.Message, ch, m)
 	}
 
@@ -306,4 +308,32 @@ func (p *GoalsPlugin) update(u counter.Update) {
 			}
 		}
 	}
+}
+
+var now = time.Now
+
+func (p *GoalsPlugin) calculateRemaining(i counter.Item, g *goal) int {
+	today := float64(now().YearDay())
+	thisYear := time.Date(now().Year(), 0, 0, 0, 0, 0, 0, time.UTC)
+	nextYear := time.Date(now().Year()+1, 0, 0, 0, 0, 0, 0, time.UTC)
+	days := nextYear.Sub(thisYear).Hours() / 24.0 // hopefully either a leap year on not
+
+	perc := today / days
+	shouldHave := float64(g.Amount) * perc
+	diff := int(shouldHave) - i.Count
+
+	log.Printf("Today is the %f-th day with %f days in the year", today, days)
+
+	return diff
+}
+
+func (p *GoalsPlugin) remainingText(i counter.Item, g *goal) string {
+	remaining := p.calculateRemaining(i, g)
+	txt := ""
+	if remaining < 0 {
+		txt = fmt.Sprintf("You're ahead by %d!", -1*remaining)
+	} else if remaining > 0 {
+		txt = fmt.Sprintf("You need %d to get back on track.", remaining)
+	}
+	return txt
 }
