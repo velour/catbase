@@ -3,12 +3,12 @@
 package reaction
 
 import (
-	"math/rand"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/chrissexton/sentiment"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
@@ -19,6 +19,7 @@ type ReactionPlugin struct {
 	config *config.Config
 
 	model sentiment.Models
+	br    *bayesReactor
 }
 
 func New(b bot.Bot) *ReactionPlugin {
@@ -26,35 +27,31 @@ func New(b bot.Bot) *ReactionPlugin {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't restore sentiment model")
 	}
+	c := b.Config()
+	path := c.GetString("reaction.modelpath", "emojy.model.json")
 	rp := &ReactionPlugin{
 		bot:    b,
-		config: b.Config(),
+		config: c,
 		model:  model,
+		br:     newBayesReactor(path),
 	}
 	b.Register(rp, bot.Message, rp.message)
 	return rp
 }
 
 func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	chance := p.config.GetFloat64("Reaction.GeneralChance", 0.01)
-	if rand.Float64() < chance {
-		analysis := p.model.SentimentAnalysis(message.Body, sentiment.English)
+	emojy, prob := p.br.React(message.Body)
+	target := p.config.GetFloat64("reaction.confidence", 0.5)
 
-		log.Debug().
-			Uint8("score", analysis.Score).
-			Str("body", message.Body).
-			Msg("sentiment of statement")
+	log.Debug().
+		Float64("prob", prob).
+		Float64("target", target).
+		Bool("accept", prob > target).
+		Str("emojy", emojy).
+		Msgf("Reaction check")
 
-		var reactions []string
-		if analysis.Score > 0 {
-			reactions = p.config.GetArray("Reaction.PositiveReactions", []string{})
-		} else {
-			reactions = p.config.GetArray("Reaction.NegativeReactions", []string{})
-		}
-
-		reaction := reactions[rand.Intn(len(reactions))]
-
-		p.bot.Send(c, bot.Reaction, message.Channel, reaction, message)
+	if prob > target {
+		p.bot.Send(c, bot.Reaction, message.Channel, emojy, message)
 	}
 
 	p.checkReactions(c, message)
