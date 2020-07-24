@@ -126,6 +126,7 @@ func (s *SlackApp) Serve() error {
 			w.Write([]byte(r.Challenge))
 		} else if eventsAPIEvent.Type == slackevents.CallbackEvent {
 			innerEvent := eventsAPIEvent.InnerEvent
+			typ := innerEvent.Type
 			switch ev := innerEvent.Data.(type) {
 			case *slackevents.MessageAction:
 				log.Debug().Interface("ev", ev).Msg("MessageAction")
@@ -137,11 +138,15 @@ func (s *SlackApp) Serve() error {
 				//s.msgReceivd(ev)
 			case *slackevents.MessageEvent:
 				s.msgReceivd(ev)
-			case *slack.ReactionAddedEvent:
-				s.reactionReceived(ev)
+			case *slackevents.ReactionAddedEvent:
+				err := s.reactionReceived(ev)
+				if err != nil {
+					log.Error().Err(err).Msg("error with reaction recording")
+				}
 			default:
 				log.Debug().
 					Interface("ev", ev).
+					Interface("type", typ).
 					Msg("Unknown CallbackEvent")
 			}
 		} else {
@@ -607,7 +612,8 @@ func (s *SlackApp) log(msg, channel string) error {
 	return f.Sync()
 }
 
-func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
+func (s *SlackApp) reactionReceived(event *slackevents.ReactionAddedEvent) error {
+	log.Debug().Msgf("reactionReceived(%+v)", event)
 	name, _ := s.getUser(event.User, "unknown")
 
 	ch, err := s.getChannel(event.Item.Channel)
@@ -632,7 +638,7 @@ func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
 				body = fmt.Sprintf("%s: %s", u, m.Text)
 			}
 		default:
-			log.Debug().Interface("msg", m).Msg("Unexpected type")
+			log.Debug().Interface("msg", m).Msg("Unexpected type in reaction received")
 		}
 	})
 
@@ -640,6 +646,8 @@ func (s *SlackApp) reactionReceived(event *slack.ReactionAddedEvent) error {
 	msg := fmt.Sprintf("[%s] <%s> reacted to %s with :%s:\n",
 		fixDate(tstamp, "2006-01-02 15:04:05"),
 		name, body, event.Reaction)
+
+	log.Debug().Msgf("Made it to reaction received, logging %v: %v", msg, channel)
 
 	return s.log(msg, channel)
 }
