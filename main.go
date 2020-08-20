@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/plugins/gpt2"
+
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
 	"github.com/velour/catbase/plugins/countdown"
@@ -148,6 +150,7 @@ func main() {
 	b.AddPlugin(achievements.New(b))
 	b.AddPlugin(sms.New(b))
 	b.AddPlugin(countdown.New(b))
+	b.AddPlugin(gpt2.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
