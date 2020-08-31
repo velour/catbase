@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/connectors/discord"
+
 	"github.com/velour/catbase/plugins/gpt2"
 
 	"github.com/velour/catbase/plugins/achievements"
@@ -107,6 +109,8 @@ func main() {
 		client = slack.New(c)
 	case "slackapp":
 		client = slackapp.New(c)
+	case "discord":
+		client = discord.New(c)
 	default:
 		log.Fatal().Msgf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}

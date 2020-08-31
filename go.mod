@@ -14,6 +14,7 @@ require (
 	github.com/antchfx/xpath v1.1.1 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
+	github.com/bwmarrin/discordgo v0.22.0
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
 	github.com/chrissexton/gofuck v1.0.0
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff

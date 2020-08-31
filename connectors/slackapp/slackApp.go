@@ -40,7 +40,6 @@ const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .Topi
 // "User":{"Admin":false,"ID":"U0RLUDELD","Name":"flyngpngn"}}
 
 type SlackApp struct {
-	bot    bot.Bot
 	config *config.Config
 	api    *slack.Client
 
