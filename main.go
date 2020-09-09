@@ -163,5 +163,6 @@ func main() {
 	}
 
 	addr := c.Get("HttpAddr", "127.0.0.1:1337")
-	log.Fatal().Err(http.ListenAndServe(addr, nil))
+	log.Debug().Msgf("starting web service at %s", addr)
+	log.Fatal().Err(http.ListenAndServe(addr, nil)).Msg("bot killed")
 }

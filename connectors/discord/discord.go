@@ -2,10 +2,8 @@ package discord
 
 import (
 	"errors"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"fmt"
+	"strings"
 
 	"github.com/velour/catbase/bot/msg"
 
@@ -45,12 +43,79 @@ func (d Discord) Send(kind bot.Kind, args ...interface{}) (string, error) {
 
 	switch kind {
 	case bot.Message:
-		st, err := d.client.ChannelMessageSend(args[0].(string), args[1].(string))
+		return d.sendMessage(args[0].(string), args[1].(string), false, args...)
+	case bot.Action:
+		return d.sendMessage(args[0].(string), args[1].(string), true, args...)
+	case bot.Edit:
+		st, err := d.client.ChannelMessageEdit(args[0].(string), args[1].(string), args[2].(string))
 		return st.ID, err
+	case bot.Reply:
+		original, err := d.client.ChannelMessage(args[0].(string), args[1].(string))
+		msg := args[2].(string)
+		if err != nil {
+			log.Error().Err(err).Msg("could not get original")
+		} else {
+			msg = fmt.Sprintf("> %s\n%s", original, msg)
+		}
+		return d.sendMessage(args[0].(string), msg, false, args...)
+	case bot.Reaction:
+		msg := args[2].(msg.Message)
+		err := d.client.MessageReactionAdd(args[0].(string), msg.ID, args[1].(string))
+		return args[1].(string), err
+	case bot.Delete:
+		ch := args[0].(string)
+		id := args[1].(string)
+		err := d.client.ChannelMessageDelete(ch, id)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot delete message")
+		}
+		return id, err
 	default:
 		log.Error().Msgf("discord.Send: unknown kind, %+v", kind)
 		return "", errors.New("unknown message type")
 	}
+}
+
+func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...interface{}) (string, error) {
+	if meMessage && !strings.HasPrefix(message, "_") && !strings.HasSuffix(message, "_") {
+		message = "_" + message + "_"
+	}
+
+	var embeds *discordgo.MessageEmbed
+
+	for _, arg := range args {
+		switch a := arg.(type) {
+		case bot.ImageAttachment:
+			//embeds.URL = a.URL
+			embeds = &discordgo.MessageEmbed{}
+			embeds.Description = a.AltTxt
+			embeds.Image = &discordgo.MessageEmbedImage{
+				URL:    a.URL,
+				Width:  a.Width,
+				Height: a.Height,
+			}
+		}
+	}
+
+	data := &discordgo.MessageSend{
+		Content: message,
+		Embed:   embeds,
+	}
+
+	log.Debug().
+		Interface("data", data).
+		Interface("args", args).
+		Msg("sending message")
+
+	st, err := d.client.ChannelMessageSendComplex(channel, data)
+
+	//st, err := d.client.ChannelMessageSend(channel, message)
+	if err != nil {
+		log.Error().Err(err).Msg("Error sending message")
+		return "", err
+	}
+
+	return st.ID, err
 }
 
 func (d *Discord) GetEmojiList() map[string]string {
@@ -91,15 +156,19 @@ func (d *Discord) Profile(id string) (user.User, error) {
 		log.Error().Err(err).Msg("Error getting user")
 		return user.User{}, err
 	}
-	return *convertUser(u), nil
+	return *d.convertUser(u), nil
 }
 
-func convertUser(u *discordgo.User) *user.User {
+func (d *Discord) convertUser(u *discordgo.User) *user.User {
+	img, err := d.client.UserAvatar(u.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("error getting avatar")
+	}
 	return &user.User{
-		ID:    u.ID,
-		Name:  u.Username,
-		Admin: false,
-		Icon:  u.Avatar,
+		ID:      u.ID,
+		Name:    u.Username,
+		Admin:   false,
+		IconImg: img,
 	}
 }
 
@@ -119,14 +188,7 @@ func (d *Discord) Serve() error {
 
 	d.client.AddHandler(d.messageCreate)
 
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
-	<-sc
-
-	log.Debug().Msg("closing discord connection")
-
-	// Cleanly close down the Discord session.
-	return d.client.Close()
+	return nil
 }
 
 func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -135,13 +197,39 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 		return
 	}
 
-	msg := msg.Message{
-		User:        convertUser(m.Author),
-		Channel:     m.ChannelID,
-		ChannelName: m.ChannelID,
-		Body:        m.Content,
-		Time:        time.Now(),
+	ch, err := s.Channel(m.ChannelID)
+	if err != nil {
+		log.Error().Err(err).Msg("error getting channel info")
 	}
 
-	d.event(d, bot.Message, msg)
+	isCmd, text := bot.IsCmd(d.config, m.Content)
+
+	tStamp, _ := m.Timestamp.Parse()
+
+	msg := msg.Message{
+		ID:          m.ID,
+		User:        d.convertUser(m.Author),
+		Channel:     m.ChannelID,
+		ChannelName: ch.Name,
+		Body:        text,
+		Command:     isCmd,
+		Time:        tStamp,
+	}
+
+	log.Debug().Interface("m", m).Interface("msg", msg).Msg("message received")
+
+	authorizedChannels := d.config.GetArray("channels", []string{})
+
+	if in(ch.Name, authorizedChannels) {
+		d.event(d, bot.Message, msg)
+	}
+}
+
+func in(s string, lst []string) bool {
+	for _, i := range lst {
+		if s == i {
+			return true
+		}
+	}
+	return false
 }

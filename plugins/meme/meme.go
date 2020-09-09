@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -67,7 +68,19 @@ func New(b bot.Bot) *MemePlugin {
 	return mp
 }
 
+var cmdMatch = regexp.MustCompile(`(?i)meme (.+)`)
+
 func (p *MemePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+	if message.Command && cmdMatch.MatchString(message.Body) {
+		subs := cmdMatch.FindStringSubmatch(message.Body)
+		if len(subs) != 2 {
+			p.bot.Send(c, bot.Message, message.Channel, "Invalid meme request.")
+			return true
+		}
+		minusMeme := subs[1]
+		p.sendMeme(c, message.Channel, message.ChannelName, message.ID, message.User, minusMeme)
+		return true
+	}
 	return false
 }
 
@@ -202,6 +215,107 @@ func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {
 	p.images.cleanup()
 }
 
+func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
+	bullyIcon := ""
+
+	for _, bully := range p.c.GetArray("meme.bully", []string{}) {
+		if format == bully {
+			if u, err := c.Profile(bully); err == nil {
+				bullyIcon = u.Icon
+			} else {
+				log.Debug().Err(err).Msgf("could not get profile for %s", format)
+			}
+			formats := p.c.GetMap("meme.memes", defaultFormats)
+			format = randEntry(formats)
+			break
+		}
+	}
+
+	if u, err := c.Profile(id); bullyIcon == "" && err == nil {
+		if u.IconImg != nil {
+			return u.IconImg
+		}
+		bullyIcon = u.Icon
+	}
+
+	u, err := url.Parse(bullyIcon)
+	if err != nil {
+		log.Error().Err(err).Msg("error with bully URL")
+	}
+	bullyImg, err := DownloadTemplate(u)
+	if err != nil {
+		log.Error().Err(err).Msg("error downloading bully icon")
+	}
+	return bullyImg
+}
+
+func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID string, from *user.User, text string) {
+	parts := strings.SplitN(text, " ", 2)
+	if len(parts) != 2 {
+		log.Debug().Msgf("Bad meme request: %s, %s", from, text)
+		p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%s tried to send me a bad meme request.", from))
+		return
+	}
+	isCmd, message := bot.IsCmd(p.c, parts[1])
+	format := parts[0]
+
+	log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
+
+	go func() {
+		top, bottom := "", message
+		parts = strings.Split(message, "\n")
+		if len(parts) > 1 {
+			top, bottom = parts[0], parts[1]
+		}
+
+		if top == "_" {
+			message = bottom
+		} else if bottom == "_" {
+			message = top
+		}
+
+		bullyImg := p.bully(c, format, from.ID)
+
+		id, w, h, err := p.genMeme(format, top, bottom, bullyImg)
+		if err != nil {
+			msg := fmt.Sprintf("Hey %s, I couldn't download that image you asked for.", from)
+			p.bot.Send(c, bot.Message, channel, msg)
+			return
+		}
+		baseURL := p.c.Get("BaseURL", ``)
+		u, _ := url.Parse(baseURL)
+		u.Path = path.Join(u.Path, "meme", "img", id)
+
+		log.Debug().Msgf("image is at %s", u.String())
+		_, err = p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
+			URL:    u.String(),
+			AltTxt: fmt.Sprintf("%s: %s", from.Name, message),
+			Width:  w,
+			Height: h,
+		})
+
+		if err == nil && msgID != "" {
+			p.bot.Send(c, bot.Delete, channel, msgID)
+		}
+
+		m := msg.Message{
+			User: &user.User{
+				ID:    from.ID,
+				Name:  from.Name,
+				Admin: false,
+			},
+			Channel:     channel,
+			ChannelName: channelName,
+			Body:        message,
+			Command:     isCmd,
+			Time:        time.Now(),
+		}
+
+		p.bot.Receive(c, bot.Message, m)
+	}()
+
+}
+
 func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -212,81 +326,15 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 		text := r.PostForm.Get("text")
 		log.Debug().Msgf("channel: %s", channel)
 
-		parts := strings.SplitN(text, " ", 2)
-		if len(parts) != 2 {
-			log.Debug().Msgf("Bad meme request: %s, %s", from, text)
-			p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%s tried to send me a bad meme request.", from))
-			return
-		}
-		isCmd, message := bot.IsCmd(p.c, parts[1])
-		format := parts[0]
-
-		bullyIcon := ""
-
-		for _, bully := range p.c.GetArray("meme.bully", []string{}) {
-			if format == bully {
-				if u, err := c.Profile(bully); err == nil {
-					bullyIcon = u.Icon
-				} else {
-					log.Debug().Err(err).Msgf("could not get profile for %s", format)
-				}
-				formats := p.c.GetMap("meme.memes", defaultFormats)
-				format = randEntry(formats)
-				break
-			}
+		user := &user.User{
+			ID:   from, // HACK but should work fine
+			Name: from,
 		}
 
-		if u, err := c.Profile(from); bullyIcon == "" && err == nil {
-			bullyIcon = u.Icon
-		}
+		p.sendMeme(c, channel, channelName, "", user, text)
 
-		log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
 		w.WriteHeader(200)
 		w.Write(nil)
-
-		go func() {
-			top, bottom := "", message
-			parts = strings.Split(message, "\n")
-			if len(parts) > 1 {
-				top, bottom = parts[0], parts[1]
-			}
-
-			if top == "_" {
-				message = bottom
-			} else if bottom == "_" {
-				message = top
-			}
-
-			id, err := p.genMeme(format, top, bottom, bullyIcon)
-			if err != nil {
-				msg := fmt.Sprintf("Hey %s, I couldn't download that image you asked for.", from)
-				p.bot.Send(c, bot.Message, channel, msg)
-				return
-			}
-			baseURL := p.c.Get("BaseURL", `https://catbase.velour.ninja`)
-			u, _ := url.Parse(baseURL)
-			u.Path = path.Join(u.Path, "meme", "img", id)
-
-			log.Debug().Msgf("image is at %s", u.String())
-			p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
-				URL:    u.String(),
-				AltTxt: fmt.Sprintf("%s: %s", from, message),
-			})
-			m := msg.Message{
-				User: &user.User{
-					ID:    from,
-					Name:  from,
-					Admin: false,
-				},
-				Channel:     channel,
-				ChannelName: channelName,
-				Body:        message,
-				Command:     isCmd,
-				Time:        time.Now(),
-			}
-
-			p.bot.Receive(c, bot.Message, m)
-		}()
 	}
 }
 
@@ -322,7 +370,7 @@ var defaultFormats = map[string]string{
 	"raptor": "Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) genMeme(meme, top, bottom, bully string) (string, error) {
+func (p *MemePlugin) genMeme(meme, top, bottom string, bully image.Image) (string, int, int, error) {
 	fontSizes := []float64{48, 36, 24, 16, 12}
 	fontSize := fontSizes[0]
 
@@ -346,7 +394,7 @@ func (p *MemePlugin) genMeme(meme, top, bottom, bully string) (string, error) {
 	img, err := DownloadTemplate(u)
 	if err != nil {
 		log.Debug().Msgf("failed to download image: %s", err)
-		return "", err
+		return "", 0, 0, err
 	}
 
 	r := img.Bounds()
@@ -372,7 +420,7 @@ func (p *MemePlugin) genMeme(meme, top, bottom, bully string) (string, error) {
 	h = r.Dy()
 	log.Debug().Msgf("resized to %v, %v", w, h)
 
-	if bully != "" {
+	if bully != nil {
 		img = p.applyBully(img, bully)
 	}
 
@@ -427,20 +475,11 @@ func (p *MemePlugin) genMeme(meme, top, bottom, bully string) (string, error) {
 
 	log.Debug().Msgf("Saved to %s\n", path)
 
-	return path, nil
+	return path, w, h, nil
 }
 
-func (p *MemePlugin) applyBully(img image.Image, bully string) image.Image {
-	log.Debug().Msgf("applying bully: %s", bully)
+func (p *MemePlugin) applyBully(img, bullyImg image.Image) image.Image {
 	dst := image.NewRGBA(img.Bounds())
-	u, err := url.Parse(bully)
-	if err != nil {
-		return img
-	}
-	bullyImg, err := DownloadTemplate(u)
-	if err != nil {
-		return img
-	}
 
 	scaleFactor := p.c.GetFloat64("meme.bullyScale", 0.1)
 
