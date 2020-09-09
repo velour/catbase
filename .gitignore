@@ -67,8 +67,11 @@ Temporary Items
 
 util/*/files
 util/*/files
-run.sh
 .idea
 logs
 util/files
 impact.ttf
+
+gus.sh
+rathaus.sh
+run.sh
