@@ -55,6 +55,13 @@ var forbiddenKeys = map[string]bool{
 var addBlacklist = regexp.MustCompile(`(?i)disable plugin (.*)`)
 var rmBlacklist = regexp.MustCompile(`(?i)enable plugin (.*)`)
 
+var addWhitelist = regexp.MustCompile(`(?i)^whitelist plugin (.*)`)
+var rmWhitelist = regexp.MustCompile(`(?i)^unwhitelist plugin (.*)`)
+var allWhitelist = regexp.MustCompile(`(?i)^whitelist all`)
+var allUnwhitelist = regexp.MustCompile(`(?i)^unwhitelist all`)
+var getWhitelist = regexp.MustCompile(`(?i)^list whitelist`)
+var getPlugins = regexp.MustCompile(`(?i)^list plugins`)
+
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
@@ -128,6 +135,71 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 			return true
 		}
 		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s enabled. Use `!disable plugin %s` to disable it.", plugin, plugin))
+		return true
+	}
+
+	if allWhitelist.MatchString(body) {
+		plugins := p.bot.GetPluginNames()
+		for _, plugin := range plugins {
+			if err := p.addWhitelist(plugin); err != nil {
+				p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't whitelist that item: %s", err))
+				log.Error().Err(err).Msgf("error adding whitelist item")
+				return true
+			}
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, "Enabled all plugins")
+		return true
+	}
+
+	if allUnwhitelist.MatchString(body) {
+		plugins := p.bot.GetPluginNames()
+		for _, plugin := range plugins {
+			if plugin == "admin" {
+				continue
+			}
+			if err := p.rmWhitelist(plugin); err != nil {
+				p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't unwhitelist that item: %s", err))
+				log.Error().Err(err).Msgf("error removing whitelist item")
+				return true
+			}
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, "Disabled all plugins")
+		return true
+	}
+
+	if addWhitelist.MatchString(body) {
+		submatches := addWhitelist.FindStringSubmatch(message.Body)
+		plugin := submatches[1]
+		if err := p.addWhitelist(plugin); err != nil {
+			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't whitelist that item: %s", err))
+			log.Error().Err(err).Msgf("error adding whitelist item")
+			return true
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s enabled. Use `!unwhitelist plugin %s` to disable it.", plugin, plugin))
+		return true
+	}
+
+	if rmWhitelist.MatchString(body) {
+		submatches := rmWhitelist.FindStringSubmatch(message.Body)
+		plugin := submatches[1]
+		if err := p.rmWhitelist(plugin); err != nil {
+			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't unwhitelist that item: %s", err))
+			log.Error().Err(err).Msgf("error removing whitelist item")
+			return true
+		}
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s disabled. Use `!whitelist plugin %s` to enable it.", plugin, plugin))
+		return true
+	}
+
+	if getWhitelist.MatchString(body) {
+		list := p.bot.GetWhitelist()
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Whitelist: %v", list))
+		return true
+	}
+
+	if getPlugins.MatchString(body) {
+		plugins := p.bot.GetPluginNames()
+		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Plugins: %v", plugins))
 		return true
 	}
 
@@ -283,25 +355,43 @@ func (p *AdminPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", j)
 }
 
+func (p *AdminPlugin) addWhitelist(plugin string) error {
+	return p.modList(`insert or replace into pluginWhitelist values (?)`, "", plugin)
+}
+
+func (p *AdminPlugin) rmWhitelist(plugin string) error {
+	if plugin == "admin" {
+		return fmt.Errorf("you cannot disable the admin plugin")
+	}
+	return p.modList(`delete from pluginWhitelist where name=?`, "", plugin)
+}
+
 func (p *AdminPlugin) addBlacklist(channel, plugin string) error {
 	if plugin == "admin" {
 		return fmt.Errorf("you cannot disable the admin plugin")
 	}
-	return p.modBlacklist(`insert or replace into pluginBlacklist values (?, ?)`, channel, plugin)
+	return p.modList(`insert or replace into pluginBlacklist values (?, ?)`, channel, plugin)
 }
 
 func (p *AdminPlugin) rmBlacklist(channel, plugin string) error {
-	return p.modBlacklist(`delete from pluginBlacklist where channel=? and name=?`, channel, plugin)
+	return p.modList(`delete from pluginBlacklist where channel=? and name=?`, channel, plugin)
 }
 
-func (p *AdminPlugin) modBlacklist(query, channel, plugin string) error {
+func (p *AdminPlugin) modList(query, channel, plugin string) error {
+	if channel == "" && plugin != "" {
+		channel = plugin // hack
+	}
 	plugins := p.bot.GetPluginNames()
 	for _, pp := range plugins {
 		if pp == plugin {
 			if _, err := p.db.Exec(query, channel, plugin); err != nil {
 				return fmt.Errorf("%w", err)
 			}
-			err := p.bot.RefreshPluginBlacklist()
+			err := p.bot.RefreshPluginWhitelist()
+			if err != nil {
+				return fmt.Errorf("%w", err)
+			}
+			err = p.bot.RefreshPluginBlacklist()
 			if err != nil {
 				return fmt.Errorf("%w", err)
 			}

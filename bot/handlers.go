@@ -31,9 +31,8 @@ func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interf
 		goto RET
 	}
 
-	log.Debug().Msgf("checking blacklist %v", b.pluginBlacklist)
 	for _, name := range b.pluginOrdering {
-		if b.onBlacklist(msg.Channel, pluginNameStem(name)) {
+		if b.onBlacklist(msg.Channel, pluginNameStem(name)) || !b.onWhitelist(pluginNameStem(name)) {
 			continue
 		}
 		if b.runCallback(conn, b.plugins[name], kind, msg, args...) {

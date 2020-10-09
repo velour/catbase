@@ -111,6 +111,12 @@ type Bot interface {
 
 	// RefreshPluginBlacklist reloads the list of plugins disabled per room from the DB
 	RefreshPluginBlacklist() error
+
+	// RefreshPluginWhitelist reloads the list of plugins enabled from the DB
+	RefreshPluginWhitelist() error
+
+	// Get the contents of the white list
+	GetWhitelist() []string
 }
 
 // Connector represents a server connection to a chat service
