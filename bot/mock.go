@@ -60,7 +60,7 @@ func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...inte
 }
 func (mb *MockBot) Filter(msg msg.Message, s string) string    { return s }
 func (mb *MockBot) LastMessage(ch string) (msg.Message, error) { return msg.Message{}, nil }
-func (mb *MockBot) CheckAdmin(nick string) bool                { return false }
+func (mb *MockBot) CheckAdmin(nick string) bool                { return nick == "admin" }
 
 func (mb *MockBot) react(c Connector, channel, reaction string, message msg.Message) (string, error) {
 	mb.Reactions = append(mb.Reactions, reaction)
