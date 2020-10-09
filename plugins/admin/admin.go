@@ -88,12 +88,6 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 		return true
 	}
 
-	if strings.ToLower(body) == "reboot" {
-		p.bot.Send(conn, bot.Message, message.Channel, "brb")
-		log.Info().Msgf("Got reboot command")
-		os.Exit(0)
-	}
-
 	if strings.ToLower(body) == "shut up" {
 		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
 		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
@@ -112,6 +106,17 @@ func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Messag
 			}
 		}()
 		return true
+	}
+
+	if !p.bot.CheckAdmin(message.User.Name) {
+		log.Debug().Msgf("User %s is not an admin", message.User.Name)
+		return false
+	}
+
+	if strings.ToLower(body) == "reboot" {
+		p.bot.Send(conn, bot.Message, message.Channel, "brb")
+		log.Info().Msgf("Got reboot command")
+		os.Exit(0)
 	}
 
 	if addBlacklist.MatchString(body) {

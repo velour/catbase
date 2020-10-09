@@ -1,9 +1,10 @@
 package admin
 
 import (
-	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
+
+	"github.com/velour/catbase/plugins/cli"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
@@ -20,6 +21,10 @@ func setup(t *testing.T) (*AdminPlugin, *bot.MockBot) {
 	mb = bot.NewMockBot()
 	a = New(mb)
 	mb.DB().MustExec(`delete from config`)
+	err := mb.Config().Set("admins", "tester")
+	if err != nil {
+		t.FailNow()
+	}
 	return a, mb
 }
 
@@ -30,7 +35,7 @@ func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	}
 	c := cli.CliPlugin{}
 	return &c, bot.Message, msg.Message{
-		User:    &user.User{Name: "tester"},
+		User:    &user.User{Name: "admin"},
 		Channel: "test",
 		Body:    payload,
 		Command: isCmd,

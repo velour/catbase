@@ -230,34 +230,6 @@ func (b *bot) CheckAdmin(nick string) bool {
 	return false
 }
 
-var users = map[string]*user.User{}
-
-func (b *bot) GetUser(nick string) *user.User {
-	if _, ok := users[nick]; !ok {
-		users[nick] = &user.User{
-			Name:  nick,
-			Admin: b.checkAdmin(nick),
-		}
-	}
-	return users[nick]
-}
-
-func (b *bot) NewUser(nick string) *user.User {
-	return &user.User{
-		Name:  nick,
-		Admin: b.checkAdmin(nick),
-	}
-}
-
-func (b *bot) checkAdmin(nick string) bool {
-	for _, u := range b.Config().GetArray("Admins", []string{}) {
-		if nick == u {
-			return true
-		}
-	}
-	return false
-}
-
 // Register a text filter which every outgoing message is passed through
 func (b *bot) RegisterFilter(name string, f func(string) string) {
 	b.filters[name] = f
