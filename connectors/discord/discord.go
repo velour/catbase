@@ -192,7 +192,6 @@ func (d *Discord) Serve() error {
 }
 
 func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	log.Debug().Msgf("discord message: %+v", m)
 	if m.Author.ID == s.State.User.ID {
 		return
 	}

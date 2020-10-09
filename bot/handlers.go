@@ -18,10 +18,6 @@ import (
 )
 
 func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
-	log.Debug().
-		Interface("msg", msg).
-		Msg("Received event")
-
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
 	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
