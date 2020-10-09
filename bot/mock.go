@@ -115,3 +115,5 @@ func NewMockBot() *MockBot {
 
 func (mb *MockBot) GetPluginNames() []string      { return nil }
 func (mb *MockBot) RefreshPluginBlacklist() error { return nil }
+func (mb *MockBot) RefreshPluginWhitelist() error { return nil }
+func (mb *MockBot) GetWhitelist() []string        { return []string{} }

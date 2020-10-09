@@ -29,6 +29,9 @@ type bot struct {
 	// channel -> plugin
 	pluginBlacklist map[string]bool
 
+	// plugin, this is bot-wide
+	pluginWhitelist map[string]bool
+
 	// Users holds information about all of our friends
 	users []user.User
 	// Represents the bot
@@ -84,6 +87,7 @@ func New(config *config.Config, connector Connector) Bot {
 		plugins:         make(map[string]Plugin),
 		pluginOrdering:  make([]string, 0),
 		pluginBlacklist: make(map[string]bool),
+		pluginWhitelist: make(map[string]bool),
 		conn:            connector,
 		users:           users,
 		me:              users[0],
@@ -97,6 +101,7 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.migrateDB()
 
 	bot.RefreshPluginBlacklist()
+	bot.RefreshPluginWhitelist()
 
 	http.HandleFunc("/", bot.serveRoot)
 
@@ -142,7 +147,12 @@ func (b *bot) migrateDB() {
 			name string,
 			primary key (channel, name)
 		);`); err != nil {
-		log.Fatal().Err(err).Msgf("Initial DB migration create variables table")
+		log.Fatal().Err(err).Msgf("Initial DB migration create blacklist table")
+	}
+	if _, err := b.DB().Exec(`create table if not exists pluginWhitelist (
+			name string primary key
+		);`); err != nil {
+		log.Fatal().Err(err).Msgf("Initial DB migration create whitelist table")
 	}
 }
 
@@ -305,6 +315,24 @@ func (b *bot) RefreshPluginBlacklist() error {
 	return nil
 }
 
+// RefreshPluginWhitelist loads data for which plugins are enabled
+func (b *bot) RefreshPluginWhitelist() error {
+	whitelistItems := []struct {
+		Name string
+	}{
+		{Name: "admin"}, // we must always ensure admin is on!
+	}
+	if err := b.DB().Select(&whitelistItems, `select name from pluginWhitelist`); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	b.pluginWhitelist = make(map[string]bool)
+	for _, i := range whitelistItems {
+		b.pluginWhitelist[i.Name] = true
+	}
+	log.Debug().Interface("whitelist", b.pluginWhitelist).Msgf("Refreshed plugin whitelist")
+	return nil
+}
+
 // GetPluginNames returns an ordered list of plugins loaded (used for blacklisting)
 func (b *bot) GetPluginNames() []string {
 	names := []string{}
@@ -314,8 +342,20 @@ func (b *bot) GetPluginNames() []string {
 	return names
 }
 
+func (b *bot) GetWhitelist() []string {
+	list := []string{}
+	for k := range b.pluginWhitelist {
+		list = append(list, k)
+	}
+	return list
+}
+
 func (b *bot) onBlacklist(channel, plugin string) bool {
 	return b.pluginBlacklist[channel+plugin]
+}
+
+func (b *bot) onWhitelist(plugin string) bool {
+	return b.pluginWhitelist[plugin]
 }
 
 func pluginNameStem(name string) string {
