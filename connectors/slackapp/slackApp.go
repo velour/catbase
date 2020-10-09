@@ -40,7 +40,6 @@ const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .Topi
 // "User":{"Admin":false,"ID":"U0RLUDELD","Name":"flyngpngn"}}
 
 type SlackApp struct {
-	bot    bot.Bot
 	config *config.Config
 	api    *slack.Client
 
@@ -448,6 +447,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	tstamp := slackTStoTime(m.TimeStamp)
 
 	return msg.Message{
+		ID: m.TimeStamp,
 		User: &user.User{
 			ID:   m.User,
 			Name: name,
@@ -652,8 +652,8 @@ func (s *SlackApp) reactionReceived(event *slackevents.ReactionAddedEvent) error
 	return s.log(msg, channel)
 }
 
-func (s *SlackApp) Profile(name string) (user.User, error) {
-	log.Debug().Msgf("Getting profile for %s", name)
+func (s *SlackApp) Profile(identifier string) (user.User, error) {
+	log.Debug().Msgf("Getting profile for %s", identifier)
 
 	users, err := s.api.GetUsers()
 	if err != nil {
@@ -661,7 +661,7 @@ func (s *SlackApp) Profile(name string) (user.User, error) {
 	}
 
 	for _, u := range users {
-		if u.Name == name {
+		if u.Name == identifier || u.ID == identifier {
 			return user.User{
 				ID:    u.ID,
 				Name:  stringForUser(&u),

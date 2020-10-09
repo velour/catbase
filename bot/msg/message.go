@@ -12,6 +12,7 @@ type Log Messages
 type Messages []Message
 
 type Message struct {
+	ID   string
 	User *user.User
 	// With Slack, channel is the ID of a channel
 	Channel string

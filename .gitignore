@@ -70,8 +70,6 @@ util/*/files
 .idea
 logs
 util/files
-impact.ttf
-
 gus.sh
 rathaus.sh
 run.sh

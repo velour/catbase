@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/connectors/discord"
+
 	"github.com/velour/catbase/plugins/gpt2"
 
 	"github.com/velour/catbase/plugins/achievements"
@@ -107,6 +109,8 @@ func main() {
 		client = slack.New(c)
 	case "slackapp":
 		client = slackapp.New(c)
+	case "discord":
+		client = discord.New(c)
 	default:
 		log.Fatal().Msgf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}
@@ -159,5 +163,6 @@ func main() {
 	}
 
 	addr := c.Get("HttpAddr", "127.0.0.1:1337")
-	log.Fatal().Err(http.ListenAndServe(addr, nil))
+	log.Debug().Msgf("starting web service at %s", addr)
+	log.Fatal().Err(http.ListenAndServe(addr, nil)).Msg("bot killed")
 }

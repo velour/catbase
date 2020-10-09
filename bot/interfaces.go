@@ -29,11 +29,15 @@ const (
 	Help
 	// SelfMessage triggers when the bot is sending a message
 	SelfMessage
+	// Delete removes a message by ID
+	Delete
 )
 
 type ImageAttachment struct {
 	URL    string
 	AltTxt string
+	Width  int
+	Height int
 }
 
 type Kind int
