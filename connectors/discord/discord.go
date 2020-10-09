@@ -218,18 +218,5 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 
 	log.Debug().Interface("m", m).Interface("msg", msg).Msg("message received")
 
-	authorizedChannels := d.config.GetArray("channels", []string{})
-
-	if in(ch.Name, authorizedChannels) {
-		d.event(d, bot.Message, msg)
-	}
-}
-
-func in(s string, lst []string) bool {
-	for _, i := range lst {
-		if s == i {
-			return true
-		}
-	}
-	return false
+	d.event(d, bot.Message, msg)
 }
