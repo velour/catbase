@@ -216,7 +216,5 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 		Time:        tStamp,
 	}
 
-	log.Debug().Interface("m", m).Interface("msg", msg).Msg("message received")
-
 	d.event(d, bot.Message, msg)
 }
