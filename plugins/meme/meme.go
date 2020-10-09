@@ -252,8 +252,8 @@ func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
 func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID string, from *user.User, text string) {
 	parts := strings.SplitN(text, " ", 2)
 	if len(parts) != 2 {
-		log.Debug().Msgf("Bad meme request: %s, %s", from, text)
-		p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%s tried to send me a bad meme request.", from))
+		log.Debug().Msgf("Bad meme request: %v, %v", from, text)
+		p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%v tried to send me a bad meme request.", from.Name))
 		return
 	}
 	isCmd, message := bot.IsCmd(p.c, parts[1])
@@ -278,7 +278,7 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 
 		id, w, h, err := p.genMeme(format, top, bottom, bullyImg)
 		if err != nil {
-			msg := fmt.Sprintf("Hey %s, I couldn't download that image you asked for.", from)
+			msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
 			p.bot.Send(c, bot.Message, channel, msg)
 			return
 		}

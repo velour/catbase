@@ -55,7 +55,7 @@ func (d Discord) Send(kind bot.Kind, args ...interface{}) (string, error) {
 		if err != nil {
 			log.Error().Err(err).Msg("could not get original")
 		} else {
-			msg = fmt.Sprintf("> %s\n%s", original, msg)
+			msg = fmt.Sprintf("> %v\n%s", original, msg)
 		}
 		return d.sendMessage(args[0].(string), msg, false, args...)
 	case bot.Reaction:
