@@ -91,7 +91,7 @@ func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	msg += "\n`[format]` can be a URL"
 	msg += fmt.Sprintf("\nor a format from the list of %d pre-made memes listed on the website", len(formats))
 	msg += fmt.Sprintf("\nHead over to %s/meme to view and add new meme formats", webRoot)
-	msg += "\nYou can use `_` as a placeholder for empty text and a newline to separate top vs bottom."
+	msg += "\nYou can use `_` as a placeholder for empty text and a newline (|| on Discord) to separate top vs bottom."
 	p.bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
@@ -263,7 +263,11 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 
 	go func() {
 		top, bottom := "", message
-		parts = strings.Split(message, "\n")
+		if strings.Contains(message, "||") {
+			parts = strings.Split(message, "||")
+		} else {
+			parts = strings.Split(message, "\n")
+		}
 		if len(parts) > 1 {
 			top, bottom = parts[0], parts[1]
 		}
