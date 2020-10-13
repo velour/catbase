@@ -509,7 +509,7 @@ func (s *Slack) buildMessage(m slackMessage) msg.Message {
 		Channel: m.Channel,
 		Command: isCmd,
 		Action:  isAction,
-		Host:    string(m.ID),
+		Host:    fmt.Sprint(m.ID),
 		Time:    tstamp,
 		AdditionalData: map[string]string{
 			"RAW_SLACK_TIMESTAMP": m.Ts,
@@ -543,7 +543,7 @@ func (s *Slack) buildLightReplyMessage(m slackMessage) msg.Message {
 		Channel: m.Channel,
 		Command: isCmd,
 		Action:  isAction,
-		Host:    string(m.ID),
+		Host:    fmt.Sprint(m.ID),
 		Time:    tstamp,
 		AdditionalData: map[string]string{
 			"RAW_SLACK_TIMESTAMP": m.Ts,
