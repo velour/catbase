@@ -68,7 +68,7 @@ func (b *bot) checkHelp(conn Connector, channel string, parts []string) {
 	if len(parts) == 1 {
 		// just print out a list of help topics
 		topics := "Help topics: about variables"
-		for name := range b.plugins {
+		for _, name := range b.GetWhitelist() {
 			name = pluginNameStem(name)
 			topics = fmt.Sprintf("%s, %s", topics, name)
 		}
