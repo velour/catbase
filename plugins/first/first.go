@@ -175,6 +175,9 @@ func (p *FirstPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messag
 }
 
 func (p *FirstPlugin) allowed(message msg.Message) bool {
+	if message.Body == "" {
+		return false
+	}
 	for _, m := range p.Bot.Config().GetArray("Bad.Msgs", []string{}) {
 		match, err := regexp.MatchString(m, strings.ToLower(message.Body))
 		if err != nil {
