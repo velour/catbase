@@ -17,6 +17,8 @@ import (
 	"text/template"
 	"time"
 
+	zerowidth "github.com/trubitsyn/go-zero-width"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/slack-go/slack"
@@ -419,6 +421,7 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 
 	// Slack likes to put these NBSP in and it screws with matching later
 	text = strings.ReplaceAll(text, "\u00a0", " ")
+	text = zerowidth.RemoveZeroWidthCharacters(text)
 
 	isCmd, text := bot.IsCmd(s.config, text)
 
