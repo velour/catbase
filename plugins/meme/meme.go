@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"image"
 	"image/color"
 	"image/draw"
@@ -13,7 +12,6 @@ import (
 	"net/url"
 	"path"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -38,6 +36,12 @@ type MemePlugin struct {
 type cachedImage struct {
 	created time.Time
 	repr    []byte
+}
+
+type memeText struct {
+	XPerc float64 `json:"x"`
+	YPerc float64 `json:"y"`
+	Text  string  `json:"t"`
 }
 
 var horizon = 24 * 7
@@ -92,6 +96,8 @@ func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	msg += fmt.Sprintf("\nor a format from the list of %d pre-made memes listed on the website", len(formats))
 	msg += fmt.Sprintf("\nHead over to %s/meme to view and add new meme formats", webRoot)
 	msg += "\nYou can use `_` as a placeholder for empty text and a newline (|| on Discord) to separate top vs bottom."
+	msg += "\nOR you can configure the text yourself with JSON. Send a code quoted message like:"
+	msg += "```/meme doge `[{\"x\": 0.2, \"y\": 0.1, \"t\": \"such image\"},{\"x\": 0.7, \"y\": 0.5, \"t\": \"much meme\"},{\"x\": 0.4, \"y\": 0.8, \"t\": \"wow\"}]` ```"
 	p.bot.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
@@ -119,101 +125,6 @@ func (w webResps) Swap(i, j int) { w[i], w[j] = w[j], w[i] }
 type ByName struct{ webResps }
 
 func (s ByName) Less(i, j int) bool { return s.webResps[i].Name < s.webResps[j].Name }
-
-func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
-	memes := p.c.GetMap("meme.memes", defaultFormats)
-	values := webResps{}
-	for n, u := range memes {
-
-		realURL, err := url.Parse(u)
-		if err != nil || realURL.Scheme == "" {
-			realURL, err = url.Parse("https://imgflip.com/s/meme/" + u)
-			if err != nil {
-				values = append(values, webResp{n, "404.png"})
-				log.Error().Err(err).Msgf("invalid URL")
-				continue
-			}
-		}
-		values = append(values, webResp{n, realURL.String()})
-	}
-	sort.Sort(ByName{values})
-
-	out, err := json.Marshal(values)
-	if err != nil {
-		w.WriteHeader(500)
-		log.Error().Err(err).Msgf("could not serve all memes route")
-		return
-	}
-	w.Write(out)
-}
-
-func mkCheckError(w http.ResponseWriter) func(error) bool {
-	return func(err error) bool {
-		if err != nil {
-			log.Error().Err(err).Msgf("meme failed")
-			w.WriteHeader(500)
-			e, _ := json.Marshal(err)
-			w.Write(e)
-			return true
-		}
-		return false
-	}
-}
-
-func (p *MemePlugin) rmMeme(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "Incorrect HTTP method")
-		return
-	}
-	checkError := mkCheckError(w)
-	decoder := json.NewDecoder(r.Body)
-	values := webResp{}
-	err := decoder.Decode(&values)
-	if checkError(err) {
-		return
-	}
-	formats := p.c.GetMap("meme.memes", defaultFormats)
-	delete(formats, values.Name)
-	err = p.c.SetMap("meme.memes", formats)
-	checkError(err)
-}
-
-func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "Incorrect HTTP method")
-		return
-	}
-	checkError := mkCheckError(w)
-	decoder := json.NewDecoder(r.Body)
-	values := webResp{}
-	err := decoder.Decode(&values)
-	if checkError(err) {
-		return
-	}
-	formats := p.c.GetMap("meme.memes", defaultFormats)
-	formats[values.Name] = values.URL
-	err = p.c.SetMap("meme.memes", formats)
-	checkError(err)
-}
-
-func (p *MemePlugin) webRoot(w http.ResponseWriter, r *http.Request) {
-	var tpl = template.Must(template.New("factoidIndex").Parse(string(memeIndex)))
-	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
-}
-
-func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {
-	_, file := path.Split(r.URL.Path)
-	id := file
-	if img, ok := p.images[id]; ok {
-		w.Write(img.repr)
-	} else {
-		w.WriteHeader(404)
-		w.Write([]byte("not found"))
-	}
-	p.images.cleanup()
-}
 
 func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
 	bullyIcon := ""
@@ -262,25 +173,45 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 	log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
 
 	go func() {
-		top, bottom := "", message
-		if strings.Contains(message, "||") {
-			parts = strings.Split(message, "||")
-		} else {
-			parts = strings.Split(message, "\n")
-		}
-		if len(parts) > 1 {
-			top, bottom = parts[0], parts[1]
-		}
+		var config []memeText
 
-		if top == "_" {
-			message = bottom
-		} else if bottom == "_" {
-			message = top
+		message = strings.TrimPrefix(message, "`")
+		message = strings.TrimSuffix(message, "`")
+
+		err := json.Unmarshal([]byte(message), &config)
+		if err == nil {
+			message = ""
+			for _, c := range config {
+				message += c.Text + "\n"
+			}
+		} else {
+			top, bottom := "", message
+			if strings.Contains(message, "||") {
+				parts = strings.Split(message, "||")
+			} else {
+				parts = strings.Split(message, "\n")
+			}
+			if len(parts) > 1 {
+				top, bottom = parts[0], parts[1]
+			}
+
+			if top == "_" {
+				message = bottom
+			} else if bottom == "_" {
+				message = top
+			}
+
+			topPos := p.bot.Config().GetFloat64("meme.top", 0.05)
+			bottomPos := p.bot.Config().GetFloat64("meme.bottom", 0.95)
+			config = []memeText{
+				{Text: top, XPerc: 0.5, YPerc: topPos},
+				{Text: bottom, XPerc: 0.5, YPerc: bottomPos},
+			}
 		}
 
 		bullyImg := p.bully(c, format, from.ID)
 
-		id, w, h, err := p.genMeme(format, top, bottom, bullyImg)
+		id, w, h, err := p.genMeme(format, bullyImg, config)
 		if err != nil {
 			msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
 			p.bot.Send(c, bot.Message, channel, msg)
@@ -374,10 +305,46 @@ var defaultFormats = map[string]string{
 	"raptor": "Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) genMeme(meme, top, bottom string, bully image.Image) (string, int, int, error) {
-	fontSizes := []float64{48, 36, 24, 16, 12}
-	fontSize := fontSizes[0]
+func (p *MemePlugin) findFontSize(config []memeText, w, h int, sizes []float64) float64 {
+	fontSize := 12.0
 
+	m := gg.NewContext(w, h)
+	fontLocation := p.c.Get("meme.font", "impact.ttf")
+
+	longestStr, longestW := "", 0.0
+
+	for _, s := range config {
+		err := m.LoadFontFace(fontLocation, 12) // problem
+		if err != nil {
+			log.Error().Err(err).Msg("could not load font")
+			return fontSize
+		}
+
+		w, _ := m.MeasureString(s.Text)
+		if w > longestW {
+			longestStr = s.Text
+			longestW = w
+		}
+	}
+
+	for _, sz := range sizes {
+		err := m.LoadFontFace(fontLocation, sz) // problem
+		if err != nil {
+			log.Error().Err(err).Msg("could not load font")
+			return fontSize
+		}
+
+		topW, _ := m.MeasureString(longestStr)
+		if topW < float64(w) {
+			fontSize = sz
+			break
+		}
+	}
+	return fontSize
+}
+
+func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) (string, int, int, error) {
+	fontSizes := []float64{48, 36, 24, 16, 12}
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 
 	path := uuid.New().String()
@@ -405,6 +372,8 @@ func (p *MemePlugin) genMeme(meme, top, bottom string, bully image.Image) (strin
 	w := r.Dx()
 	h := r.Dy()
 
+	// /meme2 5guys [{"x": 0.1, "y": 0.1, "t": "test"}]
+
 	maxSz := p.c.GetFloat64("maxImgSz", 750.0)
 
 	if w > h {
@@ -431,25 +400,7 @@ func (p *MemePlugin) genMeme(meme, top, bottom string, bully image.Image) (strin
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
 	fontLocation := p.c.Get("meme.font", "impact.ttf")
-	for _, sz := range fontSizes {
-		err = m.LoadFontFace(fontLocation, sz) // problem
-		if err != nil {
-			log.Error().Err(err).Msg("could not load font")
-		}
-		topW, _ := m.MeasureString(top)
-		botW, _ := m.MeasureString(bottom)
-		if topW < float64(w) && botW < float64(w) {
-			fontSize = sz
-			break
-		}
-	}
-
-	if top == "_" {
-		top = ""
-	}
-	if bottom == "_" {
-		bottom = ""
-	}
+	m.LoadFontFace(fontLocation, p.findFontSize(config, w, h, fontSizes))
 
 	// Apply black stroke
 	m.SetHexColor("#000")
@@ -460,18 +411,21 @@ func (p *MemePlugin) genMeme(meme, top, bottom string, bully image.Image) (strin
 			if dx*dx+dy*dy >= strokeSize*strokeSize {
 				continue
 			}
-			x := float64(w/2 + dx)
-			y := float64(h) - fontSize + float64(dy)
-			y0 := fontSize + float64(dy)
-			m.DrawStringAnchored(top, x, y0, 0.5, 0.5)
-			m.DrawStringAnchored(bottom, x, y, 0.5, 0.5)
+			for _, c := range config {
+				x := float64(w)*c.XPerc + float64(dx)
+				y := float64(h)*c.YPerc + float64(dy)
+				m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
+			}
 		}
 	}
 
 	// Apply white fill
 	m.SetHexColor("#FFF")
-	m.DrawStringAnchored(top, float64(w)/2, fontSize, 0.5, 0.5)
-	m.DrawStringAnchored(bottom, float64(w)/2, float64(h)-fontSize, 0.5, 0.5)
+	for _, c := range config {
+		x := float64(w) * c.XPerc
+		y := float64(h) * c.YPerc
+		m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
+	}
 
 	i := bytes.Buffer{}
 	png.Encode(&i, m.Image())
