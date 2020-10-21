@@ -103,6 +103,7 @@ func (c *Config) GetMap(key string, fallback map[string]string) map[string]strin
 	vals := map[string]string{}
 	err := json.Unmarshal([]byte(content), &vals)
 	if err != nil {
+		log.Error().Err(err).Msgf("Could not decode config for %s", key)
 		return fallback
 	}
 	return vals

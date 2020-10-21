@@ -102,30 +102,6 @@ func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	return true
 }
 
-func (p *MemePlugin) registerWeb(c bot.Connector) {
-	http.HandleFunc("/slash/meme", p.slashMeme(c))
-	http.HandleFunc("/meme/img/", p.img)
-	http.HandleFunc("/meme/all", p.all)
-	http.HandleFunc("/meme/add", p.addMeme)
-	http.HandleFunc("/meme/rm", p.rmMeme)
-	http.HandleFunc("/meme", p.webRoot)
-	p.bot.RegisterWeb("/meme", "Memes")
-}
-
-type webResp struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-type webResps []webResp
-
-func (w webResps) Len() int      { return len(w) }
-func (w webResps) Swap(i, j int) { w[i], w[j] = w[j], w[i] }
-
-type ByName struct{ webResps }
-
-func (s ByName) Less(i, j int) bool { return s.webResps[i].Name < s.webResps[j].Name }
-
 func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
 	bullyIcon := ""
 
@@ -185,27 +161,33 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 				message += c.Text + "\n"
 			}
 		} else {
-			top, bottom := "", message
 			if strings.Contains(message, "||") {
 				parts = strings.Split(message, "||")
 			} else {
 				parts = strings.Split(message, "\n")
 			}
-			if len(parts) > 1 {
-				top, bottom = parts[0], parts[1]
+
+			allConfigs := p.c.GetMap("meme.memeconfigs", map[string]string{})
+			configtxt, ok := allConfigs[format]
+			if !ok {
+				config = defaultFormatConfig
+				log.Debug().Msgf("Did not find %s in %+v", format, allConfigs)
+			} else {
+				err = json.Unmarshal([]byte(configtxt), &config)
+				if err != nil {
+					log.Error().Err(err).Msgf("Could not parse config for %s:\n%s", format, configtxt)
+					config = defaultFormatConfig
+				}
 			}
 
-			if top == "_" {
-				message = bottom
-			} else if bottom == "_" {
-				message = top
-			}
-
-			topPos := p.bot.Config().GetFloat64("meme.top", 0.05)
-			bottomPos := p.bot.Config().GetFloat64("meme.bottom", 0.95)
-			config = []memeText{
-				{Text: top, XPerc: 0.5, YPerc: topPos},
-				{Text: bottom, XPerc: 0.5, YPerc: bottomPos},
+			j := 0
+			for i := range config {
+				if len(parts) > i {
+					if parts[j] != "_" {
+						config[i].Text = parts[j]
+					}
+					j++
+				}
 			}
 		}
 
@@ -341,6 +323,11 @@ func (p *MemePlugin) findFontSize(config []memeText, w, h int, sizes []float64) 
 		}
 	}
 	return fontSize
+}
+
+var defaultFormatConfig = []memeText{
+	{XPerc: 0.5, YPerc: 0.05},
+	{XPerc: 0.5, YPerc: 0.95},
 }
 
 func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) (string, int, int, error) {

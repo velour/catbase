@@ -38,13 +38,16 @@ var memeIndex = `
     <b-form @submit="addMeme">
         <b-container>
             <b-row>
-                <b-col cols="5">
+                <b-col cols="3">
                     <b-input placeholder="Name..." v-model="name"></b-input>
                 </b-col>
-                <b-col cols="5">
+                <b-col cols="3">
                     <b-input placeholder="URL..." v-model="url"></b-input>
                 </b-col>
-                <b-col cols="2">
+                <b-col cols="3">
+                    <b-input placeholder="Config..." v-model="config"></b-input>
+                </b-col>
+                <b-col cols="3">
                     <b-button type="submit">Add Meme</b-button>
                 </b-col>
             </b-row>
@@ -54,6 +57,9 @@ var memeIndex = `
                             fixed
                             :items="results"
                             :fields="fields">
+                        <template v-slot:cell(config)="data">
+							<pre>{{ "{{data.item.config}}" }}</pre>
+                        </template>
                         <template v-slot:cell(image)="data">
                             <b-img :src="data.item.url" rounded block fluid />
                         </template>
@@ -77,10 +83,12 @@ var memeIndex = `
       nav: {{ .Nav }},
       name: "",
       url: "",
+      config: "",
       results: [],
       fields: [
         { key: 'name', sortable: true },
         { key: 'url', sortable: true },
+        { key: 'config' },
         { key: 'image' }
       ]
     },
@@ -103,11 +111,12 @@ var memeIndex = `
           evt.stopPropagation()
         }
         if (this.name && this.url)
-            axios.post('/meme/add', {Name: this.name, URL: this.url})
+            axios.post('/meme/add', {name: this.name, url: this.url, config: this.config})
               .then(resp => {
                 this.results = resp.data;
                 this.name = "";
                 this.url = "";
+                this.config = "";
                 this.refresh();
               })
               .catch(err => (this.err = err));
