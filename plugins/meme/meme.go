@@ -170,13 +170,13 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 			allConfigs := p.c.GetMap("meme.memeconfigs", map[string]string{})
 			configtxt, ok := allConfigs[format]
 			if !ok {
-				config = defaultFormatConfig
+				config = defaultFormatConfig()
 				log.Debug().Msgf("Did not find %s in %+v", format, allConfigs)
 			} else {
 				err = json.Unmarshal([]byte(configtxt), &config)
 				if err != nil {
 					log.Error().Err(err).Msgf("Could not parse config for %s:\n%s", format, configtxt)
-					config = defaultFormatConfig
+					config = defaultFormatConfig()
 				}
 			}
 
@@ -325,9 +325,11 @@ func (p *MemePlugin) findFontSize(config []memeText, w, h int, sizes []float64) 
 	return fontSize
 }
 
-var defaultFormatConfig = []memeText{
-	{XPerc: 0.5, YPerc: 0.05},
-	{XPerc: 0.5, YPerc: 0.95},
+func defaultFormatConfig() []memeText {
+	return []memeText{
+		{XPerc: 0.5, YPerc: 0.05},
+		{XPerc: 0.5, YPerc: 0.95},
+	}
 }
 
 func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) (string, int, int, error) {
