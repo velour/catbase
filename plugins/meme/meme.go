@@ -346,7 +346,9 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 	u, err := url.Parse(imgName)
 	if err != nil || u.Scheme == "" {
 		log.Debug().Err(err).Str("imgName", imgName).Msgf("url not detected")
-		u, _ = url.Parse("https://imgflip.com/s/meme/" + imgName)
+		if u, err = url.Parse("https://imgflip.com/s/meme/" + imgName); err != nil {
+			return "", 0, 0, err
+		}
 	}
 
 	log.Debug().Msgf("Attempting to download url: %s", u.String())
