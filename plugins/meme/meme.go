@@ -102,7 +102,7 @@ func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	return true
 }
 
-func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
+func (p *MemePlugin) bully(c bot.Connector, format, id string) (image.Image, string) {
 	bullyIcon := ""
 
 	for _, bully := range p.c.GetArray("meme.bully", []string{}) {
@@ -114,13 +114,14 @@ func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
 			}
 			formats := p.c.GetMap("meme.memes", defaultFormats)
 			format = randEntry(formats)
+			log.Debug().Msgf("After bullying:\nFormat: %s", format)
 			break
 		}
 	}
 
 	if u, err := c.Profile(id); bullyIcon == "" && err == nil {
 		if u.IconImg != nil {
-			return u.IconImg
+			return u.IconImg, format
 		}
 		bullyIcon = u.Icon
 	}
@@ -133,7 +134,7 @@ func (p *MemePlugin) bully(c bot.Connector, format, id string) image.Image {
 	if err != nil {
 		log.Error().Err(err).Msg("error downloading bully icon")
 	}
-	return bullyImg
+	return bullyImg, format
 }
 
 func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID string, from *user.User, text string) {
@@ -191,7 +192,7 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 			}
 		}
 
-		bullyImg := p.bully(c, format, from.ID)
+		bullyImg, format := p.bully(c, format, from.ID)
 
 		id, w, h, err := p.genMeme(format, bullyImg, config)
 		if err != nil {
