@@ -196,7 +196,7 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 		id, w, h, err := p.genMeme(format, bullyImg, config)
 		if err != nil {
 			msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
-			p.bot.Send(c, bot.Message, channel, msg)
+			p.bot.Send(c, bot.Ephemeral, channel, from.ID, msg)
 			return
 		}
 		baseURL := p.c.Get("BaseURL", ``)
@@ -239,12 +239,13 @@ func (p *MemePlugin) slashMeme(c bot.Connector) http.HandlerFunc {
 		log.Debug().Msgf("Meme:\n%+v", r.PostForm.Get("text"))
 		channel := r.PostForm.Get("channel_id")
 		channelName := r.PostForm.Get("channel_name")
+		userID := r.PostForm.Get("user_id")
 		from := r.PostForm.Get("user_name")
 		text := r.PostForm.Get("text")
 		log.Debug().Msgf("channel: %s", channel)
 
 		user := &user.User{
-			ID:   from, // HACK but should work fine
+			ID:   userID, // HACK but should work fine
 			Name: from,
 		}
 

@@ -42,6 +42,8 @@ func (d *Discord) RegisterEvent(callback bot.Callback) {
 func (d Discord) Send(kind bot.Kind, args ...interface{}) (string, error) {
 
 	switch kind {
+	case bot.Ephemeral:
+		return d.sendMessage(args[0].(string), args[2].(string), false, args...)
 	case bot.Message:
 		return d.sendMessage(args[0].(string), args[1].(string), false, args...)
 	case bot.Action:
