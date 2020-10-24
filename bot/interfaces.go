@@ -15,6 +15,8 @@ const (
 
 	// Message any standard chat
 	Message
+	// Send a disappearing message to a user in chat
+	Ephemeral
 	// Reply something containing a message reference
 	Reply
 	// Action any /me action
@@ -32,6 +34,8 @@ const (
 	// Delete removes a message by ID
 	Delete
 )
+
+type EphemeralID string
 
 type ImageAttachment struct {
 	URL    string

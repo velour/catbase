@@ -234,6 +234,9 @@ func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case bot.Message:
 		return s.sendMessage(args[0].(string), args[1].(string), false, args...)
+	case bot.Ephemeral:
+		args[1] = bot.EphemeralID(args[1].(string))
+		return s.sendMessage(args[0].(string), args[2].(string), false, args...)
 	case bot.Action:
 		return s.sendMessage(args[0].(string), args[1].(string), true, args...)
 	case bot.Edit:
@@ -271,6 +274,8 @@ func (s *SlackApp) sendMessage(channel, message string, meMessage bool, args ...
 	if len(args) > 0 {
 		for _, a := range args {
 			switch a := a.(type) {
+			case bot.EphemeralID:
+				options = append(options, slack.MsgOptionPostEphemeral(string(a)))
 			case bot.ImageAttachment:
 				attachments = append(attachments, slack.Attachment{
 					ImageURL: a.URL,
