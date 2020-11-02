@@ -433,6 +433,7 @@ func (p *MemePlugin) applyBully(img, bullyImg image.Image) image.Image {
 	dst := image.NewRGBA(img.Bounds())
 
 	scaleFactor := p.c.GetFloat64("meme.bullyScale", 0.1)
+	position := p.c.GetString("meme.bullyPosition", "botright")
 
 	scaleFactor = float64(img.Bounds().Max.X) * scaleFactor / float64(bullyImg.Bounds().Max.X)
 
@@ -446,7 +447,17 @@ func (p *MemePlugin) applyBully(img, bullyImg image.Image) image.Image {
 
 	w, h := bullyImg.Bounds().Max.X, bullyImg.Bounds().Max.Y
 
-	pt := image.Point{srcSz.X - w, srcSz.Y - h}
+	pt := image.Point{}
+	switch position {
+	case "botright":
+		pt = image.Point{srcSz.X - w, srcSz.Y - h}
+	case "botleft":
+		pt = image.Point{0, srcSz.Y - h}
+	case "topright":
+		pt = image.Point{srcSz.X - w, 0}
+	case "topleft":
+		pt = image.Point{0, 0}
+	}
 	rect := image.Rect(pt.X, pt.Y, srcSz.X, srcSz.Y)
 
 	draw.DrawMask(dst, rect, bullyImg, image.Point{}, &circle{image.Point{w / 2, h / 2}, w / 2}, image.Point{}, draw.Over)
