@@ -447,10 +447,8 @@ func (p *MemePlugin) applyBully(img, bullyImg image.Image) image.Image {
 
 	w, h := bullyImg.Bounds().Max.X, bullyImg.Bounds().Max.Y
 
-	pt := image.Point{}
+	pt := image.Point{srcSz.X - w, srcSz.Y - h}
 	switch position {
-	case "botright":
-		pt = image.Point{srcSz.X - w, srcSz.Y - h}
 	case "botleft":
 		pt = image.Point{0, srcSz.Y - h}
 	case "topright":
