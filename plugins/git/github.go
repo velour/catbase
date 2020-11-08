@@ -22,6 +22,8 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		github.PushEvent,
 		github.PullRequestEvent,
 		github.PingEvent,
+		github.IssuesEvent,
+		github.IssueCommentEvent,
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("unknown event")
@@ -77,7 +79,60 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		ping := payload.(github.PingPayload)
 		repo = ping.Repository.Name
 		owner = ping.Repository.Owner.Login
-		msg += fmt.Sprintf(icon+" Got a ping request on %s", repo)
+		msg += fmt.Sprintf("%s Got a ping request on %s", icon, repo)
+	case github.IssueCommentPayload:
+		cmt := payload.(github.IssueCommentPayload)
+		commentEvents := p.c.GetMap("github.commentevents", map[string]string{
+			"created": "commented",
+			"deleted": "removed their comment",
+		})
+		action := cmt.Action
+		for k, v := range commentEvents {
+			if cmt.Action == k {
+				action = v
+				goto sendCommentEvent
+			}
+		}
+		log.Debug().Msgf("Unknown issue comment event: %s", cmt.Action)
+		return
+	sendCommentEvent:
+		repo = cmt.Repository.Name
+		owner = cmt.Comment.User.Login
+		msg += fmt.Sprintf("%s %s %s on <%s|%s #%d>",
+			icon,
+			owner,
+			action,
+			cmt.Issue.URL,
+			cmt.Issue.Title,
+			cmt.Issue.Number,
+		)
+	case github.IssuesPayload:
+		issueEvent := payload.(github.IssuesPayload)
+		issueEvents := p.c.GetMap("github.issueevents", map[string]string{
+			"opened":   "opened",
+			"reopened": "reopened",
+			"closed":   "closed",
+		})
+		action := issueEvent.Action
+		for k, v := range issueEvents {
+			if issueEvent.Action == k {
+				action = v
+				goto sendIssueEvent
+			}
+		}
+		log.Debug().Msgf("Unknown issue event: %s", issueEvent.Action)
+		return
+	sendIssueEvent:
+		repo = issueEvent.Repository.Name
+		owner = issueEvent.Sender.Login
+		msg += fmt.Sprintf("%s %s %s issue <%s|%s #%d>",
+			icon,
+			owner,
+			action,
+			issueEvent.Issue.URL,
+			issueEvent.Issue.Title,
+			issueEvent.Issue.Number,
+		)
 	default:
 		log.Error().Interface("payload", payload).Msg("unknown event payload")
 		w.WriteHeader(500)
