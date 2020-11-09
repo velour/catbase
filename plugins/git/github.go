@@ -73,7 +73,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 			pr.PullRequest.User.Login,
 			pr.PullRequest.Title,
 			pr.Repository.Name,
-			pr.PullRequest.URL,
+			pr.PullRequest.HTMLURL,
 		)
 	case github.PingPayload:
 		ping := payload.(github.PingPayload)
@@ -97,12 +97,12 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	sendCommentEvent:
 		repo = cmt.Repository.Name
-		owner = cmt.Comment.User.Login
+		owner = cmt.Repository.Owner.Login
 		msg += fmt.Sprintf("%s %s %s on <%s|%s #%d>",
 			icon,
-			owner,
+			cmt.Issue.User.Login,
 			action,
-			cmt.Issue.URL,
+			cmt.Issue.HTMLURL,
 			cmt.Issue.Title,
 			cmt.Issue.Number,
 		)
@@ -124,12 +124,12 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	sendIssueEvent:
 		repo = issueEvent.Repository.Name
-		owner = issueEvent.Sender.Login
+		owner = issueEvent.Repository.Owner.Login
 		msg += fmt.Sprintf("%s %s %s issue <%s|%s #%d>",
 			icon,
-			owner,
+			issueEvent.Issue.User.Login,
 			action,
-			issueEvent.Issue.URL,
+			issueEvent.Issue.HTMLURL,
 			issueEvent.Issue.Title,
 			issueEvent.Issue.Number,
 		)
