@@ -38,15 +38,18 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		repo = push.Repository.Name
 		owner = push.Repository.Owner.Login
 		commits := ""
-		filterBranch := p.c.Get(fmt.Sprintf("github.%s.%s.branches", owner, repo), "*")
+		filterBranches := p.c.GetArray(fmt.Sprintf("github.%s.%s.branches", owner, repo), []string{"*"})
 		if len(push.Commits) == 0 {
 			log.Debug().Msg("GitHub sent an empty changeset")
 			return
 		}
-		if filterBranch != "*" && !strings.Contains(push.Ref, filterBranch) {
-			log.Debug().Msgf("Ignoring GitHub push to %s", push.Ref)
-			return
+		for _, filterBranch := range filterBranches {
+			if filterBranch == "*" || strings.Contains(push.Ref, filterBranch) {
+				goto processBranch
+			}
 		}
+		return
+	processBranch:
 		for _, c := range push.Commits {
 			m := strings.Split(c.Message, "\n")[0]
 			commits += fmt.Sprintf("%s %s pushed to %s (<%s|%s>) %s\n",
