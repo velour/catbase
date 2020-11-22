@@ -103,7 +103,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		owner = cmt.Repository.Owner.Login
 		msg += fmt.Sprintf("%s %s %s on <%s|%s #%d>",
 			icon,
-			cmt.Issue.User.Login,
+			cmt.Sender.Login,
 			action,
 			cmt.Issue.HTMLURL,
 			cmt.Issue.Title,
@@ -130,7 +130,7 @@ func (p *GitPlugin) githubEvent(w http.ResponseWriter, r *http.Request) {
 		owner = issueEvent.Repository.Owner.Login
 		msg += fmt.Sprintf("%s %s %s issue <%s|%s #%d>",
 			icon,
-			issueEvent.Issue.User.Login,
+			issueEvent.Sender.Login,
 			action,
 			issueEvent.Issue.HTMLURL,
 			issueEvent.Issue.Title,
