@@ -12,7 +12,8 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-var nextYear = time.Date(time.Now().Year()+1, 0, 0, 0, 0, 0, 0, time.Local)
+var nextYear = time.Date(time.Now().Year()+1, time.January, 0, 0, 0, 0, 0, time.Local)
+var thisYear = time.Now().Year()
 
 type CountdownPlugin struct {
 	b  bot.Bot
@@ -52,8 +53,7 @@ func (p *CountdownPlugin) newYearRollover() {
 		logError(err, "error getting transaction")
 		return
 	}
-	year := time.Now().Year() - 1
-	q := fmt.Sprintf(`insert into counter_%d select * from counter`, year)
+	q := fmt.Sprintf(`create table counter_%d as select * from counter`, thisYear)
 	_, err = tx.Exec(q)
 	if err != nil {
 		logError(err, "error running insert into")
