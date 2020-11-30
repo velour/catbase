@@ -15,7 +15,6 @@ import (
 
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
-	"github.com/velour/catbase/plugins/countdown"
 	"github.com/velour/catbase/plugins/goals"
 	"github.com/velour/catbase/plugins/meme"
 	"github.com/velour/catbase/plugins/sms"
@@ -153,7 +152,6 @@ func main() {
 	b.AddPlugin(meme.New(b))
 	b.AddPlugin(achievements.New(b))
 	b.AddPlugin(sms.New(b))
-	b.AddPlugin(countdown.New(b))
 	b.AddPlugin(gpt2.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
