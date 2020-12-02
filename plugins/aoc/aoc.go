@@ -88,7 +88,8 @@ func (p *AOC) message(c bot.Connector, kind bot.Kind, message msg.Message, args 
 			}
 		}
 
-		msg := fmt.Sprintf("AoC <https://adventofcode.com/%d/leaderboard/private/view/%d|Leaderboard>:\n", year, boardId)
+		link := c.URLFormat("leaderboard", fmt.Sprintf("https://adventofcode.com/%d/leaderboard/private/view/%d", year, boardId))
+		msg := fmt.Sprintf("AoC %s:\n", link)
 		for _, m := range members {
 			if m.Stars == 0 {
 				continue
@@ -96,11 +97,11 @@ func (p *AOC) message(c bot.Connector, kind bot.Kind, message msg.Message, args 
 			trophy := ""
 			switch m.ID {
 			case goldID:
-				trophy = ":gold-trophy:"
+				trophy = c.Emojy(":gold-trophy:")
 			case silverID:
-				trophy = ":silver-trophy:"
+				trophy = c.Emojy(":silver-trophy:")
 			case bronzeID:
-				trophy = ":bronze-trophy:"
+				trophy = c.Emojy(":bronze-trophy:")
 			}
 			msg += fmt.Sprintf("%s has %d :star: for a score of %d%s\n", m.Name, m.Stars, m.LocalScore, trophy)
 		}

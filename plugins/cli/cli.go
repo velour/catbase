@@ -117,6 +117,10 @@ func (p *CliPlugin) Send(kind bot.Kind, args ...interface{}) (string, error) {
 func (p *CliPlugin) GetEmojiList() map[string]string { return nil }
 func (p *CliPlugin) Serve() error                    { return nil }
 func (p *CliPlugin) Who(s string) []string           { return nil }
-func (s *CliPlugin) Profile(name string) (user.User, error) {
+func (p *CliPlugin) Profile(name string) (user.User, error) {
 	return user.User{}, fmt.Errorf("unimplemented")
+}
+func (p *CliPlugin) Emojy(name string) string { return name }
+func (p *CliPlugin) URLFormat(title, url string) string {
+	return fmt.Sprintf("%s (%s)", title, url)
 }
