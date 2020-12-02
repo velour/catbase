@@ -314,3 +314,15 @@ func (i Irc) Who(channel string) []string {
 func (i Irc) Profile(string) (user.User, error) {
 	return user.User{}, fmt.Errorf("unimplemented")
 }
+
+func (i Irc) URLFormat(title, url string) string {
+	return fmt.Sprintf("%s (%s)", title, url)
+}
+
+func (i Irc) Emojy(name string) string {
+	e := i.config.GetMap("irc.emojy", map[string]string{})
+	if emojy, ok := e[name]; ok {
+		return emojy
+	}
+	return name
+}

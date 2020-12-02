@@ -682,3 +682,17 @@ func (s *SlackApp) Profile(identifier string) (user.User, error) {
 
 	return user.User{}, fmt.Errorf("user %s not found", err)
 }
+
+func (s *SlackApp) Emojy(name string) string {
+	e := s.config.GetMap("slack.emojy", map[string]string{})
+	if emojy, ok := e[name]; ok {
+		log.Debug().Msgf("Found emoji %s for %s", emojy, name)
+		return emojy
+	}
+	log.Debug().Msgf("Found no emojy for %s", name)
+	return name
+}
+
+func (s *SlackApp) URLFormat(title, url string) string {
+	return fmt.Sprintf("<%s|%s>", url, title)
+}

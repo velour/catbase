@@ -142,6 +142,12 @@ type Connector interface {
 
 	// Profile returns a user's information given an ID
 	Profile(string) (user.User, error)
+
+	// URL Format utility
+	URLFormat(title, url string) string
+
+	// Translate emojy to/from services
+	Emojy(string) string
 }
 
 // Plugin interface used for compatibility with the Plugin interface

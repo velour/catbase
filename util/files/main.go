@@ -11,25 +11,32 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 var (
-	token   = flag.String("token", "", "Slack API token")
-	channel = flag.String("channel", "", "Slack channel ID")
-	limit   = flag.Int("limit", 10000, "Number of items to return")
-	types   = flag.String("types", "images,pdfs", "Type of object")
-	path    = flag.String("path", "./", "Path to save files")
+	token     = flag.String("token", "", "Slack API token")
+	channel   = flag.String("channel", "", "Slack channel ID")
+	limit     = flag.Int("limit", 10000, "Number of items to return")
+	types     = flag.String("types", "images,pdfs,video", "Type of object")
+	path      = flag.String("path", "./", "Path to save files")
+	to        = flag.String("to", "", "Time limit in '2006-01-02T15:04:05Z07:00' format. Default -30d")
+	rateLimit = flag.Int("rate", 1, "rate limit in seconds")
 )
 
 func main() {
 	flag.Parse()
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
+	ticker := time.NewTicker(time.Second * time.Duration(*rateLimit))
+	defer ticker.Stop()
+
 	for {
 		files, count := getFiles()
+		log.Debug().Msgf("Got %d files, count is %d", len(files), count)
 		for _, f := range files {
 			downloadFile(f)
 			deleteFile(f)
@@ -37,27 +44,47 @@ func main() {
 		if count == 1 {
 			break
 		}
+		<-ticker.C
 	}
 }
 
 func getFiles() ([]slackFile, int) {
 	files := fileResp{}
 
+	var toTime time.Time
+	var err error
+
+	if *to == "" {
+		toTime = time.Now().Add(time.Hour * 24 * 30 * -1)
+	} else {
+		toTime, err = time.Parse(time.RFC3339, *to)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error reading time format")
+		}
+	}
+
 	log.Debug().Msg("Getting files")
 	body := mkReq("https://slack.com/api/files.list",
 		"token", *token,
 		"count", strconv.Itoa(*limit),
 		"types", *types,
+		"ts_to", strconv.FormatInt(toTime.Unix(), 10),
 	)
 
-	err := json.Unmarshal(body, &files)
+	err = json.Unmarshal(body, &files)
 	checkErr(err)
 
 	log.Info().
 		Int("count", files.Paging.Count).
-		Bool("ok", files.Ok)
+		Int("total", files.Paging.Total).
+		Bool("ok", files.Ok).
+		Msg("file result")
 	if !files.Ok {
-		log.Error().Interface("files", files)
+		log.Error().
+			Interface("files", files).
+			Str("body", string(body)).
+			Msg("Error getting files")
+		os.Exit(1)
 	}
 
 	return files.Files, files.Paging.Pages

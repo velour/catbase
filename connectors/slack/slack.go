@@ -734,3 +734,15 @@ func (s *Slack) Who(id string) []string {
 func (s *Slack) Profile(string) (user.User, error) {
 	return user.User{}, fmt.Errorf("unimplemented")
 }
+
+func (s *Slack) Emojy(name string) string {
+	e := s.config.GetMap("slack.emojy", map[string]string{})
+	if emojy, ok := e[name]; ok {
+		return emojy
+	}
+	return name
+}
+
+func (s *Slack) URLFormat(title, url string) string {
+	return fmt.Sprintf("<%s|%s>", url, title)
+}

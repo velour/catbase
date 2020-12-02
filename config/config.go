@@ -144,6 +144,7 @@ func (c *Config) Unset(key string) error {
 // Note, this is always a string. Use the SetArray for an array helper
 func (c *Config) Set(key, value string) error {
 	key = strings.ToLower(key)
+	value = strings.Trim(value, "`")
 	q := `insert into config (key,value) values (?, ?)
 			on conflict(key) do update set value=?;`
 	tx, err := c.Begin()

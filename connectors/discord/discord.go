@@ -219,3 +219,15 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 
 	d.event(d, bot.Message, msg)
 }
+
+func (d *Discord) Emojy(name string) string {
+	e := d.config.GetMap("discord.emojy", map[string]string{})
+	if emojy, ok := e[name]; ok {
+		return emojy
+	}
+	return name
+}
+
+func (d *Discord) URLFormat(title, url string) string {
+	return fmt.Sprintf("%s (%s)", title, url)
+}
