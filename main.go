@@ -118,6 +118,7 @@ func main() {
 	b := bot.New(c, client)
 
 	b.AddPlugin(admin.New(b))
+	b.AddPlugin(gpt2.New(b))
 	b.AddPlugin(emojifyme.New(b))
 	b.AddPlugin(first.New(b))
 	b.AddPlugin(leftpad.New(b))
@@ -154,7 +155,6 @@ func main() {
 	b.AddPlugin(achievements.New(b))
 	b.AddPlugin(sms.New(b))
 	b.AddPlugin(countdown.New(b))
-	b.AddPlugin(gpt2.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
