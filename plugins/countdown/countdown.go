@@ -12,7 +12,7 @@ import (
 	"github.com/velour/catbase/config"
 )
 
-var nextYear = time.Date(time.Now().Year()+1, time.January, 0, 0, 0, 0, 0, time.Local)
+var nextYear = time.Date(time.Now().Year()+1, time.January, 1, 0, 0, 0, 1, time.Local)
 var thisYear = time.Now().Year()
 
 type CountdownPlugin struct {
