@@ -19,7 +19,12 @@ type NewsBid struct {
 }
 
 func New(b bot.Bot) *NewsBid {
-	ws := webshit.New(b.DB())
+	ws := webshit.NewConfig(b.DB(), webshit.Config{
+		HNFeed:          b.Config().GetString("webshit.hnfeed", "topstories"),
+		HNLimit:         b.Config().GetInt("webshit.hnlimit", 10),
+		BalanceReferesh: b.Config().GetInt("webshit.balancerefresh", 100),
+		HouseName:       b.Config().GetString("webshit.housename", "house"),
+	})
 	p := &NewsBid{
 		bot: b,
 		db:  b.DB(),
