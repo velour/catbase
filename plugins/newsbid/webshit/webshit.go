@@ -3,7 +3,6 @@ package webshit
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"net/url"
 	"strconv"
 	"time"
@@ -20,12 +19,7 @@ type Config struct {
 	HNFeed          string
 	HNLimit         int
 	BalanceReferesh int
-}
-
-var DefaultConfig = Config{
-	HNFeed:          "topstories",
-	HNLimit:         10,
-	BalanceReferesh: 100,
+	HouseName       string
 }
 
 type Webshit struct {
@@ -69,10 +63,6 @@ type WeeklyResult struct {
 	WinningArticles hn.Items
 	LosingArticles  hn.Items
 	Score           int
-}
-
-func New(db *sqlx.DB) *Webshit {
-	return NewConfig(db, DefaultConfig)
 }
 
 func NewConfig(db *sqlx.DB, cfg Config) *Webshit {
@@ -158,10 +148,12 @@ func (w *Webshit) Check(last int64) ([]WeeklyResult, int64, error) {
 }
 
 func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyResult {
-
 	var wins []Bid
 	total, totalWinning := 0.0, 0.0
 	wr := map[string]WeeklyResult{}
+
+	houseName := w.config.HouseName
+	houseScore := 0
 
 	for _, b := range bids {
 		score := w.GetScore(b.User)
@@ -186,26 +178,23 @@ func (w *Webshit) checkBids(bids []Bid, storyMap map[string]hn.Item) []WeeklyRes
 				Bid:   b.BidStr,
 			}
 			rec.LosingArticles = append(rec.LosingArticles, bid)
+			houseScore += b.Bid
 		}
 		total += float64(b.Bid)
 		wr[b.User] = rec
 	}
 
 	for _, b := range wins {
-		u, _ := url.Parse(b.URL)
-		id, _ := strconv.Atoi(u.Query().Get("id"))
-		item, err := hn.GetItem(id)
-		score := item.Score
-		comments := item.Descendants
-		ratio := 1.0
-		if err != nil {
-			ratio = float64(score) / math.Max(float64(comments), 1.0)
-		}
-		payout := float64(b.Bid) / totalWinning * total * ratio
 		rec := wr[b.User]
-		rec.Won += int(payout)
-		rec.Score += int(payout)
+		rec.Won += b.Bid
+		rec.Score += b.Bid
 		wr[b.User] = rec
+	}
+
+	wr[houseName] = WeeklyResult{
+		User:  houseName,
+		Score: w.GetScore(houseName) + houseScore,
+		Won:   houseScore,
 	}
 
 	return wrMapToSlice(wr)
@@ -350,8 +339,8 @@ func (w *Webshit) getStoryByURL(URL string) (hn.Item, error) {
 func (w *Webshit) updateScores(results []WeeklyResult) error {
 	tx := w.db.MustBegin()
 	for _, res := range results {
-		if _, err := tx.Exec(`update webshit_balances set score=? where user=?`,
-			res.Score, res.User); err != nil {
+		if _, err := tx.Exec(`insert into webshit_balances (user, balance, score) values (?, 0, ?) on conflict(user) do update set score=excluded.score`,
+			res.User, res.Score); err != nil {
 			if err := tx.Rollback(); err != nil {
 				return err
 			}
