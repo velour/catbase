@@ -102,7 +102,7 @@ var memeIndex = `
                             :items="results"
                             :fields="fields">
                         <template v-slot:cell(config)="data">
-                            <pre>{{data.item.config}}</pre>
+                            <pre>{{data.item.config | pretty}}</pre>
                             <b-button @click="startEdit(data.item)">Edit</b-button>
                         </template>
                         <template v-slot:cell(image)="data">
@@ -133,7 +133,6 @@ var memeIndex = `
             editConfig: null,
             fields: [
                 { key: 'name', sortable: true },
-                { key: 'url', sortable: true },
                 { key: 'config' },
                 { key: 'image' }
             ]
@@ -146,6 +145,11 @@ var memeIndex = `
                 .catch(err => console.log(err))
             this.refresh();
         },
+		filters: {
+			pretty: function(value) {
+				return JSON.stringify(JSON.parse(value), null, 2);
+			}
+		},
         methods: {
             refresh: function() {
                 axios.get('/meme/all')
