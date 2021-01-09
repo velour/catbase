@@ -32,7 +32,7 @@ var factoidIndex = `
 	<b-navbar>
 		<b-navbar-brand>Factoids</b-navbar-brand>
 		<b-navbar-nav>
-			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Factoid'">{{ "{{ item.Name }}" }}</b-nav-item>
+			<b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Factoid'">{{ item.name }}</b-nav-item>
 		</b-navbar-nav>
 	</b-navbar>
     <b-alert
@@ -40,7 +40,7 @@ var factoidIndex = `
             variant="error"
             v-if="err"
             @dismissed="err = ''">
-        {{ "{{ err }}" }}
+        {{ err }}
     </b-alert>
     <b-form @submit="runQuery">
     <b-container>
@@ -74,7 +74,7 @@ var factoidIndex = `
         router,
         data: {
             err: '',
-			nav: {{ .Nav }},
+			nav: [],
             query: '',
             results: [],
             fields: [
@@ -85,6 +85,11 @@ var factoidIndex = `
             ]
         },
         mounted() {
+            axios.get('/nav')
+                .then(resp => {
+                    this.nav = resp.data;
+                })
+                .catch(err => console.log(err))
             if (this.$route.query.query) {
                 this.query = this.$route.query.query;
                 this.runQuery()

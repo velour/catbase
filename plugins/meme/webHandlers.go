@@ -3,7 +3,6 @@ package meme
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"net/url"
 	"path"
@@ -130,8 +129,7 @@ func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *MemePlugin) webRoot(w http.ResponseWriter, r *http.Request) {
-	var tpl = template.Must(template.New("factoidIndex").Parse(string(memeIndex)))
-	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
+	fmt.Fprint(w, memeIndex)
 }
 
 func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {

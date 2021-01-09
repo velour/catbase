@@ -24,14 +24,14 @@ var indexHTML = `
 	<b-navbar>
 		<b-navbar-brand>CLI</b-navbar-brand>
 		<b-navbar-nav>
-			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'CLI'">{{ "{{ item.Name }}" }}</b-nav-item>
+			<b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'CLI'">{{ item.name }}</b-nav-item>
 		</b-navbar-nav>
 	</b-navbar>
     <b-alert
             dismissable
             variant="error"
 			:show="err">
-        {{ "{{ err }}" }}
+        {{ err }}
     </b-alert>
     <b-container>
 		<b-row>
@@ -80,12 +80,19 @@ var indexHTML = `
         el: '#app',
         data: {
             err: '',
-			nav: {{ .Nav }},
+			nav: [],
             answer: '',
             correct: 0,
             textarea: [],
             user: '',
             input: '',
+        },
+        mounted: function() {
+            axios.get('/nav')
+                .then(resp => {
+                    this.nav = resp.data;
+                })
+                .catch(err => console.log(err))
         },
         computed: {
             authenticated: function() {

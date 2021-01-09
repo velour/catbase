@@ -24,7 +24,7 @@ var varIndex = `
 	<b-navbar>
 		<b-navbar-brand>Variables</b-navbar-brand>
 		<b-navbar-nav>
-			<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Variables'">{{ "{{ item.Name }}" }}</b-nav-item>
+			<b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Variables'">{{ item.name }}</b-nav-item>
 		</b-navbar-nav>
 	</b-navbar>
     <b-alert
@@ -32,7 +32,7 @@ var varIndex = `
             variant="error"
             v-if="err"
             @dismissed="err = ''">
-        {{ "{{ err }}" }}
+        {{ err }}
     </b-alert>
     <b-container>
         <b-table
@@ -48,7 +48,7 @@ var varIndex = `
         el: '#app',
         data: {
             err: '',
-			nav: {{ .Nav }},
+			nav: [],
             vars: [],
             sortBy: 'key',
             fields: [
@@ -58,6 +58,11 @@ var varIndex = `
         },
         mounted() {
             this.getData();
+            axios.get('/nav')
+                .then(resp => {
+                    this.nav = resp.data;
+                })
+                .catch(err => console.log(err))
         },
         methods: {
             getData: function() {
