@@ -46,7 +46,7 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 	for n, u := range memes {
 		config, ok := configs[n]
 		if !ok {
-			b, _ := json.Marshal(defaultFormatConfig)
+			b, _ := json.Marshal(defaultFormatConfig())
 			config = string(b)
 		}
 		realURL, err := url.Parse(u)

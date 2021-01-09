@@ -42,6 +42,7 @@ type memeText struct {
 	XPerc float64 `json:"x"`
 	YPerc float64 `json:"y"`
 	Text  string  `json:"t"`
+	Caps  bool    `json:"c"`
 }
 
 var horizon = 24 * 7
@@ -329,8 +330,8 @@ func (p *MemePlugin) findFontSize(config []memeText, w, h int, sizes []float64) 
 
 func defaultFormatConfig() []memeText {
 	return []memeText{
-		{XPerc: 0.5, YPerc: 0.05},
-		{XPerc: 0.5, YPerc: 0.95},
+		{XPerc: 0.5, YPerc: 0.05, Caps: true},
+		{XPerc: 0.5, YPerc: 0.95, Caps: true},
 	}
 }
 
@@ -394,6 +395,12 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 	m.DrawImage(img, 0, 0)
 	fontLocation := p.c.Get("meme.font", "impact.ttf")
 	m.LoadFontFace(fontLocation, p.findFontSize(config, w, h, fontSizes))
+
+	for i, c := range config {
+		if c.Caps {
+			config[i].Text = strings.ToUpper(c.Text)
+		}
+	}
 
 	// Apply black stroke
 	m.SetHexColor("#000")
