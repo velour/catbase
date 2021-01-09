@@ -147,6 +147,9 @@ var memeIndex = `
         },
 		filters: {
 			pretty: function(value) {
+				if (!value) {
+					return ""
+				}
 				return JSON.stringify(JSON.parse(value), null, 2);
 			}
 		},
