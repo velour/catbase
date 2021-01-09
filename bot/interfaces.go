@@ -37,6 +37,8 @@ const (
 
 type EphemeralID string
 
+type UnfurlLinks bool
+
 type ImageAttachment struct {
 	URL    string
 	AltTxt string

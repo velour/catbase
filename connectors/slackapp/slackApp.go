@@ -281,6 +281,12 @@ func (s *SlackApp) sendMessage(channel, message string, meMessage bool, args ...
 					ImageURL: a.URL,
 					Text:     a.AltTxt,
 				})
+			case bot.UnfurlLinks:
+				if a {
+					options = append(options, slack.MsgOptionEnableLinkUnfurl())
+				} else {
+					options = append(options, slack.MsgOptionDisableLinkUnfurl())
+				}
 			}
 		}
 	}

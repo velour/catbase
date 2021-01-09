@@ -53,6 +53,6 @@ func (p *GitPlugin) gitlabEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	chs := p.c.GetArray(fmt.Sprintf("gitlab.%s.channels", owner), []string{})
 	for _, ch := range chs {
-		p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+		p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg, bot.UnfurlLinks(false))
 	}
 }

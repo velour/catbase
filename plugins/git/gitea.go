@@ -44,6 +44,6 @@ func (p *GitPlugin) giteaEvent(w http.ResponseWriter, r *http.Request) {
 
 	chs := p.c.GetArray(fmt.Sprintf("gitea.%s.%s.channels", org, repo), []string{})
 	for _, ch := range chs {
-		p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+		p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg, bot.UnfurlLinks(false))
 	}
 }
