@@ -25,7 +25,7 @@ var memeIndex = `
     <b-navbar>
         <b-navbar-brand>Memes</b-navbar-brand>
         <b-navbar-nav>
-            <b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Meme'">{{ "{{ item.Name }}" }}</b-nav-item>
+            <b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Meme'">{{ item.name }}</b-nav-item>
         </b-navbar-nav>
     </b-navbar>
     <b-alert
@@ -33,7 +33,7 @@ var memeIndex = `
             variant="error"
             v-if="err"
             @dismissed="err = ''">
-        {{ "{{ err }}" }}
+        {{ err }}
     </b-alert>
     <b-form @submit="addMeme">
         <b-container>
@@ -58,7 +58,7 @@ var memeIndex = `
                             :items="results"
                             :fields="fields">
                         <template v-slot:cell(config)="data">
-							<pre>{{ "{{data.item.config}}" }}</pre>
+							<pre>{{data.item.config}}</pre>
                         </template>
                         <template v-slot:cell(image)="data">
                             <b-img :src="data.item.url" rounded block fluid />
@@ -80,7 +80,7 @@ var memeIndex = `
     router,
     data: {
       err: '',
-      nav: {{ .Nav }},
+      nav: [],
       name: "",
       url: "",
       config: "",
@@ -93,9 +93,12 @@ var memeIndex = `
       ]
     },
     mounted() {
+		axios.get('/nav')
+			.then(resp => {
+				this.nav = resp.data;
+			})
+			.catch(err => console.log(err))
         this.refresh();
-    },
-    computed: {
     },
     methods: {
       refresh: function() {

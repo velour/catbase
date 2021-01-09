@@ -1,16 +1,24 @@
 package bot
 
 import (
-	"html/template"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 )
 
 func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
-	context := make(map[string]interface{})
-	context["Nav"] = b.GetWebNavigation()
-	t := template.Must(template.New("rootIndex").Parse(rootIndex))
-	t.Execute(w, context)
+	fmt.Fprint(w, rootIndex)
+}
+
+func (b *bot) serveNav(w http.ResponseWriter, r *http.Request) {
+	enc := json.NewEncoder(w)
+	err := enc.Encode(b.GetWebNavigation())
+	if err != nil {
+		jsonErr, _ := json.Marshal(err)
+		w.WriteHeader(500)
+		w.Write(jsonErr)
+	}
 }
 
 // GetWebNavigation returns a list of bootstrap-vue <b-nav-item> links
@@ -51,12 +59,12 @@ var rootIndex = `
 <body>
 
 <div id="app">
-	<b-navbar>
-		<b-navbar-brand>catbase</b-navbar-brand>
-		<b-navbar-nav>
-			<b-nav-item v-for="item in nav" :href="item.URL">{{ "{{ item.Name }}" }}</b-nav-item>
-		</b-navbar-nav>
-	</b-navbar>
+    <b-navbar>
+        <b-navbar-brand>catbase</b-navbar-brand>
+        <b-navbar-nav>
+            <b-nav-item v-for="item in nav" :href="item.url">{{ item.name }}</b-nav-item>
+        </b-navbar-nav>
+    </b-navbar>
 </div>
 
 <script>
@@ -64,8 +72,15 @@ var rootIndex = `
         el: '#app',
         data: {
             err: '',
-			nav: {{ .Nav }},
+            nav: [],
         },
+        mounted: function() {
+            axios.get('/nav')
+                .then(resp => {
+                    this.nav = resp.data;
+                })
+                .catch(err => console.log(err))
+        }
     })
 </script>
 </body>

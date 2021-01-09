@@ -80,5 +80,4 @@ func (p *GitPlugin) registerWeb() {
 	http.HandleFunc("/git/gitea/event", p.giteaEvent)
 	http.HandleFunc("/git/github/event", p.githubEvent)
 	http.HandleFunc("/git/gitlab/event", p.gitlabEvent)
-	p.b.RegisterWeb("/git", "Git")
 }

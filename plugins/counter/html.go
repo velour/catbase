@@ -22,14 +22,14 @@ var html = `
 			<b-navbar>
 				<b-navbar-brand>Counters</b-navbar-brand>
 				<b-navbar-nav>
-					<b-nav-item v-for="item in nav" :href="item.URL" :active="item.Name === 'Counter'">{{ "{{ item.Name }}" }}</b-nav-item>
+					<b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Counter'">{{ item.name }}</b-nav-item>
 				</b-navbar-nav>
 			</b-navbar>
             <b-alert
                 dismissable
 				:show="err"
                 variant="error">
-                    {{ "{{ err }}" }}
+                    {{ err }}
             </b-alert>
             <b-container>
                 <b-row>
@@ -37,14 +37,14 @@ var html = `
                     <b-col><b-input v-model="answer"></b-col>
                 </b-row>
                 <b-row v-for="(counter, user) in counters">
-                    {{ "{{ user }}" }}:
+                    {{ user }}:
                     <b-container>
                         <b-row v-for="(count, thing) in counter">
                             <b-col offset="1">
-                            {{ "{{ thing }}" }}:
+                            {{ thing }}:
                             </b-col>
                             <b-col>
-                                {{ "{{ count }}" }}
+                                {{ count }}
                             </b-col>
                             <b-col cols="2">
                                 <button @click="subtract(user,thing,count)">-</button>
@@ -72,12 +72,17 @@ var html = `
         	el: '#app',
         	data: {
                 err: '',
-				nav: {{ .Nav }},
+				nav: [],
                 answer: '',
                 correct: 0,
                 counters: {}
         	},
             mounted() {
+				axios.get('/nav')
+					.then(resp => {
+						this.nav = resp.data;
+					})
+                .catch(err => console.log(err))
                 axios.get('/counter/api')
                     .then(resp => (this.counters = convertData(resp.data)))
                     .catch(err => (this.err = err));

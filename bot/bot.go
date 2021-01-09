@@ -61,7 +61,8 @@ type bot struct {
 }
 
 type EndPoint struct {
-	Name, URL string
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 // Variable represents a $var replacement
@@ -104,6 +105,7 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.RefreshPluginWhitelist()
 
 	http.HandleFunc("/", bot.serveRoot)
+	http.HandleFunc("/nav", bot.serveNav)
 
 	connector.RegisterEvent(bot.Receive)
 

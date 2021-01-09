@@ -5,7 +5,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"time"
 
@@ -91,10 +90,8 @@ func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-var tpl = template.Must(template.New("factoidIndex").Parse(indexHTML))
-
 func (p *CliPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
-	tpl.Execute(w, struct{ Nav []bot.EndPoint }{p.bot.GetWebNavigation()})
+	fmt.Fprint(w, indexHTML)
 }
 
 // Completing the Connector interface, but will not actually be a connector
