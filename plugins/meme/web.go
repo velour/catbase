@@ -35,7 +35,51 @@ var memeIndex = `
             @dismissed="err = ''">
         {{ err }}
     </b-alert>
-    <b-form @submit="addMeme">
+    <b-form @submit="saveConfig" v-if="editConfig">
+        <b-container>
+            <b-row>
+                <b-col cols="1">
+                    Name:
+                </b-col>
+                <b-col>
+                    {{ editConfig.name }}
+                </b-col>
+            </b-row>
+            <b-row>
+                <b-col cols="1">
+                    Image:
+                </b-col>
+                <b-col>
+                    <img :src="editConfig.url" :alt="editConfig.url" rounded block fluid />
+                </b-col>
+            </b-row>
+            <b-row>
+                <b-col cols="1">
+                    URL:
+                </b-col>
+                <b-col>
+                    <b-input placeholder="URL..." v-model="editConfig.url"></b-input>
+                </b-col>
+            </b-row>
+            <b-row>
+                <b-col cols="1">
+                    Config:
+                </b-col>
+                <b-col>
+                    <b-form-textarea v-model="editConfig.config" rows="10">
+                    </b-form-textarea>
+                </b-col>
+            </b-row>
+            <b-row>
+                <b-button type="submit" variant="primary">Save</b-button>
+                &nbsp;
+                <b-button @click="rm" variant="danger">Delete</b-button>
+                &nbsp;
+                <b-button type="cancel" @click="editConfig = null" variant="secondary">Cancel</b-button>
+            </b-row>
+        </b-container>
+    </b-form>
+    <b-form @submit="addMeme" v-if="!editConfig">
         <b-container>
             <b-row>
                 <b-col cols="3">
@@ -58,7 +102,8 @@ var memeIndex = `
                             :items="results"
                             :fields="fields">
                         <template v-slot:cell(config)="data">
-							<pre>{{data.item.config}}</pre>
+                            <pre>{{data.item.config}}</pre>
+                            <b-button @click="startEdit(data.item)">Edit</b-button>
                         </template>
                         <template v-slot:cell(image)="data">
                             <b-img :src="data.item.url" rounded block fluid />
@@ -71,61 +116,92 @@ var memeIndex = `
 </div>
 
 <script>
-  var router = new VueRouter({
-    mode: 'history',
-    routes: []
-  });
-  var app = new Vue({
-    el: '#app',
-    router,
-    data: {
-      err: '',
-      nav: [],
-      name: "",
-      url: "",
-      config: "",
-      results: [],
-      fields: [
-        { key: 'name', sortable: true },
-        { key: 'url', sortable: true },
-        { key: 'config' },
-        { key: 'image' }
-      ]
-    },
-    mounted() {
-		axios.get('/nav')
-			.then(resp => {
-				this.nav = resp.data;
-			})
-			.catch(err => console.log(err))
-        this.refresh();
-    },
-    methods: {
-      refresh: function() {
-        axios.get('/meme/all')
-          .catch(err => (this.err = err))
-          .then(resp => {
-            this.results = resp.data
-          })
-      },
-      addMeme: function(evt) {
-        if (evt) {
-          evt.preventDefault();
-          evt.stopPropagation()
+    var router = new VueRouter({
+        mode: 'history',
+        routes: []
+    });
+    var app = new Vue({
+        el: '#app',
+        router,
+        data: {
+            err: '',
+            nav: [],
+            name: '',
+            url: '',
+            config: '',
+            results: [],
+            editConfig: null,
+            fields: [
+                { key: 'name', sortable: true },
+                { key: 'url', sortable: true },
+                { key: 'config' },
+                { key: 'image' }
+            ]
+        },
+        mounted() {
+            axios.get('/nav')
+                .then(resp => {
+                    this.nav = resp.data;
+                })
+                .catch(err => console.log(err))
+            this.refresh();
+        },
+        methods: {
+            refresh: function() {
+                axios.get('/meme/all')
+                    .catch(err => (this.err = err))
+                    .then(resp => {
+                        this.results = resp.data
+                    })
+            },
+            addMeme: function(evt) {
+                if (evt) {
+                    evt.preventDefault();
+                    evt.stopPropagation()
+                }
+                if (this.name && this.url)
+                    axios.post('/meme/add', {name: this.name, url: this.url, config: this.config})
+                        .then(resp => {
+                            this.results = resp.data;
+                            this.name = "";
+                            this.url = "";
+                            this.config = "";
+                            this.refresh();
+                        })
+                        .catch(err => (this.err = err));
+            },
+            startEdit: function(item) {
+                this.editConfig = item;
+            },
+            saveConfig: function(evt) {
+                if (evt) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                }
+                if (this.editConfig && this.editConfig.name && this.editConfig.url) {
+                    axios.post('/meme/add', this.editConfig)
+                    .then(resp => {
+                        this.results = resp.data;
+                        this.editConfig = null;
+                        this.refresh();
+                    })
+                    .catch(err => this.err = err);
+                }
+            },
+			rm: function(evt) {
+				if (evt) {
+					evt.preventDefault();
+					evt.stopPropagation();
+				}
+				axios.delete('/meme/rm', { data: this.editConfig })
+					.then(resp => {
+						this.editConfig = null;
+						this.refresh();
+					})
+					.catch(err => this.err = err);
+			}
         }
-        if (this.name && this.url)
-            axios.post('/meme/add', {name: this.name, url: this.url, config: this.config})
-              .then(resp => {
-                this.results = resp.data;
-                this.name = "";
-                this.url = "";
-                this.config = "";
-                this.refresh();
-              })
-              .catch(err => (this.err = err));
-      }
-    }
-  })
+    })
 </script>
 </body>
 </html>
