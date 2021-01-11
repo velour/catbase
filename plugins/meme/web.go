@@ -200,12 +200,14 @@ var memeIndex = `
 					evt.preventDefault();
 					evt.stopPropagation();
 				}
-				axios.delete('/meme/rm', { data: this.editConfig })
-					.then(resp => {
-						this.editConfig = null;
-						this.refresh();
-					})
-					.catch(err => this.err = err);
+				if (confirm("Are you sure you want to delete this meme?")) {
+					axios.delete('/meme/rm', { data: this.editConfig })
+						.then(resp => {
+							this.editConfig = null;
+							this.refresh();
+						})
+						.catch(err => this.err = err);
+				}
 			}
         }
     })
