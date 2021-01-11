@@ -122,6 +122,10 @@ func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
 	formats[values.Name] = values.URL
 	err = p.c.SetMap("meme.memes", formats)
 	checkError(err)
+
+	if values.Config == "" {
+		values.Config = defaultFormatConfigJSON()
+	}
 	configs := p.c.GetMap("meme.memeconfigs", map[string]string{})
 	configs[values.Name] = values.Config
 	err = p.c.SetMap("meme.memeconfigs", configs)

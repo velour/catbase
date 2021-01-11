@@ -41,7 +41,7 @@ type cachedImage struct {
 type memeText struct {
 	XPerc float64 `json:"x"`
 	YPerc float64 `json:"y"`
-	Text  string  `json:"t"`
+	Text  string  `json:"t",omitempty`
 	Caps  bool    `json:"c"`
 }
 
@@ -333,6 +333,11 @@ func defaultFormatConfig() []memeText {
 		{XPerc: 0.5, YPerc: 0.05, Caps: true},
 		{XPerc: 0.5, YPerc: 0.95, Caps: true},
 	}
+}
+
+func defaultFormatConfigJSON() string {
+	c, _ := json.Marshal(defaultFormatConfig())
+	return string(c)
 }
 
 func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) (string, int, int, error) {
