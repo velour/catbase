@@ -54,6 +54,4 @@ ENV TZ America/New_York
 RUN git clone https://github.com/chrissexton/rank-amateur-cowsay.git cowsay && cd cowsay && ./install.sh
 RUN cd $SRC_DIR; go get ./...; go build -o /app/catbase
 
-RUN git clone https://gitlab.com/DavidGriffith/frotz.git frotz && cd frotz && make dfrotz && cp dfrotz /app
-
 ENTRYPOINT ["/app/catbase", "-db=/app/var/catbase.db", "-debug"]
