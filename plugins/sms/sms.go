@@ -31,7 +31,12 @@ func New(b bot.Bot) *SMSPlugin {
 	}
 	plugin.setup()
 	plugin.registerWeb()
-	b.Register(plugin, bot.Message, plugin.message)
+
+	b.RegisterRegex(plugin, bot.Message, deleteRegex, plugin.deleteCmd)
+	b.RegisterRegex(plugin, bot.Message, sendRegex, plugin.sendCmd)
+	b.RegisterRegex(plugin, bot.Message, regSomeoneRegex, plugin.registerOtherCmd)
+	b.RegisterRegex(plugin, bot.Message, regSelfRegex, plugin.registerSelfCmd)
+
 	b.Register(plugin, bot.Help, plugin.help)
 	return plugin
 }
@@ -46,9 +51,10 @@ func (p *SMSPlugin) checkNumber(num string) (string, error) {
 	return num, nil
 }
 
-var regRegex = regexp.MustCompile(`(?i)my sms number is (\d+)`)
-var reg2Regex = regexp.MustCompile(`(?i)register sms for (?P<name>\S+) (\d+)`)
+var regSelfRegex = regexp.MustCompile(`(?i)my sms number is (?P<number>\d+)`)
+var regSomeoneRegex = regexp.MustCompile(`(?i)register sms for (?P<name>\S+) (?P<number>\d+)`)
 var sendRegex = regexp.MustCompile(`(?i)send sms to (?P<name>\S+) (?P<body>.+)`)
+var deleteRegex = regexp.MustCompile(`(?i)delete my sms$`)
 
 // Send will send a text to a registered user, who
 func (p *SMSPlugin) Send(who, message string) error {
@@ -59,67 +65,15 @@ func (p *SMSPlugin) Send(who, message string) error {
 	sid := p.c.Get("TWILIOSID", "")
 	token := p.c.Get("TWILIOTOKEN", "")
 	myNum := p.c.Get("TWILIONUMBER", "")
+
+	if sid == "" || token == "" || myNum == "" {
+		return fmt.Errorf("this bot is not configured for Twilio")
+	}
+
 	client := twilio.NewClient(sid, token, nil)
 
 	_, err = client.Messages.SendMessage(myNum, num, message, nil)
 	return err
-}
-
-func (p *SMSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	ch, chName := message.Channel, message.ChannelName
-	body := strings.TrimSpace(message.Body)
-	who := message.User.Name
-
-	log.Debug().Bytes("body", []byte(body)).Msgf("body: '%s', match: %v, %#v", body, sendRegex.MatchString(body), sendRegex.FindStringSubmatch(body))
-
-	if strings.ToLower(body) == "delete my sms" {
-		if err := p.delete(who); err != nil {
-			p.b.Send(c, bot.Message, ch, "Something went wrong.")
-			return true
-		}
-		p.b.Send(c, bot.Message, ch, "Okay.")
-		return true
-	}
-
-	if sendRegex.MatchString(body) {
-		subs := sendRegex.FindStringSubmatch(body)
-		if len(subs) != 3 {
-			p.b.Send(c, bot.Message, ch, fmt.Sprintf("I didn't send the message. Your request makes no sense."))
-			return true
-		}
-		user, body := subs[1], fmt.Sprintf("#%s: %s", chName, subs[2])
-		err := p.Send(user, body)
-		if err != nil {
-			p.b.Send(c, bot.Message, ch, fmt.Sprintf("I didn't send the message, %s", err))
-			return true
-		}
-		p.b.Send(c, bot.Message, ch, "I sent a message to them.")
-		return true
-	}
-
-	if reg2Regex.MatchString(body) {
-		subs := reg2Regex.FindStringSubmatch(body)
-		if subs == nil || len(subs) != 3 {
-			p.b.Send(c, bot.Message, ch, fmt.Sprintf("if you're trying to register somebody, give me a "+
-				"message of the format: `%s`", reg2Regex))
-			return true
-		}
-
-		return p.reg(c, ch, subs[1], subs[2])
-	}
-
-	if regRegex.MatchString(body) {
-		subs := regRegex.FindStringSubmatch(body)
-		if subs == nil || len(subs) != 2 {
-			p.b.Send(c, bot.Message, ch, fmt.Sprintf("if you're trying to register a number, give me a "+
-				"message of the format: `%s`", regRegex))
-			return true
-		}
-
-		return p.reg(c, ch, who, subs[1])
-
-	}
-	return false
 }
 
 func (p *SMSPlugin) reg(c bot.Connector, ch, who, num string) bool {
@@ -152,8 +106,8 @@ func (p *SMSPlugin) reg(c bot.Connector, ch, who, num string) bool {
 
 func (p *SMSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	ch := message.Channel
-	m := fmt.Sprintf("You can register your number with: `%s`", regRegex)
-	m += fmt.Sprintf("\nYou can register somebody else with: `%s`", reg2Regex)
+	m := fmt.Sprintf("You can register your number with: `%s`", regSelfRegex)
+	m += fmt.Sprintf("\nYou can register somebody else with: `%s`", regSomeoneRegex)
 	m += fmt.Sprintf("\nYou can send a message to a user with: `%s`", sendRegex)
 	m += "\nYou can deregister with: `delete my sms`"
 	m += fmt.Sprintf("\nAll messages sent to %s will come to the channel.",
@@ -243,4 +197,56 @@ func (p *SMSPlugin) setup() {
 	if err != nil {
 		log.Fatal().Err(err).Msgf("could not create sms table")
 	}
+}
+
+func (p *SMSPlugin) deleteCmd(r bot.Request) bool {
+	ch := r.Msg.Channel
+	if err := p.delete(r.Msg.User.Name); err != nil {
+		p.b.Send(r.Conn, bot.Message, ch, "Something went wrong.")
+		return true
+	}
+	p.b.Send(r.Conn, bot.Message, ch, "Okay.")
+	return true
+}
+
+func (p *SMSPlugin) sendCmd(r bot.Request) bool {
+	if r.Msg.User.Name == p.c.Get("nick", "") {
+		return false
+	}
+	ch := r.Msg.Channel
+	chName := r.Msg.ChannelName
+	c := r.Conn
+	if r.Values["name"] == "" || r.Values["body"] == "" {
+		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I didn't send the message. Your request makes no sense."))
+		return true
+	}
+	user, body := r.Values["name"], fmt.Sprintf("#%s: %s", chName, r.Values["body"])
+	err := p.Send(user, body)
+	if err != nil {
+		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I didn't send the message, %s", err))
+		return true
+	}
+	p.b.Send(c, bot.Message, ch, "I sent a message to them.")
+	return true
+}
+
+func (p *SMSPlugin) registerOtherCmd(r bot.Request) bool {
+	ch := r.Msg.Channel
+	if r.Values["name"] == "" || r.Values["number"] == "" {
+		p.b.Send(r.Conn, bot.Message, ch, fmt.Sprintf("if you're trying to register somebody, give me a "+
+			"message of the format: `%s`", regSomeoneRegex))
+		return true
+	}
+
+	return p.reg(r.Conn, ch, r.Values["name"], r.Values["number"])
+}
+
+func (p *SMSPlugin) registerSelfCmd(r bot.Request) bool {
+	ch := r.Msg.Channel
+	who := r.Msg.User.Name
+	if r.Values["number"] == "" {
+		p.b.Send(r.Conn, bot.Message, ch, fmt.Sprintf("if you're trying to register a number, give me a "+
+			"message of the format: `%s`", regSelfRegex))
+	}
+	return p.reg(r.Conn, ch, who, r.Values["number"])
 }

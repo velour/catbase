@@ -3,6 +3,8 @@
 package bot
 
 import (
+	"regexp"
+
 	"github.com/jmoiron/sqlx"
 
 	"github.com/velour/catbase/bot/msg"
@@ -46,9 +48,20 @@ type ImageAttachment struct {
 	Height int
 }
 
+type Request struct {
+	Conn   Connector
+	Kind   Kind
+	Msg    msg.Message
+	Values RegexValues
+	Args   []interface{}
+}
+
 type Kind int
 type Callback func(Connector, Kind, msg.Message, ...interface{}) bool
-type CallbackMap map[string]map[Kind][]Callback
+type ResponseHandler func(Request) bool
+type CallbackMap map[string]map[Kind]map[*regexp.Regexp][]ResponseHandler
+
+type RegexValues map[string]string
 
 // b interface serves to allow mocking of the actual bot
 type Bot interface {
@@ -76,6 +89,10 @@ type Bot interface {
 	// Bot receives from a Connector.
 	// The Kind arg should be one of bot.Message/Reply/Action/etc
 	Receive(Connector, Kind, msg.Message, ...interface{}) bool
+
+	// Register a plugin callback
+	// Kind will be matched to the event for the callback
+	RegisterRegex(Plugin, Kind, *regexp.Regexp, ResponseHandler)
 
 	// Register a plugin callback
 	// Kind will be matched to the event for the callback

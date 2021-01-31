@@ -41,11 +41,34 @@ RET:
 	return true
 }
 
+func parseValues(r *regexp.Regexp, body string) RegexValues {
+	out := RegexValues{}
+	subs := r.FindStringSubmatch(body)
+	if len(subs) == 0 {
+		return out
+	}
+	for i, n := range r.SubexpNames() {
+		out[n] = subs[i]
+	}
+	return out
+}
+
 func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
 	t := reflect.TypeOf(plugin).String()
-	for _, cb := range b.callbacks[t][evt] {
-		if cb(conn, evt, message, args...) {
-			return true
+	for r, cbs := range b.callbacks[t][evt] {
+		if r.MatchString(message.Body) {
+			for _, cb := range cbs {
+				resp := Request{
+					Conn:   conn,
+					Kind:   evt,
+					Msg:    message,
+					Values: parseValues(r, message.Body),
+					Args:   args,
+				}
+				if cb(resp) {
+					return true
+				}
+			}
 		}
 	}
 	return false
