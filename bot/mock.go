@@ -5,6 +5,7 @@ package bot
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -51,10 +52,11 @@ func (mb *MockBot) Send(c Connector, kind Kind, args ...interface{}) (string, er
 	}
 	return "ERR", fmt.Errorf("Mesasge type unhandled")
 }
-func (mb *MockBot) AddPlugin(f Plugin)                        {}
-func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback) {}
-func (mb *MockBot) RegisterWeb(_, _ string)                   {}
-func (mb *MockBot) GetWebNavigation() []EndPoint              { return nil }
+func (mb *MockBot) AddPlugin(f Plugin)                                                     {}
+func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)                              {}
+func (mb *MockBot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, h ResponseHandler) {}
+func (mb *MockBot) RegisterWeb(_, _ string)                                                {}
+func (mb *MockBot) GetWebNavigation() []EndPoint                                           { return nil }
 func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
 	return false
 }

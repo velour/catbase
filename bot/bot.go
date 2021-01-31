@@ -230,16 +230,29 @@ func (b *bot) RegisterFilter(name string, f func(string) string) {
 	b.filters[name] = f
 }
 
-// Register a callback
-func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
+// RegisterRegex does what register does, but with a matcher
+func (b *bot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, resp ResponseHandler) {
 	t := reflect.TypeOf(p).String()
 	if _, ok := b.callbacks[t]; !ok {
-		b.callbacks[t] = make(map[Kind][]Callback)
+		b.callbacks[t] = make(map[Kind]map[*regexp.Regexp][]ResponseHandler)
 	}
 	if _, ok := b.callbacks[t][kind]; !ok {
-		b.callbacks[t][kind] = []Callback{}
+		b.callbacks[t][kind] = map[*regexp.Regexp][]ResponseHandler{}
 	}
-	b.callbacks[t][kind] = append(b.callbacks[t][kind], cb)
+	if _, ok := b.callbacks[t][kind][r]; !ok {
+		b.callbacks[t][kind][r] = []ResponseHandler{}
+	}
+	b.callbacks[t][kind][r] = append(b.callbacks[t][kind][r], resp)
+}
+
+// Register a callback
+// This function should be considered deprecated.
+func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
+	r := regexp.MustCompile(`.*`)
+	resp := func(r Request) bool {
+		return cb(r.Conn, r.Kind, r.Msg, r.Args...)
+	}
+	b.RegisterRegex(p, kind, r, resp)
 }
 
 func (b *bot) RegisterWeb(root, name string) {
