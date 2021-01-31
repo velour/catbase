@@ -94,6 +94,10 @@ type Bot interface {
 	// Kind will be matched to the event for the callback
 	RegisterRegex(Plugin, Kind, *regexp.Regexp, ResponseHandler)
 
+	// Register a plugin callback filtering non-commands out
+	// Kind will be matched to the event for the callback
+	RegisterRegexCmd(Plugin, Kind, *regexp.Regexp, ResponseHandler)
+
 	// Register a plugin callback
 	// Kind will be matched to the event for the callback
 	Register(Plugin, Kind, Callback)
