@@ -245,6 +245,17 @@ func (b *bot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, resp Response
 	b.callbacks[t][kind][r] = append(b.callbacks[t][kind][r], resp)
 }
 
+// RegisterRegexCmd is a shortcut to filter non-command messages from a registration
+func (b *bot) RegisterRegexCmd(p Plugin, kind Kind, r *regexp.Regexp, resp ResponseHandler) {
+	newResp := func(req Request) bool {
+		if !req.Msg.Command {
+			return false
+		}
+		return resp(req)
+	}
+	b.RegisterRegex(p, kind, r, newResp)
+}
+
 // Register a callback
 // This function should be considered deprecated.
 func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
