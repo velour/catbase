@@ -31,7 +31,11 @@ func New(b bot.Bot) *AchievementsPlugin {
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to create achievements tables")
 	}
-	b.Register(ap, bot.Message, ap.message)
+
+	b.RegisterRegexCmd(ap, bot.Message, grantRegex, ap.grantCmd)
+	b.RegisterRegexCmd(ap, bot.Message, createRegex, ap.createCmd)
+	b.RegisterRegexCmd(ap, bot.Message, greatRegex, ap.greatCmd)
+
 	b.Register(ap, bot.Help, ap.help)
 	return ap
 }
@@ -80,77 +84,74 @@ var grantRegex = regexp.MustCompile(`(?i)grant (?P<emojy>(?::[[:word:][:punct:]]
 var createRegex = regexp.MustCompile(`(?i)create trophy (?P<emojy>(?::[[:word:][:punct:]]+:\s?)+) (?P<description>.+)`)
 var greatRegex = regexp.MustCompile(`(?i)how great (?:am i|is :?(?P<who>[[:word:]]+))[[:punct:]]*`)
 
-func (p *AchievementsPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	nick := message.User.Name
+func (p *AchievementsPlugin) grantCmd(r bot.Request) bool {
+	nick := r.Msg.User.Name
+	emojy := r.Values["emojy"]
+	receiver := r.Values["nick"]
+	trophy, err := p.FindTrophy(emojy)
+	if err != nil {
+		log.Error().Err(err).Msg("could not find trophy")
+		msg := fmt.Sprintf("The %s award doesn't exist.", emojy)
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+		return true
+	}
+	if nick == trophy.Creator {
+		a, err := p.Grant(receiver, emojy)
+		if err != nil {
+			log.Error().Err(err).Msg("could not award trophy")
+		}
+		msg := fmt.Sprintf("Congrats %s. You just got the %s award for %s.",
+			receiver, emojy, a.Description)
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+	} else {
+		msg := fmt.Sprintf("Sorry, %s. %s owns that trophy.", nick, trophy.Creator)
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+	}
+	return true
+}
 
-	if greatRegex.MatchString(message.Body) {
-		submatches := greatRegex.FindAllStringSubmatch(message.Body, -1)
-		who := submatches[0][1]
-		if who == "" {
-			who = nick
-		}
-		awards := p.GetAwards(who)
-		if len(awards) == 0 {
-			m := fmt.Sprintf("%s has no achievements to their name. They really suck.", who)
-			if who == nick {
-				m = fmt.Sprintf("You have no achievements to your name. "+
-					"You are a sad and terrible specimen of the human condition, %s.", who)
-			}
-			p.bot.Send(c, bot.Message, message.Channel, m)
-		} else {
-			m := fmt.Sprintf("Wow, let's all clap for %s. Look at these awards:", who)
-			for _, a := range awards {
-				m += fmt.Sprintf("\n%s - %s", a.Emojy, a.Description)
-			}
-			p.bot.Send(c, bot.Message, message.Channel, m)
-		}
-		return true
-	}
-	if message.Command && grantRegex.MatchString(message.Body) {
-		submatches := grantRegex.FindAllStringSubmatch(message.Body, -1)
-		emojy := submatches[0][1]
-		receiver := submatches[0][2]
-		trophy, err := p.FindTrophy(emojy)
-		if err != nil {
-			log.Error().Err(err).Msg("could not find trophy")
-			msg := fmt.Sprintf("The %s award doesn't exist.", emojy)
-			p.bot.Send(c, bot.Message, message.Channel, msg)
+func (p *AchievementsPlugin) createCmd(r bot.Request) bool {
+	nick := r.Msg.User.Name
+	emojy := r.Values["emojy"]
+	description := r.Values["description"]
+	t, err := p.Create(emojy, description, nick)
+	if err != nil {
+		log.Error().Err(err).Msg("could not create trophy")
+		if strings.Contains(err.Error(), "exists") {
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, err.Error())
 			return true
 		}
-		if nick == trophy.Creator {
-			a, err := p.Grant(receiver, emojy)
-			if err != nil {
-				log.Error().Err(err).Msg("could not award trophy")
-			}
-			msg := fmt.Sprintf("Congrats %s. You just got the %s award for %s.",
-				receiver, emojy, a.Description)
-			p.bot.Send(c, bot.Message, message.Channel, msg)
-		} else {
-			msg := fmt.Sprintf("Sorry, %s. %s owns that trophy.", nick, trophy.Creator)
-			p.bot.Send(c, bot.Message, message.Channel, msg)
-		}
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I'm too humble to ever award that trophy")
 		return true
 	}
-	if message.Command && createRegex.MatchString(message.Body) {
-		submatches := createRegex.FindAllStringSubmatch(message.Body, -1)
-		emojy := submatches[0][1]
-		description := submatches[0][2]
-		t, err := p.Create(emojy, description, nick)
-		if err != nil {
-			log.Error().Err(err).Msg("could not create trophy")
-			if strings.Contains(err.Error(), "exists") {
-				p.bot.Send(c, bot.Message, message.Channel, err.Error())
-				return true
-			}
-			p.bot.Send(c, bot.Message, message.Channel, "I'm too humble to ever award that trophy")
-			return true
-		}
-		resp := fmt.Sprintf("Okay %s. I have crafted a one-of-a-kind %s trophy to give for %s",
-			nick, t.Emojy, t.Description)
-		p.bot.Send(c, bot.Message, message.Channel, resp)
-		return true
+	resp := fmt.Sprintf("Okay %s. I have crafted a one-of-a-kind %s trophy to give for %s",
+		nick, t.Emojy, t.Description)
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
+	return true
+}
+
+func (p *AchievementsPlugin) greatCmd(r bot.Request) bool {
+	nick := r.Msg.User.Name
+	who := r.Values["who"]
+	if who == "" {
+		who = nick
 	}
-	return false
+	awards := p.GetAwards(who)
+	if len(awards) == 0 {
+		m := fmt.Sprintf("%s has no achievements to their name. They really suck.", who)
+		if who == nick {
+			m = fmt.Sprintf("You have no achievements to your name. "+
+				"You are a sad and terrible specimen of the human condition, %s.", who)
+		}
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, m)
+	} else {
+		m := fmt.Sprintf("Wow, let's all clap for %s. Look at these awards:", who)
+		for _, a := range awards {
+			m += fmt.Sprintf("\n%s - %s", a.Emojy, a.Description)
+		}
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, m)
+	}
+	return true
 }
 
 func (p *AchievementsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
