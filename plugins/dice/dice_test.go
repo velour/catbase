@@ -3,9 +3,10 @@
 package dice
 
 import (
-	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
+
+	"github.com/velour/catbase/plugins/cli"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
@@ -13,16 +14,22 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
-func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
+func makeMessage(payload string) bot.Request {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
-		User:    &user.User{Name: "tester"},
-		Channel: "test",
-		Body:    payload,
-		Command: isCmd,
+	values := bot.ParseValues(rollRegex, payload)
+	return bot.Request{
+		Conn:   &cli.CliPlugin{},
+		Kind:   bot.Message,
+		Values: values,
+		Msg: msg.Message{
+			User:    &user.User{Name: "tester"},
+			Channel: "test",
+			Body:    payload,
+			Command: isCmd,
+		},
 	}
 }
 
@@ -30,7 +37,7 @@ func TestDie(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.message(makeMessage("!1d6"))
+	res := c.rollCmd(makeMessage("1d6"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "tester, you rolled:")
@@ -40,44 +47,17 @@ func TestDice(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.message(makeMessage("!5d6"))
+	res := c.rollCmd(makeMessage("5d6"))
 	assert.Len(t, mb.Messages, 1)
 	assert.True(t, res)
 	assert.Contains(t, mb.Messages[0], "tester, you rolled:")
-}
-
-func TestNotCommand(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	res := c.message(makeMessage("1d6"))
-	assert.False(t, res)
-	assert.Len(t, mb.Messages, 0)
-}
-
-func TestBadDice(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	res := c.message(makeMessage("!aued6"))
-	assert.False(t, res)
-	assert.Len(t, mb.Messages, 0)
-}
-
-func TestBadSides(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	assert.NotNil(t, c)
-	res := c.message(makeMessage("!1daoeu"))
-	assert.False(t, res)
-	assert.Len(t, mb.Messages, 0)
 }
 
 func TestLotsOfDice(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	res := c.message(makeMessage("!100d100"))
+	res := c.rollCmd(makeMessage("100d100"))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], "You're a dick.")
