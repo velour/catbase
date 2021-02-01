@@ -154,7 +154,8 @@ func (p *BeersPlugin) register() {
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
-			Regex: regexp.MustCompile(`(?i)^imbibe$`),
+			Regex: regexp.MustCompile(`(?i)^` +
+				strings.Join(p.c.GetArray("beers.imbibewords", []string{"imbibe", "quaff"}), "|") + `$`),
 			Handler: func(r bot.Request) bool {
 				p.addBeers(r.Msg.User.Name, 1)
 				p.randomReply(r.Conn, r.Msg.Channel)
