@@ -3,13 +3,13 @@
 package dice
 
 import (
-	"github.com/velour/catbase/bot"
-	"github.com/velour/catbase/bot/msg"
-)
-
-import (
 	"fmt"
 	"math/rand"
+	"regexp"
+	"strconv"
+
+	"github.com/velour/catbase/bot"
+	"github.com/velour/catbase/bot/msg"
 )
 
 // This is a dice plugin to serve as an example and quick copy/paste for new plugins.
@@ -18,12 +18,12 @@ type DicePlugin struct {
 	Bot bot.Bot
 }
 
-// NewDicePlugin creates a new DicePlugin with the Plugin interface
+// New creates a new DicePlugin with the Plugin interface
 func New(b bot.Bot) *DicePlugin {
 	dp := &DicePlugin{
 		Bot: b,
 	}
-	b.Register(dp, bot.Message, dp.message)
+	b.RegisterRegexCmd(dp, bot.Message, rollRegex, dp.rollCmd)
 	b.Register(dp, bot.Help, dp.help)
 	return dp
 }
@@ -32,28 +32,18 @@ func rollDie(sides int) int {
 	return rand.Intn(sides) + 1
 }
 
-// Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *DicePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if !message.Command {
-		return false
-	}
+var rollRegex = regexp.MustCompile(`^(?P<number>\d+)d(?P<sides>\d+)$`)
 
-	channel := message.Channel
-	nDice := 0
-	sides := 0
-
-	if n, err := fmt.Sscanf(message.Body, "%dd%d", &nDice, &sides); n != 2 || err != nil {
-		return false
-	}
+func (p *DicePlugin) rollCmd(r bot.Request) bool {
+	nDice, _ := strconv.Atoi(r.Values["number"])
+	sides, _ := strconv.Atoi(r.Values["sides"])
 
 	if sides < 2 || nDice < 1 || nDice > 20 {
-		p.Bot.Send(c, bot.Message, channel, "You're a dick.")
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You're a dick.")
 		return true
 	}
 
-	rolls := fmt.Sprintf("%s, you rolled: ", message.User.Name)
+	rolls := fmt.Sprintf("%s, you rolled: ", r.Msg.User.Name)
 
 	for i := 0; i < nDice; i++ {
 		rolls = fmt.Sprintf("%s %d", rolls, rollDie(sides))
@@ -64,9 +54,8 @@ func (p *DicePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message
 		}
 	}
 
-	p.Bot.Send(c, bot.Message, channel, rolls)
+	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, rolls)
 	return true
-
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
