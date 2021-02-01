@@ -41,7 +41,7 @@ RET:
 	return true
 }
 
-func parseValues(r *regexp.Regexp, body string) RegexValues {
+func ParseValues(r *regexp.Regexp, body string) RegexValues {
 	out := RegexValues{}
 	subs := r.FindStringSubmatch(body)
 	if len(subs) == 0 {
@@ -62,7 +62,7 @@ func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.M
 					Conn:   conn,
 					Kind:   evt,
 					Msg:    message,
-					Values: parseValues(r, message.Body),
+					Values: ParseValues(r, message.Body),
 					Args:   args,
 				}
 				if cb(resp) {

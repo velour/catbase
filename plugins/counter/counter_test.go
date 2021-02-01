@@ -4,6 +4,7 @@ package counter
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -25,24 +26,28 @@ func setup(t *testing.T) (*bot.MockBot, *CounterPlugin) {
 	return mb, c
 }
 
-func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
+func makeMessage(payload string, r *regexp.Regexp) bot.Request {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
-		User:    &user.User{Name: "tester"},
-		Channel: "test",
-		Body:    payload,
-		Command: isCmd,
+	values := bot.ParseValues(r, payload)
+	return bot.Request{
+		Conn: nil,
+		Msg: msg.Message{
+			User:    &user.User{Name: "tester"},
+			Body:    payload,
+			Command: isCmd,
+		},
+		Values: values,
 	}
 }
 
 func TestMkAlias(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("mkalias fuck mornings"))
-	c.message(makeMessage("fuck++"))
+	c.mkAliasCmd(makeMessage("mkalias fuck mornings", mkAliasRegex))
+	c.incrementCmd(makeMessage("fuck++", incrementRegex))
 	item, err := GetUserItem(mb.DB(), "tester", "mornings")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, item.Count)
@@ -51,9 +56,9 @@ func TestMkAlias(t *testing.T) {
 func TestRmAlias(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("mkalias fuck mornings"))
-	c.message(makeMessage("rmalias fuck"))
-	c.message(makeMessage("fuck++"))
+	c.mkAliasCmd(makeMessage("mkalias fuck mornings", mkAliasRegex))
+	c.rmAliasCmd(makeMessage("rmalias fuck", rmAliasRegex))
+	c.incrementCmd(makeMessage("fuck++", incrementRegex))
 	item, err := GetUserItem(mb.DB(), "tester", "mornings")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -62,8 +67,8 @@ func TestRmAlias(t *testing.T) {
 func TestThreeSentencesExists(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage(":beer:++"))
-	c.message(makeMessage(":beer:. Earl Grey. Hot."))
+	c.incrementCmd(makeMessage(":beer:++", incrementRegex))
+	c.teaMatchCmd(makeMessage(":beer:. Earl Grey. Hot.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":beer:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
@@ -73,7 +78,7 @@ func TestThreeSentencesNotExists(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	item, err := GetUserItem(mb.DB(), "tester", ":beer:")
-	c.message(makeMessage(":beer:. Earl Grey. Hot."))
+	c.teaMatchCmd(makeMessage(":beer:. Earl Grey. Hot.", teaRegex))
 	item, err = GetUserItem(mb.DB(), "tester", ":beer:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -82,8 +87,8 @@ func TestThreeSentencesNotExists(t *testing.T) {
 func TestTeaEarlGreyHot(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("Tea. Earl Grey. Hot."))
-	c.message(makeMessage("Tea. Earl Grey. Hot."))
+	c.teaMatchCmd(makeMessage("Tea. Earl Grey. Hot.", teaRegex))
+	c.teaMatchCmd(makeMessage("Tea. Earl Grey. Hot.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
@@ -92,8 +97,8 @@ func TestTeaEarlGreyHot(t *testing.T) {
 func TestTeaTwoPeriods(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("Tea. Earl Grey."))
-	c.message(makeMessage("Tea. Earl Grey."))
+	c.teaMatchCmd(makeMessage("Tea. Earl Grey.", teaRegex))
+	c.teaMatchCmd(makeMessage("Tea. Earl Grey.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -102,8 +107,8 @@ func TestTeaTwoPeriods(t *testing.T) {
 func TestTeaMultiplePeriods(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
-	c.message(makeMessage("Tea. Earl Grey. Spiked. Hot."))
+	c.teaMatchCmd(makeMessage("Tea. Earl Grey. Spiked. Hot.", teaRegex))
+	c.teaMatchCmd(makeMessage("Tea. Earl Grey. Spiked. Hot.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, item.Count)
@@ -112,9 +117,9 @@ func TestTeaMultiplePeriods(t *testing.T) {
 func TestTeaGreenHot(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("Tea. Green. Hot."))
-	c.message(makeMessage("Tea. Green. Hot"))
-	c.message(makeMessage("Tea. Green. Iced."))
+	c.teaMatchCmd(makeMessage("Tea. Green. Hot.", teaRegex))
+	c.teaMatchCmd(makeMessage("Tea. Green. Hot", teaRegex))
+	c.teaMatchCmd(makeMessage("Tea. Green. Iced.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, item.Count)
@@ -123,8 +128,8 @@ func TestTeaGreenHot(t *testing.T) {
 func TestTeaUnrelated(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("Tea."))
-	c.message(makeMessage("Tea. It's great."))
+	c.teaMatchCmd(makeMessage("Tea.", teaRegex))
+	c.teaMatchCmd(makeMessage("Tea. It's great.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -133,7 +138,7 @@ func TestTeaUnrelated(t *testing.T) {
 func TestTeaSkieselQuote(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed"))
+	c.teaMatchCmd(makeMessage("blah, this is a whole page of explanation where \"we did local search and used a tabu list\" would have sufficed", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, item.Count)
@@ -141,7 +146,7 @@ func TestTeaSkieselQuote(t *testing.T) {
 func TestTeaUnicodeJapanese(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("Tea. おちや. Hot."))
+	c.teaMatchCmd(makeMessage("Tea. おちや. Hot.", teaRegex))
 	item, err := GetUserItem(mb.DB(), "tester", ":tea:")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, item.Count)
@@ -150,8 +155,8 @@ func TestTeaUnicodeJapanese(t *testing.T) {
 func TestResetMe(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("test++"))
-	c.message(makeMessage("!reset me"))
+	c.incrementCmd(makeMessage("test++", incrementRegex))
+	c.resetCmd(makeMessage("!reset me", resetRegex))
 	items, err := GetItems(mb.DB(), "tester")
 	assert.Nil(t, err)
 	assert.Len(t, items, 0)
@@ -160,7 +165,7 @@ func TestResetMe(t *testing.T) {
 func TestCounterOne(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage("test++"))
+	c.incrementCmd(makeMessage("test++", incrementRegex))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, mb.Messages[0], "tester has 1 test.")
 }
@@ -168,7 +173,7 @@ func TestCounterOne(t *testing.T) {
 func TestCounterOneWithSpace(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.message(makeMessage(":test: ++"))
+	c.incrementCmd(makeMessage(":test: ++", incrementRegex))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, mb.Messages[0], "tester has 1 :test:.")
 }
@@ -177,7 +182,7 @@ func TestCounterFour(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("test++"))
+		c.incrementCmd(makeMessage("test++", incrementRegex))
 	}
 	assert.Len(t, mb.Messages, 4)
 	assert.Equal(t, mb.Messages[3], "tester has 4 test.")
@@ -187,10 +192,10 @@ func TestCounterDecrement(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("test++"))
+		c.incrementCmd(makeMessage("test++", incrementRegex))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
-	c.message(makeMessage("test--"))
+	c.decrementCmd(makeMessage("test--", decrementRegex))
 	assert.Len(t, mb.Messages, 5)
 	assert.Equal(t, mb.Messages[4], "tester has 3 test.")
 }
@@ -199,10 +204,10 @@ func TestFriendCounterDecrement(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("other.test++"))
+		c.incrementCmd(makeMessage("other.test++", incrementRegex))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("other has %d test.", i+1))
 	}
-	c.message(makeMessage("other.test--"))
+	c.decrementCmd(makeMessage("other.test--", decrementRegex))
 	assert.Len(t, mb.Messages, 5)
 	assert.Equal(t, mb.Messages[4], "other has 3 test.")
 }
@@ -211,12 +216,12 @@ func TestDecrementZero(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("test++"))
+		c.incrementCmd(makeMessage("test++", incrementRegex))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
 	j := 4
 	for i := 4; i > 0; i-- {
-		c.message(makeMessage("test--"))
+		c.decrementCmd(makeMessage("test--", decrementRegex))
 		assert.Equal(t, mb.Messages[j], fmt.Sprintf("tester has %d test.", i-1))
 		j++
 	}
@@ -228,10 +233,10 @@ func TestClear(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("test++"))
+		c.incrementCmd(makeMessage("test++", incrementRegex))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
-	res := c.message(makeMessage("!clear test"))
+	res := c.clearCmd(makeMessage("!clear test", clearRegex))
 	assert.True(t, res)
 	assert.Len(t, mb.Actions, 1)
 	assert.Equal(t, mb.Actions[0], "chops a few test out of his brain")
@@ -241,10 +246,10 @@ func TestCount(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("test++"))
+		c.incrementCmd(makeMessage("test++", incrementRegex))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
-	res := c.message(makeMessage("!count test"))
+	res := c.countCmd(makeMessage("!count test", countRegex))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 5)
 	assert.Equal(t, mb.Messages[4], "tester has 4 test.")
@@ -254,18 +259,18 @@ func TestInspectMe(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
 	for i := 0; i < 4; i++ {
-		c.message(makeMessage("test++"))
+		c.incrementCmd(makeMessage("test++", incrementRegex))
 		assert.Equal(t, mb.Messages[i], fmt.Sprintf("tester has %d test.", i+1))
 	}
 	for i := 0; i < 2; i++ {
-		c.message(makeMessage("fucks++"))
+		c.incrementCmd(makeMessage("fucks++", incrementRegex))
 		assert.Equal(t, mb.Messages[i+4], fmt.Sprintf("tester has %d fucks.", i+1))
 	}
 	for i := 0; i < 20; i++ {
-		c.message(makeMessage("cheese++"))
+		c.incrementCmd(makeMessage("cheese++", incrementRegex))
 		assert.Equal(t, mb.Messages[i+6], fmt.Sprintf("tester has %d cheese.", i+1))
 	}
-	res := c.message(makeMessage("!inspect me"))
+	res := c.inspectCmd(makeMessage("!inspect me", inspectRegex))
 	assert.True(t, res)
 	assert.Len(t, mb.Messages, 27)
 	assert.Equal(t, mb.Messages[26], "tester has the following counters: test: 4, fucks: 2, cheese: 20.")
