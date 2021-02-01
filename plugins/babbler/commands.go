@@ -5,117 +5,112 @@ import (
 	"strings"
 )
 
-func (p *BabblerPlugin) initializeBabbler(tokens []string) (string, bool) {
-	who := tokens[3]
+func (p *BabblerPlugin) initializeBabbler(who string) string {
 	_, err := p.getOrCreateBabbler(who)
 	if err != nil {
-		return "babbler initialization failed.", true
+		return "babbler initialization failed."
 	}
-	return "okay.", true
+	return "okay."
 }
 
-func (p *BabblerPlugin) addToBabbler(babblerName, whatWasSaid string) (string, bool) {
-	babblerId, err := p.getOrCreateBabbler(babblerName)
+func (p *BabblerPlugin) addToBabbler(babblerName, whatWasSaid string) {
+	babblerID, err := p.getOrCreateBabbler(babblerName)
 	if err == nil {
 		if p.WithGoRoutines {
-			go p.addToMarkovChain(babblerId, whatWasSaid)
+			go p.addToMarkovChain(babblerID, whatWasSaid)
 		} else {
-			p.addToMarkovChain(babblerId, whatWasSaid)
+			p.addToMarkovChain(babblerID, whatWasSaid)
 		}
 	}
-	return "", false
 }
 
-func (p *BabblerPlugin) getBabble(tokens []string) (string, bool) {
-	who := tokens[0]
+func (p *BabblerPlugin) getBabble(who string, tokens []string) string {
 	_, err := p.getBabbler(who)
 
 	if err != nil {
 		if err == NO_BABBLER {
 			// return fmt.Sprintf("%s babbler not found.", who), true
-			return "", false
+			return ""
 		}
 	} else {
 
 		var saying string
-		if len(tokens) == 2 {
+		if len(tokens) == 0 {
 			saying, err = p.babble(who)
 		} else {
-			saying, err = p.babbleSeed(who, tokens[2:])
+			saying, err = p.babbleSeed(who, tokens)
 		}
 
 		if err != nil {
 			if err == SAID_NOTHING {
-				return fmt.Sprintf("%s hasn't said anything yet.", who), true
+				return fmt.Sprintf("%s hasn't said anything yet.", who)
 			} else if err == NEVER_SAID {
-				return fmt.Sprintf("%s never said '%s'", who, strings.Join(tokens[2:], " ")), true
+				return fmt.Sprintf("%s never said '%s'", who, strings.Join(tokens, " "))
 			}
 		} else if saying != "" {
-			return saying, true
+			return saying
 		}
 	}
-	return "", false
+	return ""
 }
 
-func (p *BabblerPlugin) getBabbleWithSuffix(tokens []string) (string, bool) {
-	who := tokens[0]
+func (p *BabblerPlugin) getBabbleWithSuffix(who string, tokens []string) string {
 	_, err := p.getBabbler(who)
 
 	if err != nil {
 		if err == NO_BABBLER {
 			// return fmt.Sprintf("%s babbler not found.", who), true
-			return "", false
+			return ""
 		}
 	} else {
 
-		saying, err := p.babbleSeedSuffix(who, tokens[2:])
+		saying, err := p.babbleSeedSuffix(who, tokens)
 
 		if err != nil {
 			if err == SAID_NOTHING {
-				return fmt.Sprintf("%s hasn't said anything yet.", who), true
+				return fmt.Sprintf("%s hasn't said anything yet.", who)
 			} else if err == NEVER_SAID {
-				return fmt.Sprintf("%s never said '%s'", who, strings.Join(tokens[2:], " ")), true
+				return fmt.Sprintf("%s never said '%s'", who, strings.Join(tokens, " "))
 			}
 		} else if saying != "" {
-			return saying, true
+			return saying
 		}
 	}
-	return "", false
+	return ""
 }
 
-func (p *BabblerPlugin) getBabbleWithBookends(start, end []string) (string, bool) {
-	who := start[0]
+func (p *BabblerPlugin) getBabbleWithBookends(who string, start, end []string) string {
 	_, err := p.getBabbler(who)
 
 	if err != nil {
 		if err == NO_BABBLER {
 			// return fmt.Sprintf("%s babbler not found.", who), true
-			return "", false
+			return ""
 		}
 	} else {
 
-		saying, err := p.babbleSeedBookends(who, start[2:], end)
+		saying, err := p.babbleSeedBookends(who, start, end)
 
 		if err != nil {
 			if err == SAID_NOTHING {
-				return fmt.Sprintf("%s hasn't said anything yet.", who), true
+				return fmt.Sprintf("%s hasn't said anything yet.", who)
 			} else if err == NEVER_SAID {
-				seeds := append(start[2:], "...")
+				seeds := append(start[1:], "...")
 				seeds = append(seeds, end...)
-				return fmt.Sprintf("%s never said '%s'", who, strings.Join(seeds, " ")), true
+				return fmt.Sprintf("%s never said '%s'", who, strings.Join(seeds, " "))
 			}
 		} else if saying != "" {
-			return saying, true
+			return saying
 		}
 	}
-	return "", false
+	return ""
 }
 
-func (p *BabblerPlugin) batchLearn(tokens []string) (string, bool) {
+func (p *BabblerPlugin) batchLearn(tokens []string) string {
 	who := tokens[3]
 	babblerId, err := p.getOrCreateBabbler(who)
 	if err != nil {
-		return "batch learn failed.", true
+		return "batch learn failed."
 	}
 
 	body := strings.Join(tokens[4:], " ")
@@ -133,37 +128,30 @@ func (p *BabblerPlugin) batchLearn(tokens []string) (string, bool) {
 			}
 		}
 	}
-	return "phew that was tiring.", true
+	return "phew that was tiring."
 }
 
-func (p *BabblerPlugin) merge(tokens []string) (string, bool) {
-	if tokens[3] != "into" {
-		return "try using 'merge babbler [x] into [y]'", true
-	}
-
-	who := tokens[2]
-	into := tokens[4]
-
+func (p *BabblerPlugin) merge(who, into string) string {
 	if who == into {
-		return "that's annoying. stop it.", true
+		return "that's annoying. stop it."
 	}
 
 	whoBabbler, err := p.getBabbler(who)
 	if err != nil {
 		if err == NO_BABBLER {
-			return fmt.Sprintf("%s babbler not found.", who), true
+			return fmt.Sprintf("%s babbler not found.", who)
 		}
-		return "merge failed.", true
+		return "merge failed."
 	}
 	intoBabbler, err := p.getOrCreateBabbler(into)
 	if err != nil {
-		return "merge failed.", true
+		return "merge failed."
 	}
 
 	err = p.mergeBabblers(intoBabbler, whoBabbler, into, who)
 	if err != nil {
-		return "merge failed.", true
+		return "merge failed."
 	}
 
-	return "mooooiggged", true
+	return "mooooiggged"
 }

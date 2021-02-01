@@ -61,6 +61,14 @@ type Callback func(Connector, Kind, msg.Message, ...interface{}) bool
 type ResponseHandler func(Request) bool
 type CallbackMap map[string]map[Kind]map[*regexp.Regexp][]ResponseHandler
 
+type HandlerSpec struct {
+	Kind    Kind
+	IsCmd   bool
+	Regex   *regexp.Regexp
+	Handler ResponseHandler
+}
+type HandlerTable []HandlerSpec
+
 type RegexValues map[string]string
 
 // b interface serves to allow mocking of the actual bot
@@ -89,6 +97,10 @@ type Bot interface {
 	// Bot receives from a Connector.
 	// The Kind arg should be one of bot.Message/Reply/Action/etc
 	Receive(Connector, Kind, msg.Message, ...interface{}) bool
+
+	// Register a set of plugin callbacks
+	// Kind will be matched to the event for the callback
+	RegisterTable(Plugin, HandlerTable)
 
 	// Register a plugin callback
 	// Kind will be matched to the event for the callback

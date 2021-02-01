@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -26,6 +27,8 @@ type BabblerPlugin struct {
 	Bot            bot.Bot
 	db             *sqlx.DB
 	WithGoRoutines bool
+
+	handlers bot.HandlerTable
 }
 
 type Babbler struct {
@@ -95,57 +98,87 @@ func New(b bot.Bot) *BabblerPlugin {
 
 	plugin.createNewWord("")
 
-	b.Register(plugin, bot.Message, plugin.message)
-	b.Register(plugin, bot.Help, plugin.help)
+	plugin.register()
 
 	return plugin
 }
 
-func (p *BabblerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	lowercase := strings.ToLower(message.Body)
-	tokens := strings.Fields(lowercase)
-	numTokens := len(tokens)
+func (p *BabblerPlugin) register() {
+	p.handlers = bot.HandlerTable{
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^(?P<who>\S+) says-bridge (?P<start>.+)\|(?P<end>.+)$`),
+			Handler: func(r bot.Request) bool {
+				who := r.Values["who"]
+				start := strings.Fields(strings.ToLower(r.Values["start"]))
+				end := strings.Fields(strings.ToLower(r.Values["end"]))
+				return p.sayIt(r, p.getBabbleWithBookends(who, start, end))
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^(?P<who>\S+) says-tail (?P<what>.*)$`),
+			Handler: func(r bot.Request) bool {
+				who := r.Values["who"]
+				what := strings.Fields(strings.ToLower(r.Values["what"]))
+				return p.sayIt(r, p.getBabbleWithSuffix(who, what))
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^(?P<who>\S+) says-middle-out (?P<what>.*)$`),
+			Handler: func(r bot.Request) bool {
+				who := r.Values["who"]
+				what := strings.ToLower(r.Values["what"])
+				tokens := strings.Fields(what)
+				saidSomething := false
+				saidWhat := ""
 
-	saidSomething := false
-	saidWhat := ""
-
-	if numTokens > 2 && tokens[1] == "says-bridge" && strings.Contains(lowercase, "|") {
-		split := strings.Split(lowercase, "|")
-		start := strings.Fields(split[0])
-		end := strings.Fields(split[1])
-		saidWhat, saidSomething = p.getBabbleWithBookends(start, end)
-	} else if numTokens >= 2 && tokens[1] == "says" {
-		saidWhat, saidSomething = p.getBabble(tokens)
-	} else if numTokens > 2 && tokens[1] == "says-tail" {
-		saidWhat, saidSomething = p.getBabbleWithSuffix(tokens)
-	} else if numTokens >= 2 && tokens[1] == "says-middle-out" {
-		saidWhatStart, saidSomethingStart := p.getBabbleWithSuffix(tokens)
-		neverSaidLooksLike := fmt.Sprintf("%s never said '%s'", tokens[0], strings.Join(tokens[2:], " "))
-		if !saidSomethingStart || saidWhatStart == neverSaidLooksLike {
-			saidSomething = saidSomethingStart
-			saidWhat = saidWhatStart
-		} else {
-			saidWhatEnd, saidSomethingEnd := p.getBabble(tokens)
-			saidSomething = saidSomethingStart && saidSomethingEnd
-			if saidSomething {
-				saidWhat = saidWhatStart + " " + strings.Join(strings.Fields(saidWhatEnd)[len(tokens)-2:], " ")
-			}
-		}
-	} else if len(tokens) == 4 && strings.Index(lowercase, "initialize babbler for ") == 0 {
-		saidWhat, saidSomething = p.initializeBabbler(tokens)
-	} else if strings.Index(lowercase, "batch learn for ") == 0 {
-		saidWhat, saidSomething = p.batchLearn(tokens)
-	} else if len(tokens) == 5 && strings.Index(lowercase, "merge babbler") == 0 {
-		saidWhat, saidSomething = p.merge(tokens)
-	} else {
-		//this should always return "", false
-		saidWhat, saidSomething = p.addToBabbler(message.User.Name, lowercase)
+				saidWhatStart := p.getBabbleWithSuffix(who, tokens)
+				saidSomethingStart := saidWhatStart != ""
+				neverSaidLooksLike := fmt.Sprintf("%s never said", who)
+				if !saidSomethingStart || strings.HasPrefix(saidWhatStart, neverSaidLooksLike) {
+					saidSomething = saidSomethingStart
+					saidWhat = saidWhatStart
+				} else {
+					saidWhatEnd := p.getBabble(who, tokens)
+					saidSomethingEnd := saidWhatEnd != ""
+					saidSomething = saidSomethingStart && saidSomethingEnd
+					if saidSomething {
+						saidWhat = saidWhatStart + strings.TrimPrefix(saidWhatEnd, what)
+					}
+				}
+				return p.sayIt(r, saidWhat)
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false, Regex: regexp.MustCompile(`(?i)^(?P<who>\S+) (says (?P<what>.*)?|says)$`),
+			Handler: func(r bot.Request) bool {
+				who := r.Values["who"]
+				what := strings.Fields(strings.ToLower(r.Values["what"]))
+				return p.sayIt(r, p.getBabble(who, what))
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^initialize babbler for (?P<who>\S+)$`),
+			Handler: func(r bot.Request) bool {
+				who := r.Values["who"]
+				return p.sayIt(r, p.initializeBabbler(who))
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^merge babbler (?P<from>\S+) into (?P<to>\S+)$`),
+			Handler: func(r bot.Request) bool {
+				from, to := r.Values["from"], r.Values["to"]
+				return p.sayIt(r, p.merge(from, to))
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`.*`),
+			Handler: func(r bot.Request) bool {
+				p.addToBabbler(r.Msg.User.Name, strings.ToLower(r.Msg.Body))
+				return false
+			}},
 	}
+	p.Bot.RegisterTable(p, p.handlers)
+	p.Bot.Register(p, bot.Help, p.help)
+}
 
-	if saidSomething {
-		p.Bot.Send(c, bot.Message, message.Channel, saidWhat)
+func (p *BabblerPlugin) sayIt(r bot.Request, what string) bool {
+	if what != "" {
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, what)
 	}
-	return saidSomething
+	return what != ""
 }
 
 func (p *BabblerPlugin) help(c bot.Connector, kind bot.Kind, msg msg.Message, args ...interface{}) bool {

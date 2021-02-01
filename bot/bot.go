@@ -230,6 +230,17 @@ func (b *bot) RegisterFilter(name string, f func(string) string) {
 	b.filters[name] = f
 }
 
+// RegisterTable registers multiple regex handlers at a time
+func (b *bot) RegisterTable(p Plugin, handlers HandlerTable) {
+	for _, h := range handlers {
+		if h.IsCmd {
+			b.RegisterRegexCmd(p, h.Kind, h.Regex, h.Handler)
+		} else {
+			b.RegisterRegex(p, h.Kind, h.Regex, h.Handler)
+		}
+	}
+}
+
 // RegisterRegex does what register does, but with a matcher
 func (b *bot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, resp ResponseHandler) {
 	t := reflect.TypeOf(p).String()
