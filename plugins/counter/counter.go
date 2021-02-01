@@ -20,8 +20,6 @@ import (
 
 // This is a counter plugin to count arbitrary things.
 
-var teaMatcher = regexp.MustCompile("(?i)^([^.]+)\\. [^.]*\\. ([^.]*\\.?)+$")
-
 type CounterPlugin struct {
 	Bot bot.Bot
 	DB  *sqlx.DB
@@ -262,7 +260,20 @@ func New(b bot.Bot) *CounterPlugin {
 		Bot: b,
 		DB:  b.DB(),
 	}
-	b.Register(cp, bot.Message, cp.message)
+
+	b.RegisterRegexCmd(cp, bot.Message, mkAliasRegex, cp.mkAliasCmd)
+	b.RegisterRegexCmd(cp, bot.Message, rmAliasRegex, cp.rmAliasCmd)
+	b.RegisterRegexCmd(cp, bot.Message, leaderboardRegex, cp.leaderboardCmd)
+	b.RegisterRegex(cp, bot.Message, teaRegex, cp.teaMatchCmd)
+	b.RegisterRegexCmd(cp, bot.Message, resetRegex, cp.resetCmd)
+	b.RegisterRegexCmd(cp, bot.Message, inspectRegex, cp.inspectCmd)
+	b.RegisterRegexCmd(cp, bot.Message, clearRegex, cp.clearCmd)
+	b.RegisterRegexCmd(cp, bot.Message, countRegex, cp.countCmd)
+	b.RegisterRegex(cp, bot.Message, incrementRegex, cp.incrementCmd)
+	b.RegisterRegex(cp, bot.Message, decrementRegex, cp.decrementCmd)
+	b.RegisterRegex(cp, bot.Message, addToRegex, cp.addToCmd)
+	b.RegisterRegex(cp, bot.Message, removeFromRegex, cp.removeFromCmd)
+
 	b.Register(cp, bot.Help, cp.help)
 	cp.registerWeb()
 
@@ -273,299 +284,322 @@ func trimUnicode(s string) string {
 	return strings.Trim(s, string(rune(0xFE0F)))
 }
 
-// Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the
-// users message. Otherwise, the function returns false and the bot continues
-// execution of other plugins.
-func (p *CounterPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	// This bot does not reply to anything
-	nick := message.User.Name
-	channel := message.Channel
-	parts := strings.Fields(message.Body)
+var mkAliasRegex = regexp.MustCompile(`(?i)^mkalias (?P<what>\S+) (?P<to>\S+)$`)
+var rmAliasRegex = regexp.MustCompile(`(?i)^rmalias (?P<what>\S+)$`)
+var leaderboardRegex = regexp.MustCompile(`(?i)^leaderboard\s?(?P<what>\S+)?$`)
+var teaRegex = regexp.MustCompile("(?i)^([^.]+)\\. [^.]*\\. ([^.]*\\.?)+$")
+var resetRegex = regexp.MustCompile(`(?i)^reset me$`)
+var inspectRegex = regexp.MustCompile(`(?i)^inspect (?P<who>\S+)$`)
+var clearRegex = regexp.MustCompile(`(?i)^clear (?P<what>\S+)$`)
+var countRegex = regexp.MustCompile(`(?i)^count (?P<who>\S+)\s?(?P<what>\S+)?$`)
+var incrementRegex = regexp.MustCompile(`(?i)^(?P<who>[^.\t\n\f\r ]+\s?\.)?(?P<thing>\S+)\+\+$`)
+var decrementRegex = regexp.MustCompile(`(?i)^(?P<who>[^.\t\n\f\r ]+\s?\.)?(?P<thing>\S+)--$`)
+var addToRegex = regexp.MustCompile(`(?i)^(?P<who>[^.\t\n\f\r ]+\s?\.)?(?P<thing>\S+)\s+\+=\s+(?P<amount>\d+)$`)
+var removeFromRegex = regexp.MustCompile(`(?i)^(?P<who>[^.\t\n\f\r ]+\s?\.)?(?P<thing>\S+)\s+-=\s+(?P<amount>\d+)$`)
 
-	if len(parts) == 0 {
+func (p *CounterPlugin) mkAliasCmd(r bot.Request) bool {
+	what := r.Values["what"]
+	to := r.Values["to"]
+	if what == "" || to == "" {
+		p.Bot.Send(r.Conn, bot.Message, fmt.Sprintf("You must provide all fields for an alias: %s", mkAliasRegex))
+		return true
+	}
+	if _, err := MkAlias(p.DB, what, to); err != nil {
+		log.Error().Err(err).Msg("Could not mkalias")
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "We're gonna need too much DB space to make an alias for your mom.")
+		return true
+	}
+	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Created alias %s -> %s",
+		what, to))
+	return true
+}
+
+func (p *CounterPlugin) rmAliasCmd(r bot.Request) bool {
+	what := r.Values["what"]
+	if what == "" {
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You must specify an alias to remove.")
+		return true
+	}
+	if err := RmAlias(p.DB, what); err != nil {
+		log.Error().Err(err).Msg("could not RmAlias")
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "`sudo rm your mom` => Nope, she's staying with me.")
+		return true
+	}
+	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "`sudo rm your mom`")
+	return true
+}
+
+func (p *CounterPlugin) leaderboardCmd(r bot.Request) bool {
+	var cmd func() ([]Item, error)
+	itNameTxt := ""
+	what := r.Values["what"]
+
+	if what == "" {
+		cmd = func() ([]Item, error) { return LeaderAll(p.DB) }
+	} else {
+		itNameTxt = fmt.Sprintf(" for %s", what)
+		cmd = func() ([]Item, error) { return Leader(p.DB, what) }
+	}
+
+	its, err := cmd()
+	if err != nil {
+		log.Error().Err(err).Msg("Error with leaderboard")
+		return false
+	} else if len(its) == 0 {
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "There are not enough entries for a leaderboard.")
+		return true
+	}
+
+	out := fmt.Sprintf("Leaderboard%s:\n", itNameTxt)
+	for _, it := range its {
+		out += fmt.Sprintf("%s with %d %s\n",
+			it.Nick,
+			it.Count,
+			it.Item,
+		)
+	}
+	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, out)
+	return true
+}
+
+func (p *CounterPlugin) resetCmd(r bot.Request) bool {
+	nick := r.Msg.User.Name
+	channel := r.Msg.Channel
+
+	items, err := GetItems(p.DB, strings.ToLower(nick))
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("nick", nick).
+			Msg("Error getting items to reset")
+		p.Bot.Send(r.Conn, bot.Message, channel, "Something is technically wrong with your counters.")
+		return true
+	}
+	log.Debug().Msgf("Items: %+v", items)
+	for _, item := range items {
+		item.Delete()
+	}
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
+	return true
+}
+
+func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
+	var subject string
+	subject = r.Values["who"]
+	channel := r.Msg.Channel
+	c := r.Conn
+
+	if subject == "me" {
+		subject = strings.ToLower(r.Msg.User.Name)
+	} else {
+		subject = strings.ToLower(subject)
+	}
+
+	log.Debug().
+		Str("subject", subject).
+		Msg("Getting counter")
+	// pull all of the items associated with "subject"
+	items, err := GetItems(p.DB, subject)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Msg("Error retrieving items")
+		p.Bot.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
+		return true
+	}
+
+	resp := fmt.Sprintf("%s has the following counters:", subject)
+	count := 0
+	for _, it := range items {
+		count += 1
+		if count > 1 {
+			resp += ","
+		}
+		resp += fmt.Sprintf(" %s: %d", it.Item, it.Count)
+		if count > 20 {
+			resp += ", and a few others"
+			break
+		}
+	}
+	resp += "."
+
+	if count == 0 {
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", subject))
+		return true
+	}
+
+	p.Bot.Send(c, bot.Message, channel, resp)
+	return true
+}
+
+func (p *CounterPlugin) clearCmd(r bot.Request) bool {
+	subject := strings.ToLower(r.Msg.User.Name)
+	itemName := strings.ToLower(r.Values["what"])
+	channel := r.Msg.Channel
+	c := r.Conn
+
+	it, err := GetUserItem(p.DB, subject, itemName)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("Error getting item to remove")
+		p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
+		return true
+	}
+	err = it.Delete()
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("Error removing item")
+		p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
+		return true
+	}
+
+	p.Bot.Send(c, bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
+		itemName))
+	return true
+}
+
+func (p *CounterPlugin) countCmd(r bot.Request) bool {
+	var subject string
+	var itemName string
+
+	if r.Values["what"] == "" && r.Values["who"] == "" {
+		return false
+	} else if r.Values["what"] != "" {
+		subject = strings.ToLower(r.Values["who"])
+		itemName = strings.ToLower(r.Values["what"])
+	} else {
+		subject = strings.ToLower(r.Msg.User.Name)
+		itemName = strings.ToLower(r.Values["who"])
+	}
+
+	var item Item
+	item, err := GetUserItem(p.DB, subject, itemName)
+	switch {
+	case err == sql.ErrNoRows:
+		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I don't think %s has any %s.",
+			subject, itemName))
+		return true
+	case err != nil:
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("Error retrieving item count")
+		return true
+	}
+
+	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
+		itemName))
+
+	return true
+}
+
+func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
+	subject := r.Msg.User.Name
+	if r.Values["who"] != "" {
+		subject = strings.TrimSuffix(r.Values["who"], ".")
+	}
+	itemName := r.Values["thing"]
+	channel := r.Msg.Channel
+	// ++ those fuckers
+	item, err := GetUserItem(p.DB, subject, itemName)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("error finding item")
+		// Item ain't there, I guess
 		return false
 	}
+	log.Debug().Msgf("About to update item: %#v", item)
+	item.UpdateDelta(1)
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+		item.Count, item.Item))
+	return true
+}
 
-	if len(parts) == 3 && strings.ToLower(parts[0]) == "mkalias" {
-		if _, err := MkAlias(p.DB, parts[1], parts[2]); err != nil {
-			log.Error().Err(err).Msg("Could not mkalias")
-			p.Bot.Send(c, bot.Message, channel, "We're gonna need too much DB space to make an alias for your mom.")
-			return true
-		}
-		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("Created alias %s -> %s",
-			parts[1], parts[2]))
-		return true
-	} else if len(parts) == 2 && strings.ToLower(parts[0]) == "rmalias" {
-		if err := RmAlias(p.DB, parts[1]); err != nil {
-			log.Error().Err(err).Msg("could not RmAlias")
-			p.Bot.Send(c, bot.Message, channel, "`sudo rm your mom` => Nope, she's staying with me.")
-			return true
-		}
-		p.Bot.Send(c, bot.Message, channel, "`sudo rm your mom`")
-		return true
-	} else if strings.ToLower(parts[0]) == "leaderboard" {
-		var cmd func() ([]Item, error)
-		itNameTxt := ""
-
-		if len(parts) == 1 {
-			cmd = func() ([]Item, error) { return LeaderAll(p.DB) }
-		} else {
-			itNameTxt = fmt.Sprintf(" for %s", parts[1])
-			cmd = func() ([]Item, error) { return Leader(p.DB, parts[1]) }
-		}
-
-		its, err := cmd()
-		if err != nil {
-			log.Error().Err(err).Msg("Error with leaderboard")
-			return false
-		} else if len(its) == 0 {
-			return false
-		}
-
-		out := fmt.Sprintf("Leaderboard%s:\n", itNameTxt)
-		for _, it := range its {
-			out += fmt.Sprintf("%s with %d %s\n",
-				it.Nick,
-				it.Count,
-				it.Item,
-			)
-		}
-		p.Bot.Send(c, bot.Message, channel, out)
-		return true
-	} else if match := teaMatcher.MatchString(message.Body); match {
-		// check for tea match TTT
-		return p.checkMatch(c, message)
-	} else if message.Command && message.Body == "reset me" {
-		items, err := GetItems(p.DB, strings.ToLower(nick))
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("nick", nick).
-				Msg("Error getting items to reset")
-			p.Bot.Send(c, bot.Message, channel, "Something is technically wrong with your counters.")
-			return true
-		}
-		log.Debug().Msgf("Items: %+v", items)
-		for _, item := range items {
-			item.Delete()
-		}
-		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
-		return true
-	} else if message.Command && parts[0] == "inspect" && len(parts) == 2 {
-		var subject string
-
-		if parts[1] == "me" {
-			subject = strings.ToLower(nick)
-		} else {
-			subject = strings.ToLower(parts[1])
-		}
-
-		log.Debug().
-			Str("subject", subject).
-			Msg("Getting counter")
-		// pull all of the items associated with "subject"
-		items, err := GetItems(p.DB, subject)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("subject", subject).
-				Msg("Error retrieving items")
-			p.Bot.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
-			return true
-		}
-
-		resp := fmt.Sprintf("%s has the following counters:", subject)
-		count := 0
-		for _, it := range items {
-			count += 1
-			if count > 1 {
-				resp += ","
-			}
-			resp += fmt.Sprintf(" %s: %d", it.Item, it.Count)
-			if count > 20 {
-				resp += ", and a few others"
-				break
-			}
-		}
-		resp += "."
-
-		if count == 0 {
-			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", subject))
-			return true
-		}
-
-		p.Bot.Send(c, bot.Message, channel, resp)
-		return true
-	} else if message.Command && len(parts) == 2 && parts[0] == "clear" {
-		subject := strings.ToLower(nick)
-		itemName := strings.ToLower(parts[1])
-
-		it, err := GetUserItem(p.DB, subject, itemName)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("subject", subject).
-				Str("itemName", itemName).
-				Msg("Error getting item to remove")
-			p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
-			return true
-		}
-		err = it.Delete()
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("subject", subject).
-				Str("itemName", itemName).
-				Msg("Error removing item")
-			p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
-			return true
-		}
-
-		p.Bot.Send(c, bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
-			itemName))
-		return true
-
-	} else if message.Command && parts[0] == "count" {
-		var subject string
-		var itemName string
-
-		if len(parts) == 3 {
-			// report count for parts[1]
-			subject = strings.ToLower(parts[1])
-			itemName = strings.ToLower(parts[2])
-		} else if len(parts) == 2 {
-			subject = strings.ToLower(nick)
-			itemName = strings.ToLower(parts[1])
-		} else {
-			return false
-		}
-
-		var item Item
-		item, err := GetUserItem(p.DB, subject, itemName)
-		switch {
-		case err == sql.ErrNoRows:
-			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("I don't think %s has any %s.",
-				subject, itemName))
-			return true
-		case err != nil:
-			log.Error().
-				Err(err).
-				Str("subject", subject).
-				Str("itemName", itemName).
-				Msg("Error retrieving item count")
-			return true
-		}
-
-		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
-			itemName))
-
-		return true
-	} else if len(parts) <= 2 {
-		if (len(parts) == 2) && (parts[1] == "++" || parts[1] == "--") {
-			parts = []string{parts[0] + parts[1]}
-		}
-		// Need to have at least 3 characters to ++ or --
-		if len(parts[0]) < 3 {
-			return false
-		}
-
-		subject := strings.ToLower(nick)
-		itemName := strings.ToLower(parts[0])[:len(parts[0])-2]
-
-		if nameParts := strings.SplitN(itemName, ".", 2); len(nameParts) == 2 {
-			subject = nameParts[0]
-			itemName = nameParts[1]
-		}
-
-		if strings.HasSuffix(parts[0], "++") {
-			// ++ those fuckers
-			item, err := GetUserItem(p.DB, subject, itemName)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Str("subject", subject).
-					Str("itemName", itemName).
-					Msg("error finding item")
-				// Item ain't there, I guess
-				return false
-			}
-			log.Debug().Msgf("About to update item: %#v", item)
-			item.UpdateDelta(1)
-			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
-				item.Count, item.Item))
-			return true
-		} else if strings.HasSuffix(parts[0], "--") {
-			// -- those fuckers
-			item, err := GetUserItem(p.DB, subject, itemName)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Str("subject", subject).
-					Str("itemName", itemName).
-					Msg("Error finding item")
-				// Item ain't there, I guess
-				return false
-			}
-			item.UpdateDelta(-1)
-			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
-				item.Count, item.Item))
-			return true
-		}
-	} else if len(parts) == 3 {
-		// Need to have at least 3 characters to ++ or --
-		if len(parts[0]) < 3 {
-			return false
-		}
-
-		subject := strings.ToLower(nick)
-		itemName := strings.ToLower(parts[0])
-
-		if nameParts := strings.SplitN(itemName, ".", 2); len(nameParts) == 2 {
-			subject = nameParts[0]
-			itemName = nameParts[1]
-		}
-
-		if parts[1] == "+=" {
-			// += those fuckers
-			item, err := GetUserItem(p.DB, subject, itemName)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Str("subject", subject).
-					Str("itemName", itemName).
-					Msg("Error finding item")
-				// Item ain't there, I guess
-				return false
-			}
-			n, _ := strconv.Atoi(parts[2])
-			log.Debug().Msgf("About to update item by %d: %#v", n, item)
-			item.UpdateDelta(n)
-			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
-				item.Count, item.Item))
-			return true
-		} else if parts[1] == "-=" {
-			// -= those fuckers
-			item, err := GetUserItem(p.DB, subject, itemName)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Str("subject", subject).
-					Str("itemName", itemName).
-					Msg("Error finding item")
-				// Item ain't there, I guess
-				return false
-			}
-			n, _ := strconv.Atoi(parts[2])
-			log.Debug().Msgf("About to update item by -%d: %#v", n, item)
-			item.UpdateDelta(-n)
-			p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
-				item.Count, item.Item))
-			return true
-		}
+func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
+	subject := r.Msg.User.Name
+	if r.Values["who"] != "" {
+		subject = strings.TrimSuffix(r.Values["who"], ".")
 	}
+	itemName := r.Values["thing"]
+	channel := r.Msg.Channel
+	// -- those fuckers
+	item, err := GetUserItem(p.DB, subject, itemName)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("Error finding item")
+		// Item ain't there, I guess
+		return false
+	}
+	item.UpdateDelta(-1)
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+		item.Count, item.Item))
+	return true
+}
 
-	return false
+func (p *CounterPlugin) addToCmd(r bot.Request) bool {
+	subject := r.Msg.User.Name
+	if r.Values["who"] != "" {
+		subject = strings.TrimSuffix(r.Values["who"], ".")
+	}
+	itemName := r.Values["thing"]
+	channel := r.Msg.Channel
+	// += those fuckers
+	item, err := GetUserItem(p.DB, subject, itemName)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("Error finding item")
+		// Item ain't there, I guess
+		return false
+	}
+	n, _ := strconv.Atoi(r.Values["amount"])
+	log.Debug().Msgf("About to update item by %d: %#v", n, item)
+	item.UpdateDelta(n)
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+		item.Count, item.Item))
+	return true
+}
+
+func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
+	subject := r.Msg.User.Name
+	if r.Values["who"] != "" {
+		subject = strings.TrimSuffix(r.Values["who"], ".")
+	}
+	itemName := r.Values["thing"]
+	channel := r.Msg.Channel
+	// -= those fuckers
+	item, err := GetUserItem(p.DB, subject, itemName)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("subject", subject).
+			Str("itemName", itemName).
+			Msg("Error finding item")
+		// Item ain't there, I guess
+		return false
+	}
+	n, _ := strconv.Atoi(r.Values["amount"])
+	log.Debug().Msgf("About to update item by -%d: %#v", n, item)
+	item.UpdateDelta(-n)
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+		item.Count, item.Item))
+	return true
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
@@ -579,11 +613,11 @@ func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message
 	return true
 }
 
-func (p *CounterPlugin) checkMatch(c bot.Connector, message msg.Message) bool {
-	nick := message.User.Name
-	channel := message.Channel
+func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
+	nick := r.Msg.User.Name
+	channel := r.Msg.Channel
 
-	submatches := teaMatcher.FindStringSubmatch(message.Body)
+	submatches := teaRegex.FindStringSubmatch(r.Msg.Body)
 	if len(submatches) <= 1 {
 		return false
 	}
@@ -605,7 +639,7 @@ func (p *CounterPlugin) checkMatch(c bot.Connector, message msg.Message) bool {
 		delta = -1
 	}
 	item.UpdateDelta(delta)
-	p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
 		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
 }
