@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/velour/catbase/bot"
@@ -23,27 +24,22 @@ func New(b bot.Bot) *GPT2Plugin {
 		c: b.Config(),
 	}
 
-	b.Register(p, bot.Message, p.message)
+	b.RegisterRegexCmd(p, bot.Message, gpt2Regex, p.gpt2Cmd)
 	b.Register(p, bot.Help, p.help)
 
 	return p
 }
 
-const prefix = "gpt2"
+var gpt2Regex = regexp.MustCompile(`(?i)^gpt2 (?P<input>.*)$`)
 
-func (p *GPT2Plugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	ch := message.Channel
-	lowerBody := strings.ToLower(message.Body)
-	if message.Command && strings.HasPrefix(lowerBody, prefix) {
-		input := message.Body[len(prefix)+1:]
-		txt, err := p.getGPTText(input)
-		if err != nil {
-			txt = p.c.Get("gpt.error", "The GPT service is unavailable.")
-		}
-		p.b.Send(c, bot.Message, ch, txt)
-		return true
+func (p *GPT2Plugin) gpt2Cmd(r bot.Request) bool {
+	input := r.Values["input"]
+	txt, err := p.getGPTText(input)
+	if err != nil {
+		txt = p.c.Get("gpt.error", "The GPT service is unavailable.")
 	}
-	return false
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, txt)
+	return true
 }
 
 func (p *GPT2Plugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
