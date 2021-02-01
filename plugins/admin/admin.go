@@ -30,16 +30,37 @@ type AdminPlugin struct {
 	quiet bool
 }
 
-// NewAdminPlugin creates a new AdminPlugin with the Plugin interface
+// New creates a new AdminPlugin with the Plugin interface
 func New(b bot.Bot) *AdminPlugin {
 	p := &AdminPlugin{
 		bot: b,
 		db:  b.DB(),
 		cfg: b.Config(),
 	}
-	b.Register(p, bot.Message, p.message)
+
+	b.RegisterRegex(p, bot.Message, comeBackRegex, p.comeBackCmd)
+	b.RegisterRegexCmd(p, bot.Message, shutupRegex, p.shutupCmd)
+	b.RegisterRegexCmd(p, bot.Message, addBlacklistRegex, p.isAdmin(p.addBlacklistCmd))
+	b.RegisterRegexCmd(p, bot.Message, rmBlacklistRegex, p.isAdmin(p.rmBlacklistCmd))
+	b.RegisterRegexCmd(p, bot.Message, addWhitelistRegex, p.isAdmin(p.addWhitelistCmd))
+	b.RegisterRegexCmd(p, bot.Message, rmWhitelistRegex, p.isAdmin(p.rmWhitelistCmd))
+	b.RegisterRegexCmd(p, bot.Message, allWhitelistRegex, p.isAdmin(p.allWhitelistCmd))
+	b.RegisterRegexCmd(p, bot.Message, allUnWhitelistRegex, p.isAdmin(p.allUnWhitelistCmd))
+	b.RegisterRegexCmd(p, bot.Message, getWhitelistRegex, p.isAdmin(p.getWhitelistCmd))
+	b.RegisterRegexCmd(p, bot.Message, getPluginsRegex, p.isAdmin(p.getPluginsCmd))
+	b.RegisterRegexCmd(p, bot.Message, rebootRegex, p.isAdmin(p.rebootCmd))
+	b.RegisterRegexCmd(p, bot.Message, passwordRegex, p.passwordCmd)
+	b.RegisterRegex(p, bot.Message, variableSetRegex, p.variableSetCmd)
+	b.RegisterRegex(p, bot.Message, variableUnSetRegex, p.variableUnSetCmd)
+	b.RegisterRegexCmd(p, bot.Message, unsetConfigRegex, p.isAdmin(p.unsetConfigCmd))
+	b.RegisterRegexCmd(p, bot.Message, setConfigRegex, p.isAdmin(p.setConfigCmd))
+	b.RegisterRegexCmd(p, bot.Message, pushConfigRegex, p.isAdmin(p.pushConfigCmd))
+	b.RegisterRegexCmd(p, bot.Message, setKeyConfigRegex, p.isAdmin(p.setKeyConfigCmd))
+	b.RegisterRegexCmd(p, bot.Message, getConfigRegex, p.isAdmin(p.getConfigCmd))
+
 	b.Register(p, bot.Help, p.help)
 	p.registerWeb()
+
 	return p
 }
 
@@ -51,267 +72,276 @@ var forbiddenKeys = map[string]bool{
 	"meme.memes":           true,
 }
 
-var addBlacklist = regexp.MustCompile(`(?i)disable plugin (.*)`)
-var rmBlacklist = regexp.MustCompile(`(?i)enable plugin (.*)`)
+var shutupRegex = regexp.MustCompile(`(?i)^shut up$`)
+var comeBackRegex = regexp.MustCompile(`(?i)^come back$`)
 
-var addWhitelist = regexp.MustCompile(`(?i)^whitelist plugin (.*)`)
-var rmWhitelist = regexp.MustCompile(`(?i)^unwhitelist plugin (.*)`)
-var allWhitelist = regexp.MustCompile(`(?i)^whitelist all`)
-var allUnwhitelist = regexp.MustCompile(`(?i)^unwhitelist all`)
-var getWhitelist = regexp.MustCompile(`(?i)^list whitelist`)
-var getPlugins = regexp.MustCompile(`(?i)^list plugins`)
+var addBlacklistRegex = regexp.MustCompile(`(?i)disable plugin (?P<plugin>.*)$`)
+var rmBlacklistRegex = regexp.MustCompile(`(?i)enable plugin (?P<plugin>.*)$`)
 
-// Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *AdminPlugin) message(conn bot.Connector, k bot.Kind, message msg.Message, args ...interface{}) bool {
-	body := message.Body
+var addWhitelistRegex = regexp.MustCompile(`(?i)^whitelist plugin (?P<plugin>.*)$`)
+var rmWhitelistRegex = regexp.MustCompile(`(?i)^unwhitelist plugin (?P<plugin>.*)$`)
+var allWhitelistRegex = regexp.MustCompile(`(?i)^whitelist all$`)
+var allUnWhitelistRegex = regexp.MustCompile(`(?i)^unwhitelist all$`)
+var getWhitelistRegex = regexp.MustCompile(`(?i)^list whitelist$`)
+var getPluginsRegex = regexp.MustCompile(`(?i)^list plugins$`)
 
-	if p.quiet && message.Body != "come back" {
-		return true
-	}
+var rebootRegex = regexp.MustCompile(`^reboot$`)
+var passwordRegex = regexp.MustCompile(`(?i)^password$`)
 
-	if len(body) > 0 && body[0] == '$' {
-		return p.handleVariables(conn, message)
-	}
+var variableSetRegex = regexp.MustCompile(`(?i)^\$(?P<var>\S+)\s?=\s?(?P<value>\S+)$`)
+var variableUnSetRegex = regexp.MustCompile(`(?i)^\$(?P<var>\S+)\s?!=\s?(?P<value>\S+)$`)
 
-	if !message.Command {
-		return false
-	}
+var unsetConfigRegex = regexp.MustCompile(`(?i)^unset (?P<key>\S+)$`)
+var setConfigRegex = regexp.MustCompile(`(?i)^set (?P<key>\S+) (?P<value>.*)$`)
+var pushConfigRegex = regexp.MustCompile(`(?i)^push (?P<key>\S+) (?P<value>.*)$`)
+var setKeyConfigRegex = regexp.MustCompile(`(?i)^setkey (?P<key>\S+) (?P<name>\S+) (?P<value>.*)$`)
+var getConfigRegex = regexp.MustCompile(`(?i)^get (?P<key>\S+)$`)
 
-	if p.quiet && message.Body == "come back" {
-		p.quiet = false
-		p.bot.SetQuiet(false)
-		backMsg := p.bot.Config().Get("admin.comeback", "Okay, I'm back.")
-		p.bot.Send(conn, bot.Message, message.Channel, backMsg)
-		return true
-	}
-
-	if strings.ToLower(body) == "shut up" {
-		dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
-		log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
-		leaveMsg := p.bot.Config().Get("admin.shutup", "Okay. I'll be back later.")
-		p.bot.Send(conn, bot.Message, message.Channel, leaveMsg)
-		p.quiet = true
-		p.bot.SetQuiet(true)
-		go func() {
-			select {
-			case <-time.After(dur):
-				p.quiet = false
-				p.bot.SetQuiet(false)
-				log.Info().Msg("Waking up from nap.")
-				backMsg := p.bot.Config().Get("admin.backmsg", "I'm back, bitches.")
-				p.bot.Send(conn, bot.Message, message.Channel, backMsg)
-			}
-		}()
-		return true
-	}
-
-	if !p.bot.CheckAdmin(message.User.Name) {
-		log.Debug().Msgf("User %s is not an admin", message.User.Name)
-		return false
-	}
-
-	if strings.ToLower(body) == "reboot" {
-		p.bot.Send(conn, bot.Message, message.Channel, "brb")
-		log.Info().Msgf("Got reboot command")
-		os.Exit(0)
-	}
-
-	if addBlacklist.MatchString(body) {
-		submatches := addBlacklist.FindStringSubmatch(message.Body)
-		plugin := submatches[1]
-		if err := p.addBlacklist(message.Channel, plugin); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't add that item: %s", err))
-			log.Error().Err(err).Msgf("error adding blacklist item")
-			return true
+func (p *AdminPlugin) isAdmin(rh bot.ResponseHandler) bot.ResponseHandler {
+	return func(r bot.Request) bool {
+		if !p.bot.CheckAdmin(r.Msg.User.Name) {
+			log.Debug().Msgf("User %s is not an admin", r.Msg.User.Name)
+			return false
 		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s disabled. Use `!enable plugin %s` to re-enable it.", plugin, plugin))
-		return true
+		return rh(r)
 	}
+}
 
-	if rmBlacklist.MatchString(body) {
-		submatches := rmBlacklist.FindStringSubmatch(message.Body)
-		plugin := submatches[1]
-		if err := p.rmBlacklist(message.Channel, plugin); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't remove that item: %s", err))
-			log.Error().Err(err).Msgf("error removing blacklist item")
-			return true
+func (p *AdminPlugin) shutupCmd(r bot.Request) bool {
+	dur := time.Duration(p.cfg.GetInt("quietDuration", 5)) * time.Minute
+	log.Info().Msgf("Going to sleep for %v, %v", dur, time.Now().Add(dur))
+	leaveMsg := p.bot.Config().Get("admin.shutup", "Okay. I'll be back later.")
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, leaveMsg)
+	p.quiet = true
+	p.bot.SetQuiet(true)
+	go func() {
+		select {
+		case <-time.After(dur):
+			p.quiet = false
+			p.bot.SetQuiet(false)
+			log.Info().Msg("Waking up from nap.")
+			backMsg := p.bot.Config().Get("admin.backmsg", "I'm back, bitches.")
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, backMsg)
 		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s enabled. Use `!disable plugin %s` to disable it.", plugin, plugin))
+	}()
+	return true
+}
+
+func (p *AdminPlugin) comeBackCmd(r bot.Request) bool {
+	p.quiet = false
+	p.bot.SetQuiet(false)
+	backMsg := p.bot.Config().Get("admin.comeback", "Okay, I'm back.")
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, backMsg)
+	return true
+}
+
+func (p *AdminPlugin) addBlacklistCmd(r bot.Request) bool {
+	plugin := r.Values["plugin"]
+	if err := p.addBlacklist(r.Msg.Channel, plugin); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I couldn't add that item: %s", err))
+		log.Error().Err(err).Msgf("error adding blacklist item")
 		return true
 	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s disabled. Use `!enable plugin %s` to re-enable it.", plugin, plugin))
+	return true
+}
 
-	if allWhitelist.MatchString(body) {
-		plugins := p.bot.GetPluginNames()
-		for _, plugin := range plugins {
-			if err := p.addWhitelist(plugin); err != nil {
-				p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't whitelist that item: %s", err))
-				log.Error().Err(err).Msgf("error adding whitelist item")
-				return true
-			}
-		}
-		p.bot.Send(conn, bot.Message, message.Channel, "Enabled all plugins")
+func (p *AdminPlugin) rmBlacklistCmd(r bot.Request) bool {
+	plugin := r.Values["plugin"]
+	if err := p.rmBlacklist(r.Msg.Channel, plugin); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I couldn't remove that item: %s", err))
+		log.Error().Err(err).Msgf("error removing blacklist item")
 		return true
 	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s enabled. Use `!disable plugin %s` to disable it.", plugin, plugin))
+	return true
+}
 
-	if allUnwhitelist.MatchString(body) {
-		plugins := p.bot.GetPluginNames()
-		for _, plugin := range plugins {
-			if plugin == "admin" {
-				continue
-			}
-			if err := p.rmWhitelist(plugin); err != nil {
-				p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't unwhitelist that item: %s", err))
-				log.Error().Err(err).Msgf("error removing whitelist item")
-				return true
-			}
-		}
-		p.bot.Send(conn, bot.Message, message.Channel, "Disabled all plugins")
+func (p *AdminPlugin) addWhitelistCmd(r bot.Request) bool {
+	plugin := r.Values["plugin"]
+	if err := p.addWhitelist(plugin); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I couldn't whitelist that item: %s", err))
+		log.Error().Err(err).Msgf("error adding whitelist item")
 		return true
 	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s enabled. Use `!unwhitelist plugin %s` to disable it.", plugin, plugin))
+	return true
+}
 
-	if addWhitelist.MatchString(body) {
-		submatches := addWhitelist.FindStringSubmatch(message.Body)
-		plugin := submatches[1]
+func (p *AdminPlugin) rmWhitelistCmd(r bot.Request) bool {
+	plugin := r.Values["plugin"]
+	if err := p.rmWhitelist(plugin); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I couldn't unwhitelist that item: %s", err))
+		log.Error().Err(err).Msgf("error removing whitelist item")
+		return true
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s disabled. Use `!whitelist plugin %s` to enable it.", plugin, plugin))
+	return true
+}
+
+func (p *AdminPlugin) allWhitelistCmd(r bot.Request) bool {
+	plugins := p.bot.GetPluginNames()
+	for _, plugin := range plugins {
 		if err := p.addWhitelist(plugin); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't whitelist that item: %s", err))
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I couldn't whitelist that item: %s", err))
 			log.Error().Err(err).Msgf("error adding whitelist item")
 			return true
 		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s enabled. Use `!unwhitelist plugin %s` to disable it.", plugin, plugin))
-		return true
 	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Enabled all plugins")
+	return true
+}
 
-	if rmWhitelist.MatchString(body) {
-		submatches := rmWhitelist.FindStringSubmatch(message.Body)
-		plugin := submatches[1]
+func (p *AdminPlugin) allUnWhitelistCmd(r bot.Request) bool {
+	plugins := p.bot.GetPluginNames()
+	for _, plugin := range plugins {
+		if plugin == "admin" {
+			continue
+		}
 		if err := p.rmWhitelist(plugin); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("I couldn't unwhitelist that item: %s", err))
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I couldn't unwhitelist that item: %s", err))
 			log.Error().Err(err).Msgf("error removing whitelist item")
 			return true
 		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s disabled. Use `!whitelist plugin %s` to enable it.", plugin, plugin))
-		return true
 	}
-
-	if getWhitelist.MatchString(body) {
-		list := p.bot.GetWhitelist()
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Whitelist: %v", list))
-		return true
-	}
-
-	if getPlugins.MatchString(body) {
-		plugins := p.bot.GetPluginNames()
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Plugins: %v", plugins))
-		return true
-	}
-
-	if strings.ToLower(body) == "password" {
-		p.bot.Send(conn, bot.Message, message.Channel, p.bot.GetPassword())
-		return true
-	}
-
-	verbs := map[string]bool{
-		"set":    true,
-		"push":   true,
-		"setkey": true,
-	}
-
-	parts := strings.Split(body, " ")
-	if verbs[parts[0]] && len(parts) > 2 && forbiddenKeys[parts[1]] {
-		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
-		return true
-	} else if parts[0] == "unset" && len(parts) > 1 {
-		if err := p.cfg.Unset(parts[1]); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Unset error: %s", err))
-			return true
-		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Unset %s", parts[1]))
-		return true
-	} else if parts[0] == "set" && len(parts) > 2 {
-		if err := p.cfg.Set(parts[1], strings.Join(parts[2:], " ")); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
-			return true
-		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
-		return true
-	} else if parts[0] == "push" && len(parts) > 2 {
-		items := p.cfg.GetArray(parts[1], []string{})
-		items = append(items, strings.Join(parts[2:], ""))
-		if err := p.cfg.Set(parts[1], strings.Join(items, ";;")); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
-			return true
-		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
-		return true
-	} else if parts[0] == "setkey" && len(parts) > 3 {
-		items := p.cfg.GetMap(parts[1], map[string]string{})
-		items[parts[2]] = strings.Join(parts[3:], " ")
-		if err := p.cfg.SetMap(parts[1], items); err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set error: %s", err))
-			return true
-		}
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("Set %s", parts[1]))
-		return true
-	}
-
-	if parts[0] == "get" && len(parts) == 2 && forbiddenKeys[parts[1]] {
-		p.bot.Send(conn, bot.Message, message.Channel, "You cannot access that key")
-		return true
-	} else if parts[0] == "get" && len(parts) == 2 {
-		v := p.cfg.Get(parts[1], "<unknown>")
-		p.bot.Send(conn, bot.Message, message.Channel, fmt.Sprintf("%s: %s", parts[1], v))
-		return true
-	}
-
-	return false
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Disabled all plugins")
+	return true
 }
 
-func (p *AdminPlugin) handleVariables(conn bot.Connector, message msg.Message) bool {
-	if parts := strings.SplitN(message.Body, "!=", 2); len(parts) == 2 {
-		variable := strings.ToLower(strings.TrimSpace(parts[0]))
-		value := strings.TrimSpace(parts[1])
+func (p *AdminPlugin) getWhitelistCmd(r bot.Request) bool {
+	list := p.bot.GetWhitelist()
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Whitelist: %v", list))
+	return true
+}
 
-		_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
-		if err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
-			log.Error().Err(err)
-		} else {
-			p.bot.Send(conn, bot.Message, message.Channel, "Removed.")
-		}
+func (p *AdminPlugin) getPluginsCmd(r bot.Request) bool {
+	plugins := p.bot.GetPluginNames()
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Plugins: %v", plugins))
+	return true
+}
 
-		return true
-	}
+func (p *AdminPlugin) rebootCmd(r bot.Request) bool {
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "brb")
+	log.Info().Msgf("Got reboot command")
+	os.Exit(0)
+	return true
+}
 
-	parts := strings.SplitN(message.Body, "=", 2)
-	if len(parts) != 2 {
-		return false
-	}
+func (p *AdminPlugin) passwordCmd(r bot.Request) bool {
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, p.bot.GetPassword())
+	return true
+}
 
-	variable := strings.ToLower(strings.TrimSpace(parts[0]))
-	value := strings.TrimSpace(parts[1])
+func (p *AdminPlugin) variableSetCmd(r bot.Request) bool {
+	variable := strings.ToLower(r.Values["var"])
+	value := r.Values["value"]
 
 	var count int64
 	row := p.db.QueryRow(`select count(*) from variables where value = ?`, variable, value)
 	err := row.Scan(&count)
 	if err != nil {
-		p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I'm broke and need attention in my variable creation code.")
 		log.Error().Err(err)
 		return true
 	}
 
 	if count > 0 {
-		p.bot.Send(conn, bot.Message, message.Channel, "I've already got that one.")
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I've already got that one.")
 	} else {
 		_, err := p.db.Exec(`INSERT INTO variables (name, value) VALUES (?, ?)`, variable, value)
 		if err != nil {
-			p.bot.Send(conn, bot.Message, message.Channel, "I'm broke and need attention in my variable creation code.")
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I'm broke and need attention in my variable creation code.")
 			log.Error().Err(err)
 			return true
 		}
-		p.bot.Send(conn, bot.Message, message.Channel, "Added.")
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Added.")
 	}
+	return true
+}
+
+func (p *AdminPlugin) variableUnSetCmd(r bot.Request) bool {
+	variable := strings.ToLower(r.Values["var"])
+	value := r.Values["value"]
+
+	_, err := p.db.Exec(`delete from variables where name=? and value=?`, variable, value)
+	if err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I'm broke and need attention in my variable creation code.")
+		log.Error().Err(err)
+	} else {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Removed.")
+	}
+
+	return true
+}
+
+func (p *AdminPlugin) unsetConfigCmd(r bot.Request) bool {
+	key := r.Values["key"]
+	if forbiddenKeys[key] {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You cannot access that key")
+		return true
+	}
+	if err := p.cfg.Unset(key); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Unset error: %s", err))
+		return true
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Unset %s", key))
+	return true
+}
+
+func (p *AdminPlugin) setConfigCmd(r bot.Request) bool {
+	key, value := r.Values["key"], r.Values["value"]
+	if forbiddenKeys[key] {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You cannot access that key")
+		return true
+	}
+	if err := p.cfg.Set(key, value); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Set error: %s", err))
+		return true
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Set %s", key))
+	return true
+}
+
+func (p *AdminPlugin) pushConfigCmd(r bot.Request) bool {
+	key, value := r.Values["key"], r.Values["value"]
+	if forbiddenKeys[key] {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You cannot access that key")
+		return true
+	}
+	items := p.cfg.GetArray(key, []string{})
+	items = append(items, value)
+	if err := p.cfg.Set(key, strings.Join(items, ";;")); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Set error: %s", err))
+		return true
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Set %s", key))
+	return true
+}
+
+func (p *AdminPlugin) setKeyConfigCmd(r bot.Request) bool {
+	key, name, value := r.Values["key"], r.Values["name"], r.Values["value"]
+	if forbiddenKeys[key] {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You cannot access that key")
+		return true
+	}
+	items := p.cfg.GetMap(key, map[string]string{})
+	items[name] = value
+	if err := p.cfg.SetMap(key, items); err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Set error: %s", err))
+		return true
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Set %s", key))
+	return true
+}
+
+func (p *AdminPlugin) getConfigCmd(r bot.Request) bool {
+	key := r.Values["key"]
+	if forbiddenKeys[key] {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You cannot access that key")
+		return true
+	}
+	v := p.cfg.Get(key, "<unknown>")
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s: %s", key, v))
 	return true
 }
 
