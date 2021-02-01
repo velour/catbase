@@ -2,6 +2,7 @@ package aoc
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,7 +11,6 @@ import (
 	"code.chrissexton.org/cws/getaoc"
 
 	"github.com/velour/catbase/bot"
-	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
 )
 
@@ -24,91 +24,82 @@ func New(b bot.Bot) *AOC {
 		b: b,
 		c: b.Config(),
 	}
-	b.Register(aoc, bot.Message, aoc.message)
+	b.RegisterRegexCmd(aoc, bot.Message, aocRegex, aoc.aocCmd)
 	return aoc
 }
 
-func (p *AOC) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if !message.Command {
-		return false
+var aocRegex = regexp.MustCompile(`(?i)^aoc\s?(?P<year>\S+)?$`)
+
+func (p *AOC) aocCmd(r bot.Request) bool {
+	year := time.Now().Year()
+	if time.Now().Month() < 11 {
+		year--
 	}
-	cleaned := strings.TrimSpace(strings.ToLower(message.Body))
-	fields := strings.Split(cleaned, " ")
-	if strings.HasPrefix(cleaned, "aoc") {
-		year := time.Now().Year()
-		if len(fields) > 1 {
-			year, _ = strconv.Atoi(fields[1])
-		}
-		boardId := p.c.GetInt("aoc.board", 0)
-		var err error
-		if len(fields) > 2 {
-			boardId, err = strconv.Atoi(fields[2])
-			if err != nil {
-				p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("Error getting leaderboard: %s", err))
-				return true
-			}
-		}
-		session := p.c.Get("aoc.session", "")
-		if session == "" {
-			p.b.Send(c, bot.Message, message.Channel, "Error getting leaderboard: must have a session ID.")
-			return true
-		}
-		if boardId == 0 {
-			p.b.Send(c, bot.Message, message.Channel, "Error getting leaderboard: must have a board ID.")
-			return true
-		}
-		board, err := getaoc.GetLeaderboard(session, year, boardId)
-		if err != nil {
-			p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("Error getting leaderboard: %s", err))
-			return true
-		}
+	if r.Values["year"] != "" {
+		year, _ = strconv.Atoi(r.Values["year"])
+	}
+	boardId := p.c.GetInt("aoc.board", 0)
+	var err error
 
-		members := []getaoc.Member{}
-		for _, m := range board.Members {
-			members = append(members, m)
-		}
-		sort.Slice(members, func(i, j int) bool {
-			return members[i].LocalScore > members[j].LocalScore
-		})
-
-		gold, silver, bronze := -1, -1, -1
-		goldID, silverID, bronzeID := "", "", ""
-		for _, m := range members {
-			if m.LocalScore > gold {
-				gold = m.LocalScore
-				goldID = m.ID
-			}
-			if m.LocalScore < gold && m.LocalScore > silver {
-				silver = m.LocalScore
-				silverID = m.ID
-			}
-			if m.LocalScore < silver && m.LocalScore > bronze {
-				bronze = m.LocalScore
-				bronzeID = m.ID
-			}
-		}
-
-		link := c.URLFormat("leaderboard", fmt.Sprintf("https://adventofcode.com/%d/leaderboard/private/view/%d", year, boardId))
-		msg := fmt.Sprintf("AoC %s:\n", link)
-		for _, m := range members {
-			if m.Stars == 0 {
-				continue
-			}
-			trophy := ""
-			switch m.ID {
-			case goldID:
-				trophy = c.Emojy(":gold-trophy:")
-			case silverID:
-				trophy = c.Emojy(":silver-trophy:")
-			case bronzeID:
-				trophy = c.Emojy(":bronze-trophy:")
-			}
-			msg += fmt.Sprintf("%s has %d :star: for a score of %d%s\n", m.Name, m.Stars, m.LocalScore, trophy)
-		}
-		msg = strings.TrimSpace(msg)
-
-		p.b.Send(c, bot.Message, message.Channel, msg)
+	session := p.c.Get("aoc.session", "")
+	if session == "" {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Error getting leaderboard: must have a session ID.")
 		return true
 	}
-	return false
+	if boardId == 0 {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Error getting leaderboard: must have a board ID.")
+		return true
+	}
+	board, err := getaoc.GetLeaderboard(session, year, boardId)
+	if err != nil {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Error getting leaderboard: %s", err))
+		return true
+	}
+
+	members := []getaoc.Member{}
+	for _, m := range board.Members {
+		members = append(members, m)
+	}
+	sort.Slice(members, func(i, j int) bool {
+		return members[i].LocalScore > members[j].LocalScore
+	})
+
+	gold, silver, bronze := -1, -1, -1
+	goldID, silverID, bronzeID := "", "", ""
+	for _, m := range members {
+		if m.LocalScore > gold {
+			gold = m.LocalScore
+			goldID = m.ID
+		}
+		if m.LocalScore < gold && m.LocalScore > silver {
+			silver = m.LocalScore
+			silverID = m.ID
+		}
+		if m.LocalScore < silver && m.LocalScore > bronze {
+			bronze = m.LocalScore
+			bronzeID = m.ID
+		}
+	}
+
+	link := r.Conn.URLFormat("leaderboard", fmt.Sprintf("https://adventofcode.com/%d/leaderboard/private/view/%d", year, boardId))
+	msg := fmt.Sprintf("AoC %s:\n", link)
+	for _, m := range members {
+		if m.Stars == 0 {
+			continue
+		}
+		trophy := ""
+		switch m.ID {
+		case goldID:
+			trophy = r.Conn.Emojy(":gold-trophy:")
+		case silverID:
+			trophy = r.Conn.Emojy(":silver-trophy:")
+		case bronzeID:
+			trophy = r.Conn.Emojy(":bronze-trophy:")
+		}
+		msg += fmt.Sprintf("%s has %d :star: for a score of %d%s\n", m.Name, m.Stars, m.LocalScore, trophy)
+	}
+	msg = strings.TrimSpace(msg)
+
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+	return true
 }
