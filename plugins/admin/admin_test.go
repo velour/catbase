@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -28,24 +29,30 @@ func setup(t *testing.T) (*AdminPlugin, *bot.MockBot) {
 	return a, mb
 }
 
-func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
+func makeMessage(payload string, r *regexp.Regexp) bot.Request {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
 	c := cli.CliPlugin{}
-	return &c, bot.Message, msg.Message{
-		User:    &user.User{Name: "admin"},
-		Channel: "test",
-		Body:    payload,
-		Command: isCmd,
+	values := bot.ParseValues(r, payload)
+	return bot.Request{
+		Conn:   &c,
+		Kind:   bot.Message,
+		Values: values,
+		Msg: msg.Message{
+			User:    &user.User{Name: "admin"},
+			Channel: "test",
+			Body:    payload,
+			Command: isCmd,
+		},
 	}
 }
 
 func TestSet(t *testing.T) {
 	a, mb := setup(t)
 	expected := "test value"
-	a.message(makeMessage("!set test.key " + expected))
+	a.setConfigCmd(makeMessage("!set test.key "+expected, setConfigRegex))
 	actual := mb.Config().Get("test.key", "ERR")
 	assert.Equal(t, expected, actual)
 }
@@ -54,7 +61,7 @@ func TestGetValue(t *testing.T) {
 	a, mb := setup(t)
 	expected := "value"
 	mb.Config().Set("test.key", "value")
-	a.message(makeMessage("!get test.key"))
+	a.getConfigCmd(makeMessage("!get test.key", getConfigRegex))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], expected)
 }
@@ -62,7 +69,7 @@ func TestGetValue(t *testing.T) {
 func TestGetEmpty(t *testing.T) {
 	a, mb := setup(t)
 	expected := "test.key: <unknown>"
-	a.message(makeMessage("!get test.key"))
+	a.getConfigCmd(makeMessage("!get test.key", getConfigRegex))
 	assert.Len(t, mb.Messages, 1)
 	assert.Equal(t, expected, mb.Messages[0])
 }
@@ -70,7 +77,7 @@ func TestGetEmpty(t *testing.T) {
 func TestGetForbidden(t *testing.T) {
 	a, mb := setup(t)
 	expected := "cannot access"
-	a.message(makeMessage("!get slack.token"))
+	a.getConfigCmd(makeMessage("!get slack.token", getConfigRegex))
 	assert.Len(t, mb.Messages, 1)
 	assert.Contains(t, mb.Messages[0], expected)
 }
