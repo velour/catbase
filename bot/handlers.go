@@ -57,15 +57,15 @@ func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.M
 	t := reflect.TypeOf(plugin).String()
 	for r, cbs := range b.callbacks[t][evt] {
 		if r.MatchString(message.Body) {
+			req := Request{
+				Conn:   conn,
+				Kind:   evt,
+				Msg:    message,
+				Values: ParseValues(r, message.Body),
+				Args:   args,
+			}
 			for _, cb := range cbs {
-				resp := Request{
-					Conn:   conn,
-					Kind:   evt,
-					Msg:    message,
-					Values: ParseValues(r, message.Body),
-					Args:   args,
-				}
-				if cb(resp) {
+				if cb(req) {
 					return true
 				}
 			}
