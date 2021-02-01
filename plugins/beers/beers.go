@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,7 @@ type BeersPlugin struct {
 	db *sqlx.DB
 
 	untapdCache map[int]bool
+	handlers    bot.HandlerTable
 }
 
 type untappdUser struct {
@@ -70,7 +72,7 @@ func New(b bot.Bot) *BeersPlugin {
 		untapdCache: make(map[int]bool),
 	}
 
-	b.Register(p, bot.Message, p.message)
+	p.register()
 	b.Register(p, bot.Help, p.help)
 
 	p.registerWeb()
@@ -88,143 +90,143 @@ func New(b bot.Bot) *BeersPlugin {
 	return p
 }
 
+func (p *BeersPlugin) register() {
+	p.handlers = bot.HandlerTable{
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^beers?\s?(?P<operator>(\+=|-=|=))\s?(?P<amount>\d+)$`),
+			Handler: func(r bot.Request) bool {
+				op := r.Values["operator"]
+				count, _ := strconv.Atoi(r.Values["amount"])
+				nick := r.Msg.User.Name
+
+				switch op {
+				case "=":
+					if count == 0 {
+						p.puke(r.Conn, nick, r.Msg.Channel)
+					} else {
+						p.setBeers(nick, count)
+						p.randomReply(r.Conn, r.Msg.Channel)
+					}
+					return true
+				case "+=":
+					p.addBeers(nick, count)
+					p.randomReply(r.Conn, r.Msg.Channel)
+					return true
+				case "-=":
+					p.addBeers(nick, -count)
+					p.randomReply(r.Conn, r.Msg.Channel)
+					return true
+				}
+				return false
+			}},
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^beers?\s?(?P<operator>(\+\+|--))$`),
+			Handler: func(r bot.Request) bool {
+				op := r.Values["operator"]
+				nick := r.Msg.User.Name
+				if op == "++" {
+					p.addBeers(nick, 1)
+				} else {
+					p.addBeers(nick, -1)
+				}
+				p.randomReply(r.Conn, r.Msg.Channel)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^beers( (?P<who>\S+))?$`),
+			Handler: func(r bot.Request) bool {
+				who := r.Values["who"]
+				if who == "" {
+					who = r.Msg.User.Name
+				}
+				if p.doIKnow(who) {
+					p.reportCount(r.Conn, who, r.Msg.Channel, false)
+				} else {
+					msg := fmt.Sprintf("Sorry, I don't know %s.", who)
+					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+				}
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^puke$`),
+			Handler: func(r bot.Request) bool {
+				p.puke(r.Conn, r.Msg.User.Name, r.Msg.Channel)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^imbibe$`),
+			Handler: func(r bot.Request) bool {
+				p.addBeers(r.Msg.User.Name, 1)
+				p.randomReply(r.Conn, r.Msg.Channel)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^reguntappd (?P<who>\S+)$`),
+			Handler: func(r bot.Request) bool {
+				chanNick := r.Msg.User.Name
+				channel := r.Msg.Channel
+				untappdNick := r.Values["who"]
+
+				u := untappdUser{
+					untappdUser: untappdNick,
+					chanNick:    chanNick,
+					channel:     channel,
+				}
+
+				log.Info().
+					Str("untappdUser", u.untappdUser).
+					Str("nick", u.chanNick).
+					Msg("Creating Untappd user")
+
+				var count int
+				err := p.db.QueryRow(`select count(*) from untappd
+			where untappdUser = ?`, u.untappdUser).Scan(&count)
+				if err != nil {
+					log.Error().Err(err).Msgf("Error registering untappd")
+				}
+				if count > 0 {
+					p.b.Send(r.Conn, bot.Message, channel, "I'm already watching you.")
+					return true
+				}
+				_, err = p.db.Exec(`insert into untappd (
+						untappdUser,
+						channel,
+						lastCheckin,
+						chanNick
+					) values (?, ?, ?, ?);`,
+					u.untappdUser,
+					u.channel,
+					0,
+					u.chanNick,
+				)
+				if err != nil {
+					log.Error().Err(err).Msgf("Error registering untappd")
+					p.b.Send(r.Conn, bot.Message, channel, "I can't see.")
+					return true
+				}
+
+				p.b.Send(r.Conn, bot.Message, channel, "I'll be watching you.")
+
+				p.checkUntappd(r.Conn, channel)
+
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^checkuntappd$`),
+			Handler: func(r bot.Request) bool {
+				log.Info().
+					Str("user", r.Msg.User.Name).
+					Msgf("Checking untappd at request of user.")
+				p.checkUntappd(r.Conn, r.Msg.Channel)
+				return true
+			}},
+	}
+	p.b.RegisterTable(p, p.handlers)
+}
+
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *BeersPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	parts := strings.Fields(message.Body)
-
-	if len(parts) == 0 {
-		return false
-	}
-
-	channel := message.Channel
-	user := message.User
-	nick := user.Name
-
-	// respond to the beers type of queries
-	parts[0] = strings.ToLower(parts[0]) // support iPhone/Android saying "Beers"
-	if parts[0] == "beers" {
-		if len(parts) == 3 {
-
-			// try to get a count out of parts[2]
-			count, err := strconv.Atoi(parts[2])
-			if err != nil {
-				// if it's not a number, maybe it's a nick!
-				p.b.Send(c, bot.Message, channel, "Sorry, that didn't make any sense.")
-			}
-
-			if count < 0 {
-				// you can't be negative
-				msg := fmt.Sprintf("Sorry %s, you can't have negative beers!", nick)
-				p.b.Send(c, bot.Message, channel, msg)
-				return true
-			}
-			if parts[1] == "+=" {
-				p.addBeers(nick, count)
-				p.randomReply(c, channel)
-			} else if parts[1] == "=" {
-				if count == 0 {
-					p.puke(c, nick, channel)
-				} else {
-					p.setBeers(nick, count)
-					p.randomReply(c, channel)
-				}
-			} else {
-				p.b.Send(c, bot.Message, channel, "I don't know your math.")
-			}
-		} else if len(parts) == 2 {
-			if p.doIKnow(parts[1]) {
-				p.reportCount(c, parts[1], channel, false)
-			} else {
-				msg := fmt.Sprintf("Sorry, I don't know %s.", parts[1])
-				p.b.Send(c, bot.Message, channel, msg)
-			}
-		} else if len(parts) == 1 {
-			p.reportCount(c, nick, channel, true)
-		}
-
-		// no matter what, if we're in here, then we've responded
-		return true
-	} else if parts[0] == "puke" {
-		p.puke(c, nick, channel)
-		return true
-	}
-
-	if message.Command && parts[0] == "imbibe" {
-		p.addBeers(nick, 1)
-		p.randomReply(c, channel)
-		return true
-	}
-
-	if message.Command && parts[0] == "reguntappd" {
-		chanNick := message.User.Name
-		channel := message.Channel
-
-		if len(parts) < 2 {
-			p.b.Send(c, bot.Message, channel, "You must also provide a user name.")
-		} else if len(parts) == 3 {
-			chanNick = parts[2]
-		} else if len(parts) == 4 {
-			chanNick = parts[2]
-			channel = parts[3]
-		}
-		u := untappdUser{
-			untappdUser: parts[1],
-			chanNick:    chanNick,
-			channel:     channel,
-		}
-
-		log.Info().
-			Str("untappdUser", u.untappdUser).
-			Str("nick", u.chanNick).
-			Msg("Creating Untappd user")
-
-		var count int
-		err := p.db.QueryRow(`select count(*) from untappd
-			where untappdUser = ?`, u.untappdUser).Scan(&count)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error registering untappd")
-		}
-		if count > 0 {
-			p.b.Send(c, bot.Message, channel, "I'm already watching you.")
-			return true
-		}
-		_, err = p.db.Exec(`insert into untappd (
-			untappdUser,
-			channel,
-			lastCheckin,
-			chanNick
-		) values (?, ?, ?, ?);`,
-			u.untappdUser,
-			u.channel,
-			0,
-			u.chanNick,
-		)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error registering untappd")
-			p.b.Send(c, bot.Message, channel, "I can't see.")
-			return true
-		}
-
-		p.b.Send(c, bot.Message, channel, "I'll be watching you.")
-
-		p.checkUntappd(c, channel)
-
-		return true
-	}
-
-	if message.Command && parts[0] == "checkuntappd" {
-		log.Info().
-			Str("user", message.User.Name).
-			Msgf("Checking untappd at request of user.")
-		p.checkUntappd(c, channel)
-		return true
-	}
-
-	return false
-}
-
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
@@ -280,11 +282,7 @@ func (p *BeersPlugin) puke(c bot.Connector, user string, channel string) {
 }
 
 func (p *BeersPlugin) doIKnow(nick string) bool {
-	var count int
-	err := p.db.QueryRow(`select count(*) from beers where nick = ?`, nick).Scan(&count)
-	if err != nil {
-		return false
-	}
+	count := p.getBeers(nick)
 	return count > 0
 }
 
