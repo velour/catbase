@@ -263,6 +263,7 @@ type FactoidPlugin struct {
 	NotFound []string
 	LastFact *Factoid
 	db       *sqlx.DB
+	handlers bot.HandlerTable
 }
 
 // NewFactoid creates a new Factoid with the Plugin interface
@@ -320,7 +321,7 @@ func New(botInst bot.Bot) *FactoidPlugin {
 		}(channel)
 	}
 
-	botInst.Register(p, bot.Message, p.message)
+	p.register()
 	botInst.Register(p, bot.Help, p.help)
 
 	p.registerWeb()
@@ -664,68 +665,73 @@ func (p *FactoidPlugin) changeFact(c bot.Connector, message msg.Message) bool {
 	return true
 }
 
-// Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FactoidPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if strings.ToLower(message.Body) == "what was that?" {
-		return p.tellThemWhatThatWas(c, message)
-	}
+func (p *FactoidPlugin) register() {
+	p.handlers = bot.HandlerTable{
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^what was that\??$`),
+			Handler: func(r bot.Request) bool {
+				return p.tellThemWhatThatWas(r.Conn, r.Msg)
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^alias (?P<from>\S+) to (?P<to>\S+)$`),
+			Handler: func(r bot.Request) bool {
+				from := r.Values["from"]
+				to := r.Values["to"]
+				log.Debug().Msgf("alias: %+v", r)
+				a := aliasFromStrings(from, to)
+				if err := a.save(p.db); err != nil {
+					p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, err.Error())
+				} else {
+					p.Bot.Send(r.Conn, bot.Action, r.Msg.Channel, "learns a new synonym")
+				}
+				return true
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^factoid$`),
+			Handler: func(r bot.Request) bool {
+				fact := p.randomFact()
+				p.sayFact(r.Conn, r.Msg, *fact)
+				return true
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^forget that$`),
+			Handler: func(r bot.Request) bool {
+				return p.forgetLastFact(r.Conn, r.Msg)
+			}},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`.*`),
+			Handler: func(r bot.Request) bool {
+				message := r.Msg
+				c := r.Conn
 
-	// This plugin has no business with normal messages
-	if !message.Command {
-		// look for any triggers in the db matching this message
-		return p.trigger(c, message)
-	}
+				log.Debug().Msgf("Message: %+v", r)
 
-	if strings.HasPrefix(strings.ToLower(message.Body), "alias") {
-		log.Debug().
-			Str("alias", message.Body).
-			Msg("Trying to learn an alias")
-		m := strings.TrimPrefix(message.Body, "alias ")
-		parts := strings.SplitN(m, "->", 2)
-		if len(parts) != 2 {
-			p.Bot.Send(c, bot.Message, message.Channel, "If you want to alias something, use: `alias this -> that`")
-			return true
-		}
-		a := aliasFromStrings(strings.TrimSpace(parts[1]), strings.TrimSpace(parts[0]))
-		if err := a.save(p.db); err != nil {
-			p.Bot.Send(c, bot.Message, message.Channel, err.Error())
-		} else {
-			p.Bot.Send(c, bot.Action, message.Channel, "learns a new synonym")
-		}
-		return true
-	}
+				// This plugin has no business with normal messages
+				if !message.Command {
+					// look for any triggers in the db matching this message
+					return p.trigger(c, message)
+				}
 
-	if strings.ToLower(message.Body) == "factoid" {
-		if fact := p.randomFact(); fact != nil {
-			p.sayFact(c, message, *fact)
-			return true
-		}
-		log.Debug().Msg("Got a nil fact.")
-	}
+				if changeOperator(message.Body) != "" {
+					return p.changeFact(c, message)
+				}
 
-	if strings.ToLower(message.Body) == "forget that" {
-		return p.forgetLastFact(c, message)
-	}
+				action := findAction(message.Body)
+				if action != "" {
+					return p.learnAction(c, message, action)
+				}
 
-	if changeOperator(message.Body) != "" {
-		return p.changeFact(c, message)
-	}
+				// look for any triggers in the db matching this message
+				if p.trigger(c, message) {
+					return true
+				}
 
-	action := findAction(message.Body)
-	if action != "" {
-		return p.learnAction(c, message, action)
+				// We didn't find anything, panic!
+				p.Bot.Send(c, bot.Message, message.Channel, p.NotFound[rand.Intn(len(p.NotFound))])
+				return true
+			}},
 	}
-
-	// look for any triggers in the db matching this message
-	if p.trigger(c, message) {
-		return true
-	}
-
-	// We didn't find anything, panic!
-	p.Bot.Send(c, bot.Message, message.Channel, p.NotFound[rand.Intn(len(p.NotFound))])
-	return true
+	p.Bot.RegisterTable(p, p.handlers)
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
