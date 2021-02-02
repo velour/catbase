@@ -45,6 +45,17 @@ func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 		return true
 	}
 
+	preferences := p.bot.Config().GetArray("picker.preferences", []string{})
+	for _, it := range items {
+		for _, pref := range preferences {
+			if pref == it {
+				out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(it))
+				p.bot.Send(c, bot.Message, message.Channel, out)
+				return true
+			}
+		}
+	}
+
 	if n == 1 {
 		item := items[rand.Intn(len(items))]
 		out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(item))
