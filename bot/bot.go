@@ -245,15 +245,17 @@ func (b *bot) RegisterTable(p Plugin, handlers HandlerTable) {
 func (b *bot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, resp ResponseHandler) {
 	t := reflect.TypeOf(p).String()
 	if _, ok := b.callbacks[t]; !ok {
-		b.callbacks[t] = make(map[Kind]map[*regexp.Regexp][]ResponseHandler)
+		b.callbacks[t] = make(map[Kind][]HandlerSpec)
 	}
 	if _, ok := b.callbacks[t][kind]; !ok {
-		b.callbacks[t][kind] = map[*regexp.Regexp][]ResponseHandler{}
+		b.callbacks[t][kind] = []HandlerSpec{}
 	}
-	if _, ok := b.callbacks[t][kind][r]; !ok {
-		b.callbacks[t][kind][r] = []ResponseHandler{}
+	spec := HandlerSpec{
+		Kind:    kind,
+		Regex:   r,
+		Handler: resp,
 	}
-	b.callbacks[t][kind][r] = append(b.callbacks[t][kind][r], resp)
+	b.callbacks[t][kind] = append(b.callbacks[t][kind], spec)
 }
 
 // RegisterRegexCmd is a shortcut to filter non-command messages from a registration

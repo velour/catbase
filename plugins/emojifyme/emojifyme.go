@@ -7,12 +7,12 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
-	"github.com/velour/catbase/bot/msg"
 )
 
 type EmojifyMePlugin struct {
@@ -54,11 +54,13 @@ func New(b bot.Bot) *EmojifyMePlugin {
 		GotBotEmoji: false,
 		Emoji:       emojiMap,
 	}
-	b.Register(ep, bot.Message, ep.message)
+	b.RegisterRegex(ep, bot.Message, regexp.MustCompile(`.*`), ep.message)
 	return ep
 }
 
-func (p *EmojifyMePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *EmojifyMePlugin) message(r bot.Request) bool {
+	c := r.Conn
+	message := r.Msg
 	if !p.GotBotEmoji {
 		p.GotBotEmoji = true
 		emojiMap := p.Bot.GetEmojiList()
