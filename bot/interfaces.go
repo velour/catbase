@@ -94,7 +94,7 @@ type Bot interface {
 	// Usually, the first vararg should be a channel ID, but refer to the Connector for info
 	Send(Connector, Kind, ...interface{}) (string, error)
 
-	// Bot receives from a Connector.
+	// bot receives from a Connector.
 	// The Kind arg should be one of bot.Message/Reply/Action/etc
 	Receive(Connector, Kind, msg.Message, ...interface{}) bool
 
