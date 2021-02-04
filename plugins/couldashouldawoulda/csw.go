@@ -5,10 +5,10 @@ package couldashouldawoulda
 import (
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 
 	"github.com/velour/catbase/bot"
-	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
 )
 
@@ -21,14 +21,12 @@ func New(b bot.Bot) *CSWPlugin {
 	csw := &CSWPlugin{
 		Bot: b,
 	}
-	b.Register(csw, bot.Message, csw.message)
+	b.RegisterRegexCmd(csw, bot.Message, regexp.MustCompile(`.*`), csw.message)
 	return csw
 }
 
-func (p *CSWPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if !message.Command {
-		return false
-	}
+func (p *CSWPlugin) message(r bot.Request) bool {
+	message := r.Msg
 
 	lowercase := strings.ToLower(message.Body)
 	tokens := strings.Fields(lowercase)
@@ -65,7 +63,7 @@ func (p *CSWPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message,
 			}
 		}
 
-		p.Bot.Send(c, bot.Message, message.Channel, responses[rand.Intn(len(responses))])
+		p.Bot.Send(r.Conn, bot.Message, message.Channel, responses[rand.Intn(len(responses))])
 		return true
 	}
 
