@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 )
@@ -18,8 +19,10 @@ import (
 // This is a first plugin to serve as an example and quick copy/paste for new plugins.
 
 type FirstPlugin struct {
-	Bot bot.Bot
-	db  *sqlx.DB
+	bot      bot.Bot
+	db       *sqlx.DB
+	handlers bot.HandlerTable
+	enabled  bool
 }
 
 type FirstEntry struct {
@@ -47,6 +50,22 @@ func (fe *FirstEntry) save(db *sqlx.DB) error {
 	return nil
 }
 
+func (fe *FirstEntry) delete(db *sqlx.DB) error {
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`delete from first where id=?`, fe.id)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // NewFirstPlugin creates a new FirstPlugin with the Plugin interface
 func New(b bot.Bot) *FirstPlugin {
 	_, err := b.DB().Exec(`create table if not exists first (
@@ -67,10 +86,11 @@ func New(b bot.Bot) *FirstPlugin {
 		midnight(time.Now()))
 
 	fp := &FirstPlugin{
-		Bot: b,
-		db:  b.DB(),
+		bot:     b,
+		db:      b.DB(),
+		enabled: true,
 	}
-	b.Register(fp, bot.Message, fp.message)
+	fp.register()
 	b.Register(fp, bot.Help, fp.help)
 	return fp
 }
@@ -129,56 +149,98 @@ func isNotToday(f *FirstEntry) bool {
 	return t0.Before(midnight(time.Now()))
 }
 
-// Message responds to the bot hook on recieving messages.
-// This function returns true if the plugin responds in a meaningful way to the users message.
-// Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *FirstPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if message.IsIM {
-		log.Debug().Msg("Skipping IM")
-		return false
-	}
+func (p *FirstPlugin) register() {
+	p.handlers = []bot.HandlerSpec{
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^who'?s on first the most.?$`),
+			Handler: func(r bot.Request) bool {
+				first, err := getLastFirst(p.db, r.Msg.Channel)
+				if first != nil && err == nil {
+					p.leaderboard(r.Conn, r.Msg.Channel)
+					return true
+				}
+				return false
+			}},
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^who'?s on first.?$`),
+			Handler: func(r bot.Request) bool {
+				first, err := getLastFirst(p.db, r.Msg.Channel)
+				if first != nil && err == nil {
+					p.announceFirst(r.Conn, first)
+					return true
+				}
+				return false
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^clear first$`),
+			Handler: func(r bot.Request) bool {
+				if !p.bot.CheckAdmin(r.Msg.User.Name) {
+					p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You are not authorized to do that.")
+					return true
+				}
+				fe, err := getLastFirst(p.db, r.Msg.Channel)
+				if err != nil {
+					p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Could not find a first entry.")
+					return true
+				}
+				p.enabled = false
+				err = fe.delete(p.db)
+				if err != nil {
+					p.bot.Send(r.Conn, bot.Message, r.Msg.Channel,
+						fmt.Sprintf("Could not delete first entry: %s", err))
+					p.enabled = true
+					return true
+				}
+				d := p.bot.Config().GetInt("first.maxregen", 300)
+				log.Debug().Msgf("Setting first timer for %d seconds", d)
+				timer := time.NewTimer(time.Duration(d) * time.Second)
+				go func() {
+					<-timer.C
+					p.enabled = true
+					log.Debug().Msgf("Re-enabled first")
+				}()
+				p.bot.Send(r.Conn, bot.Message, r.Msg.Channel,
+					fmt.Sprintf("Deleted first entry: '%s' and set a random timer for when first will happen next.", fe.body))
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`.*`),
+			Handler: func(r bot.Request) bool {
+				if r.Msg.IsIM || !p.enabled {
+					return false
+				}
 
-	first, err := getLastFirst(p.db, message.Channel)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Error getting last first")
-	}
+				first, err := getLastFirst(p.db, r.Msg.Channel)
+				if err != nil {
+					log.Error().
+						Err(err).
+						Msg("Error getting last first")
+				}
 
-	log.Debug().Bool("first == nil", first == nil).Msg("Is first nil?")
-	log.Debug().Bool("first == nil || isNotToday()", isNotToday(first)).Msg("Is it today?")
-	log.Debug().Bool("p.allowed", p.allowed(message)).Msg("Allowed?")
+				log.Debug().Bool("first == nil", first == nil).Msg("Is first nil?")
+				log.Debug().Bool("first == nil || isNotToday()", isNotToday(first)).Msg("Is it today?")
+				log.Debug().Bool("p.allowed", p.allowed(r.Msg)).Msg("Allowed?")
 
-	if (first == nil || isNotToday(first)) && p.allowed(message) {
-		log.Debug().
-			Str("body", message.Body).
-			Interface("t0", first).
-			Time("t1", time.Now()).
-			Msg("Recording first")
-		p.recordFirst(c, message)
-		return false
+				if (first == nil || isNotToday(first)) && p.allowed(r.Msg) {
+					log.Debug().
+						Str("body", r.Msg.Body).
+						Interface("t0", first).
+						Time("t1", time.Now()).
+						Msg("Recording first")
+					p.recordFirst(r.Conn, r.Msg)
+					return false
+				}
+				return false
+			}},
 	}
-
-	r := strings.NewReplacer("’", "", "'", "", "\"", "", ",", "", ".", "", ":", "",
-		"?", "", "!", "")
-	m := strings.ToLower(message.Body)
-	if r.Replace(m) == "whos on first the most" && first != nil {
-		p.leaderboard(c, message.Channel)
-		return true
-	}
-	if r.Replace(m) == "whos on first" && first != nil {
-		p.announceFirst(c, first)
-		return true
-	}
-
-	return false
+	p.bot.RegisterTable(p, p.handlers)
 }
 
 func (p *FirstPlugin) allowed(message msg.Message) bool {
 	if message.Body == "" {
 		return false
 	}
-	for _, m := range p.Bot.Config().GetArray("Bad.Msgs", []string{}) {
+	for _, m := range p.bot.Config().GetArray("Bad.Msgs", []string{}) {
 		match, err := regexp.MatchString(m, strings.ToLower(message.Body))
 		if err != nil {
 			log.Error().Err(err).Msg("Bad regexp")
@@ -191,7 +253,7 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 			return false
 		}
 	}
-	for _, host := range p.Bot.Config().GetArray("Bad.Hosts", []string{}) {
+	for _, host := range p.bot.Config().GetArray("Bad.Hosts", []string{}) {
 		if host == message.Host {
 			log.Info().
 				Str("user", message.User.Name).
@@ -200,7 +262,7 @@ func (p *FirstPlugin) allowed(message msg.Message) bool {
 			return false
 		}
 	}
-	for _, nick := range p.Bot.Config().GetArray("Bad.Nicks", []string{}) {
+	for _, nick := range p.bot.Config().GetArray("Bad.Nicks", []string{}) {
 		if nick == message.User.Name {
 			log.Info().
 				Str("user", message.User.Name).
@@ -255,18 +317,18 @@ func (p *FirstPlugin) leaderboard(c bot.Connector, ch string) error {
 	for i, e := range res {
 		msg += fmt.Sprintf("%s %d %s\n", talismans[i], e.Count, e.Nick)
 	}
-	p.Bot.Send(c, bot.Message, ch, msg)
+	p.bot.Send(c, bot.Message, ch, msg)
 	return nil
 }
 
 func (p *FirstPlugin) announceFirst(c bot.Connector, first *FirstEntry) {
 	ch := first.channel
-	p.Bot.Send(c, bot.Message, ch, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
+	p.bot.Send(c, bot.Message, ch, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
 		first.nick, first.time.Format("15:04"), first.body))
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *FirstPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(c, bot.Message, message.Channel, "You can ask 'who's on first?' to find out.")
+	p.bot.Send(c, bot.Message, message.Channel, "You can ask 'who's on first?' to find out.")
 	return true
 }
