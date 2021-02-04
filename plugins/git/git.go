@@ -1,10 +1,9 @@
 package git
 
 import (
+	"fmt"
 	"net/http"
-	"strings"
-
-	"github.com/velour/catbase/bot/msg"
+	"regexp"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/go-playground/webhooks.v5/github"
@@ -15,10 +14,11 @@ import (
 )
 
 type GitPlugin struct {
-	b      bot.Bot
-	c      *config.Config
-	glhook *gitlab.Webhook
-	ghhook *github.Webhook
+	b        bot.Bot
+	c        *config.Config
+	glhook   *gitlab.Webhook
+	ghhook   *github.Webhook
+	handlers bot.HandlerTable
 }
 
 func New(b bot.Bot) *GitPlugin {
@@ -39,7 +39,7 @@ func New(b bot.Bot) *GitPlugin {
 		ghhook: ghhook,
 	}
 	p.registerWeb()
-	b.Register(p, bot.Message, p.message)
+	p.register()
 	return p
 }
 
@@ -47,33 +47,33 @@ func validService(service string) bool {
 	return service == "gitea" || service == "gitlab" || service == "github"
 }
 
-func (p *GitPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	body := message.Body
-	lower := strings.ToLower(body)
-	parts := strings.Split(lower, " ")
-
-	if !strings.HasPrefix(lower, "regrepo") || len(parts) != 2 {
-		return false
+func (p *GitPlugin) register() {
+	p.handlers = bot.HandlerTable{
+		{Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^regrepo (?P<service>\S+)\.(?P<owner>\S+)\.(?P<repo>\S+)$`),
+			Handler: func(r bot.Request) bool {
+				service := r.Values["service"]
+				owner := r.Values["owner"]
+				repo := r.Values["repo"]
+				spec := fmt.Sprintf("%s.%s.%s", service, owner, repo)
+				if !validService(service) {
+					m := "Valid formats are: `service.owner.repo` and valid services are one of gitea, gitlab, or github."
+					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, m)
+					return true
+				}
+				chs := p.c.GetArray(spec, []string{})
+				for _, ch := range chs {
+					if ch == r.Msg.Channel {
+						p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "That's already registered here.")
+						return true
+					}
+				}
+				chs = append(chs, r.Msg.Channel)
+				p.c.SetArray(spec+".channels", chs)
+				p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Registered new repository.")
+				return true
+			}},
 	}
-	u := parts[1]
-	u = strings.ReplaceAll(u, "/", ".")
-	uparts := strings.Split(u, ".")
-	if len(uparts) != 3 || !validService(uparts[0]) {
-		m := "Valid formats are: `service.owner.repo` and valid services are one of gitea, gitlab, or github."
-		p.b.Send(c, bot.Message, message.Channel, m)
-		return true
-	}
-	chs := p.c.GetArray(u+".channels", []string{})
-	for _, ch := range chs {
-		if ch == message.Channel {
-			p.b.Send(c, bot.Message, message.Channel, "That's already registered here.")
-			return true
-		}
-	}
-	chs = append(chs, message.Channel)
-	p.c.SetArray(u+".channels", chs)
-	p.b.Send(c, bot.Message, message.Channel, "Registered new repository.")
-	return true
 }
 
 func (p *GitPlugin) registerWeb() {
