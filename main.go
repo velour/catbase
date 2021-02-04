@@ -39,7 +39,6 @@ import (
 	"github.com/velour/catbase/plugins/emojifyme"
 	"github.com/velour/catbase/plugins/fact"
 	"github.com/velour/catbase/plugins/first"
-	"github.com/velour/catbase/plugins/fuck"
 	"github.com/velour/catbase/plugins/git"
 	"github.com/velour/catbase/plugins/impossible"
 	"github.com/velour/catbase/plugins/inventory"
@@ -121,7 +120,6 @@ func main() {
 	b.AddPlugin(emojifyme.New(b))
 	b.AddPlugin(first.New(b))
 	b.AddPlugin(leftpad.New(b))
-	b.AddPlugin(fuck.New(b))
 	b.AddPlugin(talker.New(b))
 	b.AddPlugin(dice.New(b))
 	b.AddPlugin(picker.New(b))
