@@ -24,7 +24,7 @@ type Discord struct {
 }
 
 func New(config *config.Config) *Discord {
-	client, err := discordgo.New("bot " + config.Get("DISCORDBOTTOKEN", ""))
+	client, err := discordgo.New("Bot " + config.Get("DISCORDBOTTOKEN", ""))
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to Discord")
 	}
