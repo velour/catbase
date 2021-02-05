@@ -19,45 +19,29 @@ import (
 
 type InventoryPlugin struct {
 	*sqlx.DB
-	bot                bot.Bot
-	config             *config.Config
-	r1, r2, r3, r4, r5 *regexp.Regexp
+	bot      bot.Bot
+	config   *config.Config
+	handlers bot.HandlerTable
 }
 
 // New creates a new InventoryPlugin with the Plugin interface
 func New(b bot.Bot) *InventoryPlugin {
 	config := b.Config()
-	nick := config.Get("nick", "bot")
-	r1, err := regexp.Compile("take this (.+)")
-	checkerr(err)
-	r2, err := regexp.Compile("have a (.+)")
-	checkerr(err)
-	r3, err := regexp.Compile(fmt.Sprintf("puts (.+) in %s([^a-zA-Z].*)?", nick))
-	checkerr(err)
-	r4, err := regexp.Compile(fmt.Sprintf("gives %s (.+)", nick))
-	checkerr(err)
-	r5, err := regexp.Compile(fmt.Sprintf("gives (.+) to %s([^a-zA-Z].*)?", nick))
-	checkerr(err)
 
 	p := &InventoryPlugin{
 		DB:     b.DB(),
 		bot:    b,
 		config: config,
-		r1:     r1, r2: r2, r3: r3, r4: r4, r5: r5,
 	}
 
 	b.RegisterFilter("$item", p.itemFilter)
 	b.RegisterFilter("$giveitem", p.giveItemFilter)
 
-	_, err = p.DB.Exec(`create table if not exists inventory (
+	p.DB.MustExec(`create table if not exists inventory (
 			item string primary key
 		);`)
 
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-
-	b.Register(p, bot.Message, p.message)
+	p.register()
 
 	return p
 }
@@ -78,52 +62,48 @@ func (p *InventoryPlugin) itemFilter(input string) string {
 	return input
 }
 
-func (p *InventoryPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	m := message.Body
-	log.Debug().Msgf("inventory trying to read %+v", message)
-	if message.Command {
-		if strings.ToLower(m) == "inventory" {
+func (p *InventoryPlugin) register() {
+	nick := p.config.Get("nick", "bot")
+
+	p.handlers = append(p.handlers, bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
+		Regex: regexp.MustCompile(`inventory`),
+		Handler: func(r bot.Request) bool {
 			items := p.getAll()
 			say := "I'm not holding anything"
 			if len(items) > 0 {
 				log.Debug().Msgf("I think I have more than 0 items: %+v, len(items)=%d", items, len(items))
 				say = fmt.Sprintf("I'm currently holding %s", strings.Join(items, ", "))
 			}
-			p.bot.Send(c, bot.Message, message.Channel, say)
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, say)
 			return true
-		}
+		},
+	})
 
-		// <Randall> Bucket[:,] take this (.+)
-		// <Randall> Bucket[:,] have a (.+)
-		if matches := p.r1.FindStringSubmatch(m); len(matches) > 0 {
-			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(c, message, matches[1])
-		}
-		if matches := p.r2.FindStringSubmatch(m); len(matches) > 0 {
-			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(c, message, matches[1])
-		}
+	h := func(r bot.Request) bool {
+		log.Debug().Msgf("Adding item: %s", r.Values["item"])
+		return p.addItem(r.Conn, r.Msg, r.Values["item"])
 	}
-	if message.Action {
-		log.Debug().Msg("Inventory found an action")
-		// * Randall puts (.+) in Bucket([^a-zA-Z].*)?
-		// * Randall gives Bucket (.+)
-		// * Randall gives (.+) to Bucket([^a-zA-Z].*)?
 
-		if matches := p.r3.FindStringSubmatch(m); len(matches) > 0 {
-			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(c, message, matches[1])
-		}
-		if matches := p.r4.FindStringSubmatch(m); len(matches) > 0 {
-			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(c, message, matches[1])
-		}
-		if matches := p.r5.FindStringSubmatch(m); len(matches) > 0 {
-			log.Debug().Msgf("Found item to add: %s", matches[1])
-			return p.addItem(c, message, matches[1])
-		}
+	for _, r := range []*regexp.Regexp{
+		regexp.MustCompile(`(?i)^take this (?P<item>.+)$`),
+		regexp.MustCompile(`(?i)^have a (?P<item>.+)$`),
+	} {
+		p.handlers = append(p.handlers, bot.HandlerSpec{Kind: bot.Message, IsCmd: false,
+			Regex:   r,
+			Handler: h})
 	}
-	return false
+
+	for _, r := range []*regexp.Regexp{
+		regexp.MustCompile(fmt.Sprintf(`(?i)^puts (?P<item>\S+) in %s$`, nick)),
+		regexp.MustCompile(fmt.Sprintf("(?i)^gives %s (?P<item>.+)$", nick)),
+		regexp.MustCompile(fmt.Sprintf(`(?i)^gives (?P<item>\S+) to %s$`, nick)),
+	} {
+		p.handlers = append(p.handlers, bot.HandlerSpec{Kind: bot.Action, IsCmd: false,
+			Regex:   r,
+			Handler: h})
+	}
+
+	p.bot.RegisterTable(p, p.handlers)
 }
 
 func (p *InventoryPlugin) removeRandom() string {
@@ -218,10 +198,4 @@ func (p *InventoryPlugin) addItem(c bot.Connector, m msg.Message, i string) bool
 		p.bot.Send(c, bot.Action, m.Channel, fmt.Sprintf("takes %s from %s", i, m.User.Name))
 	}
 	return true
-}
-
-func checkerr(e error) {
-	if e != nil {
-		log.Error().Err(e)
-	}
 }
