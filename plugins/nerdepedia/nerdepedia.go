@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/velour/catbase/bot"
@@ -44,7 +45,7 @@ func New(b bot.Bot) *NerdepediaPlugin {
 		bot:    b,
 		config: b.Config(),
 	}
-	b.Register(np, bot.Message, np.message)
+	b.RegisterRegex(np, bot.Message, regexp.MustCompile(`.*`), np.message)
 	b.Register(np, bot.Help, np.help)
 	return np
 }
@@ -79,7 +80,9 @@ func defaultSites() map[string]string {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *NerdepediaPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *NerdepediaPlugin) message(r bot.Request) bool {
+	c := r.Conn
+	message := r.Msg
 	lowerCase := strings.ToLower(message.Body)
 	query := ""
 	queries := p.config.GetMap("nerdepedia.sites", defaultSites())
