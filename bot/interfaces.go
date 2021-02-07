@@ -62,10 +62,11 @@ type ResponseHandler func(Request) bool
 type CallbackMap map[string]map[Kind][]HandlerSpec
 
 type HandlerSpec struct {
-	Kind    Kind
-	IsCmd   bool
-	Regex   *regexp.Regexp
-	Handler ResponseHandler
+	Kind     Kind
+	IsCmd    bool
+	Regex    *regexp.Regexp
+	HelpText string
+	Handler  ResponseHandler
 }
 type HandlerTable []HandlerSpec
 
