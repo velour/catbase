@@ -39,16 +39,20 @@ func (cl MockClient) Do(req *http.Request) (*http.Response, error) {
 	}, cl.Err
 }
 
-func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
+func makeMessage(payload string) bot.Request {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
-		User:    &user.User{Name: "tester"},
-		Channel: "test",
-		Body:    payload,
-		Command: isCmd,
+	return bot.Request{
+		Conn: &cli.CliPlugin{},
+		Kind: bot.Message,
+		Msg: msg.Message{
+			User:    &user.User{Name: "tester"},
+			Channel: "test",
+			Body:    payload,
+			Command: isCmd,
+		},
 	}
 }
 
