@@ -66,27 +66,20 @@ func New(b bot.Bot) *MemePlugin {
 
 	horizon = mp.c.GetInt("meme.horizon", horizon)
 
-	b.Register(mp, bot.Message, mp.message)
+	b.RegisterRegexCmd(mp, bot.Message, cmdMatch, mp.message)
 	b.Register(mp, bot.Help, mp.help)
 	mp.registerWeb(b.DefaultConnector())
 
 	return mp
 }
 
-var cmdMatch = regexp.MustCompile(`(?i)meme (.+)`)
+var cmdMatch = regexp.MustCompile(`(?i)^meme (?P<content>.+)$`)
 
-func (p *MemePlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if message.Command && cmdMatch.MatchString(message.Body) {
-		subs := cmdMatch.FindStringSubmatch(message.Body)
-		if len(subs) != 2 {
-			p.bot.Send(c, bot.Message, message.Channel, "Invalid meme request.")
-			return true
-		}
-		minusMeme := subs[1]
-		p.sendMeme(c, message.Channel, message.ChannelName, message.ID, message.User, minusMeme)
-		return true
-	}
-	return false
+func (p *MemePlugin) message(r bot.Request) bool {
+	minusMeme := r.Values["content"]
+	log.Debug().Msgf("Calling sendMeme with text: %s", minusMeme)
+	p.sendMeme(r.Conn, r.Msg.Channel, r.Msg.ChannelName, r.Msg.ID, r.Msg.User, minusMeme)
+	return true
 }
 
 func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
