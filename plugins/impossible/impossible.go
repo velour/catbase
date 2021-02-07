@@ -116,8 +116,9 @@ func (p *Impossible) register() {
 					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", p.title))
 					for !p.refreshImpossible() {
 					}
+					return true
 				}
-				return true
+				return false
 			}},
 	}
 	p.b.RegisterTable(p, p.handlers)
