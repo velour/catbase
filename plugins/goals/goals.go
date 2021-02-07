@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -18,9 +17,10 @@ import (
 )
 
 type GoalsPlugin struct {
-	b   bot.Bot
-	cfg *config.Config
-	db  *sqlx.DB
+	b        bot.Bot
+	cfg      *config.Config
+	db       *sqlx.DB
+	handlers bot.HandlerTable
 }
 
 func New(b bot.Bot) *GoalsPlugin {
@@ -30,7 +30,7 @@ func New(b bot.Bot) *GoalsPlugin {
 		db:  b.DB(),
 	}
 	p.mkDB()
-	b.Register(p, bot.Message, p.message)
+	p.registerCmds()
 	b.Register(p, bot.Help, p.help)
 	counter.RegisterUpdate(p.update)
 	return p
@@ -51,42 +51,54 @@ func (p *GoalsPlugin) mkDB() {
 	}
 }
 
-var registerSelf = regexp.MustCompile(`(?i)^register (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)\s?(?P<amount>[[:digit:]]+)?`)
-var registerOther = regexp.MustCompile(`(?i)^register (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+)\s?(?P<amount>[[:digit:]]+)?`)
-var deRegisterSelf = regexp.MustCompile(`(?i)^deregister (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`)
-var deRegisterOther = regexp.MustCompile(`(?i)^deregister (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>.*)`)
-var checkSelf = regexp.MustCompile(`(?i)^check (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`)
-var checkOther = regexp.MustCompile(`(?i)^check (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+)`)
-
-func (p *GoalsPlugin) message(conn bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	body := strings.TrimSpace(message.Body)
-	who := message.User.Name
-	ch := message.Channel
-
-	if registerOther.MatchString(body) {
-		c := parseCmd(registerOther, body)
-		amount, _ := strconv.Atoi(c["amount"])
-		p.register(conn, ch, c["type"], c["what"], c["who"], amount)
-	} else if registerSelf.MatchString(body) {
-		c := parseCmd(registerSelf, body)
-		amount, _ := strconv.Atoi(c["amount"])
-		p.register(conn, ch, c["type"], c["what"], who, amount)
-	} else if deRegisterOther.MatchString(body) {
-		c := parseCmd(deRegisterOther, body)
-		p.deregister(conn, ch, c["type"], c["what"], c["who"])
-	} else if deRegisterSelf.MatchString(body) {
-		c := parseCmd(deRegisterSelf, body)
-		p.deregister(conn, ch, c["type"], c["what"], who)
-	} else if checkOther.MatchString(body) {
-		c := parseCmd(checkOther, body)
-		p.check(conn, ch, c["type"], c["what"], c["who"])
-	} else if checkSelf.MatchString(body) {
-		c := parseCmd(checkSelf, body)
-		p.check(conn, ch, c["type"], c["what"], who)
-	} else {
-		return false
+func (p *GoalsPlugin) registerCmds() {
+	p.handlers = bot.HandlerTable{
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
+			HelpText: "Register with `%s` for yourself",
+			Handler: func(r bot.Request) bool {
+				amount, _ := strconv.Atoi(r.Values["amount"])
+				p.register(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name, amount)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
+			HelpText: "Register with `%s` for other people",
+			Handler: func(r bot.Request) bool {
+				amount, _ := strconv.Atoi(r.Values["amount"])
+				p.register(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Values["who"], amount)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^deregister (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
+			HelpText: "Deregister with `%s` for yourself",
+			Handler: func(r bot.Request) bool {
+				p.deregister(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^deregister (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>.*)`),
+			HelpText: "Deregister with `%s` for other people",
+			Handler: func(r bot.Request) bool {
+				p.deregister(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Values["who"])
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
+			HelpText: "Check with `%s` for yourself",
+			Handler: func(r bot.Request) bool {
+				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+)`),
+			HelpText: "Check with `%s` for other people",
+			Handler: func(r bot.Request) bool {
+				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Values["who"])
+				return true
+			}},
 	}
-	return true
+	p.b.RegisterTable(p, p.handlers)
 }
 
 func (p *GoalsPlugin) register(c bot.Connector, ch, kind, what, who string, howMuch int) {
@@ -201,12 +213,9 @@ func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
 func (p *GoalsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
 	ch := message.Channel
 	msg := "Goals can set goals and competition for your counters."
-	msg += fmt.Sprintf("\nRegister with `%s` for yourself", registerSelf)
-	msg += fmt.Sprintf("\nRegister with `%s` for other people", registerOther)
-	msg += fmt.Sprintf("\nDeregister with `%s` for yourself", deRegisterSelf)
-	msg += fmt.Sprintf("\nDeregister with `%s` for other people", deRegisterOther)
-	msg += fmt.Sprintf("\nCheck with `%s` for yourself", checkSelf)
-	msg += fmt.Sprintf("\nCheck with `%s` for other people", checkOther)
+	for _, cmd := range p.handlers {
+		msg += fmt.Sprintf("\n"+cmd.HelpText, cmd.Regex)
+	}
 	p.b.Send(c, bot.Message, ch, msg)
 	return true
 }
