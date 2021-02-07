@@ -5,12 +5,11 @@ package leftpad
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/chrissexton/leftpad"
 	"github.com/velour/catbase/bot"
-	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/config"
 )
 
@@ -25,7 +24,7 @@ func New(b bot.Bot) *LeftpadPlugin {
 		bot:    b,
 		config: b.Config(),
 	}
-	b.Register(p, bot.Message, p.message)
+	b.RegisterRegexCmd(p, bot.Message, leftpadRegex, p.leftpadCmd)
 	return p
 }
 
@@ -33,32 +32,25 @@ type leftpadResp struct {
 	Str string
 }
 
-func (p *LeftpadPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if !message.Command {
-		return false
-	}
+var leftpadRegex = regexp.MustCompile(`(?i)^leftpad (?P<padstr>\S+) (?P<padding>\d+) (?P<text>.+)$`)
 
-	parts := strings.Fields(message.Body)
-	if len(parts) > 3 && parts[0] == "leftpad" {
-		padchar := parts[1]
-		length, err := strconv.Atoi(parts[2])
-		if err != nil {
-			p.bot.Send(c, bot.Message, message.Channel, "Invalid padding number")
-			return true
-		}
-		maxLen, who := p.config.GetInt("LeftPad.MaxLen", 50), p.config.Get("LeftPad.Who", "Putin")
-		if length > maxLen && maxLen > 0 {
-			msg := fmt.Sprintf("%s would kill me if I did that.", who)
-			p.bot.Send(c, bot.Message, message.Channel, msg)
-			return true
-		}
-		text := strings.Join(parts[3:], " ")
-
-		res := leftpad.LeftPad(text, length, padchar)
-
-		p.bot.Send(c, bot.Message, message.Channel, res)
+func (p *LeftpadPlugin) leftpadCmd(r bot.Request) bool {
+	padchar := r.Values["padstr"]
+	length, err := strconv.Atoi(r.Values["padding"])
+	if err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Invalid padding number")
 		return true
 	}
+	maxLen, who := p.config.GetInt("LeftPad.MaxLen", 50), p.config.Get("LeftPad.Who", "Putin")
+	if length > maxLen && maxLen > 0 {
+		msg := fmt.Sprintf("%s would kill me if I did that.", who)
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+		return true
+	}
+	text := r.Values["text"]
 
-	return false
+	res := leftpad.LeftPad(text, length, padchar)
+
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, res)
+	return true
 }

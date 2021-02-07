@@ -3,9 +3,9 @@
 package leftpad
 
 import (
-	"github.com/velour/catbase/plugins/cli"
-	"strings"
 	"testing"
+
+	"github.com/velour/catbase/plugins/cli"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
@@ -14,16 +14,24 @@ import (
 	"github.com/velour/catbase/plugins/counter"
 )
 
-func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
-	isCmd := strings.HasPrefix(payload, "!")
-	if isCmd {
-		payload = payload[1:]
+func makeMessage(payload string) bot.Request {
+	values := bot.ParseValues(leftpadRegex, payload)
+	return bot.Request{
+		Kind:   bot.Message,
+		Conn:   &cli.CliPlugin{},
+		Values: values,
+		Msg: msg.Message{
+			User:    &user.User{Name: "tester"},
+			Channel: "test",
+			Body:    payload,
+		},
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
-		User:    &user.User{Name: "tester"},
-		Channel: "test",
-		Body:    payload,
-		Command: isCmd,
+
+}
+
+func testMessage(p *LeftpadPlugin, body string) {
+	if leftpadRegex.MatchString(body) {
+		p.leftpadCmd(makeMessage(body))
 	}
 }
 
@@ -38,51 +46,48 @@ func makePlugin(t *testing.T) (*LeftpadPlugin, *bot.MockBot) {
 
 func TestLeftpad(t *testing.T) {
 	p, mb := makePlugin(t)
-	p.message(makeMessage("!leftpad test 8 test"))
-	assert.Contains(t, mb.Messages[0], "testtest")
-	assert.Len(t, mb.Messages, 1)
-}
-
-func TestBadNumber(t *testing.T) {
-	p, mb := makePlugin(t)
-	p.message(makeMessage("!leftpad test fuck test"))
-	assert.Contains(t, mb.Messages[0], "Invalid")
-	assert.Len(t, mb.Messages, 1)
+	testMessage(p, "leftpad test 8 test")
+	if assert.Len(t, mb.Messages, 1) {
+		assert.Contains(t, mb.Messages[0], "testtest")
+	}
 }
 
 func TestNotCommand(t *testing.T) {
 	p, mb := makePlugin(t)
-	p.message(makeMessage("leftpad test fuck test"))
+	testMessage(p, "leftpad test fuck test")
 	assert.Len(t, mb.Messages, 0)
 }
 
 func TestNoMaxLen(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.config.Set("LeftPad.MaxLen", "0")
-	p.message(makeMessage("!leftpad dicks 100 dicks"))
-	assert.Len(t, mb.Messages, 1)
-	assert.Contains(t, mb.Messages[0], "dicks")
+	testMessage(p, "leftpad dicks 100 dicks")
+	if assert.Len(t, mb.Messages, 1) {
+		assert.Contains(t, mb.Messages[0], "dicks")
+	}
 }
 
 func Test50Padding(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.config.Set("LeftPad.MaxLen", "50")
 	assert.Equal(t, 50, p.config.GetInt("LeftPad.MaxLen", 100))
-	p.message(makeMessage("!leftpad dicks 100 dicks"))
-	assert.Len(t, mb.Messages, 1)
-	assert.Contains(t, mb.Messages[0], "kill me")
+	testMessage(p, "leftpad dicks 100 dicks")
+	if assert.Len(t, mb.Messages, 1) {
+		assert.Contains(t, mb.Messages[0], "kill me")
+	}
 }
 
 func TestUnder50Padding(t *testing.T) {
 	p, mb := makePlugin(t)
 	p.config.Set("LeftPad.MaxLen", "50")
-	p.message(makeMessage("!leftpad dicks 49 dicks"))
-	assert.Len(t, mb.Messages, 1)
-	assert.Contains(t, mb.Messages[0], "dicks")
+	testMessage(p, "leftpad dicks 49 dicks")
+	if assert.Len(t, mb.Messages, 1) {
+		assert.Contains(t, mb.Messages[0], "dicks")
+	}
 }
 
 func TestNotPadding(t *testing.T) {
 	p, mb := makePlugin(t)
-	p.message(makeMessage("!lololol"))
+	testMessage(p, "lololol")
 	assert.Len(t, mb.Messages, 0)
 }
