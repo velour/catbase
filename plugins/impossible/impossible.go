@@ -19,8 +19,9 @@ import (
 )
 
 type Impossible struct {
-	b bot.Bot
-	c *config.Config
+	b        bot.Bot
+	c        *config.Config
+	handlers bot.HandlerTable
 
 	title   string
 	content []string
@@ -39,7 +40,7 @@ func New(b bot.Bot) *Impossible {
 	}
 
 	b.Register(i, bot.Help, i.help)
-	b.Register(i, bot.Message, i.message)
+	i.register()
 
 	return i
 }
@@ -55,7 +56,7 @@ func newTesting(b bot.Bot) *Impossible {
 	}
 
 	b.Register(i, bot.Help, i.help)
-	b.Register(i, bot.Message, i.message)
+	i.register()
 
 	return i
 }
@@ -65,39 +66,61 @@ func (p *Impossible) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	return true
 }
 
-func (p *Impossible) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	messaged := false
+func (p *Impossible) tryRefresh(r bot.Request) (sent bool) {
 	if p.updated.Before(time.Now()) {
 		if p.title != "" {
-			p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("The last impossible wikipedia article was: \"%s\"", p.title))
-			messaged = true
+			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("The last impossible wikipedia article was: \"%s\"", p.title))
+			sent = true
 		}
 		for !p.refreshImpossible() {
 		}
 
 		if p.testing {
-			p.b.Send(c, bot.Message, message.Channel, p.title)
-			messaged = true
+			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, p.title)
+			sent = true
 		}
 	}
+	return sent
+}
 
-	lowercase := strings.ToLower(message.Body)
-	if lowercase == "hint" || lowercase == "clue" {
-		messaged = true
-		p.b.Send(c, bot.Message, message.Channel, p.content[rand.Intn(len(p.content))])
-	} else if strings.Contains(lowercase, strings.ToLower(p.title)) {
-		messaged = true
-		p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", p.title))
-		for !p.refreshImpossible() {
-		}
-	} else if strings.Contains(lowercase, "i friggin give up") {
-		messaged = true
-		p.b.Send(c, bot.Message, message.Channel, fmt.Sprintf("You're a failure the last impossible wikipedia article: \"%s\"", p.title))
-		for !p.refreshImpossible() {
-		}
+func (p *Impossible) register() {
+	p.handlers = bot.HandlerTable{
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^hint|clue$`),
+			Handler: func(r bot.Request) bool {
+				if p.tryRefresh(r) {
+					return true
+				}
+				p.b.Send(r.Conn, bot.Message, r.Msg.Channel, p.content[rand.Intn(len(p.content))])
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`(?i)^i friggin give up.?$`),
+			Handler: func(r bot.Request) bool {
+				if p.tryRefresh(r) {
+					return true
+				}
+				p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", p.title))
+				for !p.refreshImpossible() {
+				}
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: false,
+			Regex: regexp.MustCompile(`.*`),
+			Handler: func(r bot.Request) bool {
+				if p.tryRefresh(r) {
+					return true
+				}
+
+				if strings.Contains(strings.ToLower(r.Msg.Body), strings.ToLower(p.title)) {
+					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("You guessed the last impossible wikipedia article: \"%s\"", p.title))
+					for !p.refreshImpossible() {
+					}
+				}
+				return true
+			}},
 	}
-
-	return messaged
+	p.b.RegisterTable(p, p.handlers)
 }
 
 func (p *Impossible) refreshImpossible() bool {
