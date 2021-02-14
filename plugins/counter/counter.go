@@ -28,10 +28,11 @@ type CounterPlugin struct {
 type Item struct {
 	*sqlx.DB
 
-	ID    int64
-	Nick  string
-	Item  string
-	Count int
+	ID     int64
+	Nick   string
+	Item   string
+	Count  int
+	UserID string
 }
 
 type alias struct {
@@ -57,9 +58,14 @@ func GetAllItems(db *sqlx.DB) ([]Item, error) {
 }
 
 // GetItems returns all counters for a subject
-func GetItems(db *sqlx.DB, nick string) ([]Item, error) {
+func GetItems(db *sqlx.DB, nick, id string) ([]Item, error) {
 	var items []Item
-	err := db.Select(&items, `select * from counter where nick = ?`, nick)
+	var err error
+	if id != "" {
+		err = db.Select(&items, `select * from counter where userid = ?`, id)
+	} else {
+		err = db.Select(&items, `select * from counter where nick = ?`, nick)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +168,7 @@ func GetItem(db *sqlx.DB, itemName string) ([]Item, error) {
 }
 
 // GetUserItem returns a specific counter for a subject
-func GetUserItem(db *sqlx.DB, nick, itemName string) (Item, error) {
+func GetUserItem(db *sqlx.DB, nick, id, itemName string) (Item, error) {
 	itemName = trimUnicode(itemName)
 	var item Item
 	item.DB = db
@@ -173,19 +179,25 @@ func GetUserItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 		log.Error().Err(err).Interface("alias", a)
 	}
 
-	err := db.Get(&item, `select * from counter where nick = ? and item= ?`,
-		nick, itemName)
+	var err error
+	if id != "" {
+		err = db.Get(&item, `select * from counter where userid = ? and item= ?`, id, itemName)
+	} else {
+		err = db.Get(&item, `select * from counter where nick = ? and item= ?`, nick, itemName)
+	}
 	switch err {
 	case sql.ErrNoRows:
 		item.ID = -1
 		item.Nick = nick
 		item.Item = itemName
+		item.UserID = id
 	case nil:
 	default:
 		return Item{}, err
 	}
 	log.Debug().
 		Str("nick", nick).
+		Str("id", id).
 		Str("itemName", itemName).
 		Interface("item", item).
 		Msg("got item")
@@ -195,8 +207,8 @@ func GetUserItem(db *sqlx.DB, nick, itemName string) (Item, error) {
 // GetUserItem returns a specific counter for a subject
 // Create saves a counter
 func (i *Item) Create() error {
-	res, err := i.Exec(`insert into counter (nick, item, count) values (?, ?, ?);`,
-		i.Nick, i.Item, i.Count)
+	res, err := i.Exec(`insert into counter (nick, item, count, userid) values (?, ?, ?, ?);`,
+		i.Nick, i.Item, i.Count, i.UserID)
 	if err != nil {
 		return err
 	}
@@ -241,25 +253,79 @@ func (i *Item) Delete() error {
 	return err
 }
 
-// NewCounterPlugin creates a new CounterPlugin with the Plugin interface
-func New(b bot.Bot) *CounterPlugin {
-	tx := b.DB().MustBegin()
-	b.DB().MustExec(`create table if not exists counter (
+func (p *CounterPlugin) migrate(r bot.Request) bool {
+	db := p.DB
+
+	nicks := []string{}
+	err := db.Select(&nicks, `select distinct nick from counter where userid is null`)
+	if err != nil {
+		log.Error().Err(err).Msg("could not get nick list")
+		return false
+	}
+
+	log.Debug().Msgf("Migrating %d nicks to IDs", len(nicks))
+
+	tx := db.MustBegin()
+
+	for _, nick := range nicks {
+		user, err := r.Conn.Profile(nick)
+		if err != nil {
+			continue
+		}
+		if _, err = tx.Exec(`update counter set userid=? where nick=?`, user.ID, nick); err != nil {
+			log.Error().Err(err).Msg("Could not migrate users")
+			continue
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Error().Err(err).Msg("Could not migrate users")
+	}
+	return false
+}
+
+func setupDB(b bot.Bot) error {
+	db := b.DB()
+	tx := db.MustBegin()
+	db.MustExec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
 			count integer
 		);`)
-	b.DB().MustExec(`create table if not exists counter_alias (
+	db.MustExec(`create table if not exists counter_alias (
 			id integer PRIMARY KEY AUTOINCREMENT,
 			item string NOT NULL UNIQUE,
 			points_to string NOT NULL
 		);`)
 	tx.Commit()
+
+	tx = db.MustBegin()
+	count := 0
+	err := tx.Get(&count, `SELECT count(*) FROM pragma_table_info('counter') where name='userid'`)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		tx.MustExec(`alter table counter add column userid string`)
+	}
+	tx.Commit()
+
+	return nil
+}
+
+// NewCounterPlugin creates a new CounterPlugin with the Plugin interface
+func New(b bot.Bot) *CounterPlugin {
+	if err := setupDB(b); err != nil {
+		panic(err)
+	}
+
 	cp := &CounterPlugin{
 		Bot: b,
 		DB:  b.DB(),
 	}
+
+	b.RegisterRegex(cp, bot.Startup, regexp.MustCompile(`.*`), cp.migrate)
 
 	b.RegisterRegexCmd(cp, bot.Message, mkAliasRegex, cp.mkAliasCmd)
 	b.RegisterRegexCmd(cp, bot.Message, rmAliasRegex, cp.rmAliasCmd)
@@ -363,10 +429,10 @@ func (p *CounterPlugin) leaderboardCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) resetCmd(r bot.Request) bool {
-	nick := r.Msg.User.Name
+	nick, id := p.resolveUser(r, "")
 	channel := r.Msg.Channel
 
-	items, err := GetItems(p.DB, strings.ToLower(nick))
+	items, err := GetItems(p.DB, nick, id)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -384,32 +450,34 @@ func (p *CounterPlugin) resetCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
-	var subject string
-	subject = r.Values["who"]
+	who := r.Values["who"]
+	nick, id := "", ""
+	if who == "me" {
+		who = r.Msg.User.Name
+		nick, id = p.resolveUser(r, "")
+	} else {
+		nick, id = p.resolveUser(r, who)
+	}
 	channel := r.Msg.Channel
 	c := r.Conn
 
-	if subject == "me" {
-		subject = strings.ToLower(r.Msg.User.Name)
-	} else {
-		subject = strings.ToLower(subject)
-	}
-
 	log.Debug().
-		Str("subject", subject).
+		Str("nick", nick).
+		Str("id", id).
 		Msg("Getting counter")
 	// pull all of the items associated with "subject"
-	items, err := GetItems(p.DB, subject)
+	items, err := GetItems(p.DB, nick, id)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Msg("Error retrieving items")
 		p.Bot.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
 		return true
 	}
 
-	resp := fmt.Sprintf("%s has the following counters:", subject)
+	resp := fmt.Sprintf("%s has the following counters:", nick)
 	count := 0
 	for _, it := range items {
 		count += 1
@@ -425,7 +493,7 @@ func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
 	resp += "."
 
 	if count == 0 {
-		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", subject))
+		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", nick))
 		return true
 	}
 
@@ -434,16 +502,17 @@ func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) clearCmd(r bot.Request) bool {
-	subject := strings.ToLower(r.Msg.User.Name)
+	nick, id := p.resolveUser(r, "")
 	itemName := strings.ToLower(r.Values["what"])
 	channel := r.Msg.Channel
 	c := r.Conn
 
-	it, err := GetUserItem(p.DB, subject, itemName)
+	it, err := GetUserItem(p.DB, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error getting item to remove")
 		p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
@@ -453,7 +522,8 @@ func (p *CounterPlugin) clearCmd(r bot.Request) bool {
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error removing item")
 		p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
@@ -466,54 +536,51 @@ func (p *CounterPlugin) clearCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) countCmd(r bot.Request) bool {
-	var subject string
-	var itemName string
-
-	if r.Values["what"] == "" && r.Values["who"] == "" {
-		return false
-	} else if r.Values["what"] != "" {
-		subject = strings.ToLower(r.Values["who"])
-		itemName = strings.ToLower(r.Values["what"])
+	itemName := strings.ToLower(r.Values["what"])
+	nick, id := r.Msg.User.Name, r.Msg.User.ID
+	if r.Values["what"] == "" {
+		itemName = r.Values["who"]
 	} else {
-		subject = strings.ToLower(r.Msg.User.Name)
-		itemName = strings.ToLower(r.Values["who"])
+		nick, id = p.resolveUser(r, r.Values["who"])
 	}
 
 	var item Item
-	item, err := GetUserItem(p.DB, subject, itemName)
+	item, err := GetUserItem(p.DB, nick, id, itemName)
 	switch {
 	case err == sql.ErrNoRows:
 		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I don't think %s has any %s.",
-			subject, itemName))
+			nick, itemName))
 		return true
 	case err != nil:
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error retrieving item count")
 		return true
 	}
 
-	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s has %d %s.", subject, item.Count,
+	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s has %d %s.", nick, item.Count,
 		itemName))
 
 	return true
 }
 
 func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
-	subject := r.Msg.User.Name
+	nick, id := r.Msg.User.Name, r.Msg.User.ID
 	if r.Values["who"] != "" {
-		subject = strings.TrimSuffix(r.Values["who"], ".")
+		nick, id = p.resolveUser(r, r.Values["who"])
 	}
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// ++ those fuckers
-	item, err := GetUserItem(p.DB, subject, itemName)
+	item, err := GetUserItem(p.DB, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("error finding item")
 		// Item ain't there, I guess
@@ -521,48 +588,47 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
 	item.UpdateDelta(1)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
 
 func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
-	subject := r.Msg.User.Name
+	nick, id := r.Msg.User.Name, r.Msg.User.ID
 	if r.Values["who"] != "" {
-		subject = strings.TrimSuffix(r.Values["who"], ".")
+		nick, id = p.resolveUser(r, r.Values["who"])
 	}
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// -- those fuckers
-	item, err := GetUserItem(p.DB, subject, itemName)
+	item, err := GetUserItem(p.DB, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error finding item")
 		// Item ain't there, I guess
 		return false
 	}
 	item.UpdateDelta(-1)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
 
 func (p *CounterPlugin) addToCmd(r bot.Request) bool {
-	subject := r.Msg.User.Name
-	if r.Values["who"] != "" {
-		subject = strings.TrimSuffix(r.Values["who"], ".")
-	}
+	nick, id := p.resolveUser(r, r.Values["who"])
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// += those fuckers
-	item, err := GetUserItem(p.DB, subject, itemName)
+	item, err := GetUserItem(p.DB, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error finding item")
 		// Item ain't there, I guess
@@ -571,24 +637,22 @@ func (p *CounterPlugin) addToCmd(r bot.Request) bool {
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by %d: %#v", n, item)
 	item.UpdateDelta(n)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
 
 func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
-	subject := r.Msg.User.Name
-	if r.Values["who"] != "" {
-		subject = strings.TrimSuffix(r.Values["who"], ".")
-	}
+	nick, id := p.resolveUser(r, r.Values["who"])
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// -= those fuckers
-	item, err := GetUserItem(p.DB, subject, itemName)
+	item, err := GetUserItem(p.DB, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("subject", subject).
+			Str("nick", nick).
+			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error finding item")
 		// Item ain't there, I guess
@@ -597,7 +661,7 @@ func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by -%d: %#v", n, item)
 	item.UpdateDelta(-n)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", subject,
+	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
@@ -614,7 +678,7 @@ func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message
 }
 
 func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
-	nick := r.Msg.User.Name
+	nick, id := r.Msg.User.Name, r.Msg.User.ID
 	channel := r.Msg.Channel
 
 	submatches := teaRegex.FindStringSubmatch(r.Msg.Body)
@@ -624,7 +688,7 @@ func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
 	itemName := strings.ToLower(submatches[1])
 
 	// We will specifically allow :tea: to keep compatability
-	item, err := GetUserItem(p.DB, nick, itemName)
+	item, err := GetUserItem(p.DB, nick, id, itemName)
 	if err != nil || (item.Count == 0 && item.Item != ":tea:") {
 		log.Error().
 			Err(err).
@@ -687,7 +751,8 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 			w.Write(j)
 			return
 		}
-		item, err := GetUserItem(p.DB, info.User, info.Thing)
+		nick, id := p.resolveUser(bot.Request{Conn: p.Bot.DefaultConnector()}, info.User)
+		item, err := GetUserItem(p.DB, nick, id, info.Thing)
 		if err != nil {
 			log.Error().
 				Err(err).
@@ -743,4 +808,20 @@ func sendUpdate(who, what string, amount int) {
 	for _, f := range updateFuncs {
 		f(Update{who, what, amount})
 	}
+}
+
+func (p *CounterPlugin) resolveUser(r bot.Request, nick string) (string, string) {
+	id := ""
+	if nick != "" {
+		nick = strings.TrimSuffix(nick, ".")
+		u, err := r.Conn.Profile(nick)
+		if err == nil && u.ID != "" {
+			id = u.ID
+		}
+	} else if r.Msg.User != nil {
+		nick, id = r.Msg.User.Name, r.Msg.User.ID
+	}
+	nick = strings.ToLower(nick)
+	log.Debug().Msgf("resolveUser(%s, %s) => (%s, %s)", r.Msg.User.ID, nick, nick, id)
+	return nick, id
 }

@@ -35,6 +35,8 @@ const (
 	SelfMessage
 	// Delete removes a message by ID
 	Delete
+	// Startup is triggered after the connector has run the Serve function
+	Startup
 )
 
 type EphemeralID string

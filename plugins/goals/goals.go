@@ -188,7 +188,14 @@ func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
 		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find %s", what))
 	}
 
-	item, err := counter.GetUserItem(p.db, who, what)
+	nick, id := "", ""
+	user, err := c.Profile(who)
+	if err == nil && user.ID != "" {
+		id = user.ID
+		nick = user.Name
+	}
+
+	item, err := counter.GetUserItem(p.db, nick, id, what)
 	if err != nil {
 		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find any %s", what))
 		return
