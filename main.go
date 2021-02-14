@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/connectors/discord"
 
 	"github.com/velour/catbase/plugins/gpt2"
@@ -157,6 +158,8 @@ func main() {
 	if err := client.Serve(); err != nil {
 		log.Fatal().Err(err)
 	}
+
+	b.Receive(client, bot.Startup, msg.Message{})
 
 	addr := c.Get("HttpAddr", "127.0.0.1:1337")
 	log.Debug().Msgf("starting web service at %s", addr)

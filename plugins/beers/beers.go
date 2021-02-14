@@ -98,22 +98,23 @@ func (p *BeersPlugin) register() {
 				op := r.Values["operator"]
 				count, _ := strconv.Atoi(r.Values["amount"])
 				nick := r.Msg.User.Name
+				id := r.Msg.User.ID
 
 				switch op {
 				case "=":
 					if count == 0 {
-						p.puke(r.Conn, nick, r.Msg.Channel)
+						p.puke(r.Conn, nick, id, r.Msg.Channel)
 					} else {
-						p.setBeers(nick, count)
+						p.setBeers(nick, id, count)
 						p.randomReply(r.Conn, r.Msg.Channel)
 					}
 					return true
 				case "+=":
-					p.addBeers(nick, count)
+					p.addBeers(nick, id, count)
 					p.randomReply(r.Conn, r.Msg.Channel)
 					return true
 				case "-=":
-					p.addBeers(nick, -count)
+					p.addBeers(nick, id, -count)
 					p.randomReply(r.Conn, r.Msg.Channel)
 					return true
 				}
@@ -124,10 +125,11 @@ func (p *BeersPlugin) register() {
 			Handler: func(r bot.Request) bool {
 				op := r.Values["operator"]
 				nick := r.Msg.User.Name
+				id := r.Msg.User.ID
 				if op == "++" {
-					p.addBeers(nick, 1)
+					p.addBeers(nick, id, 1)
 				} else {
-					p.addBeers(nick, -1)
+					p.addBeers(nick, id, -1)
 				}
 				p.randomReply(r.Conn, r.Msg.Channel)
 				return true
@@ -139,8 +141,8 @@ func (p *BeersPlugin) register() {
 				if who == "" {
 					who = r.Msg.User.Name
 				}
-				if p.doIKnow(who) {
-					p.reportCount(r.Conn, who, r.Msg.Channel, false)
+				if p.doIKnow(who, "") {
+					p.reportCount(r.Conn, who, "", r.Msg.Channel, false)
 				} else {
 					msg := fmt.Sprintf("Sorry, I don't know %s.", who)
 					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
@@ -150,14 +152,14 @@ func (p *BeersPlugin) register() {
 		{Kind: bot.Message, IsCmd: true,
 			Regex: regexp.MustCompile(`(?i)^puke$`),
 			Handler: func(r bot.Request) bool {
-				p.puke(r.Conn, r.Msg.User.Name, r.Msg.Channel)
+				p.puke(r.Conn, r.Msg.User.Name, r.Msg.User.ID, r.Msg.Channel)
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
 			Regex: regexp.MustCompile(`(?i)^` +
 				strings.Join(p.c.GetArray("beers.imbibewords", []string{"imbibe", "quaff"}), "|") + `$`),
 			Handler: func(r bot.Request) bool {
-				p.addBeers(r.Msg.User.Name, 1)
+				p.addBeers(r.Msg.User.Name, r.Msg.User.ID, 1)
 				p.randomReply(r.Conn, r.Msg.Channel)
 				return true
 			}},
@@ -237,34 +239,35 @@ func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, 
 	return true
 }
 
-func getUserBeers(db *sqlx.DB, user string) counter.Item {
-	booze, _ := counter.GetUserItem(db, user, itemName)
+func getUserBeers(db *sqlx.DB, user, id string) counter.Item {
+	// TODO: really ought to have an ID here
+	booze, _ := counter.GetUserItem(db, user, id, itemName)
 	return booze
 }
 
-func (p *BeersPlugin) setBeers(user string, amount int) {
-	ub := getUserBeers(p.db, user)
+func (p *BeersPlugin) setBeers(user, id string, amount int) {
+	ub := getUserBeers(p.db, user, id)
 	err := ub.Update(amount)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
-func (p *BeersPlugin) addBeers(user string, delta int) {
-	ub := getUserBeers(p.db, user)
+func (p *BeersPlugin) addBeers(user, id string, delta int) {
+	ub := getUserBeers(p.db, user, id)
 	err := ub.UpdateDelta(delta)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
-func (p *BeersPlugin) getBeers(nick string) int {
-	ub := getUserBeers(p.db, nick)
+func (p *BeersPlugin) getBeers(nick, id string) int {
+	ub := getUserBeers(p.db, nick, id)
 	return ub.Count
 }
 
-func (p *BeersPlugin) reportCount(c bot.Connector, nick, channel string, himself bool) {
-	beers := p.getBeers(nick)
+func (p *BeersPlugin) reportCount(c bot.Connector, nick, id, channel string, himself bool) {
+	beers := p.getBeers(nick, id)
 	msg := fmt.Sprintf("%s has had %d beers so far.", nick, beers)
 	if himself {
 		if beers == 0 {
@@ -276,14 +279,14 @@ func (p *BeersPlugin) reportCount(c bot.Connector, nick, channel string, himself
 	p.b.Send(c, bot.Message, channel, msg)
 }
 
-func (p *BeersPlugin) puke(c bot.Connector, user string, channel string) {
-	p.setBeers(user, 0)
+func (p *BeersPlugin) puke(c bot.Connector, user, id string, channel string) {
+	p.setBeers(user, id, 0)
 	msg := fmt.Sprintf("Ohhhhhh, and a reversal of fortune for %s!", user)
 	p.b.Send(c, bot.Message, channel, msg)
 }
 
-func (p *BeersPlugin) doIKnow(nick string) bool {
-	count := p.getBeers(nick)
+func (p *BeersPlugin) doIKnow(nick, id string) bool {
+	count := p.getBeers(nick, id)
 	return count > 0
 }
 
@@ -471,8 +474,8 @@ func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdU
 	}
 
 	// Don't add beers till after a photo has been detected (or failed once)
-	p.addBeers(user.chanNick, 1)
-	drunken := p.getBeers(user.chanNick)
+	p.addBeers(user.chanNick, "", 1)
+	drunken := p.getBeers(user.chanNick, "")
 
 	msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
 		user.chanNick, beerName, breweryName, venue, drunken)
