@@ -207,8 +207,7 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 	encodedSpec, _ := json.Marshal(spec)
 
 	w, h, err := p.checkMeme(imgURL)
-	_, _, err2 := p.checkMeme(stampURL)
-	if err != nil || err2 != nil {
+	if err != nil {
 		msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
 		p.bot.Send(c, bot.Ephemeral, channel, from.ID, msg)
 		return
