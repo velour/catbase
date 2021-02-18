@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"sort"
 
 	"github.com/rs/zerolog/log"
@@ -51,12 +50,9 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 		}
 		realURL, err := url.Parse(u)
 		if err != nil || realURL.Scheme == "" {
-			realURL, err = url.Parse("https://imgflip.com/s/meme/" + u)
-			if err != nil {
-				values = append(values, webResp{n, "404.png", config})
-				log.Error().Err(err).Msgf("invalid URL")
-				continue
-			}
+			values = append(values, webResp{n, "404.png", config})
+			log.Error().Err(err).Msgf("invalid URL")
+			continue
 		}
 		values = append(values, webResp{n, realURL.String(), config})
 	}
@@ -137,11 +133,31 @@ func (p *MemePlugin) webRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {
-	_, file := path.Split(r.URL.Path)
-	id := file
-	if img, ok := p.images[id]; ok {
-		w.Write(img.repr)
+	q := r.URL.Query()
+	spec := q.Get("spec")
+	if spec == "" {
+		log.Debug().Msgf("No spec found for img")
+		w.WriteHeader(404)
+		w.Write([]byte{})
+		return
+	}
+
+	s, err := SpecFromJSON([]byte(spec))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	img, err := p.genMeme(s)
+
+	if err == nil {
+		w.Write(img)
 	} else {
+		log.Error().
+			Err(err).
+			Interface("spec", s).
+			Msg("Unable to generate meme image")
 		w.WriteHeader(404)
 		w.Write([]byte("not found"))
 	}

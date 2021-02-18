@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/fogleman/gg"
-	"github.com/google/uuid"
 	"github.com/nfnt/resize"
 	"github.com/rs/zerolog/log"
 
@@ -43,6 +42,23 @@ type memeText struct {
 	YPerc float64 `json:"y"`
 	Text  string  `json:"t",omitempty`
 	Caps  bool    `json:"c"`
+}
+
+type specification struct {
+	ImageURL string
+	StampURL string
+	Configs  []memeText
+}
+
+func (s specification) toJSON() string {
+	out, _ := json.Marshal(s)
+	return string(out)
+}
+
+func SpecFromJSON(input []byte) (specification, error) {
+	out := specification{}
+	err := json.Unmarshal(input, &out)
+	return out, err
 }
 
 var horizon = 24 * 7
@@ -96,13 +112,13 @@ func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, a
 	return true
 }
 
-func (p *MemePlugin) bully(c bot.Connector, format, id string) (image.Image, string) {
-	bullyIcon := ""
+func (p *MemePlugin) stamp(c bot.Connector, format, id string) string {
+	iconURL := ""
 
 	for _, bully := range p.c.GetArray("meme.bully", []string{}) {
 		if format == bully {
 			if u, err := c.Profile(bully); err == nil {
-				bullyIcon = u.Icon
+				iconURL = u.Icon
 			} else {
 				log.Debug().Err(err).Msgf("could not get profile for %s", format)
 			}
@@ -113,22 +129,11 @@ func (p *MemePlugin) bully(c bot.Connector, format, id string) (image.Image, str
 		}
 	}
 
-	if u, err := c.Profile(id); bullyIcon == "" && err == nil {
-		if u.IconImg != nil {
-			return u.IconImg, format
-		}
-		bullyIcon = u.Icon
+	if u, err := c.Profile(id); iconURL == "" && err == nil {
+		iconURL = u.Icon
 	}
 
-	u, err := url.Parse(bullyIcon)
-	if err != nil {
-		log.Error().Err(err).Msg("error with bully URL")
-	}
-	bullyImg, err := DownloadTemplate(u)
-	if err != nil {
-		log.Error().Err(err).Msg("error downloading bully icon")
-	}
-	return bullyImg, format
+	return iconURL
 }
 
 func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID string, from *user.User, text string) {
@@ -143,88 +148,104 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 
 	log.Debug().Strs("parts", parts).Msgf("Meme:\n%+v", text)
 
-	go func() {
-		var config []memeText
+	var config []memeText
 
-		message = strings.TrimPrefix(message, "`")
-		message = strings.TrimSuffix(message, "`")
+	message = strings.TrimPrefix(message, "`")
+	message = strings.TrimSuffix(message, "`")
 
-		err := json.Unmarshal([]byte(message), &config)
-		if err == nil {
-			message = ""
-			for _, c := range config {
-				message += c.Text + "\n"
-			}
+	err := json.Unmarshal([]byte(message), &config)
+	if err == nil {
+		message = ""
+		for _, c := range config {
+			message += c.Text + "\n"
+		}
+	} else {
+		if strings.Contains(message, "||") {
+			parts = strings.Split(message, "||")
 		} else {
-			if strings.Contains(message, "||") {
-				parts = strings.Split(message, "||")
-			} else {
-				parts = strings.Split(message, "\n")
-			}
+			parts = strings.Split(message, "\n")
+		}
 
-			allConfigs := p.c.GetMap("meme.memeconfigs", map[string]string{})
-			configtxt, ok := allConfigs[format]
-			if !ok {
+		allConfigs := p.c.GetMap("meme.memeconfigs", map[string]string{})
+		configtxt, ok := allConfigs[format]
+		if !ok {
+			config = defaultFormatConfig()
+			log.Debug().Msgf("Did not find %s in %+v", format, allConfigs)
+		} else {
+			err = json.Unmarshal([]byte(configtxt), &config)
+			if err != nil {
+				log.Error().Err(err).Msgf("Could not parse config for %s:\n%s", format, configtxt)
 				config = defaultFormatConfig()
-				log.Debug().Msgf("Did not find %s in %+v", format, allConfigs)
-			} else {
-				err = json.Unmarshal([]byte(configtxt), &config)
-				if err != nil {
-					log.Error().Err(err).Msgf("Could not parse config for %s:\n%s", format, configtxt)
-					config = defaultFormatConfig()
-				}
-			}
-
-			j := 0
-			for i := range config {
-				if len(parts) > i {
-					if parts[j] != "_" {
-						config[i].Text = parts[j]
-					}
-					j++
-				}
 			}
 		}
 
-		bullyImg, format := p.bully(c, format, from.ID)
-
-		id, w, h, err := p.genMeme(format, bullyImg, config)
-		if err != nil {
-			msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
-			p.bot.Send(c, bot.Ephemeral, channel, from.ID, msg)
-			return
+		j := 0
+		for i := range config {
+			if len(parts) > i {
+				if parts[j] != "_" {
+					config[i].Text = parts[j]
+				}
+				j++
+			}
 		}
-		baseURL := p.c.Get("BaseURL", ``)
-		u, _ := url.Parse(baseURL)
-		u.Path = path.Join(u.Path, "meme", "img", id)
+	}
 
-		log.Debug().Msgf("image is at %s", u.String())
-		_, err = p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
-			URL:    u.String(),
-			AltTxt: fmt.Sprintf("%s: %s", from.Name, message),
-			Width:  w,
-			Height: h,
-		})
+	formats := p.c.GetMap("meme.memes", defaultFormats)
+	imgURL, ok := formats[format]
+	if !ok {
+		imgURL = format
+	}
 
-		if err == nil && msgID != "" {
-			p.bot.Send(c, bot.Delete, channel, msgID)
-		}
+	stampURL := p.stamp(c, format, from.ID)
 
-		m := msg.Message{
-			User: &user.User{
-				ID:    from.ID,
-				Name:  from.Name,
-				Admin: false,
-			},
-			Channel:     channel,
-			ChannelName: channelName,
-			Body:        message,
-			Command:     isCmd,
-			Time:        time.Now(),
-		}
+	spec := specification{
+		ImageURL: imgURL,
+		StampURL: stampURL,
+		Configs:  config,
+	}
 
-		p.bot.Receive(c, bot.Message, m)
-	}()
+	encodedSpec, _ := json.Marshal(spec)
+
+	w, h, err := p.checkMeme(imgURL)
+	_, _, err2 := p.checkMeme(stampURL)
+	if err != nil || err2 != nil {
+		msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
+		p.bot.Send(c, bot.Ephemeral, channel, from.ID, msg)
+		return
+	}
+	baseURL := p.c.Get("BaseURL", ``)
+	u, _ := url.Parse(baseURL)
+	u.Path = path.Join(u.Path, "meme", "img")
+	q := u.Query()
+	q.Add("spec", string(encodedSpec))
+	u.RawQuery = q.Encode()
+
+	log.Debug().Msgf("image is at %s", u.String())
+	_, err = p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
+		URL:    u.String(),
+		AltTxt: fmt.Sprintf("%s: %s", from.Name, message),
+		Width:  w,
+		Height: h,
+	})
+
+	if err == nil && msgID != "" {
+		p.bot.Send(c, bot.Delete, channel, msgID)
+	}
+
+	m := msg.Message{
+		User: &user.User{
+			ID:    from.ID,
+			Name:  from.Name,
+			Admin: false,
+		},
+		Channel:     channel,
+		ChannelName: channelName,
+		Body:        message,
+		Command:     isCmd,
+		Time:        time.Now(),
+	}
+
+	p.bot.Receive(c, bot.Message, m)
 
 }
 
@@ -274,13 +295,13 @@ func DownloadTemplate(u *url.URL) (image.Image, error) {
 }
 
 var defaultFormats = map[string]string{
-	"fry":    "Futurama-Fry.jpg",
-	"aliens": "Ancient-Aliens.jpg",
-	"doge":   "Doge.jpg",
-	"simply": "One-Does-Not-Simply.jpg",
-	"wonka":  "Creepy-Condescending-Wonka.jpg",
-	"grumpy": "Grumpy-Cat.jpg",
-	"raptor": "Philosoraptor.jpg",
+	"fry":    "https://imgflip.com/s/meme/Futurama-Fry.jpg",
+	"aliens": "https://imgflip.com/s/meme/Ancient-Aliens.jpg",
+	"doge":   "https://imgflip.com/s/meme/Doge.jpg",
+	"simply": "https://imgflip.com/s/meme/One-Does-Not-Simply.jpg",
+	"wonka":  "https://imgflip.com/s/meme/Creepy-Condescending-Wonka.jpg",
+	"grumpy": "https://imgflip.com/s/meme/Grumpy-Cat.jpg",
+	"raptor": "https://imgflip.com/s/meme/Philosoraptor.jpg",
 }
 
 func (p *MemePlugin) findFontSize(config []memeText, w, h int, sizes []float64) float64 {
@@ -333,23 +354,31 @@ func defaultFormatConfigJSON() string {
 	return string(c)
 }
 
-func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) (string, int, int, error) {
-	fontSizes := []float64{48, 36, 24, 16, 12}
-	formats := p.c.GetMap("meme.memes", defaultFormats)
-
-	path := uuid.New().String()
-
-	imgName, ok := formats[meme]
-	if !ok {
-		imgName = meme
+func (p *MemePlugin) checkMeme(imgURL string) (int, int, error) {
+	u, err := url.Parse(imgURL)
+	if err != nil || u.Scheme == "" {
+		log.Debug().Err(err).Str("imgName", imgURL).Msgf("url not detected")
+		return 0, 0, fmt.Errorf("URL not valid (%s): %w", imgURL, err)
 	}
 
-	u, err := url.Parse(imgName)
+	img, err := DownloadTemplate(u)
+
+	return img.Bounds().Dx(), img.Bounds().Dy(), err
+}
+
+func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
+	fontSizes := []float64{48, 36, 24, 16, 12}
+
+	jsonSpec := spec.toJSON()
+	if cached, ok := p.images[jsonSpec]; ok {
+		log.Debug().Msgf("Returning cached image for %s", jsonSpec)
+		return cached.repr, nil
+	}
+
+	u, err := url.Parse(spec.ImageURL)
 	if err != nil || u.Scheme == "" {
-		log.Debug().Err(err).Str("imgName", imgName).Msgf("url not detected")
-		if u, err = url.Parse("https://imgflip.com/s/meme/" + imgName); err != nil {
-			return "", 0, 0, err
-		}
+		log.Debug().Err(err).Str("imgName", spec.ImageURL).Msgf("url not detected")
+		return nil, fmt.Errorf("Error with meme URL: %w", err)
 	}
 
 	log.Debug().Msgf("Attempting to download url: %s", u.String())
@@ -357,14 +386,12 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 	img, err := DownloadTemplate(u)
 	if err != nil {
 		log.Debug().Msgf("failed to download image: %s", err)
-		return "", 0, 0, err
+		return nil, err
 	}
 
 	r := img.Bounds()
 	w := r.Dx()
 	h := r.Dy()
-
-	// /meme2 5guys [{"x": 0.1, "y": 0.1, "t": "test"}]
 
 	maxSz := p.c.GetFloat64("maxImgSz", 750.0)
 
@@ -385,18 +412,24 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 	h = r.Dy()
 	log.Debug().Msgf("resized to %v, %v", w, h)
 
-	if bully != nil {
-		img = p.applyBully(img, bully)
+	if spec.StampURL != "" {
+		img, err = p.applyStamp(img, spec.StampURL)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Interface("spec", spec).
+				Msg("could not apply stamp")
+		}
 	}
 
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
 	fontLocation := p.c.Get("meme.font", "impact.ttf")
-	m.LoadFontFace(fontLocation, p.findFontSize(config, w, h, fontSizes))
+	m.LoadFontFace(fontLocation, p.findFontSize(spec.Configs, w, h, fontSizes))
 
-	for i, c := range config {
+	for i, c := range spec.Configs {
 		if c.Caps {
-			config[i].Text = strings.ToUpper(c.Text)
+			spec.Configs[i].Text = strings.ToUpper(c.Text)
 		}
 	}
 
@@ -409,7 +442,7 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 			if dx*dx+dy*dy >= strokeSize*strokeSize {
 				continue
 			}
-			for _, c := range config {
+			for _, c := range spec.Configs {
 				x := float64(w)*c.XPerc + float64(dx)
 				y := float64(h)*c.YPerc + float64(dy)
 				m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
@@ -419,7 +452,7 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 
 	// Apply white fill
 	m.SetHexColor("#FFF")
-	for _, c := range config {
+	for _, c := range spec.Configs {
 		x := float64(w) * c.XPerc
 		y := float64(h) * c.YPerc
 		m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
@@ -427,18 +460,23 @@ func (p *MemePlugin) genMeme(meme string, bully image.Image, config []memeText) 
 
 	i := bytes.Buffer{}
 	png.Encode(&i, m.Image())
-	p.images[path] = &cachedImage{time.Now(), i.Bytes()}
+	p.images[jsonSpec] = &cachedImage{time.Now(), i.Bytes()}
 
-	log.Debug().Msgf("Saved to %s\n", path)
+	log.Debug().Msgf("Saved to %s\n", jsonSpec)
 
-	return path, w, h, nil
+	return p.images[jsonSpec].repr, nil
 }
 
-func (p *MemePlugin) applyBully(img, bullyImg image.Image) image.Image {
+func (p *MemePlugin) applyStamp(img image.Image, bullyURL string) (image.Image, error) {
+	u, _ := url.Parse(bullyURL)
+	bullyImg, err := DownloadTemplate(u)
+	if err != nil {
+		return nil, err
+	}
 	dst := image.NewRGBA(img.Bounds())
 
-	scaleFactor := p.c.GetFloat64("meme.bullyScale", 0.1)
-	position := p.c.GetString("meme.bullyPosition", "botright")
+	scaleFactor := p.c.GetFloat64("meme.stampScale", 0.1)
+	position := p.c.GetString("meme.stampPosition", "botright")
 
 	scaleFactor = float64(img.Bounds().Max.X) * scaleFactor / float64(bullyImg.Bounds().Max.X)
 
@@ -464,7 +502,7 @@ func (p *MemePlugin) applyBully(img, bullyImg image.Image) image.Image {
 	rect := image.Rect(pt.X, pt.Y, srcSz.X, srcSz.Y)
 
 	draw.DrawMask(dst, rect, bullyImg, image.Point{}, &circle{image.Point{w / 2, h / 2}, w / 2}, image.Point{}, draw.Over)
-	return dst
+	return dst, nil
 }
 
 // the following is ripped off of https://blog.golang.org/image-draw
