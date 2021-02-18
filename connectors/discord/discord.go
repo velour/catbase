@@ -170,6 +170,7 @@ func (d *Discord) convertUser(u *discordgo.User) *user.User {
 		ID:      u.ID,
 		Name:    u.Username,
 		Admin:   false,
+		Icon:    d.client.State.User.AvatarURL("64"),
 		IconImg: img,
 	}
 }
