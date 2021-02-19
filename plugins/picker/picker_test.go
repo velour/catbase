@@ -8,24 +8,29 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
+	"github.com/velour/catbase/plugins/cli"
 )
 
-func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
+func makeMessage(payload string) bot.Request {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
-		User:    &user.User{Name: "tester"},
-		Channel: "test",
-		Body:    payload,
-		Command: isCmd,
+	values := bot.ParseValues(pickRegex, payload)
+	return bot.Request{
+		Conn:   &cli.CliPlugin{},
+		Kind:   bot.Message,
+		Values: values,
+		Msg: msg.Message{
+			User:    &user.User{Name: "tester"},
+			Channel: "test",
+			Body:    payload,
+			Command: isCmd,
+		},
 	}
 }
 
@@ -107,11 +112,4 @@ func TestPickIsCommand(t *testing.T) {
 	assert.Contains(t, mb.Messages[0], "I've chosen")
 	assert.NotContains(t, mb.Messages[0], "hot picks")
 	log.Debug().Str("resp", mb.Messages[0]).Msg("choose")
-}
-
-func TestPickMustBeCommand(t *testing.T) {
-	mb := bot.NewMockBot()
-	c := New(mb)
-	_ = c.message(makeMessage("pick⌘ { bagel/egg/smoked turkey/butte/cheese ⌘ fuck all that, just have a bagel and cream cheese }"))
-	assert.Len(t, mb.Messages, 0)
 }
