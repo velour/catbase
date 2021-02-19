@@ -3,6 +3,7 @@
 package reaction
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -35,12 +36,12 @@ func New(b bot.Bot) *ReactionPlugin {
 		model:  model,
 		br:     newBayesReactor(path),
 	}
-	b.Register(rp, bot.Message, rp.message)
+	b.RegisterRegex(rp, bot.Message, regexp.MustCompile(`.*`), rp.message)
 	return rp
 }
 
-func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	emojy, prob := p.br.React(message.Body)
+func (p *ReactionPlugin) message(r bot.Request) bool {
+	emojy, prob := p.br.React(r.Msg.Body)
 	target := p.config.GetFloat64("reaction.confidence", 0.5)
 
 	log.Debug().
@@ -51,10 +52,10 @@ func (p *ReactionPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 		Msgf("Reaction check")
 
 	if prob > target {
-		p.bot.Send(c, bot.Reaction, message.Channel, emojy, message)
+		p.bot.Send(r.Conn, bot.Reaction, r.Msg.Channel, emojy, r.Msg)
 	}
 
-	p.checkReactions(c, message)
+	p.checkReactions(r.Conn, r.Msg)
 
 	return false
 }
