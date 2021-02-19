@@ -2,6 +2,7 @@ package remember
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,85 +27,76 @@ func New(b bot.Bot) *RememberPlugin {
 		db:  b.DB(),
 	}
 
-	b.Register(p, bot.Message, p.message)
+	b.RegisterRegex(p, bot.Message, rememberRegex, p.rememberCmd)
+	b.RegisterRegex(p, bot.Message, quoteRegex, p.quoteCmd)
+	b.RegisterRegex(p, bot.Message, regexp.MustCompile(`.*`), p.recordMsg)
 	b.Register(p, bot.Help, p.help)
 
 	return p
 }
 
-func (p *RememberPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if strings.ToLower(message.Body) == "quote" && message.Command {
-		q := p.randQuote()
-		p.bot.Send(c, bot.Message, message.Channel, q)
+var quoteRegex = regexp.MustCompile(`(?i)^quote$`)
+var rememberRegex = regexp.MustCompile(`(?i)^remember (?P<who>\S+) (?P<what>.*)$`)
 
-		// is it evil not to remember that the user said quote?
-		return true
-	}
+func (p *RememberPlugin) quoteCmd(r bot.Request) bool {
+	q := p.randQuote()
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, q)
+	return true
+}
 
-	user := message.User
-	parts := strings.Fields(message.Body)
+func (p *RememberPlugin) rememberCmd(r bot.Request) bool {
+	user := r.Msg.User
 
-	if message.Command && len(parts) >= 3 &&
-		strings.ToLower(parts[0]) == "remember" {
-		// we have a remember!
-		// look through the logs and find parts[1] as a user, if not,
-		// fuck this hoser
-		nick := parts[1]
-		snip := strings.Join(parts[2:], " ")
-		for i := len(p.log[message.Channel]) - 1; i >= 0; i-- {
-			entry := p.log[message.Channel][i]
-			log.Debug().Msgf("Comparing %s:%s with %s:%s",
-				entry.User.Name, entry.Body, nick, snip)
-			if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
-				strings.Contains(
-					strings.ToLower(entry.Body),
-					strings.ToLower(snip),
-				) {
-				log.Debug().Msg("Found!")
+	nick := r.Values["who"]
+	snip := r.Values["what"]
+	for i := len(p.log[r.Msg.Channel]) - 1; i >= 0; i-- {
+		entry := p.log[r.Msg.Channel][i]
+		log.Debug().Msgf("Comparing %s:%s with %s:%s",
+			entry.User.Name, entry.Body, nick, snip)
+		if strings.ToLower(entry.User.Name) == strings.ToLower(nick) &&
+			strings.Contains(
+				strings.ToLower(entry.Body),
+				strings.ToLower(snip),
+			) {
+			log.Debug().Msg("Found!")
 
-				var msg string
-				if entry.Action {
-					msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body)
-				} else {
-					msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body)
-				}
-
-				trigger := fmt.Sprintf("%s quotes", entry.User.Name)
-
-				fact := fact.Factoid{
-					Fact:     strings.ToLower(trigger),
-					Verb:     "reply",
-					Tidbit:   msg,
-					Owner:    user.Name,
-					Created:  time.Now(),
-					Accessed: time.Now(),
-					Count:    0,
-				}
-				if err := fact.Save(p.db); err != nil {
-					log.Error().Err(err)
-					p.bot.Send(c, bot.Message, message.Channel, "Tell somebody I'm broke.")
-				}
-
-				log.Info().
-					Str("msg", msg).
-					Msg("Remembering factoid")
-
-				// sorry, not creative with names so we're reusing msg
-				msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
-					message.User.Name, msg)
-				p.bot.Send(c, bot.Message, message.Channel, msg)
-				p.recordMsg(message)
-				return true
-
+			var msg string
+			if entry.Action {
+				msg = fmt.Sprintf("*%s* %s", entry.User.Name, entry.Body)
+			} else {
+				msg = fmt.Sprintf("<%s> %s", entry.User.Name, entry.Body)
 			}
-		}
-		p.bot.Send(c, bot.Message, message.Channel, "Sorry, I don't know that phrase.")
-		p.recordMsg(message)
-		return true
-	}
 
-	p.recordMsg(message)
-	return false
+			trigger := fmt.Sprintf("%s quotes", entry.User.Name)
+
+			fact := fact.Factoid{
+				Fact:     strings.ToLower(trigger),
+				Verb:     "reply",
+				Tidbit:   msg,
+				Owner:    user.Name,
+				Created:  time.Now(),
+				Accessed: time.Now(),
+				Count:    0,
+			}
+			if err := fact.Save(p.db); err != nil {
+				log.Error().Err(err)
+				p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Tell somebody I'm broke.")
+			}
+
+			log.Info().
+				Str("msg", msg).
+				Msg("Remembering factoid")
+
+			// sorry, not creative with names so we're reusing msg
+			msg = fmt.Sprintf("Okay, %s, remembering '%s'.",
+				r.Msg.User.Name, msg)
+			p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+			return true
+
+		}
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Sorry, I don't know that phrase.")
+	return true
 }
 
 func (p *RememberPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
@@ -146,7 +138,8 @@ func (p *RememberPlugin) randQuote() string {
 	return f.Tidbit
 }
 
-func (p *RememberPlugin) recordMsg(message msg.Message) {
-	log.Debug().Msgf("Logging message: %s: %s", message.User.Name, message.Body)
-	p.log[message.Channel] = append(p.log[message.Channel], message)
+func (p *RememberPlugin) recordMsg(r bot.Request) bool {
+	log.Debug().Msgf("Logging message: %s: %s", r.Msg.User.Name, r.Msg.Body)
+	p.log[r.Msg.Channel] = append(p.log[r.Msg.Channel], r.Msg)
+	return false
 }
