@@ -26,7 +26,7 @@ func New(b bot.Bot) *PickerPlugin {
 	pp := &PickerPlugin{
 		bot: b,
 	}
-	b.Register(pp, bot.Message, pp.message)
+	b.RegisterRegex(pp, bot.Message, pickRegex, pp.message)
 	b.Register(pp, bot.Help, pp.help)
 	return pp
 }
@@ -34,14 +34,12 @@ func New(b bot.Bot) *PickerPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	if !strings.HasPrefix(message.Body, "pick") || !message.Command {
-		return false
-	}
+func (p *PickerPlugin) message(r bot.Request) bool {
+	message := r.Msg
 
 	n, items, err := p.parse(message.Body)
 	if err != nil {
-		p.bot.Send(c, bot.Message, message.Channel, err.Error())
+		p.bot.Send(r.Conn, bot.Message, message.Channel, err.Error())
 		return true
 	}
 
@@ -50,7 +48,7 @@ func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 		for _, pref := range preferences {
 			if pref == it {
 				out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(it))
-				p.bot.Send(c, bot.Message, message.Channel, out)
+				p.bot.Send(r.Conn, bot.Message, message.Channel, out)
 				return true
 			}
 		}
@@ -59,7 +57,7 @@ func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 	if n == 1 {
 		item := items[rand.Intn(len(items))]
 		out := fmt.Sprintf("I've chosen %q for you.", strings.TrimSpace(item))
-		p.bot.Send(c, bot.Message, message.Channel, out)
+		p.bot.Send(r.Conn, bot.Message, message.Channel, out)
 		return true
 	}
 
@@ -75,7 +73,7 @@ func (p *PickerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 		fmt.Fprintf(&b, ", %q", item)
 	}
 	b.WriteString(" }")
-	p.bot.Send(c, bot.Message, message.Channel, b.String())
+	p.bot.Send(r.Conn, bot.Message, message.Channel, b.String())
 	return true
 }
 
