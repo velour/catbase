@@ -40,6 +40,11 @@ func (p *GiphyPlugin) register() {
 			HelpText: "search for a giph",
 			Handler: func(r bot.Request) bool {
 				u, w, h := p.query(r.Values["search"])
+				if u == "" {
+					msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", r.Msg.User.Name)
+					p.b.Send(r.Conn, bot.Ephemeral, r.Msg.Channel, r.Msg.User.ID, msg)
+					return true
+				}
 				p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "", bot.ImageAttachment{
 					URL:    u,
 					AltTxt: fmt.Sprintf("%s: %s\nPowered by Giphy", r.Msg.User.Name, r.Values["search"]),
