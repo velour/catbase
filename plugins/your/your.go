@@ -4,6 +4,7 @@ package your
 
 import (
 	"math/rand"
+	"regexp"
 	"strings"
 
 	"github.com/velour/catbase/bot"
@@ -22,7 +23,7 @@ func New(b bot.Bot) *YourPlugin {
 		bot:    b,
 		config: b.Config(),
 	}
-	b.Register(yp, bot.Message, yp.message)
+	b.RegisterRegex(yp, bot.Message, regexp.MustCompile(`.*`), yp.message)
 	b.Register(yp, bot.Help, yp.help)
 	return yp
 }
@@ -30,7 +31,8 @@ func New(b bot.Bot) *YourPlugin {
 // Message responds to the bot hook on recieving messages.
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
-func (p *YourPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *YourPlugin) message(r bot.Request) bool {
+	message := r.Msg
 	maxLen := p.config.GetInt("your.maxlength", 140)
 	if len(message.Body) > maxLen {
 		return false
@@ -46,7 +48,7 @@ func (p *YourPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message
 		}
 	}
 	if msg != message.Body {
-		p.bot.Send(c, bot.Message, message.Channel, msg)
+		p.bot.Send(r.Conn, bot.Message, message.Channel, msg)
 		return true
 	}
 	return false
