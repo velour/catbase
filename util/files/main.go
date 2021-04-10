@@ -34,21 +34,34 @@ func main() {
 	ticker := time.NewTicker(time.Second * time.Duration(*rateLimit))
 	defer ticker.Stop()
 
+	page := 1
+	totalFiles := 0
+
 	for {
-		files, count := getFiles()
-		log.Debug().Msgf("Got %d files, count is %d", len(files), count)
+		files, count := getFiles(page)
+		totalFiles += len(files)
+		log.Debug().Msgf("Page %d: got %d files, count is %d",
+			page, len(files), count)
 		for _, f := range files {
 			downloadFile(f)
 			deleteFile(f)
 		}
-		if count == 1 {
+		if count < 1 {
 			break
 		}
 		<-ticker.C
+		if page >= count {
+			if totalFiles == 0 {
+				break
+			}
+			totalFiles = 0
+			page = 0
+		}
+		page++
 	}
 }
 
-func getFiles() ([]slackFile, int) {
+func getFiles(page int) ([]slackFile, int) {
 	files := fileResp{}
 
 	var toTime time.Time
@@ -69,12 +82,15 @@ func getFiles() ([]slackFile, int) {
 		"count", strconv.Itoa(*limit),
 		"types", *types,
 		"ts_to", strconv.FormatInt(toTime.Unix(), 10),
+		"ts_from", "0",
+		"page", strconv.Itoa(page),
 	)
 
 	err = json.Unmarshal(body, &files)
 	checkErr(err)
 
 	log.Info().
+		Int("page", page).
 		Int("count", files.Paging.Count).
 		Int("total", files.Paging.Total).
 		Bool("ok", files.Ok).
