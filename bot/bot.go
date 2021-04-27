@@ -243,7 +243,7 @@ func (b *bot) RegisterTable(p Plugin, handlers HandlerTable) {
 
 // RegisterRegex does what register does, but with a matcher
 func (b *bot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, resp ResponseHandler) {
-	t := reflect.TypeOf(p).String()
+	t := PluginName(p)
 	if _, ok := b.callbacks[t]; !ok {
 		b.callbacks[t] = make(map[Kind][]HandlerSpec)
 	}
@@ -354,7 +354,7 @@ func (b *bot) GetWhitelist() []string {
 	return list
 }
 
-func (b *bot) onBlacklist(channel, plugin string) bool {
+func (b *bot) OnBlacklist(channel, plugin string) bool {
 	return b.pluginBlacklist[channel+plugin]
 }
 
@@ -364,4 +364,9 @@ func (b *bot) onWhitelist(plugin string) bool {
 
 func pluginNameStem(name string) string {
 	return strings.Split(strings.TrimPrefix(name, "*"), ".")[0]
+}
+
+func PluginName(p Plugin) string {
+	t := reflect.TypeOf(p).String()
+	return t
 }

@@ -83,7 +83,7 @@ func New(b bot.Bot) *FirstPlugin {
 	}
 
 	log.Info().Msgf("First plugin initialized with day: %s",
-		midnight(time.Now()))
+		Midnight(time.Now()))
 
 	fp := &FirstPlugin{
 		bot:     b,
@@ -135,9 +135,9 @@ func getLastFirst(db *sqlx.DB, channel string) (*FirstEntry, error) {
 	}, nil
 }
 
-func midnight(t time.Time) time.Time {
+func Midnight(t time.Time) time.Time {
 	y, m, d := t.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	return time.Date(y, m, d, 0, 0, 0, 0, time.Local)
 }
 
 func isNotToday(f *FirstEntry) bool {
@@ -145,8 +145,8 @@ func isNotToday(f *FirstEntry) bool {
 		return true
 	}
 	t := f.time
-	t0 := midnight(t)
-	return t0.Before(midnight(time.Now()))
+	t0 := Midnight(t)
+	return t0.Before(Midnight(time.Now()))
 }
 
 func (p *FirstPlugin) register() {
@@ -281,7 +281,7 @@ func (p *FirstPlugin) recordFirst(c bot.Connector, message msg.Message) {
 		Str("body", message.Body).
 		Msg("Recording first")
 	first := &FirstEntry{
-		day:     midnight(time.Now()),
+		day:     Midnight(time.Now()),
 		time:    message.Time,
 		channel: message.Channel,
 		body:    message.Body,
