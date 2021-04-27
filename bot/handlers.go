@@ -28,7 +28,7 @@ func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interf
 	}
 
 	for _, name := range b.pluginOrdering {
-		if b.onBlacklist(msg.Channel, pluginNameStem(name)) || !b.onWhitelist(pluginNameStem(name)) {
+		if b.OnBlacklist(msg.Channel, pluginNameStem(name)) || !b.onWhitelist(pluginNameStem(name)) {
 			continue
 		}
 		if b.runCallback(conn, b.plugins[name], kind, msg, args...) {

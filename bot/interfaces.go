@@ -159,6 +159,9 @@ type Bot interface {
 
 	// Get the contents of the white list
 	GetWhitelist() []string
+
+	// Check if a particular plugin is blacklisted
+	OnBlacklist(string, string) bool
 }
 
 // Connector represents a server connection to a chat service

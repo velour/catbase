@@ -13,6 +13,7 @@ import (
 	"github.com/velour/catbase/connectors/discord"
 	"github.com/velour/catbase/plugins/giphy"
 	"github.com/velour/catbase/plugins/gpt2"
+	"github.com/velour/catbase/plugins/last"
 
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
@@ -120,6 +121,7 @@ func main() {
 	b.AddPlugin(giphy.New(b))
 	b.AddPlugin(gpt2.New(b))
 	b.AddPlugin(emojifyme.New(b))
+	b.AddPlugin(last.New(b))
 	b.AddPlugin(first.New(b))
 	b.AddPlugin(leftpad.New(b))
 	b.AddPlugin(talker.New(b))
