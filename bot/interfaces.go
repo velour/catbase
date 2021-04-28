@@ -189,6 +189,12 @@ type Connector interface {
 
 	// Translate emojy to/from services
 	Emojy(string) string
+
+	// GetChannelName returns the human-friendly name for an ID (if possible)
+	GetChannelName(id string) string
+
+	// GetChannelName returns the channel ID for a human-friendly name (if possible)
+	GetChannelID(id string) string
 }
 
 // Plugin interface used for compatibility with the Plugin interface

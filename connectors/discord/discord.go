@@ -232,3 +232,26 @@ func (d *Discord) Emojy(name string) string {
 func (d *Discord) URLFormat(title, url string) string {
 	return fmt.Sprintf("%s (%s)", title, url)
 }
+
+// GetChannelName returns the channel ID for a human-friendly name (if possible)
+func (d *Discord) GetChannelID(name string) string {
+	chs, err := d.client.UserChannels()
+	if err != nil {
+		return name
+	}
+	for _, ch := range chs {
+		if ch.Name == name {
+			return ch.ID
+		}
+	}
+	return name
+}
+
+// GetChannelName returns the human-friendly name for an ID (if possible)
+func (d *Discord) GetChannelName(id string) string {
+	ch, err := d.client.Channel(id)
+	if err != nil {
+		return id
+	}
+	return ch.Name
+}

@@ -4,6 +4,8 @@
 package slack
 
 import (
+	// "sync/atomic"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,9 +17,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	// "sync/atomic"
-	"context"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -733,6 +732,28 @@ func (s *Slack) Who(id string) []string {
 
 func (s *Slack) Profile(string) (user.User, error) {
 	return user.User{}, fmt.Errorf("unimplemented")
+}
+
+// GetChannelName returns the channel ID for a human-friendly name (if possible)
+func (s *Slack) GetChannelID(name string) string {
+	chs := s.getAllChannels()
+	for _, ch := range chs {
+		if ch.Name == name {
+			return ch.ID
+		}
+	}
+	return name
+}
+
+// GetChannelName returns the human-friendly name for an ID (if possible)
+func (s *Slack) GetChannelName(id string) string {
+	chs := s.getAllChannels()
+	for _, ch := range chs {
+		if ch.ID == id {
+			return ch.Name
+		}
+	}
+	return id
 }
 
 func (s *Slack) Emojy(name string) string {
