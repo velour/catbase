@@ -59,16 +59,22 @@ func (p *LastPlugin) migrate() error {
 func (p *LastPlugin) register() {
 	p.handlers = bot.HandlerTable{
 		{
-			Kind: bot.Message, IsCmd: false,
-			Regex:    regexp.MustCompile(`.*`),
-			HelpText: "Last does secret stuff you don't need to know about.",
-			Handler:  p.recordLast,
-		},
-		{
 			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?i)^who killed the channel\??$`),
 			HelpText: "Find out who had last yesterday",
 			Handler:  p.whoKilled,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^who killed #?(?P<channel>\S+)\??$`),
+			HelpText: "Find out who had last yesterday in a channel",
+			Handler:  p.whoKilledChannel,
+		},
+		{
+			Kind: bot.Message, IsCmd: false,
+			Regex:    regexp.MustCompile(`.*`),
+			HelpText: "Last does secret stuff you don't need to know about.",
+			Handler:  p.recordLast,
 		},
 	}
 	p.b.RegisterTable(p, p.handlers)
@@ -133,11 +139,12 @@ type last struct {
 	Message string
 }
 
-func (p *LastPlugin) yesterdaysLast() (last, error) {
+func (p *LastPlugin) yesterdaysLast(ch string) (last, error) {
 	l := last{}
 	midnight := first.Midnight(time.Now())
-	q := `select * from last where day < ? order by day limit 1`
-	err := p.db.Get(&l, q, midnight)
+	q := `select * from last where channel = ? and day < ?  and day >= ? order by day limit 1`
+	log.Debug().Str("q", q).Msgf("yesterdaysLast: %d to %d", midnight.Unix(), midnight.Add(-24*time.Hour).Unix())
+	err := p.db.Get(&l, q, ch, midnight.Unix(), midnight.Add(-24*time.Hour).Unix())
 	if err != nil {
 		return l, err
 	}
@@ -146,27 +153,33 @@ func (p *LastPlugin) yesterdaysLast() (last, error) {
 
 func (p *LastPlugin) reportLast(ch string) func() {
 	return func() {
-		p.sayLast(p.b.DefaultConnector(), ch)
+		p.sayLast(p.b.DefaultConnector(), ch, ch)
 		time.AfterFunc(24*time.Hour, p.reportLast(ch))
 	}
 }
 
 func (p *LastPlugin) whoKilled(r bot.Request) bool {
-	p.sayLast(r.Conn, r.Msg.Channel)
+	p.sayLast(r.Conn, r.Msg.Channel, r.Msg.Channel)
 	return true
 }
 
-func (p *LastPlugin) sayLast(c bot.Connector, ch string) {
-	l, err := p.yesterdaysLast()
+func (p *LastPlugin) whoKilledChannel(r bot.Request) bool {
+	ch := r.Values["channel"]
+	p.sayLast(r.Conn, r.Conn.GetChannelID(ch), r.Msg.Channel)
+	return true
+}
+
+func (p *LastPlugin) sayLast(c bot.Connector, chFrom, chTo string) {
+	l, err := p.yesterdaysLast(chFrom)
 	if err != nil {
 		log.Error().Err(err).Msgf("Couldn't find last")
-		p.b.Send(c, bot.Message, ch, "I couldn't find a last.")
+		p.b.Send(c, bot.Message, chTo, "I couldn't find a last.")
 		return
 	}
 	if l.Day == 0 {
 		log.Error().Interface("l", l).Msgf("Couldn't find last")
-		p.b.Send(c, bot.Message, ch, "I couldn't find a last.")
+		p.b.Send(c, bot.Message, chTo, "I couldn't find a last.")
 	}
 	msg := fmt.Sprintf(`%s killed the channel last night by saying "%s"`, l.Who, l.Message)
-	p.b.Send(c, bot.Message, ch, msg)
+	p.b.Send(c, bot.Message, chTo, msg)
 }

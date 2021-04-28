@@ -326,3 +326,13 @@ func (i Irc) Emojy(name string) string {
 	}
 	return name
 }
+
+// GetChannelName returns the channel ID for a human-friendly name (if possible)
+func (i Irc) GetChannelID(name string) string {
+	return name
+}
+
+// GetChannelName returns the human-friendly name for an ID (if possible)
+func (i Irc) GetChannelName(id string) string {
+	return id
+}

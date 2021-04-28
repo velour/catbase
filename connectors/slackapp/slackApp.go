@@ -499,6 +499,26 @@ func (s *SlackApp) getChannel(id string) (*slack.Channel, error) {
 	return s.channels[id], nil
 }
 
+// GetChannelName returns the channel ID for a human-friendly name (if possible)
+func (s *SlackApp) GetChannelID(name string) string {
+	for _, ch := range s.channels {
+		if ch.Name == name {
+			return ch.ID
+		}
+	}
+	return name
+}
+
+// GetChannelName returns the human-friendly name for an ID (if possible)
+func (s *SlackApp) GetChannelName(id string) string {
+	ch, err := s.getChannel(id)
+	if err != nil {
+		log.Error().Err(err).Msgf("Could not get channel name for %s", id)
+		return id
+	}
+	return ch.Name
+}
+
 func stringForUser(user *slack.User) string {
 	if user.Profile.DisplayName != "" {
 		return user.Profile.DisplayName
