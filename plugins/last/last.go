@@ -43,11 +43,12 @@ func (p *LastPlugin) migrate() error {
 		return err
 	}
 	_, err = tx.Exec(`create table if not exists last (
-    	day integer primary key,
-        ts int not null,
+    	day integer,
         channel string not null,
+        ts int not null,
     	who string not null,
-    	message string not null
+    	message string not null,
+    	constraint last_key primary key (day, channel) on conflict replace
 	)`)
 	if err != nil {
 		tx.Rollback()
@@ -120,11 +121,8 @@ func (p *LastPlugin) recordLast(r bot.Request) bool {
 	}
 
 	_, err := p.db.Exec(
-		`insert into last values (?, ?, ?, ?, ?)
-			on conflict(day) do update set 
-			ts=excluded.ts, channel=excluded.channel, who=excluded.who, message=excluded.message
-			where day=excluded.day`,
-		day.Unix(), time.Now().Unix(), ch, who, r.Msg.Body)
+		`insert into last values (?, ?, ?, ?, ?)`,
+		day.Unix(), ch, time.Now().Unix(), who, r.Msg.Body)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not record last.")
 	}
