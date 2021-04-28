@@ -27,6 +27,7 @@ func New(b bot.Bot) *LastPlugin {
 	p := &LastPlugin{
 		b:        b,
 		db:       b.DB(),
+		c:        b.Config(),
 		channels: map[string]bool{},
 	}
 	if err := p.migrate(); err != nil {
