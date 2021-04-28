@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/velour/catbase/config"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 
@@ -15,6 +17,7 @@ import (
 type LastPlugin struct {
 	b  bot.Bot
 	db *sqlx.DB
+	c  *config.Config
 
 	handlers bot.HandlerTable
 	channels map[string]bool
@@ -95,6 +98,17 @@ func (p *LastPlugin) recordLast(r bot.Request) bool {
 			p.channels[ch] = true
 			log.Debug().Msgf("Next Noon: %v", nextNoon(time.Now().UTC()))
 			time.AfterFunc(nextNoon(time.Now().Local()), p.reportLast(ch))
+		}
+	}
+
+	if r.Msg.Body == "" {
+		return false
+	}
+
+	invalidUsers := p.c.GetArray("last.invalidUsers", []string{"unknown"})
+	for _, u := range invalidUsers {
+		if who == u {
+			return false
 		}
 	}
 
