@@ -151,32 +151,30 @@ func (p *LastPlugin) yesterdaysLast(ch string) (last, error) {
 
 func (p *LastPlugin) reportLast(ch string) func() {
 	return func() {
-		p.sayLast(p.b.DefaultConnector(), ch, ch)
+		p.sayLast(p.b.DefaultConnector(), ch, ch, false)
 		time.AfterFunc(24*time.Hour, p.reportLast(ch))
 	}
 }
 
 func (p *LastPlugin) whoKilled(r bot.Request) bool {
-	p.sayLast(r.Conn, r.Msg.Channel, r.Msg.Channel)
+	p.sayLast(r.Conn, r.Msg.Channel, r.Msg.Channel, true)
 	return true
 }
 
 func (p *LastPlugin) whoKilledChannel(r bot.Request) bool {
 	ch := r.Values["channel"]
-	p.sayLast(r.Conn, r.Conn.GetChannelID(ch), r.Msg.Channel)
+	p.sayLast(r.Conn, r.Conn.GetChannelID(ch), r.Msg.Channel, true)
 	return true
 }
 
-func (p *LastPlugin) sayLast(c bot.Connector, chFrom, chTo string) {
+func (p *LastPlugin) sayLast(c bot.Connector, chFrom, chTo string, force bool) {
 	l, err := p.yesterdaysLast(chFrom)
-	if err != nil {
-		log.Error().Err(err).Msgf("Couldn't find last")
-		p.b.Send(c, bot.Message, chTo, "I couldn't find a last.")
+	if err != nil || l.Day == 0 {
+		log.Error().Err(err).Interface("last", l).Msgf("Couldn't find last")
+		if force {
+			p.b.Send(c, bot.Message, chTo, "I couldn't find a last.")
+		}
 		return
-	}
-	if l.Day == 0 {
-		log.Error().Interface("l", l).Msgf("Couldn't find last")
-		p.b.Send(c, bot.Message, chTo, "I couldn't find a last.")
 	}
 	msg := fmt.Sprintf(`%s killed the channel last night by saying "%s"`, l.Who, l.Message)
 	p.b.Send(c, bot.Message, chTo, msg)
