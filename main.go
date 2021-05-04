@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -77,10 +78,12 @@ func main() {
 		"Database file to load. (Defaults to catbase.db)")
 	flag.Parse() // parses the logging flags.
 
-	log.Logger = log.With().Caller().Stack().Logger()
+	var output io.Writer = os.Stdout
 	if *prettyLog {
-		log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		output = zerolog.ConsoleWriter{Out: output}
 	}
+	log.Logger = log.Output(output).With().Caller().Stack().Logger()
+
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
