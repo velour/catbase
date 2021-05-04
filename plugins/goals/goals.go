@@ -54,14 +54,6 @@ func (p *GoalsPlugin) mkDB() {
 func (p *GoalsPlugin) registerCmds() {
 	p.handlers = bot.HandlerTable{
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
-			HelpText: "Register with `%s` for yourself",
-			Handler: func(r bot.Request) bool {
-				amount, _ := strconv.Atoi(r.Values["amount"])
-				p.register(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name, amount)
-				return true
-			}},
-		{Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
 			HelpText: "Register with `%s` for other people",
 			Handler: func(r bot.Request) bool {
@@ -70,10 +62,11 @@ func (p *GoalsPlugin) registerCmds() {
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^deregister (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
-			HelpText: "Deregister with `%s` for yourself",
+			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
+			HelpText: "Register with `%s` for yourself",
 			Handler: func(r bot.Request) bool {
-				p.deregister(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
+				amount, _ := strconv.Atoi(r.Values["amount"])
+				p.register(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name, amount)
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
@@ -84,10 +77,10 @@ func (p *GoalsPlugin) registerCmds() {
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
-			HelpText: "Check with `%s` for yourself",
+			Regex:    regexp.MustCompile(`(?i)^deregister (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
+			HelpText: "Deregister with `%s` for yourself",
 			Handler: func(r bot.Request) bool {
-				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
+				p.deregister(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
@@ -95,6 +88,13 @@ func (p *GoalsPlugin) registerCmds() {
 			HelpText: "Check with `%s` for other people",
 			Handler: func(r bot.Request) bool {
 				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Values["who"])
+				return true
+			}},
+		{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
+			HelpText: "Check with `%s` for yourself",
+			Handler: func(r bot.Request) bool {
+				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
 				return true
 			}},
 	}
