@@ -13,7 +13,6 @@ import (
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/connectors/discord"
 	"github.com/velour/catbase/plugins/giphy"
-	"github.com/velour/catbase/plugins/gpt2"
 	"github.com/velour/catbase/plugins/last"
 	"github.com/velour/catbase/plugins/rest"
 
@@ -123,7 +122,6 @@ func main() {
 
 	b.AddPlugin(admin.New(b))
 	b.AddPlugin(giphy.New(b))
-	b.AddPlugin(gpt2.New(b))
 	b.AddPlugin(emojifyme.New(b))
 	b.AddPlugin(last.New(b))
 	b.AddPlugin(first.New(b))
