@@ -31,6 +31,7 @@ require (
 	github.com/gonum/internal v0.0.0-20181124074243-f884aa714029 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/inconshreveable/log15 v0.0.0-20200109203555-b30bc20e4fd1 // indirect
+	github.com/itchyny/gojq v0.12.3
 	github.com/james-bowman/nlp v0.0.0-20191016091239-d9dbfaff30c6
 	github.com/james-bowman/sparse v0.0.0-20190423065201-80c6877364c7 // indirect
 	github.com/jmoiron/sqlx v1.2.0
