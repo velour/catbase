@@ -15,6 +15,7 @@ import (
 	"github.com/velour/catbase/plugins/giphy"
 	"github.com/velour/catbase/plugins/gpt2"
 	"github.com/velour/catbase/plugins/last"
+	"github.com/velour/catbase/plugins/rest"
 
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
@@ -158,6 +159,7 @@ func main() {
 	b.AddPlugin(achievements.New(b))
 	b.AddPlugin(sms.New(b))
 	b.AddPlugin(countdown.New(b))
+	b.AddPlugin(rest.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
