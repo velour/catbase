@@ -14,6 +14,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/itchyny/gojq"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
 )
@@ -262,14 +264,31 @@ func (p *RestPlugin) mkHandler(w *wire) bot.ResponseHandler {
 		if p.handleErr(err, r) {
 			return true
 		}
-		returnValues := map[string]string{}
+		var returnValues interface{}
 		json.Unmarshal(body, &returnValues)
-		var msg string
-		if text, ok := returnValues["text"]; ok {
-			msg = strings.TrimSpace(text)
-		} else {
-			msg = fmt.Sprintf("Wire handler did not find return value (%s): %s => `%s`", newURL.String(), w.URL, w.ReturnField)
+
+		query, err := gojq.Parse(w.ReturnField)
+		if err != nil {
+			msg := fmt.Sprintf("Wire handler did not find return value (%s): %s => `%s`", newURL.String(), w.URL, w.ReturnField)
+			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
+			return true
 		}
+
+		var msg string
+		iter := query.Run(returnValues) // or query.RunWithContext
+
+		for {
+			v, ok := iter.Next()
+			if !ok {
+				break
+			}
+			if err, ok := v.(error); ok {
+				return p.handleErr(err, r)
+			}
+			msg += fmt.Sprintf("%s\n", v)
+		}
+
+		msg = strings.TrimSpace(msg)
 		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
 		return true
 	}
