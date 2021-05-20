@@ -22,7 +22,16 @@ import (
 type Config struct {
 	*sqlx.DB
 
-	DBFile string
+	DBFile  string
+	secrets map[string]Secret
+}
+
+// Secret is a config value that is loaded permanently and not ever displayed
+type Secret struct {
+	// Key is the key field of the table
+	Key string `db:"key"`
+	// Value represents the secret that must not be shared
+	Value string `db:"value"`
 }
 
 // GetFloat64 returns the config value for a string key
@@ -84,6 +93,9 @@ func (c *Config) GetString(key, fallback string) string {
 	key = strings.ToLower(key)
 	if v, found := os.LookupEnv(envkey(key)); found {
 		return v
+	}
+	if v, found := c.secrets[key]; found {
+		return v.Value
 	}
 	var configValue string
 	q := `select value from config where key=?`
@@ -162,6 +174,33 @@ func (c *Config) Set(key, value string) error {
 	return nil
 }
 
+func (c *Config) RefreshSecrets() error {
+	q := `select key, value from secrets`
+	var secrets []Secret
+	err := c.Select(&secrets, q)
+	if err != nil {
+		return err
+	}
+	secretMap := map[string]Secret{}
+	for _, s := range secrets {
+		secretMap[s.Key] = s
+	}
+	c.secrets = secretMap
+	return nil
+}
+
+func (c *Config) GetAllSecrets() map[string]Secret {
+	return c.secrets
+}
+
+func (c *Config) SecretKeys() []string {
+	keys := []string{}
+	for k := range c.secrets {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func (c *Config) SetMap(key string, values map[string]string) error {
 	b, err := json.Marshal(values)
 	if err != nil {
@@ -199,7 +238,8 @@ func ReadConfig(dbpath string) *Config {
 		log.Fatal().Err(err)
 	}
 	c := Config{
-		DBFile: dbpath,
+		DBFile:  dbpath,
+		secrets: map[string]Secret{},
 	}
 	c.DB = sqlDB
 
@@ -208,7 +248,19 @@ func ReadConfig(dbpath string) *Config {
 		value string,
 		primary key (key)
 	);`); err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msgf("failed to initialize config")
+	}
+
+	if _, err := c.Exec(`create table if not exists secrets (
+		key string,
+		value string,
+		primary key (key)
+	);`); err != nil {
+		log.Fatal().Err(err).Msgf("failed to initialize config")
+	}
+
+	if err := c.RefreshSecrets(); err != nil {
+		log.Fatal().Err(err).Msgf("failed to initialize config")
 	}
 
 	log.Info().Msgf("catbase is running.")
