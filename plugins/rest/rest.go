@@ -64,6 +64,10 @@ func (p *RestPlugin) register() {
 			HelpText: "Removes a wire by ID (use list to view)",
 			Handler:  p.rmWire},
 		bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile("(?i)^testwire `(?P<parse>[^`]+)` to (?P<url>\\S+) `(?P<returnField>[^`]+)` => (?P<text>.*)$"),
+			HelpText: "Tests a new REST function",
+			Handler:  p.handleTestWire},
+		bot.HandlerSpec{Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile("(?i)^wire `(?P<parse>[^`]+)` to (?P<url>\\S+) `(?P<returnField>[^`]+)`$"),
 			HelpText: "Registers a new REST function",
 			Handler:  p.handleWire},
@@ -137,8 +141,8 @@ func (w wire) String() string {
 	return msg
 }
 
-func (p *RestPlugin) getWires() ([]*wire, error) {
-	wires := []*wire{}
+func (p *RestPlugin) getWires() ([]wire, error) {
+	wires := []wire{}
 	err := p.db.Select(&wires, `select * from wires`)
 	return wires, err
 }
@@ -203,34 +207,51 @@ func (p *RestPlugin) rmWire(r bot.Request) bool {
 	return true
 }
 
+func (p *RestPlugin) mkWire(r bot.Request) (wire, error) {
+	var w wire
+	var err error
+	w.ParseRegex.Regexp, err = regexp.Compile(r.Values["parse"])
+	if err != nil {
+		return w, err
+	}
+	w.URL.URL, err = url.Parse(r.Values["url"])
+	if err != nil {
+		return w, err
+	}
+	w.ReturnField = r.Values["returnField"]
+	return w, nil
+}
+
 func (p *RestPlugin) handleWire(r bot.Request) bool {
 	var w wire
 	var msg string
 	var err error
-	w.ParseRegex.Regexp, err = regexp.Compile(r.Values["parse"])
-	if err != nil {
-		msg = err.Error()
-		goto SEND
-	}
-	w.URL.URL, err = url.Parse(r.Values["url"])
-	if err != nil {
-		msg = err.Error()
-		goto SEND
-	}
-	w.ReturnField = r.Values["returnField"]
+	w, err = p.mkWire(r)
 	err = w.Save(p.db)
 	if err != nil {
 		msg = err.Error()
 		goto SEND
 	}
-	p.b.RegisterRegex(p, bot.Message, w.ParseRegex.Regexp, p.mkHandler(&w))
+	p.b.RegisterRegex(p, bot.Message, w.ParseRegex.Regexp, p.mkHandler(w))
 	msg = fmt.Sprintf("Saved %s", w)
 SEND:
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
 	return true
 }
 
-func (p *RestPlugin) mkHandler(w *wire) bot.ResponseHandler {
+func (p *RestPlugin) handleTestWire(r bot.Request) bool {
+	text := r.Values["text"]
+	w, err := p.mkWire(r)
+	if err != nil {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, err)
+		return true
+	}
+	h := p.mkHandler(w)
+	r.Values = bot.ParseValues(w.ParseRegex.Regexp, text)
+	return h(r)
+}
+
+func (p *RestPlugin) mkHandler(w wire) bot.ResponseHandler {
 	return func(r bot.Request) bool {
 		if r.Msg.User.Name == p.b.Config().GetString("nick", "") {
 			return false
@@ -267,8 +288,8 @@ func (p *RestPlugin) mkHandler(w *wire) bot.ResponseHandler {
 			return true
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Got a status %d: %s from %s",
-				resp.StatusCode, resp.Status, newURL))
+			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Got a status %d: %s",
+				resp.StatusCode, resp.Status))
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		if p.handleErr(err, r) {
@@ -279,7 +300,7 @@ func (p *RestPlugin) mkHandler(w *wire) bot.ResponseHandler {
 
 		query, err := gojq.Parse(w.ReturnField)
 		if err != nil {
-			msg := fmt.Sprintf("Wire handler did not find return value (%s): %s => `%s`", newURL.String(), w.URL, w.ReturnField)
+			msg := fmt.Sprintf("Wire handler did not find return value: %s => `%s`", w.URL, w.ReturnField)
 			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
 			return true
 		}
