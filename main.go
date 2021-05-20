@@ -15,6 +15,7 @@ import (
 	"github.com/velour/catbase/plugins/giphy"
 	"github.com/velour/catbase/plugins/last"
 	"github.com/velour/catbase/plugins/rest"
+	"github.com/velour/catbase/plugins/secrets"
 
 	"github.com/velour/catbase/plugins/achievements"
 	"github.com/velour/catbase/plugins/aoc"
@@ -121,6 +122,7 @@ func main() {
 	b := bot.New(c, client)
 
 	b.AddPlugin(admin.New(b))
+	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(giphy.New(b))
 	b.AddPlugin(emojifyme.New(b))
 	b.AddPlugin(last.New(b))

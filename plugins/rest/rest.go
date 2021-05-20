@@ -15,6 +15,7 @@ import (
 	"text/template"
 
 	"github.com/itchyny/gojq"
+	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/velour/catbase/bot"
@@ -235,9 +236,14 @@ func (p *RestPlugin) mkHandler(w *wire) bot.ResponseHandler {
 			return false
 		}
 		values := bot.RegexValues{}
+		for _, s := range p.b.Config().GetAllSecrets() {
+			values[s.Key] = s.Value
+		}
+		log.Debug().Interface("values", values).Msgf("secrets")
 		for k := range r.Values {
 			values[k] = url.QueryEscape(r.Values[k])
 		}
+		log.Debug().Interface("values", values).Msgf("r.Values")
 		urlStr := w.URL.String()
 		parse, err := template.New(urlStr).Parse(urlStr)
 		if p.handleErr(err, r) {
@@ -249,6 +255,10 @@ func (p *RestPlugin) mkHandler(w *wire) bot.ResponseHandler {
 			return true
 		}
 		newURL, err := url.Parse(buf.String())
+		log.Debug().
+			Interface("values", values).
+			Str("URL", buf.String()).
+			Msg("Querying URL with values")
 		if p.handleErr(err, r) {
 			return true
 		}
