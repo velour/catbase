@@ -99,7 +99,9 @@ func (p *NewsBid) scoresCmd(r bot.Request) bool {
 	out := "NGate balances:\n"
 	sort.Sort(bals)
 	for _, b := range bals {
-		out += fmt.Sprintf("%s has a total score of %d with %d left to bid this session\n", b.User, b.Score, b.Balance)
+		if b.Score > 0 {
+			out += fmt.Sprintf("%s has a total score of %d with %d left to bid this session\n", b.User, b.Score, b.Balance)
+		}
 	}
 	p.bot.Send(r.Conn, bot.Message, ch, out)
 	return true
