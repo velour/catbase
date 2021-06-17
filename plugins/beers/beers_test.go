@@ -65,7 +65,7 @@ func TestCounter(t *testing.T) {
 		t.Log(err)
 		t.Fatal()
 	}
-	err = i.Update(5)
+	err = i.Update(nil, 5)
 	assert.Nil(t, err)
 }
 
