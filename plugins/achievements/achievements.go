@@ -32,12 +32,22 @@ func New(b bot.Bot) *AchievementsPlugin {
 		log.Fatal().Err(err).Msg("unable to create achievements tables")
 	}
 
-	b.RegisterRegexCmd(ap, bot.Message, grantRegex, ap.grantCmd)
-	b.RegisterRegexCmd(ap, bot.Message, createRegex, ap.createCmd)
-	b.RegisterRegexCmd(ap, bot.Message, greatRegex, ap.greatCmd)
+	ap.register()
 
-	b.Register(ap, bot.Help, ap.help)
 	return ap
+}
+
+var grantRegex = regexp.MustCompile(`(?i)grant (?P<emojy>(?::[[:word:][:punct:]]+:\s?)+) to :?(?P<nick>[[:word:]]+):?`)
+var createRegex = regexp.MustCompile(`(?i)create trophy (?P<emojy>(?::[[:word:][:punct:]]+:\s?)+) (?P<description>.+)`)
+var greatRegex = regexp.MustCompile(`(?i)how great (?:am i|is :?(?P<who>[[:word:]]+))[[:punct:]]*`)
+var listRegex = regexp.MustCompile(`(?i)^list (?P<whos>.+)?\s?trophies$`)
+
+func (p *AchievementsPlugin) register() {
+	p.bot.RegisterRegexCmd(p, bot.Message, grantRegex, p.grantCmd)
+	p.bot.RegisterRegexCmd(p, bot.Message, createRegex, p.createCmd)
+	p.bot.RegisterRegexCmd(p, bot.Message, greatRegex, p.greatCmd)
+	p.bot.RegisterRegexCmd(p, bot.Message, listRegex, p.listCmd)
+	p.bot.Register(p, bot.Help, p.help)
 }
 
 func (p *AchievementsPlugin) mkDB() error {
@@ -80,9 +90,37 @@ func (p *AchievementsPlugin) GetAwards(nick string) []Award {
 	return awards
 }
 
-var grantRegex = regexp.MustCompile(`(?i)grant (?P<emojy>(?::[[:word:][:punct:]]+:\s?)+) to :?(?P<nick>[[:word:]]+):?`)
-var createRegex = regexp.MustCompile(`(?i)create trophy (?P<emojy>(?::[[:word:][:punct:]]+:\s?)+) (?P<description>.+)`)
-var greatRegex = regexp.MustCompile(`(?i)how great (?:am i|is :?(?P<who>[[:word:]]+))[[:punct:]]*`)
+func (p *AchievementsPlugin) listCmd(r bot.Request) bool {
+	log.Debug().Msgf("Values: %+v", r.Values)
+	whos := strings.TrimSpace(r.Values["whos"])
+	if whos == "my" {
+		whos = r.Msg.User.Name
+	}
+	log.Debug().Msgf("whos = %s", whos)
+	ts, err := p.AllTrophies()
+	if err != nil {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Some problem happened.")
+		log.Error().Err(err).Msg("could not retrieve trophies")
+		return true
+	}
+	if len(ts) == 0 {
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "There are no trophies.")
+		return true
+	}
+	msg := "Current trophies:\n"
+	log.Debug().Msgf("Trophies: %s", ts)
+	for _, t := range ts {
+		log.Debug().Msgf("t.Creator = %s", t.Creator)
+		if strings.TrimSpace(t.Creator) == whos {
+			log.Debug().Msgf("adding %s", t)
+			msg += fmt.Sprintf("%s - %s\n", t.Emojy, t.Description)
+		} else if whos == "" {
+			msg += fmt.Sprintf("%s - %s (by %s)\n", t.Emojy, t.Description, t.Creator)
+		}
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, strings.TrimSpace(msg))
+	return true
+}
 
 func (p *AchievementsPlugin) grantCmd(r bot.Request) bool {
 	nick := r.Msg.User.Name
@@ -224,6 +262,13 @@ type Award struct {
 
 func (a *Award) Save() error {
 	return nil
+}
+
+func (p *AchievementsPlugin) AllTrophies() ([]Trophy, error) {
+	q := `select * from trophies order by creator`
+	var t []Trophy
+	err := p.db.Select(&t, q)
+	return t, err
 }
 
 func (p *AchievementsPlugin) FindTrophy(emojy string) (Trophy, error) {
