@@ -306,7 +306,7 @@ func (g goal) Delete() error {
 	return err
 }
 
-func (p *GoalsPlugin) update(u counter.Update) {
+func (p *GoalsPlugin) update(r bot.Request, u counter.Update) {
 	log.Debug().Msgf("entered update for %#v", u)
 	gs, err := p.getGoal(u.Who, u.What)
 	if err != nil {

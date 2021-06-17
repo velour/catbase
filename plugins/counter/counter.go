@@ -220,7 +220,7 @@ func (i *Item) Create() error {
 
 // UpdateDelta sets a value
 // This will create or delete the item if necessary
-func (i *Item) Update(value int) error {
+func (i *Item) Update(r *bot.Request, value int) error {
 	i.Count = value
 	if i.Count == 0 && i.ID != -1 {
 		return i.Delete()
@@ -234,16 +234,16 @@ func (i *Item) Update(value int) error {
 		Msg("Updating item")
 	_, err := i.Exec(`update counter set count = ? where id = ?`, i.Count, i.ID)
 	if err == nil {
-		sendUpdate(i.Nick, i.Item, i.Count)
+		sendUpdate(r, i.Nick, i.Item, i.Count)
 	}
 	return err
 }
 
 // UpdateDelta changes a value according to some delta
 // This will create or delete the item if necessary
-func (i *Item) UpdateDelta(delta int) error {
+func (i *Item) UpdateDelta(r *bot.Request, delta int) error {
 	i.Count += delta
-	return i.Update(i.Count)
+	return i.Update(r, i.Count)
 }
 
 // Delete removes a counter from the database
@@ -587,7 +587,7 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 		return false
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
-	item.UpdateDelta(1)
+	item.UpdateDelta(&r, 1)
 	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
@@ -612,7 +612,7 @@ func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
 		// Item ain't there, I guess
 		return false
 	}
-	item.UpdateDelta(-1)
+	item.UpdateDelta(&r, -1)
 	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
@@ -636,7 +636,7 @@ func (p *CounterPlugin) addToCmd(r bot.Request) bool {
 	}
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by %d: %#v", n, item)
-	item.UpdateDelta(n)
+	item.UpdateDelta(&r, n)
 	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
@@ -660,7 +660,7 @@ func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
 	}
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by -%d: %#v", n, item)
-	item.UpdateDelta(-n)
+	item.UpdateDelta(&r, -n)
 	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
@@ -702,7 +702,7 @@ func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
 	if item.Count < 0 {
 		delta = -1
 	}
-	item.UpdateDelta(delta)
+	item.UpdateDelta(&r, delta)
 	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
 		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
@@ -764,9 +764,9 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if info.Action == "++" {
-			item.UpdateDelta(1)
+			item.UpdateDelta(nil, 1)
 		} else if info.Action == "--" {
-			item.UpdateDelta(-1)
+			item.UpdateDelta(nil, -1)
 		} else {
 			w.WriteHeader(400)
 			fmt.Fprint(w, "Invalid increment")
@@ -795,7 +795,7 @@ type Update struct {
 	Amount int
 }
 
-type updateFunc func(Update)
+type updateFunc func(bot.Request, Update)
 
 var updateFuncs = []updateFunc{}
 
@@ -803,10 +803,14 @@ func RegisterUpdate(f updateFunc) {
 	log.Debug().Msgf("registering update func")
 	updateFuncs = append(updateFuncs, f)
 }
-func sendUpdate(who, what string, amount int) {
+
+func sendUpdate(r *bot.Request, who, what string, amount int) {
+	if r == nil {
+		return
+	}
 	log.Debug().Msgf("sending updates to %d places", len(updateFuncs))
 	for _, f := range updateFuncs {
-		f(Update{who, what, amount})
+		f(*r, Update{who, what, amount})
 	}
 }
 
