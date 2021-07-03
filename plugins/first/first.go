@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/config"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -20,6 +21,7 @@ import (
 
 type FirstPlugin struct {
 	bot      bot.Bot
+	config   *config.Config
 	db       *sqlx.DB
 	handlers bot.HandlerTable
 	enabled  bool
@@ -87,6 +89,7 @@ func New(b bot.Bot) *FirstPlugin {
 
 	fp := &FirstPlugin{
 		bot:     b,
+		config:  b.Config(),
 		db:      b.DB(),
 		enabled: true,
 	}
@@ -140,12 +143,14 @@ func Midnight(t time.Time) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, time.Local)
 }
 
-func isNotToday(f *FirstEntry) bool {
+func (p *FirstPlugin) isNotToday(f *FirstEntry) bool {
 	if f == nil {
 		return true
 	}
 	t := f.time
 	t0 := Midnight(t)
+	jitter := time.Duration(p.config.GetInt("first.jitter", 0))
+	t0 = t0.Add(jitter * time.Second)
 	return t0.Before(Midnight(time.Now()))
 }
 
@@ -210,6 +215,8 @@ func (p *FirstPlugin) register() {
 					return false
 				}
 
+				log.Debug().Interface("message", r.Msg).Msg("first check")
+
 				first, err := getLastFirst(p.db, r.Msg.Channel)
 				if err != nil {
 					log.Error().
@@ -218,10 +225,10 @@ func (p *FirstPlugin) register() {
 				}
 
 				log.Debug().Bool("first == nil", first == nil).Msg("Is first nil?")
-				log.Debug().Bool("first == nil || isNotToday()", isNotToday(first)).Msg("Is it today?")
+				log.Debug().Bool("first == nil || isNotToday()", p.isNotToday(first)).Msg("Is it today?")
 				log.Debug().Bool("p.allowed", p.allowed(r.Msg)).Msg("Allowed?")
 
-				if (first == nil || isNotToday(first)) && p.allowed(r.Msg) {
+				if (first == nil || p.isNotToday(first)) && p.allowed(r.Msg) {
 					log.Debug().
 						Str("body", r.Msg.Body).
 						Interface("t0", first).
