@@ -162,6 +162,9 @@ type Bot interface {
 
 	// Check if a particular plugin is blacklisted
 	OnBlacklist(string, string) bool
+
+	// Check valid password
+	CheckPassword(secret, password string) bool
 }
 
 // Connector represents a server connection to a chat service

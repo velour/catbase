@@ -745,7 +745,7 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 		log.Debug().
 			Interface("postbody", info).
 			Msg("Got a POST")
-		if info.Password != p.Bot.GetPassword() {
+		if p.Bot.CheckPassword("", info.Password) {
 			w.WriteHeader(http.StatusForbidden)
 			j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
 			w.Write(j)

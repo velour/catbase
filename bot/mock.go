@@ -117,9 +117,10 @@ func NewMockBot() *MockBot {
 	return &b
 }
 
-func (mb *MockBot) GetPluginNames() []string           { return nil }
-func (mb *MockBot) RefreshPluginBlacklist() error      { return nil }
-func (mb *MockBot) RefreshPluginWhitelist() error      { return nil }
-func (mb *MockBot) GetWhitelist() []string             { return []string{} }
-func (mb *MockBot) OnBlacklist(ch, p string) bool      { return false }
-func (mb *MockBot) URLFormat(title, url string) string { return title + url }
+func (mb *MockBot) GetPluginNames() []string                   { return nil }
+func (mb *MockBot) RefreshPluginBlacklist() error              { return nil }
+func (mb *MockBot) RefreshPluginWhitelist() error              { return nil }
+func (mb *MockBot) GetWhitelist() []string                     { return []string{} }
+func (mb *MockBot) OnBlacklist(ch, p string) bool              { return false }
+func (mb *MockBot) URLFormat(title, url string) string         { return title + url }
+func (mb *MockBot) CheckPassword(secret, password string) bool { return true }

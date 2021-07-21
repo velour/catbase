@@ -17,6 +17,7 @@ import (
 	"github.com/velour/catbase/bot/msglog"
 	"github.com/velour/catbase/bot/user"
 	"github.com/velour/catbase/config"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // bot type provides storage for bot-wide information, configs, and database connections
@@ -369,4 +370,24 @@ func pluginNameStem(name string) string {
 func PluginName(p Plugin) string {
 	t := reflect.TypeOf(p).String()
 	return t
+}
+
+func (b *bot) CheckPassword(secret, password string) bool {
+	if b.password == password {
+		return true
+	}
+	parts := strings.SplitN(password, ":", 2)
+	if len(parts) == 2 {
+		secret = parts[0]
+		password = parts[1]
+	}
+	q := `select encoded_pass from apppass where secret = ?`
+	encodedPasswords := [][]byte{}
+	b.DB().Select(&encodedPasswords, q, secret)
+	for _, p := range encodedPasswords {
+		if err := bcrypt.CompareHashAndPassword(p, []byte(password)); err == nil {
+			return true
+		}
+	}
+	return false
 }
