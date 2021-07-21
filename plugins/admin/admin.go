@@ -3,9 +3,7 @@
 package admin
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -37,6 +35,8 @@ func New(b bot.Bot) *AdminPlugin {
 		db:  b.DB(),
 		cfg: b.Config(),
 	}
+
+	p.mkDB()
 
 	b.RegisterRegex(p, bot.Message, comeBackRegex, p.comeBackCmd)
 	b.RegisterRegexCmd(p, bot.Message, shutupRegex, p.shutupCmd)
@@ -70,6 +70,16 @@ var forbiddenKeys = map[string]bool{
 	"untappd.token":        true,
 	"slack.token":          true,
 	"meme.memes":           true,
+}
+
+func (p *AdminPlugin) mkDB() {
+	q := `create table if not exists apppass (
+    	id integer primary key autoincrement,
+        secret string not null,
+        encoded_pass string not null,
+        cost integer default 10
+	)`
+	p.db.MustExec(q)
 }
 
 var shutupRegex = regexp.MustCompile(`(?i)^shut up$`)
@@ -349,42 +359,6 @@ func (p *AdminPlugin) getConfigCmd(r bot.Request) bool {
 func (p *AdminPlugin) help(conn bot.Connector, kind bot.Kind, m msg.Message, args ...interface{}) bool {
 	p.bot.Send(conn, bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
 	return true
-}
-
-func (p *AdminPlugin) registerWeb() {
-	http.HandleFunc("/vars/api", p.handleWebAPI)
-	http.HandleFunc("/vars", p.handleWeb)
-	p.bot.RegisterWeb("/vars", "Variables")
-}
-
-func (p *AdminPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, varIndex)
-}
-
-func (p *AdminPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
-	var configEntries []struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
-	}
-	q := `select key, value from config`
-	err := p.db.Select(&configEntries, q)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Error getting config entries.")
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-	for i, e := range configEntries {
-		if strings.Contains(e.Value, ";;") {
-			e.Value = strings.ReplaceAll(e.Value, ";;", ", ")
-			e.Value = fmt.Sprintf("[%s]", e.Value)
-			configEntries[i] = e
-		}
-	}
-	j, _ := json.Marshal(configEntries)
-	fmt.Fprintf(w, "%s", j)
 }
 
 func (p *AdminPlugin) addWhitelist(plugin string) error {

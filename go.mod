@@ -16,7 +16,6 @@ require (
 	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
 	github.com/bwmarrin/discordgo v0.22.0
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
-	github.com/chrissexton/gofuck v1.0.0
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
 	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
@@ -60,6 +59,7 @@ require (
 	github.com/ttacon/libphonenumber v1.1.0 // indirect
 	github.com/velour/chat v0.0.0-20180713122344-fd1d1606cb89
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
+	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529
 	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
 	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582 // indirect
 	gonum.org/v1/gonum v0.6.0 // indirect

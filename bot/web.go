@@ -54,7 +54,7 @@ var rootIndex = `
     <script src="https://unpkg.com/vue-router"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <meta charset="UTF-8">
-    <title>Factoids</title>
+    <title>catbase</title>
 </head>
 <body>
 

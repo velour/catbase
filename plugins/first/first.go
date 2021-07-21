@@ -150,7 +150,7 @@ func (p *FirstPlugin) isNotToday(f *FirstEntry) bool {
 	t := f.time
 	t0 := Midnight(t)
 	jitter := time.Duration(p.config.GetInt("first.jitter", 0))
-	t0 = t0.Add(jitter * time.Second)
+	t0 = t0.Add(jitter * time.Millisecond)
 	return t0.Before(Midnight(time.Now()))
 }
 
