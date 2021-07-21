@@ -3,6 +3,7 @@
 package bot
 
 import (
+	"net/http"
 	"regexp"
 
 	"github.com/jmoiron/sqlx"
@@ -134,7 +135,10 @@ type Bot interface {
 	RegisterFilter(string, func(string) string)
 
 	// RegisterWeb records a web endpoint for the UI
-	RegisterWeb(string, string)
+	RegisterWeb(http.Handler, string, string)
+
+	// Start the HTTP service
+	ListenAndServe()
 
 	// DefaultConnector returns the base connector, which may not be the only connector
 	DefaultConnector() Connector

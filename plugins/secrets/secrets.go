@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
@@ -28,16 +29,17 @@ func New(b bot.Bot) *SecretsPlugin {
 }
 
 func (p *SecretsPlugin) registerWeb() {
-	http.HandleFunc("/secrets/add", p.handleRegister)
-	http.HandleFunc("/secrets/remove", p.handleRemove)
-	http.HandleFunc("/secrets/all", p.handleAll)
-	http.HandleFunc("/secrets/test", func(w http.ResponseWriter, r *http.Request) {
+	r := chi.NewRouter()
+	r.HandleFunc("/add", p.handleRegister)
+	r.HandleFunc("/remove", p.handleRemove)
+	r.HandleFunc("/all", p.handleAll)
+	r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		value := r.URL.Query().Get("test")
 		j, _ := json.Marshal(map[string]string{"value": value})
 		w.Write(j)
 	})
-	http.HandleFunc("/secrets", p.handleIndex)
-	p.b.RegisterWeb("/secrets", "Secrets")
+	r.HandleFunc("/", p.handleIndex)
+	p.b.RegisterWeb(r, "/secrets", "Secrets")
 }
 
 func (p *SecretsPlugin) registerSecret(key, value string) error {

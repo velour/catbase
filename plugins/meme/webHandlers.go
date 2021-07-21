@@ -7,19 +7,21 @@ import (
 	"net/url"
 	"sort"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
 )
 
 func (p *MemePlugin) registerWeb(c bot.Connector) {
-	http.HandleFunc("/slash/meme", p.slashMeme(c))
-	http.HandleFunc("/meme/img/", p.img)
-	http.HandleFunc("/meme/all", p.all)
-	http.HandleFunc("/meme/add", p.addMeme)
-	http.HandleFunc("/meme/rm", p.rmMeme)
-	http.HandleFunc("/meme", p.webRoot)
-	p.bot.RegisterWeb("/meme", "Memes")
+	r := chi.NewRouter()
+	r.HandleFunc("/slash", p.slashMeme(c))
+	r.HandleFunc("/img", p.img)
+	r.HandleFunc("/all", p.all)
+	r.HandleFunc("/add", p.addMeme)
+	r.HandleFunc("/rm", p.rmMeme)
+	r.HandleFunc("/", p.webRoot)
+	p.bot.RegisterWeb(r, "/meme", "Memes")
 }
 
 type webResp struct {

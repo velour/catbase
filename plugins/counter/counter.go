@@ -2,15 +2,14 @@ package counter
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"math/rand"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/config"
 
 	"github.com/jmoiron/sqlx"
 
@@ -21,8 +20,9 @@ import (
 // This is a counter plugin to count arbitrary things.
 
 type CounterPlugin struct {
-	Bot bot.Bot
-	DB  *sqlx.DB
+	b   bot.Bot
+	db  *sqlx.DB
+	cfg *config.Config
 }
 
 type Item struct {
@@ -50,7 +50,7 @@ func GetAllItems(db *sqlx.DB) ([]Item, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Don't forget to embed the DB into all of that shiz
+	// Don't forget to embed the db into all of that shiz
 	for i := range items {
 		items[i].DB = db
 	}
@@ -69,7 +69,7 @@ func GetItems(db *sqlx.DB, nick, id string) ([]Item, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Don't forget to embed the DB into all of that shiz
+	// Don't forget to embed the db into all of that shiz
 	for i := range items {
 		items[i].DB = db
 	}
@@ -254,7 +254,7 @@ func (i *Item) Delete() error {
 }
 
 func (p *CounterPlugin) migrate(r bot.Request) bool {
-	db := p.DB
+	db := p.db
 
 	nicks := []string{}
 	err := db.Select(&nicks, `select distinct nick from counter where userid is null`)
@@ -321,8 +321,8 @@ func New(b bot.Bot) *CounterPlugin {
 	}
 
 	cp := &CounterPlugin{
-		Bot: b,
-		DB:  b.DB(),
+		b:  b,
+		db: b.DB(),
 	}
 
 	b.RegisterRegex(cp, bot.Startup, regexp.MustCompile(`.*`), cp.migrate)
@@ -367,15 +367,15 @@ func (p *CounterPlugin) mkAliasCmd(r bot.Request) bool {
 	what := r.Values["what"]
 	to := r.Values["to"]
 	if what == "" || to == "" {
-		p.Bot.Send(r.Conn, bot.Message, fmt.Sprintf("You must provide all fields for an alias: %s", mkAliasRegex))
+		p.b.Send(r.Conn, bot.Message, fmt.Sprintf("You must provide all fields for an alias: %s", mkAliasRegex))
 		return true
 	}
-	if _, err := MkAlias(p.DB, what, to); err != nil {
+	if _, err := MkAlias(p.db, what, to); err != nil {
 		log.Error().Err(err).Msg("Could not mkalias")
-		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "We're gonna need too much DB space to make an alias for your mom.")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "We're gonna need too much db space to make an alias for your mom.")
 		return true
 	}
-	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Created alias %s -> %s",
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Created alias %s -> %s",
 		what, to))
 	return true
 }
@@ -383,15 +383,15 @@ func (p *CounterPlugin) mkAliasCmd(r bot.Request) bool {
 func (p *CounterPlugin) rmAliasCmd(r bot.Request) bool {
 	what := r.Values["what"]
 	if what == "" {
-		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You must specify an alias to remove.")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "You must specify an alias to remove.")
 		return true
 	}
-	if err := RmAlias(p.DB, what); err != nil {
+	if err := RmAlias(p.db, what); err != nil {
 		log.Error().Err(err).Msg("could not RmAlias")
-		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "`sudo rm your mom` => Nope, she's staying with me.")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "`sudo rm your mom` => Nope, she's staying with me.")
 		return true
 	}
-	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "`sudo rm your mom`")
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "`sudo rm your mom`")
 	return true
 }
 
@@ -401,10 +401,10 @@ func (p *CounterPlugin) leaderboardCmd(r bot.Request) bool {
 	what := r.Values["what"]
 
 	if what == "" {
-		cmd = func() ([]Item, error) { return LeaderAll(p.DB) }
+		cmd = func() ([]Item, error) { return LeaderAll(p.db) }
 	} else {
 		itNameTxt = fmt.Sprintf(" for %s", what)
-		cmd = func() ([]Item, error) { return Leader(p.DB, what) }
+		cmd = func() ([]Item, error) { return Leader(p.db, what) }
 	}
 
 	its, err := cmd()
@@ -412,7 +412,7 @@ func (p *CounterPlugin) leaderboardCmd(r bot.Request) bool {
 		log.Error().Err(err).Msg("Error with leaderboard")
 		return false
 	} else if len(its) == 0 {
-		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, "There are not enough entries for a leaderboard.")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "There are not enough entries for a leaderboard.")
 		return true
 	}
 
@@ -424,7 +424,7 @@ func (p *CounterPlugin) leaderboardCmd(r bot.Request) bool {
 			it.Item,
 		)
 	}
-	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, out)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, out)
 	return true
 }
 
@@ -432,20 +432,20 @@ func (p *CounterPlugin) resetCmd(r bot.Request) bool {
 	nick, id := p.resolveUser(r, "")
 	channel := r.Msg.Channel
 
-	items, err := GetItems(p.DB, nick, id)
+	items, err := GetItems(p.db, nick, id)
 	if err != nil {
 		log.Error().
 			Err(err).
 			Str("nick", nick).
 			Msg("Error getting items to reset")
-		p.Bot.Send(r.Conn, bot.Message, channel, "Something is technically wrong with your counters.")
+		p.b.Send(r.Conn, bot.Message, channel, "Something is technically wrong with your counters.")
 		return true
 	}
 	log.Debug().Msgf("Items: %+v", items)
 	for _, item := range items {
 		item.Delete()
 	}
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s, you are as new, my son.", nick))
 	return true
 }
 
@@ -466,14 +466,14 @@ func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
 		Str("id", id).
 		Msg("Getting counter")
 	// pull all of the items associated with "subject"
-	items, err := GetItems(p.DB, nick, id)
+	items, err := GetItems(p.db, nick, id)
 	if err != nil {
 		log.Error().
 			Err(err).
 			Str("nick", nick).
 			Str("id", id).
 			Msg("Error retrieving items")
-		p.Bot.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
+		p.b.Send(c, bot.Message, channel, "Something went wrong finding that counter;")
 		return true
 	}
 
@@ -493,11 +493,11 @@ func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
 	resp += "."
 
 	if count == 0 {
-		p.Bot.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", nick))
+		p.b.Send(c, bot.Message, channel, fmt.Sprintf("%s has no counters.", nick))
 		return true
 	}
 
-	p.Bot.Send(c, bot.Message, channel, resp)
+	p.b.Send(c, bot.Message, channel, resp)
 	return true
 }
 
@@ -507,7 +507,7 @@ func (p *CounterPlugin) clearCmd(r bot.Request) bool {
 	channel := r.Msg.Channel
 	c := r.Conn
 
-	it, err := GetUserItem(p.DB, nick, id, itemName)
+	it, err := GetUserItem(p.db, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -515,7 +515,7 @@ func (p *CounterPlugin) clearCmd(r bot.Request) bool {
 			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error getting item to remove")
-		p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
+		p.b.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
 		return true
 	}
 	err = it.Delete()
@@ -526,11 +526,11 @@ func (p *CounterPlugin) clearCmd(r bot.Request) bool {
 			Str("id", id).
 			Str("itemName", itemName).
 			Msg("Error removing item")
-		p.Bot.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
+		p.b.Send(c, bot.Message, channel, "Something went wrong removing that counter;")
 		return true
 	}
 
-	p.Bot.Send(c, bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
+	p.b.Send(c, bot.Action, channel, fmt.Sprintf("chops a few %s out of his brain",
 		itemName))
 	return true
 }
@@ -545,10 +545,10 @@ func (p *CounterPlugin) countCmd(r bot.Request) bool {
 	}
 
 	var item Item
-	item, err := GetUserItem(p.DB, nick, id, itemName)
+	item, err := GetUserItem(p.db, nick, id, itemName)
 	switch {
 	case err == sql.ErrNoRows:
-		p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I don't think %s has any %s.",
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I don't think %s has any %s.",
 			nick, itemName))
 		return true
 	case err != nil:
@@ -561,7 +561,7 @@ func (p *CounterPlugin) countCmd(r bot.Request) bool {
 		return true
 	}
 
-	p.Bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s has %d %s.", nick, item.Count,
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("%s has %d %s.", nick, item.Count,
 		itemName))
 
 	return true
@@ -575,7 +575,7 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// ++ those fuckers
-	item, err := GetUserItem(p.DB, nick, id, itemName)
+	item, err := GetUserItem(p.db, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -588,7 +588,7 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
 	item.UpdateDelta(&r, 1)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
@@ -601,7 +601,7 @@ func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// -- those fuckers
-	item, err := GetUserItem(p.DB, nick, id, itemName)
+	item, err := GetUserItem(p.db, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -613,7 +613,7 @@ func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
 		return false
 	}
 	item.UpdateDelta(&r, -1)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
@@ -623,7 +623,7 @@ func (p *CounterPlugin) addToCmd(r bot.Request) bool {
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// += those fuckers
-	item, err := GetUserItem(p.DB, nick, id, itemName)
+	item, err := GetUserItem(p.db, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -637,7 +637,7 @@ func (p *CounterPlugin) addToCmd(r bot.Request) bool {
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by %d: %#v", n, item)
 	item.UpdateDelta(&r, n)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
@@ -647,7 +647,7 @@ func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
 	// -= those fuckers
-	item, err := GetUserItem(p.DB, nick, id, itemName)
+	item, err := GetUserItem(p.db, nick, id, itemName)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -661,19 +661,19 @@ func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by -%d: %#v", n, item)
 	item.UpdateDelta(&r, -n)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
 		item.Count, item.Item))
 	return true
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
 func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
-	p.Bot.Send(c, bot.Message, message.Channel, "You can set counters incrementally by using "+
+	p.b.Send(c, bot.Message, message.Channel, "You can set counters incrementally by using "+
 		"`<noun>++` and `<noun>--`. You can see all of your counters using "+
 		"`inspect`, erase them with `clear`, and view single counters with "+
 		"`count`.")
-	p.Bot.Send(c, bot.Message, message.Channel, "You can create aliases with `!mkalias <alias> <original>`")
-	p.Bot.Send(c, bot.Message, message.Channel, "You can remove aliases with `!rmalias <alias>`")
+	p.b.Send(c, bot.Message, message.Channel, "You can create aliases with `!mkalias <alias> <original>`")
+	p.b.Send(c, bot.Message, message.Channel, "You can remove aliases with `!rmalias <alias>`")
 	return true
 }
 
@@ -688,7 +688,7 @@ func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
 	itemName := strings.ToLower(submatches[1])
 
 	// We will specifically allow :tea: to keep compatability
-	item, err := GetUserItem(p.DB, nick, id, itemName)
+	item, err := GetUserItem(p.db, nick, id, itemName)
 	if err != nil || (item.Count == 0 && item.Item != ":tea:") {
 		log.Error().
 			Err(err).
@@ -703,7 +703,7 @@ func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
 		delta = -1
 	}
 	item.UpdateDelta(&r, delta)
-	p.Bot.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
 		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
 	return true
 }
@@ -715,84 +715,6 @@ func everyDayImShuffling(vals []string) []string {
 		ret[i] = vals[randIndex]
 	}
 	return ret
-}
-
-func (p *CounterPlugin) registerWeb() {
-	http.HandleFunc("/counter/api", p.handleCounterAPI)
-	http.HandleFunc("/counter", p.handleCounter)
-	p.Bot.RegisterWeb("/counter", "Counter")
-}
-
-func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, html)
-}
-
-func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		info := struct {
-			User     string
-			Thing    string
-			Action   string
-			Password string
-		}{}
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&info)
-		if err != nil {
-			w.WriteHeader(500)
-			fmt.Fprint(w, err)
-			return
-		}
-		log.Debug().
-			Interface("postbody", info).
-			Msg("Got a POST")
-		if p.Bot.CheckPassword("", info.Password) {
-			w.WriteHeader(http.StatusForbidden)
-			j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
-			w.Write(j)
-			return
-		}
-		nick, id := p.resolveUser(bot.Request{Conn: p.Bot.DefaultConnector()}, info.User)
-		item, err := GetUserItem(p.DB, nick, id, info.Thing)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("subject", info.User).
-				Str("itemName", info.Thing).
-				Msg("error finding item")
-			w.WriteHeader(404)
-			fmt.Fprint(w, err)
-			return
-		}
-		if info.Action == "++" {
-			item.UpdateDelta(nil, 1)
-		} else if info.Action == "--" {
-			item.UpdateDelta(nil, -1)
-		} else {
-			w.WriteHeader(400)
-			fmt.Fprint(w, "Invalid increment")
-			return
-		}
-
-	}
-	all, err := GetAllItems(p.DB)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-	data, err := json.Marshal(all)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-	fmt.Fprint(w, string(data))
-}
-
-type Update struct {
-	Who    string
-	What   string
-	Amount int
 }
 
 type updateFunc func(bot.Request, Update)

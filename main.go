@@ -6,7 +6,6 @@ import (
 	"flag"
 	"io"
 	"math/rand"
-	"net/http"
 	"os"
 	"time"
 
@@ -67,7 +66,7 @@ import (
 var (
 	key       = flag.String("set", "", "Configuration key to set")
 	val       = flag.String("val", "", "Configuration value to set")
-	initDB    = flag.Bool("init", false, "Initialize the configuration DB")
+	initDB    = flag.Bool("init", false, "Initialize the configuration db")
 	prettyLog = flag.Bool("pretty", false, "Use pretty console logger")
 	debug     = flag.Bool("debug", false, "Turn on debug logging")
 )
@@ -169,7 +168,5 @@ func main() {
 
 	b.Receive(client, bot.Startup, msg.Message{})
 
-	addr := c.Get("HttpAddr", "127.0.0.1:1337")
-	log.Debug().Msgf("starting web service at %s", addr)
-	log.Fatal().Err(http.ListenAndServe(addr, nil)).Msg("bot killed")
+	b.ListenAndServe()
 }
