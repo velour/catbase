@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/msg"
@@ -59,6 +61,8 @@ type bot struct {
 	passwordCreated time.Time
 
 	quiet bool
+
+	router *chi.Mux
 }
 
 type EndPoint struct {
@@ -98,6 +102,7 @@ func New(config *config.Config, connector Connector) Bot {
 		httpEndPoints:   make([]EndPoint, 0),
 		filters:         make(map[string]func(string) string),
 		callbacks:       make(CallbackMap),
+		router:          chi.NewRouter(),
 	}
 
 	bot.migrateDB()
@@ -105,12 +110,29 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.RefreshPluginBlacklist()
 	bot.RefreshPluginWhitelist()
 
-	http.HandleFunc("/", bot.serveRoot)
-	http.HandleFunc("/nav", bot.serveNav)
+	log.Debug().Msgf("created web router")
+
+	bot.router.Use(middleware.Logger)
+	bot.router.Use(middleware.StripSlashes)
+
+	bot.router.HandleFunc("/", bot.serveRoot)
+	bot.router.HandleFunc("/nav", bot.serveNav)
 
 	connector.RegisterEvent(bot.Receive)
 
 	return bot
+}
+
+func (b *bot) ListenAndServe() {
+	addr := b.config.Get("HttpAddr", "127.0.0.1:1337")
+	log.Debug().Msgf("starting web service at %s", addr)
+	log.Fatal().Err(http.ListenAndServe(addr, b.router)).Msg("bot killed")
+}
+
+func (b *bot) RegisterWeb(r http.Handler, root, name string) {
+	log.Debug().Msgf("registering %s at %s", name, root)
+	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
+	b.router.Mount(root, r)
 }
 
 // DefaultConnector is the main connector used for the bot
@@ -143,19 +165,19 @@ func (b *bot) migrateDB() {
 			name string,
 			value string
 		);`); err != nil {
-		log.Fatal().Err(err).Msgf("Initial DB migration create variables table")
+		log.Fatal().Err(err).Msgf("Initial db migration create variables table")
 	}
 	if _, err := b.DB().Exec(`create table if not exists pluginBlacklist (
 			channel string,
 			name string,
 			primary key (channel, name)
 		);`); err != nil {
-		log.Fatal().Err(err).Msgf("Initial DB migration create blacklist table")
+		log.Fatal().Err(err).Msgf("Initial db migration create blacklist table")
 	}
 	if _, err := b.DB().Exec(`create table if not exists pluginWhitelist (
 			name string primary key
 		);`); err != nil {
-		log.Fatal().Err(err).Msgf("Initial DB migration create whitelist table")
+		log.Fatal().Err(err).Msgf("Initial db migration create whitelist table")
 	}
 }
 
@@ -278,10 +300,6 @@ func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
 		return cb(r.Conn, r.Kind, r.Msg, r.Args...)
 	}
 	b.RegisterRegex(p, kind, r, resp)
-}
-
-func (b *bot) RegisterWeb(root, name string) {
-	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
 }
 
 // GetPassword returns a random password generated for the bot

@@ -36,7 +36,7 @@ type Secret struct {
 
 // GetFloat64 returns the config value for a string key
 // It will first look in the env vars for the key
-// It will check the DB for the key if an env DNE
+// It will check the db for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will attempt to convert the value to a float64 if it exists
 func (c *Config) GetFloat64(key string, fallback float64) float64 {
@@ -49,7 +49,7 @@ func (c *Config) GetFloat64(key string, fallback float64) float64 {
 
 // GetInt64 returns the config value for a string key
 // It will first look in the env vars for the key
-// It will check the DB for the key if an env DNE
+// It will check the db for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will attempt to convert the value to an int if it exists
 func (c *Config) GetInt64(key string, fallback int64) int64 {
@@ -62,7 +62,7 @@ func (c *Config) GetInt64(key string, fallback int64) int64 {
 
 // GetInt returns the config value for a string key
 // It will first look in the env vars for the key
-// It will check the DB for the key if an env DNE
+// It will check the db for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will attempt to convert the value to an int if it exists
 func (c *Config) GetInt(key string, fallback int) int {
@@ -86,7 +86,7 @@ func envkey(key string) string {
 
 // GetString returns the config value for a string key
 // It will first look in the env vars for the key
-// It will check the DB for the key if an env DNE
+// It will check the db for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // It will convert the value to a string if it exists
 func (c *Config) GetString(key, fallback string) string {
@@ -124,7 +124,7 @@ func (c *Config) GetMap(key string, fallback map[string]string) map[string]strin
 // GetArray returns the string slice config value for a string key
 // It will first look in the env vars for the key with ;; separated values
 // Look, I'm too lazy to do parsing to ensure that a comma is what the user meant
-// It will check the DB for the key if an env DNE
+// It will check the db for the key if an env DNE
 // Finally, it will return a zero value if the key does not exist
 // This will do no conversion.
 func (c *Config) GetArray(key string, fallback []string) []string {

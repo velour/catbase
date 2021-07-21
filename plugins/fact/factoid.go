@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/jmoiron/sqlx"
@@ -43,7 +44,7 @@ type alias struct {
 }
 
 func (a *alias) resolve(db *sqlx.DB) (*Factoid, error) {
-	// perform DB query to fill the To field
+	// perform db query to fill the To field
 	q := `select fact, next from factoid_alias where fact=?`
 	var next alias
 	err := db.Get(&next, q, a.Next)
@@ -801,10 +802,11 @@ func (p *FactoidPlugin) factTimer(c bot.Connector, channel string) {
 
 // Register any web URLs desired
 func (p *FactoidPlugin) registerWeb() {
-	http.HandleFunc("/factoid/api", p.serveAPI)
-	http.HandleFunc("/factoid/req", p.serveQuery)
-	http.HandleFunc("/factoid", p.serveQuery)
-	p.Bot.RegisterWeb("/factoid", "Factoid")
+	r := chi.NewRouter()
+	r.HandleFunc("/api", p.serveAPI)
+	r.HandleFunc("/req", p.serveQuery)
+	r.HandleFunc("/", p.serveQuery)
+	p.Bot.RegisterWeb(r, "/factoid", "Factoid")
 }
 
 func linkify(text string) template.HTML {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 
@@ -32,9 +33,10 @@ func New(b bot.Bot) *CliPlugin {
 }
 
 func (p *CliPlugin) registerWeb() {
-	http.HandleFunc("/cli/api", p.handleWebAPI)
-	http.HandleFunc("/cli", p.handleWeb)
-	p.bot.RegisterWeb("/cli", "CLI")
+	r := chi.NewRouter()
+	r.HandleFunc("/api", p.handleWebAPI)
+	r.HandleFunc("/", p.handleWeb)
+	p.bot.RegisterWeb(r, "/cli", "CLI")
 }
 
 func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {

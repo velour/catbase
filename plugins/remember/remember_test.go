@@ -34,7 +34,7 @@ func makeMessage(nick, payload string, r *regexp.Regexp) bot.Request {
 
 func makePlugin(t *testing.T) (*RememberPlugin, *fact.FactoidPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
-	f := fact.New(mb) // for DB table
+	f := fact.New(mb) // for db table
 	p := New(mb)
 	assert.NotNil(t, p)
 	return p, f, mb

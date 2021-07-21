@@ -696,7 +696,6 @@ func (s *SlackApp) Profile(identifier string) (user.User, error) {
 	}
 
 	for _, u := range users {
-		log.Debug().Str("Name", u.Name).Str("ID", u.ID).Msgf("Looking for %s", identifier)
 		if u.Name == identifier || u.ID == identifier {
 			return user.User{
 				ID:    u.ID,

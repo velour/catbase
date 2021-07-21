@@ -9,18 +9,21 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func (p *AdminPlugin) registerWeb() {
-	http.HandleFunc("/vars/api", p.handleVarsAPI)
-	http.HandleFunc("/vars", p.handleVars)
-	p.bot.RegisterWeb("/vars", "Variables")
-	http.HandleFunc("/apppass/verify", p.handleAppPassCheck)
-	http.HandleFunc("/apppass/api", p.handleAppPassAPI)
-	http.HandleFunc("/apppass", p.handleAppPass)
-	p.bot.RegisterWeb("/apppass", "App Pass")
+	r := chi.NewRouter()
+	r.HandleFunc("/api", p.handleVarsAPI)
+	r.HandleFunc("/", p.handleVars)
+	p.bot.RegisterWeb(r, "/vars", "Variables")
+	r = chi.NewRouter()
+	r.HandleFunc("/verify", p.handleAppPassCheck)
+	r.HandleFunc("/api", p.handleAppPassAPI)
+	r.HandleFunc("/", p.handleAppPass)
+	p.bot.RegisterWeb(r, "/apppass", "App Pass")
 }
 
 func (p *AdminPlugin) handleAppPass(w http.ResponseWriter, r *http.Request) {
