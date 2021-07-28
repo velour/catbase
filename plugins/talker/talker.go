@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/velour/catbase/bot"
@@ -171,7 +172,8 @@ func (p *TalkerPlugin) allCows() []string {
 }
 
 func (p *TalkerPlugin) registerWeb(c bot.Connector) {
-	http.HandleFunc("/slash/cowsay", func(w http.ResponseWriter, r *http.Request) {
+	r := chi.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		log.Debug().Msgf("Cowsay:\n%+v", r.PostForm.Get("text"))
 		channel := r.PostForm.Get("channel_id")
@@ -184,4 +186,5 @@ func (p *TalkerPlugin) registerWeb(c bot.Connector) {
 		p.bot.Send(c, bot.Message, channel, msg)
 		w.WriteHeader(200)
 	})
+	p.bot.RegisterWeb(r, "/cowsay")
 }

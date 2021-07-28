@@ -39,7 +39,7 @@ func (p *SecretsPlugin) registerWeb() {
 		w.Write(j)
 	})
 	r.HandleFunc("/", p.handleIndex)
-	p.b.RegisterWeb(r, "/secrets", "Secrets")
+	p.b.RegisterWebName(r, "/secrets", "Secrets")
 }
 
 func (p *SecretsPlugin) registerSecret(key, value string) error {

@@ -120,6 +120,10 @@ func main() {
 
 	b := bot.New(c, client)
 
+	if r, path := client.GetRouter(); r != nil {
+		b.RegisterWeb(r, path)
+	}
+
 	b.AddPlugin(admin.New(b))
 	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(giphy.New(b))

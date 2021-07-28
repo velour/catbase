@@ -57,7 +57,8 @@ func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)                   
 func (mb *MockBot) RegisterTable(p Plugin, hs HandlerTable)                                   {}
 func (mb *MockBot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, h ResponseHandler)    {}
 func (mb *MockBot) RegisterRegexCmd(p Plugin, kind Kind, r *regexp.Regexp, h ResponseHandler) {}
-func (mb *MockBot) RegisterWeb(_, _ string)                                                   {}
+func (mb *MockBot) RegisterWebName(_ http.Handler, _, _ string)                               {}
+func (mb *MockBot) RegisterWeb(_ http.Handler, _ string)                                      {}
 func (mb *MockBot) GetWebNavigation() []EndPoint                                              { return nil }
 func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
 	return false
@@ -124,3 +125,4 @@ func (mb *MockBot) GetWhitelist() []string                     { return []string
 func (mb *MockBot) OnBlacklist(ch, p string) bool              { return false }
 func (mb *MockBot) URLFormat(title, url string) string         { return title + url }
 func (mb *MockBot) CheckPassword(secret, password string) bool { return true }
+func (mb *MockBot) ListenAndServe()                            {}
