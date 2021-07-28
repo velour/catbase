@@ -18,12 +18,12 @@ func (p *AdminPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/api", p.handleVarsAPI)
 	r.HandleFunc("/", p.handleVars)
-	p.bot.RegisterWeb(r, "/vars", "Variables")
+	p.bot.RegisterWebName(r, "/vars", "Variables")
 	r = chi.NewRouter()
 	r.HandleFunc("/verify", p.handleAppPassCheck)
 	r.HandleFunc("/api", p.handleAppPassAPI)
 	r.HandleFunc("/", p.handleAppPass)
-	p.bot.RegisterWeb(r, "/apppass", "App Pass")
+	p.bot.RegisterWebName(r, "/apppass", "App Pass")
 }
 
 func (p *AdminPlugin) handleAppPass(w http.ResponseWriter, r *http.Request) {

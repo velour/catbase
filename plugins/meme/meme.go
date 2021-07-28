@@ -361,6 +361,9 @@ func (p *MemePlugin) checkMeme(imgURL string) (int, int, error) {
 	}
 
 	img, err := DownloadTemplate(u)
+	if err != nil {
+		return 0, 0, err
+	}
 
 	return img.Bounds().Dx(), img.Bounds().Dy(), err
 }

@@ -2,9 +2,9 @@ package git
 
 import (
 	"fmt"
-	"net/http"
 	"regexp"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"gopkg.in/go-playground/webhooks.v5/gitlab"
@@ -77,7 +77,9 @@ func (p *GitPlugin) register() {
 }
 
 func (p *GitPlugin) registerWeb() {
-	http.HandleFunc("/git/gitea/event", p.giteaEvent)
-	http.HandleFunc("/git/github/event", p.githubEvent)
-	http.HandleFunc("/git/gitlab/event", p.gitlabEvent)
+	r := chi.NewRouter()
+	r.HandleFunc("/gitea/event", p.giteaEvent)
+	r.HandleFunc("/github/event", p.githubEvent)
+	r.HandleFunc("/gitlab/event", p.gitlabEvent)
+	p.b.RegisterWeb(r, "/git")
 }

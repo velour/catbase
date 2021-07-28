@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/bot/user"
 )
 
 func (p *CounterPlugin) registerWeb() {
@@ -19,19 +18,53 @@ func (p *CounterPlugin) registerWeb() {
 	r.HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementAPI(-1))
 	r.HandleFunc("/api", p.handleCounterAPI)
 	r.HandleFunc("/", p.handleCounter)
-	p.b.RegisterWeb(r, "/counter", "Counter")
+	p.b.RegisterWebName(r, "/counter", "Counter")
 }
 
 func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := map[string]string{}
-		userName := vars["user"]
-		itemName := vars["item"]
-		item, err := GetUserItem(p.db, userName, "", itemName)
-		if err != nil {
+		userName := chi.URLParam(r, "user")
+		itemName := chi.URLParam(r, "item")
+
+		secret, pass, ok := r.BasicAuth()
+		if !ok || !p.b.CheckPassword(secret, pass) {
+			err := fmt.Errorf("unauthorized access")
+			log.Error().
+				Err(err).
+				Msg("error authenticating user")
+			w.WriteHeader(401)
+			j, _ := json.Marshal(struct {
+				Status bool
+				Error  string
+			}{false, err.Error()})
+			fmt.Fprint(w, string(j))
 			return
 		}
-		u := user.New(userName)
+
+		// Try to find an ID if possible
+		u, err := p.b.DefaultConnector().Profile(userName)
+		if err != nil {
+			log.Error().Err(err).Msg("error finding user")
+			w.WriteHeader(400)
+			j, _ := json.Marshal(struct {
+				Status bool
+				Error  error
+			}{false, err})
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		item, err := GetUserItem(p.db, userName, u.ID, itemName)
+		if err != nil {
+			log.Error().Err(err).Msg("error finding item")
+			w.WriteHeader(400)
+			j, _ := json.Marshal(struct {
+				Status bool
+				Error  error
+			}{false, err})
+			fmt.Fprint(w, string(j))
+			return
+		}
 		req := &bot.Request{
 			Conn: p.b.DefaultConnector(),
 			Kind: bot.Message,
@@ -45,8 +78,8 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 			Args:   nil,
 		}
 		item.UpdateDelta(req, delta)
-		msg := fmt.Sprintf("%s changed their %s counter by %d via the amazing %s API",
-			userName, itemName, delta, p.cfg.Get("nick", "catbase"))
+		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API",
+			userName, itemName, delta, item.Count, p.cfg.Get("nick", "catbase"))
 		for _, ch := range p.cfg.GetArray("channels", []string{}) {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
 		}

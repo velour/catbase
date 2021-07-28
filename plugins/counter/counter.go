@@ -321,8 +321,9 @@ func New(b bot.Bot) *CounterPlugin {
 	}
 
 	cp := &CounterPlugin{
-		b:  b,
-		db: b.DB(),
+		b:   b,
+		db:  b.DB(),
+		cfg: b.Config(),
 	}
 
 	b.RegisterRegex(cp, bot.Startup, regexp.MustCompile(`.*`), cp.migrate)

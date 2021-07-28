@@ -174,6 +174,10 @@ func New(c *config.Config) *Slack {
 	}
 }
 
+func (s *Slack) GetRouter() (http.Handler, string) {
+	return nil, ""
+}
+
 func (s *Slack) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	switch kind {
 	case bot.Message:

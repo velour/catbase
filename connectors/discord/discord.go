@@ -3,6 +3,7 @@ package discord
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/velour/catbase/bot/msg"
@@ -33,6 +34,9 @@ func New(config *config.Config) *Discord {
 		client: client,
 	}
 	return d
+}
+func (d *Discord) GetRouter() (http.Handler, string) {
+	return nil, ""
 }
 
 func (d *Discord) RegisterEvent(callback bot.Callback) {

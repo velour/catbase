@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/nfnt/resize"
@@ -589,7 +590,9 @@ func (p *BeersPlugin) untappdLoop(c bot.Connector, channel string) {
 }
 
 func (p *BeersPlugin) registerWeb() {
-	http.HandleFunc("/beers/img/", p.img)
+	r := chi.NewRouter()
+	r.HandleFunc("/img", p.img)
+	p.b.RegisterWeb(r, "/beers")
 }
 
 func (p *BeersPlugin) img(w http.ResponseWriter, r *http.Request) {

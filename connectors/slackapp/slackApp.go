@@ -17,6 +17,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	zerowidth "github.com/trubitsyn/go-zero-width"
 
 	"github.com/rs/zerolog/log"
@@ -44,6 +45,7 @@ const defaultLogFormat = "[{{fixDate .Time \"2006-01-02 15:04:05\"}}] {{if .Topi
 type SlackApp struct {
 	config *config.Config
 	api    *slack.Client
+	router *chi.Mux
 
 	botToken     string
 	userToken    string
@@ -84,6 +86,7 @@ func New(c *config.Config) *SlackApp {
 
 	return &SlackApp{
 		api:          api,
+		router:       chi.NewRouter(),
 		config:       c,
 		botToken:     token,
 		userToken:    c.Get("slack.usertoken", "NONE"),
@@ -103,10 +106,14 @@ func (s *SlackApp) RegisterEvent(f bot.Callback) {
 	s.event = f
 }
 
+func (s *SlackApp) GetRouter() (http.Handler, string) {
+	return s.router, "/evt"
+}
+
 func (s *SlackApp) Serve() error {
 	s.populateEmojiList()
 
-	http.HandleFunc("/evt", func(w http.ResponseWriter, r *http.Request) {
+	s.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 		body := buf.String()

@@ -5,6 +5,7 @@ package irc
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -50,6 +51,10 @@ func New(c *config.Config) *Irc {
 	i.config = c
 
 	return &i
+}
+
+func (i *Irc) GetRouter() (http.Handler, string) {
+	return nil, ""
 }
 
 func (i *Irc) RegisterEvent(f bot.Callback) {

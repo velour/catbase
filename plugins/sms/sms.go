@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	twilio "github.com/kevinburke/twilio-go"
 	"github.com/rs/zerolog/log"
 
@@ -118,7 +119,9 @@ func (p *SMSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, ar
 }
 
 func (p *SMSPlugin) registerWeb() {
-	http.HandleFunc("/sms/new", p.receive)
+	r := chi.NewRouter()
+	r.HandleFunc("/new", p.receive)
+	p.b.RegisterWeb(r, "/sms")
 }
 
 func (p *SMSPlugin) receive(w http.ResponseWriter, r *http.Request) {

@@ -21,7 +21,7 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 	r.HandleFunc("/add", p.addMeme)
 	r.HandleFunc("/rm", p.rmMeme)
 	r.HandleFunc("/", p.webRoot)
-	p.bot.RegisterWeb(r, "/meme", "Memes")
+	p.bot.RegisterWebName(r, "/meme", "Memes")
 }
 
 type webResp struct {

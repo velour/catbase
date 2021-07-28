@@ -135,7 +135,10 @@ type Bot interface {
 	RegisterFilter(string, func(string) string)
 
 	// RegisterWeb records a web endpoint for the UI
-	RegisterWeb(http.Handler, string, string)
+	RegisterWebName(http.Handler, string, string)
+
+	// RegisterWeb records a web endpoint for the API
+	RegisterWeb(http.Handler, string)
 
 	// Start the HTTP service
 	ListenAndServe()
@@ -202,6 +205,9 @@ type Connector interface {
 
 	// GetChannelName returns the channel ID for a human-friendly name (if possible)
 	GetChannelID(id string) string
+
+	// Get any web handlers the connector exposes
+	GetRouter() (http.Handler, string)
 }
 
 // Plugin interface used for compatibility with the Plugin interface

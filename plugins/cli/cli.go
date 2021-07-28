@@ -36,7 +36,11 @@ func (p *CliPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/api", p.handleWebAPI)
 	r.HandleFunc("/", p.handleWeb)
-	p.bot.RegisterWeb(r, "/cli", "CLI")
+	p.bot.RegisterWebName(r, "/cli", "CLI")
+}
+
+func (p *CliPlugin) GetRouter() (http.Handler, string) {
+	return nil, ""
 }
 
 func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {

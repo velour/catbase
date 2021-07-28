@@ -129,8 +129,11 @@ func (b *bot) ListenAndServe() {
 	log.Fatal().Err(http.ListenAndServe(addr, b.router)).Msg("bot killed")
 }
 
-func (b *bot) RegisterWeb(r http.Handler, root, name string) {
-	log.Debug().Msgf("registering %s at %s", name, root)
+func (b *bot) RegisterWeb(r http.Handler, root string) {
+	b.router.Mount(root, r)
+}
+
+func (b *bot) RegisterWebName(r http.Handler, root, name string) {
 	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
 	b.router.Mount(root, r)
 }
@@ -391,6 +394,9 @@ func PluginName(p Plugin) string {
 }
 
 func (b *bot) CheckPassword(secret, password string) bool {
+	if password == "" {
+		return false
+	}
 	if b.password == password {
 		return true
 	}

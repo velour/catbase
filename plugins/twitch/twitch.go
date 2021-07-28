@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -85,7 +86,9 @@ func New(b bot.Bot) *TwitchPlugin {
 }
 
 func (p *TwitchPlugin) registerWeb() {
-	http.HandleFunc("/isstreaming/", p.serveStreaming)
+	r := chi.NewRouter()
+	r.HandleFunc("/", p.serveStreaming)
+	p.bot.RegisterWeb(r, "/isstreaming")
 }
 
 func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
