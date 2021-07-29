@@ -3,6 +3,7 @@ package admin
 import (
 	"crypto/md5"
 	"crypto/rand"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
+
+//go:embed *.html
+var embeddedFS embed.FS
 
 func (p *AdminPlugin) registerWeb() {
 	r := chi.NewRouter()
@@ -27,7 +31,8 @@ func (p *AdminPlugin) registerWeb() {
 }
 
 func (p *AdminPlugin) handleAppPass(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, apppassIndex)
+	index, _ := embeddedFS.ReadFile("apppass.html")
+	w.Write(index)
 }
 
 type PassEntry struct {
@@ -162,7 +167,8 @@ func writeErr(w http.ResponseWriter, err error) {
 }
 
 func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, varIndex)
+	index, _ := embeddedFS.ReadFile("vars.html")
+	w.Write(index)
 }
 
 func (p *AdminPlugin) handleVarsAPI(w http.ResponseWriter, r *http.Request) {

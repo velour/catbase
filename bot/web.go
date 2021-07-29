@@ -1,14 +1,18 @@
 package bot
 
 import (
+	"embed"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 )
 
+//go:embed *.html
+var embeddedFS embed.FS
+
 func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, rootIndex)
+	index, _ := embeddedFS.ReadFile("index.html")
+	w.Write(index)
 }
 
 func (b *bot) serveNav(w http.ResponseWriter, r *http.Request) {
@@ -36,53 +40,3 @@ func (b *bot) GetWebNavigation() []EndPoint {
 	}
 	return endpoints
 }
-
-var rootIndex = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <!-- Load required Bootstrap and BootstrapVue CSS -->
-    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
-    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" />
-
-    <!-- Load polyfills to support older browsers -->
-    <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CMutationObserver"></script>
-
-    <!-- Load Vue followed by BootstrapVue -->
-    <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
-    <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
-    <script src="https://unpkg.com/vue-router"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <meta charset="UTF-8">
-    <title>catbase</title>
-</head>
-<body>
-
-<div id="app">
-    <b-navbar>
-        <b-navbar-brand>catbase</b-navbar-brand>
-        <b-navbar-nav>
-            <b-nav-item v-for="item in nav" :href="item.url">{{ item.name }}</b-nav-item>
-        </b-navbar-nav>
-    </b-navbar>
-</div>
-
-<script>
-    var app = new Vue({
-        el: '#app',
-        data: {
-            err: '',
-            nav: [],
-        },
-        mounted: function() {
-            axios.get('/nav')
-                .then(resp => {
-                    this.nav = resp.data;
-                })
-                .catch(err => console.log(err))
-        }
-    })
-</script>
-</body>
-</html>
-`

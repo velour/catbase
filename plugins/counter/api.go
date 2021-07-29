@@ -1,6 +1,7 @@
 package counter
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 )
+
+//go:embed *.html
+var embeddedFS embed.FS
 
 func (p *CounterPlugin) registerWeb() {
 	r := chi.NewRouter()
@@ -89,7 +93,8 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 }
 
 func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, html)
+	index, _ := embeddedFS.ReadFile("index.html")
+	w.Write(index)
 }
 
 func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {

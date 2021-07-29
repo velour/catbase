@@ -1,6 +1,6 @@
 module github.com/velour/catbase
 
-go 1.13
+go 1.16
 
 require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d

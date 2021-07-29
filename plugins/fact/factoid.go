@@ -4,6 +4,7 @@ package fact
 
 import (
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -25,6 +26,9 @@ import (
 
 // The factoid plugin provides a learning system to the bot so that it can
 // respond to queries in a way that is unpredictable and fun
+
+//go:embed *.html
+var embeddedFS embed.FS
 
 // factoid stores info about our factoid for lookup and later interaction
 type Factoid struct {
@@ -851,5 +855,6 @@ func (p *FactoidPlugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, factoidIndex)
+	index, _ := embeddedFS.ReadFile("index.html")
+	w.Write(index)
 }
