@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,6 +17,9 @@ import (
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
 )
+
+//go:embed *.html
+var embeddedFS embed.FS
 
 type CliPlugin struct {
 	bot     bot.Bot
@@ -97,7 +101,8 @@ func (p *CliPlugin) handleWebAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *CliPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, indexHTML)
+	index, _ := embeddedFS.ReadFile("index.html")
+	w.Write(index)
 }
 
 // Completing the Connector interface, but will not actually be a connector

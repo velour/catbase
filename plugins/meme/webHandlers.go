@@ -1,6 +1,7 @@
 package meme
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/velour/catbase/bot"
 )
+
+//go:embed *.html
+var embeddedFS embed.FS
 
 func (p *MemePlugin) registerWeb(c bot.Connector) {
 	r := chi.NewRouter()
@@ -131,7 +135,8 @@ func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *MemePlugin) webRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, memeIndex)
+	index, _ := embeddedFS.ReadFile("index.html")
+	w.Write(index)
 }
 
 func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {

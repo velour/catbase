@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 )
+
+//go:embed *.html
+var embeddedFS embed.FS
 
 type SecretsPlugin struct {
 	b  bot.Bot
@@ -61,7 +65,7 @@ func (p *SecretsPlugin) removeSecret(key string) error {
 }
 
 func (p *SecretsPlugin) updateSecret(key, value string) error {
-	q := `update secrets set value=? where key=?)`
+	q := `update secrets set value=? where key=?`
 	_, err := p.db.Exec(q, value, key)
 	if err != nil {
 		return err
@@ -152,5 +156,6 @@ func (p *SecretsPlugin) handleRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *SecretsPlugin) handleIndex(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(indexTpl))
+	index, _ := embeddedFS.ReadFile("index.html")
+	w.Write(index)
 }
