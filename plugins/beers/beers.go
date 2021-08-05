@@ -591,13 +591,12 @@ func (p *BeersPlugin) untappdLoop(c bot.Connector, channel string) {
 
 func (p *BeersPlugin) registerWeb() {
 	r := chi.NewRouter()
-	r.HandleFunc("/img", p.img)
+	r.HandleFunc("/img/{id}", p.img)
 	p.b.RegisterWeb(r, "/beers")
 }
 
 func (p *BeersPlugin) img(w http.ResponseWriter, r *http.Request) {
-	_, file := path.Split(r.URL.Path)
-	id := file
+	id := chi.URLParam(r, "id")
 	if img, ok := cachedImages[id]; ok {
 		w.Write(img)
 	} else {
