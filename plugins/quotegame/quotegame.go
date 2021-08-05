@@ -2,9 +2,11 @@ package quotegame
 
 import (
 	"math/rand"
+	"regexp"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 )
@@ -14,16 +16,38 @@ type QuoteGame struct {
 	c  *config.Config
 	db *sqlx.DB
 
+	handlers []bot.HandlerSpec
+
 	currentGame *time.Timer
 }
 
 func New(b bot.Bot) *QuoteGame {
-	return &QuoteGame{
+	p := &QuoteGame{
 		b:           b,
 		c:           b.Config(),
 		db:          b.DB(),
 		currentGame: nil,
 	}
+	p.register()
+	return p
+}
+
+func (p *QuoteGame) register() {
+	log.Debug().Msg("registering quote handlers")
+	p.handlers = []bot.HandlerSpec{
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^quote game$`),
+			HelpText: "Start a quote game",
+			Handler:  p.startGame,
+		},
+		{
+			Kind: bot.Message, IsCmd: false,
+			Regex:    regexp.MustCompile(`.*`),
+			Handler:  p.message,
+		},
+	}
+	p.b.RegisterTable(p, p.handlers)
 }
 
 func (p *QuoteGame) getAllQuotes() ([]string, error) {
@@ -47,4 +71,29 @@ func (p *QuoteGame) getRandomquote() (string, error) {
 		return "", err
 	}
 	return quotes[rand.Intn(len(quotes))], nil
+}
+
+func (p *QuoteGame) startGame(r bot.Request) bool {
+	log.Debug().Msg("startGame called")
+	if p.currentGame != nil {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "There is already a quote game running.")
+		return true
+	}
+
+	length := time.Duration(p.c.GetInt("quotegame.length", 120))
+	p.currentGame = time.AfterFunc(length * time.Second, func() {
+		p.currentGame = nil
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Game ended.")
+	})
+
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Game started.")
+
+	return true
+}
+
+func (p *QuoteGame) message(r bot.Request) bool {
+	if p.currentGame == nil {
+		return false
+	}
+	return false
 }
