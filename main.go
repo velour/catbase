@@ -13,6 +13,7 @@ import (
 	"github.com/velour/catbase/connectors/discord"
 	"github.com/velour/catbase/plugins/giphy"
 	"github.com/velour/catbase/plugins/last"
+	"github.com/velour/catbase/plugins/quotegame"
 	"github.com/velour/catbase/plugins/rest"
 	"github.com/velour/catbase/plugins/secrets"
 
@@ -163,6 +164,7 @@ func main() {
 	b.AddPlugin(sms.New(b))
 	b.AddPlugin(countdown.New(b))
 	b.AddPlugin(rest.New(b))
+	b.AddPlugin(quotegame.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
