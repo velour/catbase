@@ -97,8 +97,6 @@ func (p *QuoteGame) startGame(r bot.Request) bool {
 		return true
 	}
 
-	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Debug: starting game with %s having said %s", who, quote))
-
 	length := time.Duration(p.c.GetInt("quotegame.length", 120))
 	p.currentGame = time.AfterFunc(length*time.Second, func() {
 		p.currentGame = nil
@@ -108,7 +106,7 @@ func (p *QuoteGame) startGame(r bot.Request) bool {
 
 	p.currentName = who
 
-	msg := fmt.Sprintf("Quote game: Who said \"%s\"?\n\nUse `guess: name` to guess who", quote)
+	msg := fmt.Sprintf("Quote game: Who said \"%s\"?\nYou have %d seconds to guess.\nUse `guess: name` to guess who.", quote, length)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
 
 	return true
