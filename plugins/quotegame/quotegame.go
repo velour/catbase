@@ -101,7 +101,8 @@ func (p *QuoteGame) startGame(r bot.Request) bool {
 	p.currentGame = time.AfterFunc(length*time.Second, func() {
 		p.currentGame = nil
 		p.currentName = ""
-		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Game ended.")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel,
+			fmt.Sprintf("The quote game ended and nobody won. The answer was %s", who))
 	})
 
 	p.currentName = who
