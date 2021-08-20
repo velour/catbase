@@ -128,10 +128,12 @@ func (d *Discord) GetEmojiList() map[string]string {
 	if d.emojiCache != nil {
 		return d.emojiCache
 	}
-	guidID := d.config.Get("discord.guildid", "")
-	if guidID == "" {
+	guildID := d.config.Get("discord.guildid", "")
+	if guildID == "" {
+		log.Error().Msg("no guild ID set")
+		return map[string]string{}
 	}
-	e, err := d.client.GuildEmojis(guidID)
+	e, err := d.client.GuildEmojis(guildID)
 	if err != nil {
 		log.Error().Err(err).Msg("could not retrieve emojis")
 		return map[string]string{}
@@ -170,9 +172,23 @@ func (d *Discord) convertUser(u *discordgo.User) *user.User {
 	if err != nil {
 		log.Error().Err(err).Msg("error getting avatar")
 	}
+	nick := u.Username
+
+	guildID := d.config.Get("discord.guildid", "")
+	if guildID == "" {
+		log.Error().Msg("no guild ID set")
+	} else {
+		mem, err := d.client.GuildMember(guildID, u.ID)
+		if err != nil {
+			log.Error().Err(err).Msg("could not get guild member")
+		} else if mem.Nick != "" {
+			nick = mem.Nick
+		}
+	}
+
 	return &user.User{
 		ID:      u.ID,
-		Name:    u.Username,
+		Name:    nick,
 		Admin:   false,
 		Icon:    d.client.State.User.AvatarURL("64"),
 		IconImg: img,
@@ -212,9 +228,11 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 
 	tStamp, _ := m.Timestamp.Parse()
 
+	author := d.convertUser(m.Author)
+
 	msg := msg.Message{
 		ID:          m.ID,
-		User:        d.convertUser(m.Author),
+		User:        author,
 		Channel:     m.ChannelID,
 		ChannelName: ch.Name,
 		Body:        text,
