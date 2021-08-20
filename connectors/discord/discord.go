@@ -25,7 +25,7 @@ type Discord struct {
 }
 
 func New(config *config.Config) *Discord {
-	client, err := discordgo.New("b " + config.Get("DISCORDBOTTOKEN", ""))
+	client, err := discordgo.New("Bot " + config.Get("DISCORDBOTTOKEN", ""))
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to Discord")
 	}
@@ -187,7 +187,7 @@ func (d *Discord) Serve() error {
 
 	err := d.client.Open()
 	if err != nil {
-		log.Debug().Err(err).Msg("error opening client")
+		log.Fatal().Err(err).Msg("error opening client")
 		return err
 	}
 
