@@ -53,8 +53,8 @@ func makeBeersPlugin(t *testing.T) (*BeersPlugin, *bot.MockBot) {
 	counter.New(mb)
 	mb.DB().MustExec(`delete from counter; delete from counter_alias;`)
 	b := New(mb)
-	counter.MkAlias(mb.DB(), "beer", ":beer:")
-	counter.MkAlias(mb.DB(), "beers", ":beer:")
+	counter.MkAlias(mb.DB(), "beer", DEFAULT_ITEM)
+	counter.MkAlias(mb.DB(), "beers", DEFAULT_ITEM)
 	return b, mb
 }
 
@@ -75,7 +75,7 @@ func TestImbibe(t *testing.T) {
 	assert.Len(t, mb.Messages, 1)
 	testMessage(b, "imbibe")
 	assert.Len(t, mb.Messages, 2)
-	it, err := counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err := counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, it.Count)
 }
@@ -83,7 +83,7 @@ func TestEq(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
 	testMessage(b, "beers = 3")
 	assert.Len(t, mb.Messages, 1)
-	it, err := counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err := counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, it.Count)
 }
@@ -94,7 +94,7 @@ func TestEqZero(t *testing.T) {
 	testMessage(b, "beers = 0")
 	assert.Len(t, mb.Messages, 2)
 	assert.Contains(t, mb.Messages[1], "reversal of fortune")
-	it, err := counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err := counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, it.Count)
 }
@@ -105,7 +105,7 @@ func TestBeersPlusEq(t *testing.T) {
 	assert.Len(t, mb.Messages, 1)
 	testMessage(b, "beers += 5")
 	assert.Len(t, mb.Messages, 2)
-	it, err := counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err := counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 10, it.Count)
 }
@@ -113,11 +113,11 @@ func TestBeersPlusEq(t *testing.T) {
 func TestPuke(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
 	testMessage(b, "beers += 5")
-	it, err := counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err := counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, it.Count)
 	testMessage(b, "puke")
-	it, err = counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err = counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, it.Count)
 }
@@ -125,7 +125,7 @@ func TestPuke(t *testing.T) {
 func TestBeersReport(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
 	testMessage(b, "beers += 5")
-	it, err := counter.GetUserItem(mb.DB(), "tester", "id", itemName)
+	it, err := counter.GetUserItem(mb.DB(), "tester", "id", DEFAULT_ITEM)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, it.Count)
 	testMessage(b, "beers")
