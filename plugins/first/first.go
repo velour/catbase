@@ -289,7 +289,7 @@ func (p *FirstPlugin) recordFirst(c bot.Connector, message msg.Message) {
 		Msg("Recording first")
 	first := &FirstEntry{
 		day:     Midnight(time.Now()),
-		time:    message.Time,
+		time:    time.Now(),
 		channel: message.Channel,
 		body:    message.Body,
 		nick:    message.User.Name,
