@@ -33,9 +33,9 @@ import (
 
 // This is a skeleton plugin to serve as an example and quick copy/paste for new plugins.
 
-const itemName = ":beer:"
-
 var cachedImages = map[string][]byte{}
+
+const DEFAULT_ITEM = "🍺"
 
 type BeersPlugin struct {
 	b  bot.Bot
@@ -240,14 +240,15 @@ func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, 
 	return true
 }
 
-func getUserBeers(db *sqlx.DB, user, id string) counter.Item {
+func getUserBeers(db *sqlx.DB, user, id, itemName string) counter.Item {
 	// TODO: really ought to have an ID here
 	booze, _ := counter.GetUserItem(db, user, id, itemName)
 	return booze
 }
 
 func (p *BeersPlugin) setBeers(r *bot.Request, user, id string, amount int) {
-	ub := getUserBeers(p.db, user, id)
+	itemName := p.c.Get("beers.itemname", DEFAULT_ITEM)
+	ub := getUserBeers(p.db, user, id, itemName)
 	err := ub.Update(r, amount)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error saving beers")
@@ -255,15 +256,17 @@ func (p *BeersPlugin) setBeers(r *bot.Request, user, id string, amount int) {
 }
 
 func (p *BeersPlugin) addBeers(r *bot.Request, user, id string, delta int) {
-	ub := getUserBeers(p.db, user, id)
+	itemName := p.c.Get("beers.itemname", DEFAULT_ITEM)
+	ub := getUserBeers(p.db, user, id, itemName)
 	err := ub.UpdateDelta(r, delta)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error saving beers")
 	}
 }
 
-func (p *BeersPlugin) getBeers(nick, id string) int {
-	ub := getUserBeers(p.db, nick, id)
+func (p *BeersPlugin) getBeers(user, id string) int {
+	itemName := p.c.Get("beers.itemname", DEFAULT_ITEM)
+	ub := getUserBeers(p.db, user, id, itemName)
 	return ub.Count
 }
 
