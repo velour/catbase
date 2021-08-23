@@ -154,15 +154,12 @@ func (d *Discord) GetEmojiList() map[string]string {
 	return emojis
 }
 
+// Who gets the users in the guild
+// Note that the channel ID does not matter in this particular case
 func (d *Discord) Who(id string) []string {
-	ch, err := d.client.Channel(id)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error getting users")
-		return []string{}
-	}
 	users := []string{}
-	for _, u := range ch.Recipients {
-		users = append(users, u.Username)
+	for name, _ := range d.uidCache {
+		users = append(users, name)
 	}
 	return users
 }
@@ -182,7 +179,6 @@ func (d *Discord) Profile(id string) (user.User, error) {
 	}
 	user := d.convertUser(u)
 	d.uidCache[user.Name] = user.ID
-	d.uidCache[user.ID] = user.Name
 	return *user, nil
 }
 
