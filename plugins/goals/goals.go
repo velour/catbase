@@ -85,14 +85,14 @@ func (p *GoalsPlugin) registerCmds() {
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+)`),
+			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[^\s]+)`),
 			HelpText: "Check with `%s` for other people",
 			Handler: func(r bot.Request) bool {
 				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Values["who"])
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+)`),
+			Regex:    regexp.MustCompile(`(?i)^check (?P<type>competition|goal) (?P<what>[^\s]+)`),
 			HelpText: "Check with `%s` for yourself",
 			Handler: func(r bot.Request) bool {
 				p.check(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Msg.User.Name)
