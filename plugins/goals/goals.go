@@ -322,15 +322,12 @@ func (p *GoalsPlugin) update(r bot.Request, u counter.Update) {
 		log.Error().Err(err).Msgf("could not get goal for %#v", u)
 		return
 	}
-	chs := p.cfg.GetArray("channels", []string{})
 	c := p.b.DefaultConnector()
 	for _, g := range gs {
-		for _, ch := range chs {
-			if g.Kind == "goal" {
-				p.checkGoal(c, ch, u.What, u.Who)
-			} else {
-				p.checkCompetition(c, ch, u.What, u.Who)
-			}
+		if g.Kind == "goal" {
+			p.checkGoal(c, r.Msg.Channel, u.What, u.Who)
+		} else {
+			p.checkCompetition(c, r.Msg.Channel, u.What, u.Who)
 		}
 	}
 }
