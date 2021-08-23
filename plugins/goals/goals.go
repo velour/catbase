@@ -54,15 +54,16 @@ func (p *GoalsPlugin) mkDB() {
 func (p *GoalsPlugin) registerCmds() {
 	p.handlers = bot.HandlerTable{
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
+			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) for (?P<who>[[:punct:][:alnum:]]+) (?P<what>[^\s]+) (?P<amount>[[:digit:]]+)?`),
 			HelpText: "Register with `%s` for other people",
 			Handler: func(r bot.Request) bool {
+				log.Debug().Interface("values", r.Values).Msg("trying to register a goal")
 				amount, _ := strconv.Atoi(r.Values["amount"])
 				p.register(r.Conn, r.Msg.Channel, r.Values["type"], r.Values["what"], r.Values["who"], amount)
 				return true
 			}},
 		{Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) (?P<what>[[:punct:][:alnum:]]+) (?P<amount>[[:digit:]]+)?`),
+			Regex:    regexp.MustCompile(`(?i)^register (?P<type>competition|goal) (?P<what>[^\s]+) (?P<amount>[[:digit:]]+)?`),
 			HelpText: "Register with `%s` for yourself",
 			Handler: func(r bot.Request) bool {
 				amount, _ := strconv.Atoi(r.Values["amount"])
@@ -134,6 +135,7 @@ func (p *GoalsPlugin) deregister(c bot.Connector, ch, kind, what, who string) {
 }
 
 func (p *GoalsPlugin) check(c bot.Connector, ch, kind, what, who string) {
+	log.Debug().Msgf("checking goal in channel %s", ch)
 	if kind == "goal" {
 		p.checkGoal(c, ch, what, who)
 		return
@@ -193,8 +195,15 @@ func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
 	if err == nil && user.ID != "" {
 		id = user.ID
 		nick = user.Name
+	} else {
+		log.Error().Err(err).Msg("no user returned for goal check")
 	}
 
+	log.Debug().
+		Str("nick", nick).
+		Str("id", id).
+		Str("what", what).
+		Msg("looking for item")
 	item, err := counter.GetUserItem(p.db, nick, id, what)
 	if err != nil {
 		p.b.Send(c, bot.Message, ch, fmt.Sprintf("I couldn't find any %s", what))

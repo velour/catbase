@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/velour/catbase/bot/msg"
@@ -22,6 +23,9 @@ type Discord struct {
 	event bot.Callback
 
 	emojiCache map[string]string
+
+	// store IDs -> nick and vice versa for quick conversion
+	uidCache map[string]string
 }
 
 func New(config *config.Config) *Discord {
@@ -30,8 +34,9 @@ func New(config *config.Config) *Discord {
 		log.Fatal().Err(err).Msg("Could not connect to Discord")
 	}
 	d := &Discord{
-		config: config,
-		client: client,
+		config:   config,
+		client:   client,
+		uidCache: map[string]string{},
 	}
 	return d
 }
@@ -117,7 +122,11 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...i
 
 	//st, err := d.client.ChannelMessageSend(channel, message)
 	if err != nil {
-		log.Error().Err(err).Msg("Error sending message")
+		log.Error().
+			Interface("data", data).
+			Str("channel", channel).
+			Err(err).
+			Msg("Error sending message")
 		return "", err
 	}
 
@@ -159,12 +168,22 @@ func (d *Discord) Who(id string) []string {
 }
 
 func (d *Discord) Profile(id string) (user.User, error) {
+	if _, err := strconv.Atoi(id); err != nil {
+		if newID, ok := d.uidCache[id]; ok {
+			id = newID
+		} else {
+			return user.User{}, fmt.Errorf("invalid ID snowflake: %s", id)
+		}
+	}
 	u, err := d.client.User(id)
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting user")
 		return user.User{}, err
 	}
-	return *d.convertUser(u), nil
+	user := d.convertUser(u)
+	d.uidCache[user.Name] = user.ID
+	d.uidCache[user.ID] = user.Name
+	return *user, nil
 }
 
 func (d *Discord) convertUser(u *discordgo.User) *user.User {
@@ -215,6 +234,9 @@ func (d *Discord) Serve() error {
 }
 
 func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// if we haven't seen this user, we need to resolve their nick before continuing
+	author, _ := d.Profile(m.Author.ID)
+
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
@@ -228,11 +250,9 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 
 	tStamp, _ := m.Timestamp.Parse()
 
-	author := d.convertUser(m.Author)
-
 	msg := msg.Message{
 		ID:          m.ID,
-		User:        author,
+		User:        &author,
 		Channel:     m.ChannelID,
 		ChannelName: ch.Name,
 		Body:        text,
