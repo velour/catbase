@@ -383,7 +383,10 @@ func (p *BeersPlugin) pullUntappd() ([]checkin, error) {
 	var beers Beers
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
-		log.Error().Err(err)
+		log.Error().
+			Str("body", string(body)).
+			Err(err).
+			Msg("could not unmarshal")
 		return []checkin{}, err
 	}
 	return beers.Response.Checkins.Items, nil
