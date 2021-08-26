@@ -211,7 +211,7 @@ func (p *FirstPlugin) register() {
 		{Kind: bot.Message, IsCmd: false,
 			Regex: regexp.MustCompile(`.*`),
 			Handler: func(r bot.Request) bool {
-				if r.Msg.IsIM || !p.enabled {
+				if r.Msg.IsIM || !p.enabled || !p.enabled_channel(r) {
 					return false
 				}
 
@@ -241,6 +241,16 @@ func (p *FirstPlugin) register() {
 			}},
 	}
 	p.bot.RegisterTable(p, p.handlers)
+}
+
+func (p *FirstPlugin) enabled_channel(r bot.Request) bool {
+	chs := p.config.GetArray("first.channels", []string{})
+	for _, ch := range chs {
+		if r.Msg.Channel == ch {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *FirstPlugin) allowed(message msg.Message) bool {

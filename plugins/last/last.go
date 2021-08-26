@@ -81,6 +81,16 @@ func (p *LastPlugin) register() {
 	p.b.RegisterTable(p, p.handlers)
 }
 
+func (p *LastPlugin) enabled_channel(r bot.Request) bool {
+	chs := p.c.GetArray("last.channels", []string{})
+	for _, ch := range chs {
+		if r.Msg.Channel == ch {
+			return true
+		}
+	}
+	return false
+}
+
 func nextNoon(t time.Time) time.Duration {
 	day := first.Midnight(t)
 	nextNoon := day.Add(12 * time.Hour)
@@ -97,6 +107,9 @@ func nextNoon(t time.Time) time.Duration {
 }
 
 func (p *LastPlugin) recordLast(r bot.Request) bool {
+	if !p.enabled_channel(r) {
+		return false
+	}
 	ch := r.Msg.Channel
 	who := r.Msg.User.Name
 	day := first.Midnight(time.Now())
