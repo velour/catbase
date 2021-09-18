@@ -78,7 +78,7 @@ func (p *NewsBid) bidsCmd(r bot.Request) bool {
 	out := "Bids:\n"
 	for _, b := range bids {
 		hnURL := fmt.Sprintf("https://news.ycombinator.com/item?id=%d", b.HNID)
-		out += fmt.Sprintf("• %s bid %s <%s|%s> (<%s|Comments>)\n", b.User, b.BidStr, b.URL, b.Title, hnURL)
+		out += fmt.Sprintf("• %s bid %s on %s (%s)\n", b.User, b.BidStr, b.Title, hnURL)
 	}
 	p.bot.Send(r.Conn, bot.Message, ch, out)
 	return true

@@ -36,9 +36,9 @@ func (is Items) Titles() string {
 	for _, v := range is {
 		hnURL := fmt.Sprintf("https://news.ycombinator.com/item?id=%d", v.ID)
 		if v.URL == "" {
-			out += fmt.Sprintf("• %s %s (<%s|Comments>)\n", v.Bid, v.Title, hnURL)
+			out += fmt.Sprintf("• %s %s (%s)\n", v.Bid, v.Title, hnURL)
 		} else {
-			out += fmt.Sprintf("• %s <%s|%s> (<%s|Comments>)\n", v.Bid, v.URL, v.Title, hnURL)
+			out += fmt.Sprintf("• %s %s (%s)\n", v.Bid, v.Title, hnURL)
 		}
 	}
 	return out
