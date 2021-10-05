@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/bot/history"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/msglog"
 	"github.com/velour/catbase/bot/user"
@@ -63,6 +64,8 @@ type bot struct {
 	quiet bool
 
 	router *chi.Mux
+
+	history *history.History
 }
 
 type EndPoint struct {
@@ -81,6 +84,8 @@ func New(config *config.Config, connector Connector) Bot {
 	logOut := make(chan msg.Messages)
 
 	msglog.RunNew(logIn, logOut)
+
+	historySz := config.GetInt("bot.historysz", 100)
 
 	users := []user.User{
 		{
@@ -103,6 +108,7 @@ func New(config *config.Config, connector Connector) Bot {
 		filters:         make(map[string]func(string) string),
 		callbacks:       make(CallbackMap),
 		router:          chi.NewRouter(),
+		history:         history.New(historySz),
 	}
 
 	bot.migrateDB()

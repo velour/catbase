@@ -30,7 +30,7 @@ import (
 //go:embed *.html
 var embeddedFS embed.FS
 
-// factoid stores info about our factoid for lookup and later interaction
+// Factoid stores info about our factoid for lookup and later interaction
 type Factoid struct {
 	ID       sql.NullInt64
 	Fact     string
