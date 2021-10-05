@@ -18,7 +18,7 @@ const (
 
 	// Message any standard chat
 	Message
-	// Send a disappearing message to a user in chat
+	// Ephemeral sends a disappearing message to a user in chat
 	Ephemeral
 	// Reply something containing a message reference
 	Reply
@@ -28,7 +28,7 @@ const (
 	Reaction
 	// Edit message ref'd new message to replace
 	Edit
-	// Not sure what event is
+	// Event is unknown/generic
 	Event
 	// Help is used when the bot help system is triggered
 	Help

@@ -20,6 +20,13 @@ import (
 func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
+
+	if kind == Edit {
+		b.history.Edit(msg.ID, &msg)
+	} else {
+		b.history.Append(&msg)
+	}
+
 	if kind == Message && strings.HasPrefix(msg.Body, "help") && msg.Command {
 		parts := strings.Fields(strings.ToLower(msg.Body))
 		b.checkHelp(conn, msg.Channel, parts)
