@@ -58,7 +58,6 @@ require (
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.1.0 // indirect
-	github.com/velour/chat v0.0.0-20180713122344-fd1d1606cb89
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
 	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529
 	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
