@@ -31,7 +31,6 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/connectors/irc"
-	"github.com/velour/catbase/connectors/slack"
 	"github.com/velour/catbase/connectors/slackapp"
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/babbler"
@@ -109,8 +108,6 @@ func main() {
 	switch c.Get("type", "slackapp") {
 	case "irc":
 		client = irc.New(c)
-	case "slack":
-		client = slack.New(c)
 	case "slackapp":
 		client = slackapp.New(c)
 	case "discord":
