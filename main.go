@@ -13,6 +13,7 @@ import (
 	"github.com/velour/catbase/connectors/discord"
 	"github.com/velour/catbase/plugins/giphy"
 	"github.com/velour/catbase/plugins/last"
+	"github.com/velour/catbase/plugins/mayi"
 	"github.com/velour/catbase/plugins/quotegame"
 	"github.com/velour/catbase/plugins/rest"
 	"github.com/velour/catbase/plugins/secrets"
@@ -124,6 +125,7 @@ func main() {
 
 	b.AddPlugin(admin.New(b))
 	b.AddPlugin(secrets.New(b))
+	b.AddPlugin(mayi.New(b))
 	b.AddPlugin(giphy.New(b))
 	b.AddPlugin(emojifyme.New(b))
 	b.AddPlugin(last.New(b))
