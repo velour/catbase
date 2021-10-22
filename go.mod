@@ -14,7 +14,7 @@ require (
 	github.com/antchfx/xpath v1.1.1 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
-	github.com/bwmarrin/discordgo v0.22.0
+	github.com/bwmarrin/discordgo v0.23.2
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
@@ -41,7 +41,7 @@ require (
 	github.com/kevinburke/rest v0.0.0-20200429221318-0d2892b400f8 // indirect
 	github.com/kevinburke/twilio-go v0.0.0-20200424172635-4f0b2357b852
 	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-sqlite3 v1.11.0
+	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/mmcdole/gofeed v1.0.0-beta2
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
@@ -59,9 +59,10 @@ require (
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.1.0 // indirect
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
-	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/exp v0.0.0-20191014171548-69215a2ee97e // indirect
-	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582 // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
+	golang.org/x/sys v0.0.0-20211020174200-9d6173849985 // indirect
 	gonum.org/v1/gonum v0.6.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/go-playground/webhooks.v5 v5.13.0
