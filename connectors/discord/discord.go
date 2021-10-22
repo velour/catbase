@@ -183,6 +183,9 @@ func (d *Discord) Profile(id string) (user.User, error) {
 }
 
 func (d *Discord) convertUser(u *discordgo.User) *user.User {
+	log.Debug().
+		Str("u.ID", u.ID).
+		Msg("")
 	img, err := d.client.UserAvatar(u.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("error getting avatar")

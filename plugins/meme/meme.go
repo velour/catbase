@@ -42,6 +42,7 @@ type memeText struct {
 	YPerc float64 `json:"y"`
 	Text  string  `json:"t",omitempty`
 	Caps  bool    `json:"c"`
+	Font  string  `json:"f",omitempty`
 }
 
 type specification struct {
@@ -303,11 +304,10 @@ var defaultFormats = map[string]string{
 	"raptor": "https://imgflip.com/s/meme/Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) findFontSize(config []memeText, w, h int, sizes []float64) float64 {
+func (p *MemePlugin) findFontSize(config []memeText, fontLocation string, w, h int, sizes []float64) float64 {
 	fontSize := 12.0
 
 	m := gg.NewContext(w, h)
-	fontLocation := p.c.Get("meme.font", "impact.ttf")
 
 	longestStr, longestW := "", 0.0
 
@@ -426,8 +426,7 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
-	fontLocation := p.c.Get("meme.font", "impact.ttf")
-	m.LoadFontFace(fontLocation, p.findFontSize(spec.Configs, w, h, fontSizes))
+	defaultFont := p.c.Get("meme.font", "impact.ttf")
 
 	for i, c := range spec.Configs {
 		if c.Caps {
@@ -445,6 +444,12 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 				continue
 			}
 			for _, c := range spec.Configs {
+				fontLocation := c.Font
+				if fontLocation == "" {
+					fontLocation = defaultFont
+				}
+				fontSize := p.findFontSize(spec.Configs, fontLocation, w, h, fontSizes)
+				m.LoadFontFace(fontLocation, fontSize)
 				x := float64(w)*c.XPerc + float64(dx)
 				y := float64(h)*c.YPerc + float64(dy)
 				m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
@@ -455,6 +460,12 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 	// Apply white fill
 	m.SetHexColor("#FFF")
 	for _, c := range spec.Configs {
+		fontLocation := c.Font
+		if fontLocation == "" {
+			fontLocation = defaultFont
+		}
+		fontSize := p.findFontSize(spec.Configs, fontLocation, w, h, fontSizes)
+		m.LoadFontFace(fontLocation, fontSize)
 		x := float64(w) * c.XPerc
 		y := float64(h) * c.YPerc
 		m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
