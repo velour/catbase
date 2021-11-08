@@ -26,7 +26,6 @@ type Impossible struct {
 	title   string
 	content []string
 	updated time.Time
-	testing bool
 }
 
 func New(b bot.Bot) *Impossible {
@@ -36,23 +35,6 @@ func New(b bot.Bot) *Impossible {
 		title:   "",
 		content: []string{},
 		updated: getTodaysMidnight().Add(time.Hour * -24),
-		testing: false,
-	}
-
-	b.Register(i, bot.Help, i.help)
-	i.register()
-
-	return i
-}
-
-func newTesting(b bot.Bot) *Impossible {
-	i := &Impossible{
-		b:       b,
-		c:       b.Config(),
-		title:   "",
-		content: []string{},
-		updated: getTodaysMidnight().Add(time.Hour * -24),
-		testing: true,
 	}
 
 	b.Register(i, bot.Help, i.help)
@@ -75,10 +57,6 @@ func (p *Impossible) tryRefresh(r bot.Request) (sent bool) {
 		for !p.refreshImpossible() {
 		}
 
-		if p.testing {
-			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, p.title)
-			sent = true
-		}
 	}
 	return sent
 }
