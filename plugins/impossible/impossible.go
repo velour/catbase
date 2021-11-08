@@ -173,6 +173,6 @@ func (p *Impossible) refreshImpossible() bool {
 }
 
 func getTodaysMidnight() time.Time {
-	now := time.Now()
-	return time.Date(now.Year(), now.Month(), now.Day(), 24, 0, 0, 0, now.Location())
+	y, m, d := time.Now().Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.Local)
 }
