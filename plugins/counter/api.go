@@ -160,7 +160,7 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 }
 
 type Update struct {
-	Who    string
-	What   string
-	Amount int
+	Who    string `json:"who"`
+	What   string `json:"what"`
+	Amount int    `json:"amount"`
 }
