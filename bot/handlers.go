@@ -3,10 +3,14 @@
 package bot
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -260,6 +264,28 @@ func (b *bot) selfSaid(conn Connector, channel, message string, action bool) {
 	for _, name := range b.pluginOrdering {
 		if b.runCallback(conn, b.plugins[name], SelfMessage, msg) {
 			return
+		}
+	}
+}
+
+// PubToASub sends updates to subscribed URLs
+func (b *bot) PubToASub(subject string, payload interface{}) {
+	key := fmt.Sprintf("pubsub.%s.url", subject)
+	subs := b.config.GetArray(key, []string{})
+	if len(subs) == 0 {
+		return
+	}
+	encodedBody, _ := json.Marshal(struct {
+		Payload interface{} `json:"payload"`
+	}{payload})
+	body := bytes.NewBuffer(encodedBody)
+	for _, url := range subs {
+		r, err := http.Post(url, "text/json", body)
+		if err != nil {
+			log.Error().Err(err).Msg("")
+		} else {
+			body, _ := ioutil.ReadAll(r.Body)
+			log.Debug().Msgf("Response body: %s", string(body))
 		}
 	}
 }

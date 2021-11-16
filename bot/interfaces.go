@@ -172,6 +172,9 @@ type Bot interface {
 
 	// Check valid password
 	CheckPassword(secret, password string) bool
+
+	// PubToASub publishes a message to any subscribers
+	PubToASub(subject string, payload interface{})
 }
 
 // Connector represents a server connection to a chat service

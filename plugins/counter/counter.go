@@ -344,6 +344,11 @@ func New(b bot.Bot) *CounterPlugin {
 	b.Register(cp, bot.Help, cp.help)
 	cp.registerWeb()
 
+	RegisterUpdate(func(r bot.Request, u Update) {
+		log.Debug().Msgf("Publishing update %v", u)
+		b.PubToASub("counter", u)
+	})
+
 	return cp
 }
 
