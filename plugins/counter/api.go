@@ -87,6 +87,7 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 		for _, ch := range p.cfg.GetArray("channels", []string{}) {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
 		}
+		sendUpdate(req, userName, itemName, item.Count)
 		j, _ := json.Marshal(struct{ Status bool }{true})
 		fmt.Fprint(w, string(j))
 	}
