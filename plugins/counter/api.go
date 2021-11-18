@@ -86,8 +86,9 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 			userName, itemName, delta, item.Count, p.cfg.Get("nick", "catbase"))
 		for _, ch := range p.cfg.GetArray("channels", []string{}) {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+			req.Msg.Channel = ch
+			sendUpdate(req, userName, itemName, item.Count)
 		}
-		sendUpdate(req, userName, itemName, item.Count)
 		j, _ := json.Marshal(struct{ Status bool }{true})
 		fmt.Fprint(w, string(j))
 	}
@@ -160,8 +161,12 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 	fmt.Fprint(w, string(data))
 }
 
+// Update represents a change that gets sent off to other plugins such as goals
 type Update struct {
-	Who    string `json:"who"`
-	What   string `json:"what"`
-	Amount int    `json:"amount"`
+	// Username to be displayed/recorded
+	Who string `json:"who"`
+	// Counter Item
+	What string `json:"what"`
+	// Total counter amount
+	Amount int `json:"amount"`
 }
