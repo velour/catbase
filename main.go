@@ -12,6 +12,7 @@ import (
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/connectors/discord"
 	"github.com/velour/catbase/plugins/giphy"
+	"github.com/velour/catbase/plugins/gpt3"
 	"github.com/velour/catbase/plugins/last"
 	"github.com/velour/catbase/plugins/mayi"
 	"github.com/velour/catbase/plugins/quotegame"
@@ -162,6 +163,7 @@ func main() {
 	b.AddPlugin(achievements.New(b))
 	b.AddPlugin(sms.New(b))
 	b.AddPlugin(countdown.New(b))
+	b.AddPlugin(gpt3.New(b))
 	b.AddPlugin(rest.New(b))
 	b.AddPlugin(quotegame.New(b))
 	// catches anything left, will always return true
