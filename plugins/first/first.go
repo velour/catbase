@@ -215,8 +215,6 @@ func (p *FirstPlugin) register() {
 					return false
 				}
 
-				log.Debug().Interface("message", r.Msg).Msg("first check")
-
 				first, err := getLastFirst(p.db, r.Msg.Channel)
 				if err != nil {
 					log.Error().
