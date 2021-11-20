@@ -125,6 +125,7 @@ func main() {
 	}
 
 	b.AddPlugin(admin.New(b))
+	b.AddPlugin(gpt3.New(b))
 	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(mayi.New(b))
 	b.AddPlugin(giphy.New(b))
@@ -163,7 +164,6 @@ func main() {
 	b.AddPlugin(achievements.New(b))
 	b.AddPlugin(sms.New(b))
 	b.AddPlugin(countdown.New(b))
-	b.AddPlugin(gpt3.New(b))
 	b.AddPlugin(rest.New(b))
 	b.AddPlugin(quotegame.New(b))
 	// catches anything left, will always return true
