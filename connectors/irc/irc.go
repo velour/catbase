@@ -341,3 +341,11 @@ func (i Irc) GetChannelID(name string) string {
 func (i Irc) GetChannelName(id string) string {
 	return id
 }
+
+func (i Irc) GetRoles() ([]bot.Role, error) {
+	return []bot.Role{}, nil
+}
+
+func (i Irc) SetRole(userID, roleID string) error {
+	return nil
+}

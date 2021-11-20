@@ -197,22 +197,33 @@ type Connector interface {
 	// Profile returns a user's information given an ID
 	Profile(string) (user.User, error)
 
-	// URL Format utility
+	// URLFormat utility
 	URLFormat(title, url string) string
 
-	// Translate emojy to/from services
+	// Emojy translates emojy to/from services
 	Emojy(string) string
 
 	// GetChannelName returns the human-friendly name for an ID (if possible)
 	GetChannelName(id string) string
 
-	// GetChannelName returns the channel ID for a human-friendly name (if possible)
+	// GetChannelID returns the channel ID for a human-friendly name (if possible)
 	GetChannelID(id string) string
 
-	// Get any web handlers the connector exposes
+	// GetRouter gets any web handlers the connector exposes
 	GetRouter() (http.Handler, string)
+
+	// GetRoleNames returns list of names and IDs of roles
+	GetRoles() ([]Role, error)
+
+	// SetRole toggles a role on/off for a user by ID
+	SetRole(userID, roleID string) error
 }
 
 // Plugin interface used for compatibility with the Plugin interface
 // Uhh it turned empty, but we're still using it to ID plugins
 type Plugin interface{}
+
+type Role struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
