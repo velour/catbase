@@ -729,3 +729,11 @@ func (s *SlackApp) Emojy(name string) string {
 func (s *SlackApp) URLFormat(title, url string) string {
 	return fmt.Sprintf("<%s|%s>", url, title)
 }
+
+func (s *SlackApp) GetRoles() ([]bot.Role, error) {
+	return []bot.Role{}, nil
+}
+
+func (s *SlackApp) SetRole(userID, roleID string) error {
+	return nil
+}

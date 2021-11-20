@@ -296,3 +296,39 @@ func (d *Discord) GetChannelName(id string) string {
 	}
 	return ch.Name
 }
+
+func (d *Discord) GetRoles() ([]bot.Role, error) {
+	ret := []bot.Role{}
+
+	guildID := d.config.Get("discord.guildid", "")
+	if guildID == "" {
+		return nil, errors.New("no guildID set")
+	}
+	roles, err := d.client.GuildRoles(guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range roles {
+		ret = append(ret, bot.Role{
+			ID:   r.ID,
+			Name: r.Name,
+		})
+	}
+
+	return ret, nil
+}
+
+func (d *Discord) SetRole(userID, roleID string) error {
+	guildID := d.config.Get("discord.guildid", "")
+	member, err := d.client.GuildMember(guildID, userID)
+	if err != nil {
+		return err
+	}
+	for _, r := range member.Roles {
+		if r == roleID {
+			return d.client.GuildMemberRoleRemove(guildID, userID, roleID)
+		}
+	}
+	return d.client.GuildMemberRoleAdd(guildID, userID, roleID)
+}

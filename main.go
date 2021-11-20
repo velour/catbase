@@ -17,6 +17,7 @@ import (
 	"github.com/velour/catbase/plugins/mayi"
 	"github.com/velour/catbase/plugins/quotegame"
 	"github.com/velour/catbase/plugins/rest"
+	"github.com/velour/catbase/plugins/roles"
 	"github.com/velour/catbase/plugins/secrets"
 
 	"github.com/velour/catbase/plugins/achievements"
@@ -125,6 +126,7 @@ func main() {
 	}
 
 	b.AddPlugin(admin.New(b))
+	b.AddPlugin(roles.New(b))
 	b.AddPlugin(gpt3.New(b))
 	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(mayi.New(b))

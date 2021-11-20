@@ -132,5 +132,7 @@ func (p *CliPlugin) Emojy(name string) string { return name }
 func (p *CliPlugin) URLFormat(title, url string) string {
 	return fmt.Sprintf("%s (%s)", title, url)
 }
-func (p *CliPlugin) GetChannelName(id string) string { return id }
-func (p *CliPlugin) GetChannelID(name string) string { return name }
+func (p *CliPlugin) GetChannelName(id string) string     { return id }
+func (p *CliPlugin) GetChannelID(name string) string     { return name }
+func (p *CliPlugin) GetRoles() ([]bot.Role, error)       { return []bot.Role{}, nil }
+func (p *CliPlugin) SetRole(userID, roleID string) error { return nil }
