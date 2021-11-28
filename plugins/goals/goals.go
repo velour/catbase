@@ -213,6 +213,8 @@ func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
 	perc := float64(item.Count) / float64(g.Amount) * 100.0
 	remaining := p.remainingText(item, g)
 
+	log.Debug().Msgf("ch: %v, perc: %.2f, remaining: %s", ch, perc, remaining)
+
 	if perc >= 100 {
 		p.deregister(c, ch, g.Kind, g.What, g.Who)
 		m := fmt.Sprintf("You made it! You have %.2f%% of %s and now it's done.", perc, what)
@@ -316,7 +318,7 @@ func (g goal) Delete() error {
 }
 
 func (p *GoalsPlugin) update(r bot.Request, u counter.Update) {
-	log.Debug().Msgf("entered update for %#v", u)
+	log.Debug().Msgf("entered update for %#v in ch: %v", u, r.Msg.Channel)
 	gs, err := p.getGoal(u.Who, u.What)
 	if err != nil {
 		log.Error().Err(err).Msgf("could not get goal for %#v", u)

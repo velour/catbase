@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -69,25 +70,36 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 			fmt.Fprint(w, string(j))
 			return
 		}
+
+		body, _ := ioutil.ReadAll(r.Body)
+		postData := map[string]string{}
+		err = json.Unmarshal(body, &postData)
+		personalMsg := ""
+		if inputMsg, ok := postData["message"]; ok {
+			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
+		}
+
+		chs := p.cfg.GetArray("channels", []string{p.cfg.Get("channels", "none")})
 		req := &bot.Request{
 			Conn: p.b.DefaultConnector(),
 			Kind: bot.Message,
 			Msg: msg.Message{
-				User:        &u,
-				ChannelName: "#API",
-				Body:        fmt.Sprintf("%s += %d", itemName, delta),
-				Time:        time.Now(),
+				User: &u,
+				// Noting here that we're only going to do goals in a "default"
+				// channel even if it should send updates to others.
+				Channel: chs[0],
+				Body:    fmt.Sprintf("%s += %d", itemName, delta),
+				Time:    time.Now(),
 			},
 			Values: nil,
 			Args:   nil,
 		}
 		item.UpdateDelta(req, delta)
-		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API",
-			userName, itemName, delta, item.Count, p.cfg.Get("nick", "catbase"))
-		for _, ch := range p.cfg.GetArray("channels", []string{}) {
+		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
+			userName, itemName, delta, item.Count, p.cfg.Get("nick", "catbase"), personalMsg)
+		for _, ch := range chs {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
 			req.Msg.Channel = ch
-			sendUpdate(req, userName, itemName, item.Count)
 		}
 		j, _ := json.Marshal(struct{ Status bool }{true})
 		fmt.Fprint(w, string(j))
