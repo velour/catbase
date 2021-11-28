@@ -733,6 +733,8 @@ func RegisterUpdate(f updateFunc) {
 }
 
 func sendUpdate(r *bot.Request, who, what string, amount int) {
+	log.Debug().
+		Msgf("Updating %s for %s with %d", who, what, amount)
 	if r == nil {
 		return
 	}
