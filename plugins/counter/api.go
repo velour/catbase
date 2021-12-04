@@ -94,13 +94,13 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 			Values: nil,
 			Args:   nil,
 		}
-		item.UpdateDelta(req, delta)
 		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
-			userName, itemName, delta, item.Count, p.cfg.Get("nick", "catbase"), personalMsg)
+			userName, itemName, delta, item.Count+delta, p.cfg.Get("nick", "catbase"), personalMsg)
 		for _, ch := range chs {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
 			req.Msg.Channel = ch
 		}
+		item.UpdateDelta(req, delta)
 		j, _ := json.Marshal(struct{ Status bool }{true})
 		fmt.Fprint(w, string(j))
 	}

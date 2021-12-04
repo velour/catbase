@@ -593,9 +593,8 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 		return false
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
+	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick, item.Count+1, item.Item))
 	item.UpdateDelta(&r, 1)
-	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
-		item.Count, item.Item))
 	return true
 }
 
@@ -618,9 +617,9 @@ func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
 		// Item ain't there, I guess
 		return false
 	}
-	item.UpdateDelta(&r, -1)
 	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
-		item.Count, item.Item))
+		item.Count-1, item.Item))
+	item.UpdateDelta(&r, -1)
 	return true
 }
 
@@ -642,9 +641,9 @@ func (p *CounterPlugin) addToCmd(r bot.Request) bool {
 	}
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by %d: %#v", n, item)
-	item.UpdateDelta(&r, n)
 	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
-		item.Count, item.Item))
+		item.Count+n, item.Item))
+	item.UpdateDelta(&r, n)
 	return true
 }
 
@@ -666,9 +665,9 @@ func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
 	}
 	n, _ := strconv.Atoi(r.Values["amount"])
 	log.Debug().Msgf("About to update item by -%d: %#v", n, item)
-	item.UpdateDelta(&r, -n)
 	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick,
-		item.Count, item.Item))
+		item.Count-n, item.Item))
+	item.UpdateDelta(&r, -n)
 	return true
 }
 
@@ -708,9 +707,9 @@ func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
 	if item.Count < 0 {
 		delta = -1
 	}
-	item.UpdateDelta(&r, delta)
 	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s... %s has %d %s",
-		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count, itemName))
+		strings.Join(everyDayImShuffling([]string{"bleep", "bloop", "blop"}), "-"), nick, item.Count+delta, itemName))
+	item.UpdateDelta(&r, delta)
 	return true
 }
 
