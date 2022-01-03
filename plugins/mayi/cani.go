@@ -13,7 +13,7 @@ type MayIPlugin struct {
 	c *config.Config
 }
 
-var regex = regexp.MustCompile(`(?i)^(may|can) (?P<who>\S+) (?P<what>.+)`)
+var regex = regexp.MustCompile(`(?i)^(should|may|can) (?P<who>\S+) (?P<what>.+)`)
 
 func New(b bot.Bot) *MayIPlugin {
 	m := &MayIPlugin{
