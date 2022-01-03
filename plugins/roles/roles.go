@@ -2,6 +2,7 @@ package roles
 
 import (
 	"fmt"
+	"github.com/velour/catbase/bot/msg"
 	"regexp"
 	"strings"
 
@@ -29,6 +30,8 @@ func New(b bot.Bot) *RolesPlugin {
 	return p
 }
 
+var rolesRegexp = regexp.MustCompile(`(?i)^lsroles\s?(?P<offering>.*)`)
+
 func (p *RolesPlugin) Register() {
 	p.h = bot.HandlerTable{
 		{
@@ -39,17 +42,26 @@ func (p *RolesPlugin) Register() {
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^lsroles\s?(?P<offering>.*)`),
+			Regex:    rolesRegexp,
 			HelpText: "Lists roles with an optional offering set specifier",
 			Handler:  p.lsRoles,
 		},
 		{
-			Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?i)^offering (?P<offering>.+)`),
-			HelpText: "Changes the current offering set",
-			Handler:  p.setOffering,
+			Kind: bot.Help, IsCmd: true,
+			Regex:    regexp.MustCompile(`.`),
+			HelpText: "Lists roles with an optional offering set specifier",
+			Handler:  p.lsRoles,
 		},
 	}
+	p.b.Register(p, bot.Help, func(c bot.Connector, k bot.Kind, m msg.Message, args ...interface{}) bool {
+		return p.lsRoles(bot.Request{
+			Conn:   c,
+			Kind:   k,
+			Msg:    m,
+			Values: bot.ParseValues(rolesRegexp, m.Body),
+			Args:   args,
+		})
+	})
 	p.b.RegisterTable(p, p.h)
 }
 
