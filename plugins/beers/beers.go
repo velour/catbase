@@ -484,7 +484,7 @@ func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdU
 	p.addBeers(nil, user.chanNick, "", 1)
 	drunken := p.getBeers(user.chanNick, "")
 
-	msg := fmt.Sprintf("%s just drank %s by %s%s, bringing his drunkeness to %d",
+	msg := fmt.Sprintf("%s just drank %s by %s%s, bringing their drunkeness to %d",
 		user.chanNick, beerName, breweryName, venue, drunken)
 	if checkin.Rating_score > 0 {
 		msg = fmt.Sprintf("%s. Rating: %.2f", msg, checkin.Rating_score)
