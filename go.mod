@@ -19,7 +19,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/kevinburke/twilio-go v0.0.0-20200424172635-4f0b2357b852
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/mmcdole/gofeed v1.0.0-beta2
+	github.com/mmcdole/gofeed v1.1.3
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
 	github.com/rs/zerolog v1.26.1
@@ -55,6 +55,7 @@ require (
 	github.com/inconshreveable/log15 v0.0.0-20200109203555-b30bc20e4fd1 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/james-bowman/sparse v0.0.0-20190423065201-80c6877364c7 // indirect
+	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/kevinburke/go-types v0.0.0-20200309064045-f2d4aea18a7a // indirect
 	github.com/kevinburke/go.uuid v1.2.0 // indirect
@@ -62,6 +63,8 @@ require (
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d // indirect
