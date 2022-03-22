@@ -11,7 +11,7 @@ require (
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
 	github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90
-	github.com/go-chi/chi/v5 v5.0.3
+	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gocolly/colly v1.2.0
 	github.com/google/uuid v1.1.1
 	github.com/itchyny/gojq v0.12.7
