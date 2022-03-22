@@ -61,7 +61,7 @@ func New(b bot.Bot) *RSSPlugin {
 	return rss
 }
 
-func (p *RSSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RSSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	tokens := strings.Fields(message.Body)
 	numTokens := len(tokens)
 
@@ -98,7 +98,7 @@ func (p *RSSPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message,
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *RSSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RSSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "try '!rss http://rss.cnn.com/rss/edition.rss'")
 	return true
 }

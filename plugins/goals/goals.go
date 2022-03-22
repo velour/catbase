@@ -228,7 +228,7 @@ func (p *GoalsPlugin) checkGoal(c bot.Connector, ch, what, who string) {
 	return
 }
 
-func (p *GoalsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *GoalsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	ch := message.Channel
 	msg := "Goals can set goals and competition for your counters."
 	for _, cmd := range p.handlers {

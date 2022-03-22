@@ -173,7 +173,7 @@ func New(b bot.Bot) *SisyphusPlugin {
 	return sp
 }
 
-func (p *SisyphusPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *SisyphusPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	if strings.ToLower(message.Body) == "start sisyphus" {
 		b := NewRandomGame(c, p.bot, message.Channel, message.User.Name)
 		p.listenFor[b.id] = b
@@ -183,12 +183,12 @@ func (p *SisyphusPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 	return false
 }
 
-func (p *SisyphusPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *SisyphusPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "https://en.wikipedia.org/wiki/Sisyphus")
 	return true
 }
 
-func (p *SisyphusPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *SisyphusPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	identifier := args[0].(string)
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.bot.Config().Get("Nick", "bot")) {
 		if g, ok := p.listenFor[identifier]; ok {

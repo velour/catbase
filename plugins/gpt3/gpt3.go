@@ -95,15 +95,15 @@ func (p *GPT3Plugin) message(r bot.Request) bool {
 }
 
 type gpt3Request struct {
-	Prompt      string      `json:"prompt"`
-	MaxTokens   int         `json:"max_tokens"`
-	Temperature float64     `json:"temperature"`
-	TopP        float64     `json:"top_p"`
-	N           int         `json:"n"`
-	Stream      bool        `json:"stream"`
-	Logprobs    interface{} `json:"logprobs"`
-	Stop        []string    `json:"stop"`
-	Echo        bool        `json:"echo"`
+	Prompt      string   `json:"prompt"`
+	MaxTokens   int      `json:"max_tokens"`
+	Temperature float64  `json:"temperature"`
+	TopP        float64  `json:"top_p"`
+	N           int      `json:"n"`
+	Stream      bool     `json:"stream"`
+	Logprobs    any      `json:"logprobs"`
+	Stop        []string `json:"stop"`
+	Echo        bool     `json:"echo"`
 }
 
 type gpt3Response struct {
@@ -112,9 +112,9 @@ type gpt3Response struct {
 	Created int    `json:"created"`
 	Model   string `json:"model"`
 	Choices []struct {
-		Text         string      `json:"text"`
-		Index        int         `json:"index"`
-		Logprobs     interface{} `json:"logprobs"`
-		FinishReason string      `json:"finish_reason"`
+		Text         string `json:"text"`
+		Index        int    `json:"index"`
+		Logprobs     any    `json:"logprobs"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 }

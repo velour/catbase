@@ -53,7 +53,7 @@ func (p *RolesPlugin) Register() {
 			Handler:  p.lsRoles,
 		},
 	}
-	p.b.Register(p, bot.Help, func(c bot.Connector, k bot.Kind, m msg.Message, args ...interface{}) bool {
+	p.b.Register(p, bot.Help, func(c bot.Connector, k bot.Kind, m msg.Message, args ...any) bool {
 		return p.lsRoles(bot.Request{
 			Conn:   c,
 			Kind:   k,

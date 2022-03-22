@@ -99,7 +99,7 @@ func (p *RememberPlugin) rememberCmd(r bot.Request) bool {
 	return true
 }
 
-func (p *RememberPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RememberPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	msg := "remember will let you quote your idiot friends. Just type " +
 		"!remember <nick> <snippet> to remember what they said. Snippet can " +
 		"be any part of their message. Later on, you can ask for a random " +

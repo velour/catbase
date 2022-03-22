@@ -232,7 +232,7 @@ func (p *BeersPlugin) register() {
 // This function returns true if the plugin responds in a meaningful way to the users message.
 // Otherwise, the function returns false and the bot continues execution of other plugins.
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *BeersPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	msg := "Beers: imbibe by using either beers +=,=,++ or with the !imbibe/drink " +
 		"commands. I'll keep a count of how many beers you've had and then if you want " +
 		"to reset, just !puke it all up!"
@@ -305,9 +305,9 @@ type checkin struct {
 	Created_at      string
 	Checkin_comment string
 	Rating_score    float64
-	Beer            map[string]interface{}
-	Brewery         map[string]interface{}
-	Venue           interface{}
+	Beer            map[string]any
+	Brewery         map[string]any
+	Venue           any
 	User            mrUntappd
 	Media           struct {
 		Count int
@@ -442,7 +442,7 @@ func (p *BeersPlugin) checkUntappd(c bot.Connector, channel string) {
 func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdUser, checkin checkin) {
 	venue := ""
 	switch v := checkin.Venue.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		venue = " at " + v["venue_name"].(string)
 	}
 	beerName := checkin.Beer["beer_name"].(string)
@@ -452,7 +452,7 @@ func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdU
 		Msgf("user.chanNick: %s, user.untappdUser: %s, checkin.User.User_name: %s",
 			user.chanNick, user.untappdUser, checkin.User.User_name)
 
-	args := []interface{}{}
+	args := []any{}
 	if checkin.Badges.Count > 0 {
 		for _, b := range checkin.Badges.Items {
 			args = append(args, bot.ImageAttachment{
@@ -494,7 +494,7 @@ func (p *BeersPlugin) sendCheckin(c bot.Connector, channel string, user untappdU
 			msg, checkin.Checkin_comment)
 	}
 
-	args = append([]interface{}{channel, msg}, args...)
+	args = append([]any{channel, msg}, args...)
 
 	user.lastCheckin = checkin.Checkin_id
 	_, err := p.db.Exec(`update untappd set

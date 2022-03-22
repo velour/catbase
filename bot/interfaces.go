@@ -56,11 +56,11 @@ type Request struct {
 	Kind   Kind
 	Msg    msg.Message
 	Values RegexValues
-	Args   []interface{}
+	Args   []any
 }
 
 type Kind int
-type Callback func(Connector, Kind, msg.Message, ...interface{}) bool
+type Callback func(Connector, Kind, msg.Message, ...any) bool
 type ResponseHandler func(Request) bool
 type CallbackMap map[string]map[Kind][]HandlerSpec
 
@@ -96,11 +96,11 @@ type Bot interface {
 	// Send transmits a message to a Connector.
 	// Kind is listed in the bot's enum, one of bot.Message/Reply/Action/etc
 	// Usually, the first vararg should be a channel ID, but refer to the Connector for info
-	Send(Connector, Kind, ...interface{}) (string, error)
+	Send(Connector, Kind, ...any) (string, error)
 
 	// bot receives from a Connector.
 	// The Kind arg should be one of bot.Message/Reply/Action/etc
-	Receive(Connector, Kind, msg.Message, ...interface{}) bool
+	Receive(Connector, Kind, msg.Message, ...any) bool
 
 	// Register a set of plugin callbacks
 	// Kind will be matched to the event for the callback
@@ -174,7 +174,7 @@ type Bot interface {
 	CheckPassword(secret, password string) bool
 
 	// PubToASub publishes a message to any subscribers
-	PubToASub(subject string, payload interface{})
+	PubToASub(subject string, payload any)
 }
 
 // Connector represents a server connection to a chat service
@@ -183,7 +183,7 @@ type Connector interface {
 	RegisterEvent(Callback)
 
 	// Send transmits a message on the connector
-	Send(Kind, ...interface{}) (string, error)
+	Send(Kind, ...any) (string, error)
 
 	// GetEmojiList returns a connector's known custom emoji
 	GetEmojiList() map[string]string
@@ -221,7 +221,7 @@ type Connector interface {
 
 // Plugin interface used for compatibility with the Plugin interface
 // Uhh it turned empty, but we're still using it to ID plugins
-type Plugin interface{}
+type Plugin any
 
 type Role struct {
 	ID   string `json:"id"`

@@ -108,7 +108,7 @@ func New(b bot.Bot) *RPGPlugin {
 	return rpg
 }
 
-func (p *RPGPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RPGPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	if strings.ToLower(message.Body) == "start rpg" {
 		b := NewRandomBoard()
 		ts, _ := p.bot.Send(c, bot.Message, message.Channel, b.toMessageString())
@@ -119,12 +119,12 @@ func (p *RPGPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message,
 	return false
 }
 
-func (p *RPGPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RPGPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "Go find a walkthrough or something.")
 	return true
 }
 
-func (p *RPGPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *RPGPlugin) replyMessage(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	identifier := args[0].(string)
 	if strings.ToLower(message.User.Name) != strings.ToLower(p.bot.Config().Get("Nick", "bot")) {
 		if b, ok := p.listenFor[identifier]; ok {

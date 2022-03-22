@@ -109,7 +109,7 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	if twitcher.gameID != "" {
 		status = "YES."
 	}
-	context := map[string]interface{}{"Name": twitcher.name, "Status": status}
+	context := map[string]any{"Name": twitcher.name, "Status": status}
 
 	t, err := template.New("streaming").Parse(page)
 	if err != nil {
@@ -122,7 +122,7 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *TwitchPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TwitchPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	body := strings.ToLower(message.Body)
 	if body == "twitch status" {
 		channel := message.Channel
@@ -143,7 +143,7 @@ func (p *TwitchPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 	return false
 }
 
-func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	msg := "You can set the templates for streams with\n"
 	msg += fmt.Sprintf("twitch.istpl (default: %s)\n", isStreamingTplFallback)
 	msg += fmt.Sprintf("twitch.nottpl (default: %s)\n", notStreamingTplFallback)

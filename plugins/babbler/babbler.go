@@ -181,7 +181,7 @@ func (p *BabblerPlugin) sayIt(r bot.Request, what string) bool {
 	return what != ""
 }
 
-func (p *BabblerPlugin) help(c bot.Connector, kind bot.Kind, msg msg.Message, args ...interface{}) bool {
+func (p *BabblerPlugin) help(c bot.Connector, kind bot.Kind, msg msg.Message, args ...any) bool {
 	commands := []string{
 		"initialize babbler for seabass",
 		"merge babbler drseabass into seabass",

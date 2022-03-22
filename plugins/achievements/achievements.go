@@ -192,7 +192,7 @@ func (p *AchievementsPlugin) greatCmd(r bot.Request) bool {
 	return true
 }
 
-func (p *AchievementsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *AchievementsPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	ch := message.Channel
 	me := p.bot.WhoAmI()
 	msg := "The achievements plugins awards trophies."

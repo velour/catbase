@@ -101,7 +101,7 @@ func (t *TellPlugin) troll(who string) bool {
 	return false
 }
 
-func (t *TellPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (t *TellPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	if strings.HasPrefix(strings.ToLower(message.Body), "tell ") ||
 		strings.HasPrefix(strings.ToLower(message.Body), "tellah ") {
 		parts := strings.Split(message.Body, " ")

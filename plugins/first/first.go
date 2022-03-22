@@ -343,7 +343,7 @@ func (p *FirstPlugin) announceFirst(c bot.Connector, first *FirstEntry) {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *FirstPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *FirstPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "You can ask 'who's on first?' to find out.")
 	return true
 }

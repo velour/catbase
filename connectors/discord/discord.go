@@ -48,7 +48,7 @@ func (d *Discord) RegisterEvent(callback bot.Callback) {
 	d.event = callback
 }
 
-func (d Discord) Send(kind bot.Kind, args ...interface{}) (string, error) {
+func (d Discord) Send(kind bot.Kind, args ...any) (string, error) {
 
 	switch kind {
 	case bot.Ephemeral:
@@ -87,7 +87,7 @@ func (d Discord) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	}
 }
 
-func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...interface{}) (string, error) {
+func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...any) (string, error) {
 	if meMessage && !strings.HasPrefix(message, "_") && !strings.HasSuffix(message, "_") {
 		message = "_" + message + "_"
 	}

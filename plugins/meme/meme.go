@@ -99,7 +99,7 @@ func (p *MemePlugin) message(r bot.Request) bool {
 	return true
 }
 
-func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *MemePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	webRoot := p.c.Get("BaseURL", "https://catbase.velour.ninja")
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 	msg := "Use `/meme [format] [text]` to create a meme.\nI know the following formats:"

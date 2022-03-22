@@ -61,7 +61,7 @@ func (i *Irc) RegisterEvent(f bot.Callback) {
 	i.event = f
 }
 
-func (i *Irc) Send(kind bot.Kind, args ...interface{}) (string, error) {
+func (i *Irc) Send(kind bot.Kind, args ...any) (string, error) {
 	switch kind {
 	case bot.Reply:
 	case bot.Message:
@@ -78,7 +78,7 @@ func (i *Irc) JoinChannel(channel string) {
 	i.Client.Out <- irc.Msg{Cmd: irc.JOIN, Args: []string{channel}}
 }
 
-func (i *Irc) sendMessage(channel, message string, args ...interface{}) (string, error) {
+func (i *Irc) sendMessage(channel, message string, args ...any) (string, error) {
 	for len(message) > 0 {
 		m := irc.Msg{
 			Cmd:  "PRIVMSG",
@@ -123,7 +123,7 @@ func (i *Irc) sendMessage(channel, message string, args ...interface{}) (string,
 }
 
 // Sends action to channel
-func (i *Irc) sendAction(channel, message string, args ...interface{}) (string, error) {
+func (i *Irc) sendAction(channel, message string, args ...any) (string, error) {
 	message = actionPrefix + " " + message + "\x01"
 
 	return i.sendMessage(channel, message, args...)

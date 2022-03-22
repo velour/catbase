@@ -29,11 +29,11 @@ type RestPlugin struct {
 	handlers bot.HandlerTable
 }
 
-type postProcessor func(interface{}) string
+type postProcessor func(any) string
 
 var postProcessors = map[string]postProcessor{
-	"gpt2": func(input interface{}) string {
-		values := input.(map[string]interface{})
+	"gpt2": func(input any) string {
+		values := input.(map[string]any)
 		text := values["text"].(string)
 		lastStop := strings.LastIndexAny(text, ".!?")
 		if lastStop > 0 {
@@ -123,7 +123,7 @@ type ScanableRegexp struct {
 	*regexp.Regexp
 }
 
-func (s *ScanableRegexp) Scan(src interface{}) error {
+func (s *ScanableRegexp) Scan(src any) error {
 	var source string
 	switch src.(type) {
 	case string:
@@ -143,7 +143,7 @@ type ScanableURL struct {
 	*url.URL
 }
 
-func (s *ScanableURL) Scan(src interface{}) error {
+func (s *ScanableURL) Scan(src any) error {
 	var source string
 	switch src.(type) {
 	case string:
@@ -374,7 +374,7 @@ func (p *RestPlugin) mkHandler(w wire) bot.ResponseHandler {
 			return true
 		}
 		log.Debug().Str("body", string(body)).Msg("got a body back")
-		var returnValues interface{}
+		var returnValues any
 		json.Unmarshal(body, &returnValues)
 
 		var msg string

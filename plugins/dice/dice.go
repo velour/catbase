@@ -59,7 +59,7 @@ func (p *DicePlugin) rollCmd(r bot.Request) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *DicePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *DicePlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.Bot.Send(c, bot.Message, message.Channel, "Roll dice using notation XdY. Try \"3d20\".")
 	return true
 }

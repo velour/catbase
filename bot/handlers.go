@@ -21,7 +21,7 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
-func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
+func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...any) bool {
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
 
@@ -64,7 +64,7 @@ func ParseValues(r *regexp.Regexp, body string) RegexValues {
 	return out
 }
 
-func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.Message, args ...interface{}) bool {
+func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.Message, args ...any) bool {
 	t := reflect.TypeOf(plugin).String()
 	for _, spec := range b.callbacks[t][evt] {
 		if spec.Regex.MatchString(message.Body) {
@@ -84,7 +84,7 @@ func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.M
 }
 
 // Send a message to the connection
-func (b *bot) Send(conn Connector, kind Kind, args ...interface{}) (string, error) {
+func (b *bot) Send(conn Connector, kind Kind, args ...any) (string, error) {
 	if b.quiet {
 		return "", nil
 	}
@@ -269,14 +269,14 @@ func (b *bot) selfSaid(conn Connector, channel, message string, action bool) {
 }
 
 // PubToASub sends updates to subscribed URLs
-func (b *bot) PubToASub(subject string, payload interface{}) {
+func (b *bot) PubToASub(subject string, payload any) {
 	key := fmt.Sprintf("pubsub.%s.url", subject)
 	subs := b.config.GetArray(key, []string{})
 	if len(subs) == 0 {
 		return
 	}
 	encodedBody, _ := json.Marshal(struct {
-		Payload interface{} `json:"payload"`
+		Payload any `json:"payload"`
 	}{payload})
 	body := bytes.NewBuffer(encodedBody)
 	for _, url := range subs {

@@ -105,7 +105,7 @@ func (p *SMSPlugin) reg(c bot.Connector, ch, who, num string) bool {
 	return true
 }
 
-func (p *SMSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *SMSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	ch := message.Channel
 	m := fmt.Sprintf("You can register your number with: `%s`", regSelfRegex)
 	m += fmt.Sprintf("\nYou can register somebody else with: `%s`", regSomeoneRegex)

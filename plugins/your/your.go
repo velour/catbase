@@ -55,7 +55,7 @@ func (p *YourPlugin) message(r bot.Request) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *YourPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *YourPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "Your corrects people's grammar.")
 	return true
 }
