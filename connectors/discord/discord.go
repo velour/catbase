@@ -247,7 +247,7 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 
 	isCmd, text := bot.IsCmd(d.config, m.Content)
 
-	tStamp, _ := m.Timestamp.Parse()
+	tStamp := m.Timestamp
 
 	msg := msg.Message{
 		ID:          m.ID,
@@ -276,7 +276,11 @@ func (d *Discord) URLFormat(title, url string) string {
 
 // GetChannelName returns the channel ID for a human-friendly name (if possible)
 func (d *Discord) GetChannelID(name string) string {
-	chs, err := d.client.UserChannels()
+	guildID := d.config.Get("discord.guildid", "")
+	if guildID == "" {
+		return name
+	}
+	chs, err := d.client.GuildChannels(guildID)
 	if err != nil {
 		return name
 	}
