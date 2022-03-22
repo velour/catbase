@@ -43,7 +43,7 @@ func New(b bot.Bot) *Impossible {
 	return i
 }
 
-func (p *Impossible) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *Impossible) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.b.Send(c, bot.Message, message.Channel, "You don't need to do anything. I'll take care of it. But guess what I'm thinking.")
 	return true
 }
@@ -129,12 +129,12 @@ func (p *Impossible) refreshImpossible() bool {
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)
 
-	var object map[string]interface{}
+	var object map[string]any
 	json.Unmarshal([]byte(body), &object)
 
-	pages := object["query"].(map[string]interface{})["pages"].(map[string]interface{})
+	pages := object["query"].(map[string]any)["pages"].(map[string]any)
 	for _, page := range pages {
-		descriptionText := page.(map[string]interface{})["extract"].(string)
+		descriptionText := page.(map[string]any)["extract"].(string)
 		sentences := strings.Split(strings.ReplaceAll(descriptionText, "\n", " "), ". ")
 		for _, sentence := range sentences {
 			trimmed := strings.ToLower(strings.TrimSpace(sentence))

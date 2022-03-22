@@ -107,7 +107,7 @@ func (p *CliPlugin) handleWeb(w http.ResponseWriter, r *http.Request) {
 
 // Completing the Connector interface, but will not actually be a connector
 func (p *CliPlugin) RegisterEvent(cb bot.Callback) {}
-func (p *CliPlugin) Send(kind bot.Kind, args ...interface{}) (string, error) {
+func (p *CliPlugin) Send(kind bot.Kind, args ...any) (string, error) {
 	switch kind {
 	case bot.Message:
 		fallthrough

@@ -672,7 +672,7 @@ func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.b.Send(c, bot.Message, message.Channel, "You can set counters incrementally by using "+
 		"`<noun>++` and `<noun>--`. You can see all of your counters using "+
 		"`inspect`, erase them with `clear`, and view single counters with "+

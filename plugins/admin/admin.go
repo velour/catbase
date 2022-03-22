@@ -356,7 +356,7 @@ func (p *AdminPlugin) getConfigCmd(r bot.Request) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *AdminPlugin) help(conn bot.Connector, kind bot.Kind, m msg.Message, args ...interface{}) bool {
+func (p *AdminPlugin) help(conn bot.Connector, kind bot.Kind, m msg.Message, args ...any) bool {
 	p.bot.Send(conn, bot.Message, m.Channel, "This does super secret things that you're not allowed to know about.")
 	return true
 }

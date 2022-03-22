@@ -129,7 +129,7 @@ func (p *NerdepediaPlugin) message(r bot.Request) bool {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *NerdepediaPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *NerdepediaPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "nerd stuff")
 	return true
 }

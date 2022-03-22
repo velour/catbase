@@ -171,7 +171,7 @@ func (s *SlackApp) Serve() error {
 // or false if the ts isn't yet in the ring (and adds it)
 func (s *SlackApp) checkRingOrAdd(ts string) bool {
 	found := false
-	s.msgIDBuffer.Do(func(p interface{}) {
+	s.msgIDBuffer.Do(func(p any) {
 		if p == nil {
 			return
 		}
@@ -237,7 +237,7 @@ func (s *SlackApp) msgReceivd(msg *slackevents.MessageEvent) {
 	s.msgBuffer = s.msgBuffer.Next()
 }
 
-func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
+func (s *SlackApp) Send(kind bot.Kind, args ...any) (string, error) {
 	switch kind {
 	case bot.Message:
 		return s.sendMessage(args[0].(string), args[1].(string), false, args...)
@@ -264,7 +264,7 @@ func (s *SlackApp) Send(kind bot.Kind, args ...interface{}) (string, error) {
 	return "", fmt.Errorf("No handler for message type %d", kind)
 }
 
-func (s *SlackApp) sendMessage(channel, message string, meMessage bool, args ...interface{}) (string, error) {
+func (s *SlackApp) sendMessage(channel, message string, meMessage bool, args ...any) (string, error) {
 	ts, err := "", fmt.Errorf("")
 	nick := s.config.Get("Nick", "bot")
 
@@ -667,7 +667,7 @@ func (s *SlackApp) reactionReceived(event *slackevents.ReactionAddedEvent) error
 	body := "unknown message"
 
 	// Iterate through the ring and print its contents
-	s.msgBuffer.Do(func(p interface{}) {
+	s.msgBuffer.Do(func(p any) {
 		switch m := p.(type) {
 		case nil:
 		case *slackevents.MessageEvent:

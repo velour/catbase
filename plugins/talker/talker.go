@@ -63,7 +63,7 @@ func New(b bot.Bot) *TalkerPlugin {
 	return tp
 }
 
-func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	channel := message.Channel
 	body := message.Body
 	lowermessage := strings.ToLower(body)
@@ -111,7 +111,7 @@ func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 	return false
 }
 
-func (p *TalkerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *TalkerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "Hi, this is talker. I like to talk about FredFelps!")
 	return true
 }

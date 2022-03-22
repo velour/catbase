@@ -46,7 +46,7 @@ type StockInfo struct {
 	ChangePercent    string `json:"changepercent"`
 }
 
-func (p *StockPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *StockPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	if !message.Command {
 		return false
 	}
@@ -88,7 +88,7 @@ func (p *StockPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messag
 	return false
 }
 
-func (p *StockPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *StockPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "try '!stock-price SYMBOL'")
 	return true
 }

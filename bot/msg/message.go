@@ -20,7 +20,7 @@ type Message struct {
 	ChannelName    string
 	Body           string
 	IsIM           bool
-	Raw            interface{}
+	Raw            any
 	Command        bool
 	Action         bool
 	Time           time.Time

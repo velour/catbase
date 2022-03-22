@@ -35,7 +35,7 @@ func (mb *MockBot) WhoAmI() string              { return "tester" }
 func (mb *MockBot) DefaultConnector() Connector { return nil }
 func (mb *MockBot) GetPassword() string         { return "12345" }
 func (mb *MockBot) SetQuiet(bool)               {}
-func (mb *MockBot) Send(c Connector, kind Kind, args ...interface{}) (string, error) {
+func (mb *MockBot) Send(c Connector, kind Kind, args ...any) (string, error) {
 	switch kind {
 	case Message:
 		mb.Messages = append(mb.Messages, args[1].(string))
@@ -60,7 +60,7 @@ func (mb *MockBot) RegisterRegexCmd(p Plugin, kind Kind, r *regexp.Regexp, h Res
 func (mb *MockBot) RegisterWebName(_ http.Handler, _, _ string)                               {}
 func (mb *MockBot) RegisterWeb(_ http.Handler, _ string)                                      {}
 func (mb *MockBot) GetWebNavigation() []EndPoint                                              { return nil }
-func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...interface{}) bool {
+func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...any) bool {
 	return false
 }
 func (mb *MockBot) Filter(msg msg.Message, s string) string    { return s }
@@ -118,12 +118,12 @@ func NewMockBot() *MockBot {
 	return &b
 }
 
-func (mb *MockBot) GetPluginNames() []string                      { return nil }
-func (mb *MockBot) RefreshPluginBlacklist() error                 { return nil }
-func (mb *MockBot) RefreshPluginWhitelist() error                 { return nil }
-func (mb *MockBot) GetWhitelist() []string                        { return []string{} }
-func (mb *MockBot) OnBlacklist(ch, p string) bool                 { return false }
-func (mb *MockBot) URLFormat(title, url string) string            { return title + url }
-func (mb *MockBot) CheckPassword(secret, password string) bool    { return true }
-func (mb *MockBot) ListenAndServe()                               {}
-func (mb *MockBot) PubToASub(subject string, payload interface{}) {}
+func (mb *MockBot) GetPluginNames() []string                   { return nil }
+func (mb *MockBot) RefreshPluginBlacklist() error              { return nil }
+func (mb *MockBot) RefreshPluginWhitelist() error              { return nil }
+func (mb *MockBot) GetWhitelist() []string                     { return []string{} }
+func (mb *MockBot) OnBlacklist(ch, p string) bool              { return false }
+func (mb *MockBot) URLFormat(title, url string) string         { return title + url }
+func (mb *MockBot) CheckPassword(secret, password string) bool { return true }
+func (mb *MockBot) ListenAndServe()                            {}
+func (mb *MockBot) PubToASub(subject string, payload any)      {}

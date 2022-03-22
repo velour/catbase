@@ -740,7 +740,7 @@ func (p *FactoidPlugin) register() {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *FactoidPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *FactoidPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.Bot.Send(c, bot.Message, message.Channel, "I can learn facts and spit them back out. You can say \"this is that\" or \"he <has> $5\". Later, trigger the factoid by just saying the trigger word, \"this\" or \"he\" in these examples.")
 	p.Bot.Send(c, bot.Message, message.Channel, "I can also figure out some variables including: $nonzero, $digit, $nick, and $someone.")
 	return true

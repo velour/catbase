@@ -115,7 +115,7 @@ func (p *PickerPlugin) parse(body string) (int, []string, error) {
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
-func (p *PickerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *PickerPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "Choose from a list of options. Try \"pick {a,b,c}\".")
 	return true
 }

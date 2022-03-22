@@ -84,7 +84,7 @@ func New(b bot.Bot) *ReminderPlugin {
 	return plugin
 }
 
-func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	channel := message.Channel
 	from := message.User.Name
 
@@ -217,7 +217,7 @@ func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 	return false
 }
 
-func (p *ReminderPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...interface{}) bool {
+func (p *ReminderPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	p.bot.Send(c, bot.Message, message.Channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
 	return true
 }
