@@ -13,7 +13,7 @@ require (
 	github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gocolly/colly v1.2.0
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.3.0
 	github.com/itchyny/gojq v0.12.7
 	github.com/james-bowman/nlp v0.0.0-20191016091239-d9dbfaff30c6
 	github.com/jmoiron/sqlx v1.3.4
