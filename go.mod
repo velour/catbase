@@ -24,7 +24,7 @@ require (
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
 	github.com/rs/zerolog v1.15.0
 	github.com/slack-go/slack v0.9.4
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.7.1
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
@@ -80,5 +80,5 @@ require (
 	gonum.org/v1/gonum v0.6.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
