@@ -28,7 +28,7 @@ require (
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e
-	gopkg.in/go-playground/webhooks.v5 v5.13.0
+	gopkg.in/go-playground/webhooks.v5 v5.17.0
 )
 
 require (
