@@ -14,7 +14,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/gocolly/colly v1.2.0
 	github.com/google/uuid v1.1.1
-	github.com/itchyny/gojq v0.12.3
+	github.com/itchyny/gojq v0.12.7
 	github.com/james-bowman/nlp v0.0.0-20191016091239-d9dbfaff30c6
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/kevinburke/twilio-go v0.0.0-20200424172635-4f0b2357b852
@@ -53,14 +53,14 @@ require (
 	github.com/gonum/internal v0.0.0-20181124074243-f884aa714029 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/inconshreveable/log15 v0.0.0-20200109203555-b30bc20e4fd1 // indirect
-	github.com/itchyny/timefmt-go v0.1.2 // indirect
+	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/james-bowman/sparse v0.0.0-20190423065201-80c6877364c7 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/kevinburke/go-types v0.0.0-20200309064045-f2d4aea18a7a // indirect
 	github.com/kevinburke/go.uuid v1.2.0 // indirect
 	github.com/kevinburke/rest v0.0.0-20200429221318-0d2892b400f8 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-isatty v0.0.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -75,7 +75,7 @@ require (
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/net v0.0.0-20211118161319-6a13c67c3ce4 // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
-	golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1 // indirect
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gonum.org/v1/gonum v0.6.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
