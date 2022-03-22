@@ -5,7 +5,7 @@ go 1.18
 require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
-	github.com/PuerkitoBio/goquery v1.5.0
+	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/bwmarrin/discordgo v0.23.2
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
@@ -34,7 +34,7 @@ require (
 require (
 	github.com/AlekSi/pointer v1.1.0 // indirect
 	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
-	github.com/andybalholm/cascadia v1.1.0 // indirect
+	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/antchfx/htmlquery v1.2.0 // indirect
 	github.com/antchfx/xmlquery v1.2.0 // indirect
 	github.com/antchfx/xpath v1.1.1 // indirect
