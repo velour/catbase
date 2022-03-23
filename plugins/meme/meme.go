@@ -194,7 +194,9 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 	imgURL, ok := formats[format]
 	if !ok {
-		imgURL = format
+		log.Debug().Msgf("Bad meme request: %v, %v", from, text)
+		p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%v tried to send me a bad meme request.", from.Name))
+		return
 	}
 
 	stampURL := p.stamp(c, format, from.ID)
