@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -19,11 +20,94 @@ var embeddedFS embed.FS
 
 func (p *CounterPlugin) registerWeb() {
 	r := chi.NewRouter()
+	r.HandleFunc("/api/users/{user}/items/{item}/increment/{delta}", p.mkIncrementByNAPI(1))
+	r.HandleFunc("/api/users/{user}/items/{item}/decrement/{delta}", p.mkIncrementByNAPI(-1))
 	r.HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementAPI(1))
 	r.HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementAPI(-1))
 	r.HandleFunc("/api", p.handleCounterAPI)
 	r.HandleFunc("/", p.handleCounter)
 	p.b.RegisterWebName(r, "/counter", "Counter")
+}
+
+func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userName := chi.URLParam(r, "user")
+		itemName := chi.URLParam(r, "item")
+		delta, _ := strconv.Atoi(chi.URLParam(r, "delta"))
+
+		secret, pass, ok := r.BasicAuth()
+		if !ok || !p.b.CheckPassword(secret, pass) {
+			err := fmt.Errorf("unauthorized access")
+			log.Error().
+				Err(err).
+				Msg("error authenticating user")
+			w.WriteHeader(401)
+			j, _ := json.Marshal(struct {
+				Status bool
+				Error  string
+			}{false, err.Error()})
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		// Try to find an ID if possible
+		u, err := p.b.DefaultConnector().Profile(userName)
+		if err != nil {
+			log.Error().Err(err).Msg("error finding user")
+			w.WriteHeader(400)
+			j, _ := json.Marshal(struct {
+				Status bool
+				Error  error
+			}{false, err})
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		item, err := GetUserItem(p.db, userName, u.ID, itemName)
+		if err != nil {
+			log.Error().Err(err).Msg("error finding item")
+			w.WriteHeader(400)
+			j, _ := json.Marshal(struct {
+				Status bool
+				Error  error
+			}{false, err})
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		body, _ := ioutil.ReadAll(r.Body)
+		postData := map[string]string{}
+		err = json.Unmarshal(body, &postData)
+		personalMsg := ""
+		if inputMsg, ok := postData["message"]; ok {
+			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
+		}
+
+		chs := p.cfg.GetArray("channels", []string{p.cfg.Get("channels", "none")})
+		req := &bot.Request{
+			Conn: p.b.DefaultConnector(),
+			Kind: bot.Message,
+			Msg: msg.Message{
+				User: &u,
+				// Noting here that we're only going to do goals in a "default"
+				// channel even if it should send updates to others.
+				Channel: chs[0],
+				Body:    fmt.Sprintf("%s += %d", itemName, delta),
+				Time:    time.Now(),
+			},
+			Values: nil,
+			Args:   nil,
+		}
+		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
+			userName, itemName, delta, item.Count+delta*direction, p.cfg.Get("nick", "catbase"), personalMsg)
+		for _, ch := range chs {
+			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+			req.Msg.Channel = ch
+		}
+		item.UpdateDelta(req, delta*direction)
+		j, _ := json.Marshal(struct{ Status bool }{true})
+		fmt.Fprint(w, string(j))
+	}
 }
 
 func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r *http.Request) {
