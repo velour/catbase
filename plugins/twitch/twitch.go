@@ -156,7 +156,7 @@ func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message,
 
 func (p *TwitchPlugin) twitchLoop(c bot.Connector, channel string) {
 	frequency := p.config.GetInt("Twitch.Freq", 60)
-	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.authorization", "") == "" {
+	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.token", "") == "" {
 		log.Info().Msgf("Disabling twitch autochecking.")
 		return
 	}
@@ -172,7 +172,8 @@ func (p *TwitchPlugin) twitchLoop(c bot.Connector, channel string) {
 	}
 }
 
-func getRequest(url, clientID, authorization string) ([]byte, bool) {
+func getRequest(url, clientID, token string) ([]byte, bool) {
+	bearer := fmt.Sprintf("Bearer %s", token)
 	var body []byte
 	var resp *http.Response
 	client := &http.Client{}
@@ -182,7 +183,7 @@ func getRequest(url, clientID, authorization string) ([]byte, bool) {
 	}
 
 	req.Header.Add("Client-ID", clientID)
-	req.Header.Add("Authorization", authorization)
+	req.Header.Add("Authorization", bearer)
 
 	resp, err = client.Do(req)
 	if err != nil {
@@ -212,14 +213,14 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 
 	baseURL.RawQuery = query.Encode()
 
-	cid := p.config.Get("Twitch.ClientID", "")
-	auth := p.config.Get("Twitch.Authorization", "")
-	if cid == auth && cid == "" {
+	cid := p.config.Get("twitch.clientid", "")
+	token := p.config.Get("twitch.token", "")
+	if cid == token && cid == "" {
 		log.Info().Msgf("Twitch plugin not enabled.")
 		return
 	}
 
-	body, ok := getRequest(baseURL.String(), cid, auth)
+	body, ok := getRequest(baseURL.String(), cid, token)
 	if !ok {
 		return
 	}
