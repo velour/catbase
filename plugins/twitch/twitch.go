@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -11,7 +12,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -87,20 +87,19 @@ func New(b bot.Bot) *TwitchPlugin {
 
 func (p *TwitchPlugin) registerWeb() {
 	r := chi.NewRouter()
-	r.HandleFunc("/", p.serveStreaming)
+	r.HandleFunc("/{user}", p.serveStreaming)
 	p.bot.RegisterWeb(r, "/isstreaming")
 }
 
 func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) != 3 {
+	userName := chi.URLParam(r, "user")
+	if userName == "" {
 		fmt.Fprint(w, "User not found.")
 		return
 	}
 
-	twitcher := p.twitchList[pathParts[2]]
+	twitcher := p.twitchList[userName]
 	if twitcher == nil {
-
 		fmt.Fprint(w, "User not found.")
 		return
 	}
