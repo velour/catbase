@@ -170,13 +170,13 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 		allConfigs := p.c.GetMap("meme.memeconfigs", map[string]string{})
 		configtxt, ok := allConfigs[format]
 		if !ok {
-			config = defaultFormatConfig()
+			config = p.defaultFormatConfig()
 			log.Debug().Msgf("Did not find %s in %+v", format, allConfigs)
 		} else {
 			err = json.Unmarshal([]byte(configtxt), &config)
 			if err != nil {
 				log.Error().Err(err).Msgf("Could not parse config for %s:\n%s", format, configtxt)
-				config = defaultFormatConfig()
+				config = p.defaultFormatConfig()
 			}
 		}
 
@@ -343,15 +343,25 @@ func (p *MemePlugin) findFontSize(config []memeText, fontLocation string, w, h i
 	return fontSize
 }
 
-func defaultFormatConfig() []memeText {
+func (p *MemePlugin) defaultFormatConfig() []memeText {
+	allConfigs := p.c.GetMap("meme.memeconfigs", map[string]string{})
+	if configtxt, ok := allConfigs["default"]; ok {
+		var config []memeText
+		err := json.Unmarshal([]byte(configtxt), &config)
+		if err != nil {
+			goto ret
+		}
+		return config
+	}
+ret:
 	return []memeText{
-		{XPerc: 0.5, YPerc: 0.05, Caps: true},
-		{XPerc: 0.5, YPerc: 0.95, Caps: true},
+		{XPerc: 0.5, YPerc: 0.1, Caps: true},
+		{XPerc: 0.5, YPerc: 0.9, Caps: true},
 	}
 }
 
-func defaultFormatConfigJSON() string {
-	c, _ := json.Marshal(defaultFormatConfig())
+func (p *MemePlugin) defaultFormatConfigJSON() string {
+	c, _ := json.Marshal(p.defaultFormatConfig())
 	return string(c)
 }
 

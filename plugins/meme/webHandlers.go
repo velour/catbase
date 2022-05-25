@@ -51,7 +51,7 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 	for n, u := range memes {
 		config, ok := configs[n]
 		if !ok {
-			b, _ := json.Marshal(defaultFormatConfig())
+			b, _ := json.Marshal(p.defaultFormatConfig())
 			config = string(b)
 		}
 		realURL, err := url.Parse(u)
@@ -126,7 +126,7 @@ func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
 	checkError(err)
 
 	if values.Config == "" {
-		values.Config = defaultFormatConfigJSON()
+		values.Config = p.defaultFormatConfigJSON()
 	}
 	configs := p.c.GetMap("meme.memeconfigs", map[string]string{})
 	configs[values.Name] = values.Config
