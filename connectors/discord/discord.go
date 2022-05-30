@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/velour/catbase/bot/msg"
 
@@ -216,8 +217,11 @@ func (d *Discord) convertUser(u *discordgo.User) *user.User {
 func (d *Discord) Serve() error {
 	log.Debug().Msg("starting discord serve function")
 
-	d.client.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuilds |
-		discordgo.IntentsGuildMessages)
+	d.client.Identify.Intents = discordgo.MakeIntent(
+		discordgo.IntentsGuilds |
+			discordgo.IntentsGuildMessages |
+			discordgo.IntentsGuildEmojis |
+			discordgo.IntentsGuildMessageReactions)
 
 	err := d.client.Open()
 	if err != nil {
@@ -228,8 +232,30 @@ func (d *Discord) Serve() error {
 	log.Debug().Msg("discord connection open")
 
 	d.client.AddHandler(d.messageCreate)
+	d.client.AddHandler(d.messageReactAdd)
 
 	return nil
+}
+
+func (d *Discord) messageReactAdd(s *discordgo.Session, m *discordgo.MessageReactionAdd) {
+	log.Debug().Msg("messageReactAdd")
+	author, _ := d.Profile(m.UserID)
+	ch, err := s.Channel(m.ChannelID)
+	if err != nil {
+		log.Error().Err(err).Msg("error getting channel info")
+	}
+	msg := msg.Message{
+		ID:          m.MessageID,
+		User:        &author,
+		Channel:     m.ChannelID,
+		ChannelName: ch.Name,
+		Body:        m.Emoji.Name,
+		Time:        time.Now(),
+		AdditionalData: map[string]string{
+			"messageFormat": m.Emoji.MessageFormat(),
+		},
+	}
+	d.event(d, bot.Reaction, msg)
 }
 
 func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {

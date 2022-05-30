@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Load required Bootstrap and BootstrapVue CSS -->
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.css" />
+
+    <!-- Load polyfills to support older browsers -->
+    <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CMutationObserver"></script>
+
+    <!-- Load Vue followed by BootstrapVue -->
+    <script src="//unpkg.com/vue@^2/dist/vue.min.js"></script>
+    <script src="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.js"></script>
+    <script src="https://unpkg.com/vue-router@^2"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Memes</title>
+</head>
+<body>
+
+<div id="app">
+    <b-navbar>
+        <b-navbar-brand>Emojys</b-navbar-brand>
+        <b-navbar-nav>
+            <b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Meme'" :key="item.key">{{ item.name }}</b-nav-item>
+        </b-navbar-nav>
+    </b-navbar>
+    <b-alert
+            dismissable
+            variant="error"
+            :show="err != ''"
+            @dismissed="err = ''">
+        {{ err }}
+    </b-alert>
+
+    <ul>
+        <li v-for="emojy in results" key="Emojy">{{emojy.Count}} - {{emojy.Emojy}}</li>
+    </ul>
+</div>
+
+<script>
+    var router = new VueRouter({
+        mode: 'history',
+        routes: []
+    });
+    var app = new Vue({
+        el: '#app',
+        router,
+        data: {
+            err: '',
+            nav: [],
+            results: [],
+        },
+        mounted() {
+            axios.get('/nav')
+                .then(resp => {
+                    this.nav = resp.data;
+                })
+                .catch(err => console.log(err))
+            this.refresh();
+        },
+        methods: {
+            refresh: function () {
+                axios.get('/emojy/all')
+                    .then(resp => {
+                        this.results = resp.data
+                        this.err = ''
+                    })
+                    .catch(err => (this.err = err))
+            }
+        }
+    })
+</script>
+</body>
+</html>
