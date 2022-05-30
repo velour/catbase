@@ -51,19 +51,13 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 		}
 
 		// Try to find an ID if possible
+		id := ""
 		u, err := p.b.DefaultConnector().Profile(userName)
-		if err != nil {
-			log.Error().Err(err).Msg("error finding user")
-			w.WriteHeader(400)
-			j, _ := json.Marshal(struct {
-				Status bool
-				Error  error
-			}{false, err})
-			fmt.Fprint(w, string(j))
-			return
+		if err == nil {
+			id = u.ID
 		}
 
-		item, err := GetUserItem(p.db, userName, u.ID, itemName)
+		item, err := GetUserItem(p.db, userName, id, itemName)
 		if err != nil {
 			log.Error().Err(err).Msg("error finding item")
 			w.WriteHeader(400)
@@ -131,19 +125,13 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 		}
 
 		// Try to find an ID if possible
+		id := ""
 		u, err := p.b.DefaultConnector().Profile(userName)
-		if err != nil {
-			log.Error().Err(err).Msg("error finding user")
-			w.WriteHeader(400)
-			j, _ := json.Marshal(struct {
-				Status bool
-				Error  error
-			}{false, err})
-			fmt.Fprint(w, string(j))
-			return
+		if err == nil {
+			id = u.ID
 		}
 
-		item, err := GetUserItem(p.db, userName, u.ID, itemName)
+		item, err := GetUserItem(p.db, userName, id, itemName)
 		if err != nil {
 			log.Error().Err(err).Msg("error finding item")
 			w.WriteHeader(400)
