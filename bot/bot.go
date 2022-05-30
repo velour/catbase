@@ -249,11 +249,15 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 }
 
 func (b *bot) CheckAdmin(nick string) bool {
-	for _, u := range b.Config().GetArray("Admins", []string{}) {
+	admins := b.Config().GetArray("Admins", []string{})
+	log.Info().Interface("admins", admins).Msgf("Checking admin for %s", nick)
+	for _, u := range admins {
 		if nick == u {
+			log.Info().Msg("%s admin check: passed")
 			return true
 		}
 	}
+	log.Info().Msg("%s admin check: failed")
 	return false
 }
 
