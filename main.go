@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"github.com/velour/catbase/plugins/emojy"
 	"io"
 	"math/rand"
 	"os"
@@ -168,6 +169,7 @@ func main() {
 	b.AddPlugin(countdown.New(b))
 	b.AddPlugin(rest.New(b))
 	b.AddPlugin(quotegame.New(b))
+	b.AddPlugin(emojy.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
