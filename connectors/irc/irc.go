@@ -253,9 +253,11 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 		fallthrough
 
 	case irc.RPL_ENDOFWHO:
+		botMsg.Kind = bot.Event
 		i.event(i, bot.Event, botMsg)
 
 	case irc.PRIVMSG:
+		botMsg.Kind = bot.Message
 		i.event(i, bot.Message, botMsg)
 
 	case irc.QUIT:

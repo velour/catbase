@@ -246,6 +246,7 @@ func (d *Discord) messageReactAdd(s *discordgo.Session, m *discordgo.MessageReac
 	}
 	msg := msg.Message{
 		ID:          m.MessageID,
+		Kind:        bot.Reaction,
 		User:        &author,
 		Channel:     m.ChannelID,
 		ChannelName: ch.Name,
@@ -277,6 +278,7 @@ func (d *Discord) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate
 
 	msg := msg.Message{
 		ID:          m.ID,
+		Kind:        bot.Message,
 		User:        &author,
 		Channel:     m.ChannelID,
 		ChannelName: ch.Name,
