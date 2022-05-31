@@ -469,7 +469,8 @@ func (s *SlackApp) buildMessage(m *slackevents.MessageEvent) msg.Message {
 	tstamp := slackTStoTime(m.TimeStamp)
 
 	return msg.Message{
-		ID: m.TimeStamp,
+		ID:   m.TimeStamp,
+		Kind: bot.Message,
 		User: &user.User{
 			ID:   m.User,
 			Name: name,

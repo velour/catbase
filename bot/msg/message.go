@@ -13,6 +13,7 @@ type Messages []Message
 
 type Message struct {
 	ID   string
+	Kind int
 	User *user.User
 	// With Slack, channel is the ID of a channel
 	Channel string

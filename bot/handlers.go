@@ -131,6 +131,10 @@ func (b *bot) checkHelp(conn Connector, channel string, parts []string) {
 	}
 }
 
+func msgIsMsg(m msg.Message) bool {
+	return m.Kind == Message || m.Kind == Action || m.Kind == Reply
+}
+
 func (b *bot) LastMessage(channel string) (msg.Message, error) {
 	log := <-b.logOut
 	if len(log) == 0 {
@@ -138,7 +142,7 @@ func (b *bot) LastMessage(channel string) (msg.Message, error) {
 	}
 	for i := len(log) - 1; i >= 0; i-- {
 		msg := log[i]
-		if strings.ToLower(msg.Channel) == strings.ToLower(channel) {
+		if msgIsMsg(msg) && strings.ToLower(msg.Channel) == strings.ToLower(channel) {
 			return msg, nil
 		}
 	}
