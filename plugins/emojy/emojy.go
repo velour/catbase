@@ -6,6 +6,7 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"regexp"
+	"time"
 )
 
 type EmojyPlugin struct {
@@ -28,9 +29,10 @@ func New(b bot.Bot) *EmojyPlugin {
 }
 
 func (p *EmojyPlugin) setupDB() {
-	p.db.MustExec(`create table if not exists emojyCounter (
-		emojy text primary key,
-		count integer
+	p.db.MustExec(`create table if not exists emojyLog (
+		id integer primary key autoincrement,
+		emojy text,
+		observed datetime
 	)`)
 }
 
@@ -50,9 +52,8 @@ func (p *EmojyPlugin) register() {
 }
 
 func (p *EmojyPlugin) recordReaction(emojy string) error {
-	q := `insert into emojyCounter (emojy, count) values (?, 1)
-			on conflict(emojy) do update set count=count+1 where emojy=?;`
-	_, err := p.db.Exec(q, emojy, emojy)
+	q := `insert into emojyLog (emojy, observed) values (?, ?)`
+	_, err := p.db.Exec(q, emojy, time.Now())
 	if err != nil {
 		log.Error().Err(err).Msgf("recordReaction")
 		return err
@@ -61,13 +62,18 @@ func (p *EmojyPlugin) recordReaction(emojy string) error {
 }
 
 type EmojyEntry struct {
-	Emojy string `db:"emojy"`
-	Count int    `db:"count"`
+	Emojy    string    `db:"emojy"`
+	Observed time.Time `db:"observed"`
 }
 
-func (p *EmojyPlugin) all() ([]EmojyEntry, error) {
-	q := `select emojy, count from emojyCounter order by count desc`
-	result := []EmojyEntry{}
+type EmojyCount struct {
+	Emojy string `json:"emojy"`
+	Count int    `json:"count"`
+}
+
+func (p *EmojyPlugin) allCounts() ([]EmojyCount, error) {
+	q := `select emojy, count(observed) as count from emojyLog group by emojy order by count desc`
+	result := []EmojyCount{}
 	err := p.db.Select(&result, q)
 	if err != nil {
 		return nil, err
