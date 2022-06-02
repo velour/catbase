@@ -24,7 +24,7 @@ func (p *EmojyPlugin) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *EmojyPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
-	emojy, err := p.all()
+	emojy, err := p.allCounts()
 	if err != nil {
 		w.WriteHeader(500)
 		log.Error().Err(err).Msgf("handleAll")
