@@ -34,7 +34,16 @@
     </b-alert>
 
     <ul>
-        <li v-for="emojy in results" key="Emojy">{{emojy.count}} - {{emojy.emojy}}</li>
+        <li v-for="(category, name) in results" key="name">
+            {{name}}:
+            <ul>
+                <li v-for="emojy in category" key="emojy">
+                    {{emojy.count}} -
+                    <img v-if="emojy.url" :src="emojy.url" :alt="emojy.name" class="img-thumbnail" style="max-width: 64px; max-height: 64px" />
+                    <span v-else>{{emojy.emojy}}</span>
+                </li>
+            </ul>
+        </li>
     </ul>
 </div>
 
