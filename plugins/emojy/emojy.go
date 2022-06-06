@@ -83,13 +83,23 @@ type EmojyEntry struct {
 }
 
 type EmojyCount struct {
-	Emojy string `json:"emojy"`
-	URL   string `json:"url"`
-	Count int    `json:"count"`
+	Emojy    string `json:"emojy"`
+	URL      string `json:"url"`
+	Count    int    `json:"count"`
+	OnServer bool   `json:"onServer"`
+}
+
+func invertEmojyList(emojy map[string]string) map[string]string {
+	out := map[string]string{}
+	for k, v := range emojy {
+		out[v] = k
+	}
+	return out
 }
 
 func (p *EmojyPlugin) allCounts() (map[string][]EmojyCount, error) {
 	out := map[string][]EmojyCount{}
+	onServerList := invertEmojyList(p.b.DefaultConnector().GetEmojiList())
 	q := `select emojy, count(observed) as count from emojyLog group by emojy order by count desc`
 	result := []EmojyCount{}
 	err := p.db.Select(&result, q)
@@ -97,8 +107,8 @@ func (p *EmojyPlugin) allCounts() (map[string][]EmojyCount, error) {
 		return nil, err
 	}
 	for _, e := range result {
+		_, e.OnServer = onServerList[e.Emojy]
 		if isEmoji(e.Emojy) {
-
 			out["emoji"] = append(out["emoji"], e)
 		} else if ok, fname, _ := p.isKnownEmojy(e.Emojy); ok {
 			e.URL = fname

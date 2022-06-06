@@ -39,6 +39,11 @@
             <ul>
                 <li v-for="emojy in category" key="emojy">
                     {{emojy.count}} -
+                    <span v-if="name != 'emoji'">
+                        <span v-if="emojy.onServer">✅</span>
+                        <span v-else>❎</span>
+                        -
+                    </span>
                     <img v-if="emojy.url" :src="emojy.url" :alt="emojy.name" class="img-thumbnail" style="max-width: 64px; max-height: 64px" />
                     <span v-else>{{emojy.emojy}}</span>
                 </li>
