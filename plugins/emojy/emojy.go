@@ -48,6 +48,7 @@ func (p *EmojyPlugin) register() {
 			Handler: func(request bot.Request) bool {
 				r := regexp.MustCompile(`:[a-zA-Z0-9_-]+:`)
 				for _, match := range r.FindAllString(request.Msg.Body, -1) {
+					match = strings.Trim(match, ":")
 					log.Debug().Msgf("Emojy detected: %s", match)
 					p.recordReaction(match)
 				}
@@ -128,7 +129,10 @@ func (p *EmojyPlugin) isKnownEmojy(name string) (bool, string, error) {
 		return false, "", err
 	}
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasPrefix(e.Name(), name) {
+		if !e.IsDir() &&
+			(strings.HasPrefix(e.Name(), name) ||
+				strings.HasPrefix(e.Name(), strings.Replace(name, "-", "_", -1)) ||
+				strings.HasPrefix(e.Name(), strings.Trim(name, "-_"))) {
 			url := path.Join(baseURL, e.Name())
 			return true, url, nil
 		}
