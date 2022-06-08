@@ -129,7 +129,7 @@ func (i *Irc) sendAction(channel, message string, args ...any) (string, error) {
 	return i.sendMessage(channel, message, args...)
 }
 
-func (i *Irc) GetEmojiList() map[string]string {
+func (i *Irc) GetEmojiList(force bool) map[string]string {
 	//we're not going to do anything because it's IRC
 	return make(map[string]string)
 }
@@ -332,6 +332,14 @@ func (i Irc) Emojy(name string) string {
 		return emojy
 	}
 	return name
+}
+
+func (i Irc) UploadEmojy(emojy, path string) error {
+	return fmt.Errorf("unimplemented")
+}
+
+func (d Irc) DeleteEmojy(emojy string) error {
+	return fmt.Errorf("unimplemented")
 }
 
 // GetChannelName returns the channel ID for a human-friendly name (if possible)

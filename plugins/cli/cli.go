@@ -122,13 +122,15 @@ func (p *CliPlugin) Send(kind bot.Kind, args ...any) (string, error) {
 	p.counter++
 	return id, nil
 }
-func (p *CliPlugin) GetEmojiList() map[string]string { return nil }
-func (p *CliPlugin) Serve() error                    { return nil }
-func (p *CliPlugin) Who(s string) []string           { return nil }
+func (p *CliPlugin) GetEmojiList(bool) map[string]string { return nil }
+func (p *CliPlugin) Serve() error                        { return nil }
+func (p *CliPlugin) Who(s string) []string               { return nil }
 func (p *CliPlugin) Profile(name string) (user.User, error) {
 	return user.User{}, fmt.Errorf("unimplemented")
 }
-func (p *CliPlugin) Emojy(name string) string { return name }
+func (p *CliPlugin) Emojy(name string) string             { return name }
+func (p *CliPlugin) DeleteEmojy(name string) error        { return nil }
+func (p *CliPlugin) UploadEmojy(emojy, path string) error { return nil }
 func (p *CliPlugin) URLFormat(title, url string) string {
 	return fmt.Sprintf("%s (%s)", title, url)
 }
