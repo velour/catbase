@@ -396,7 +396,10 @@ func (s *SlackApp) edit(channel, newMessage, identifier string) (string, error) 
 	return ts, err
 }
 
-func (s *SlackApp) GetEmojiList() map[string]string {
+func (s *SlackApp) GetEmojiList(force bool) map[string]string {
+	if force {
+		s.populateEmojiList()
+	}
 	return s.emoji
 }
 
@@ -725,6 +728,14 @@ func (s *SlackApp) Emojy(name string) string {
 	}
 	log.Debug().Msgf("Found no emojy for %s", name)
 	return name
+}
+
+func (s *SlackApp) UploadEmojy(emojy, path string) error {
+	return fmt.Errorf("unimplemented")
+}
+
+func (s *SlackApp) DeleteEmojy(emojy string) error {
+	return fmt.Errorf("unimplemented")
 }
 
 func (s *SlackApp) URLFormat(title, url string) string {

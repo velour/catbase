@@ -129,7 +129,7 @@ type Bot interface {
 	CheckAdmin(string) bool
 
 	// GetEmojiList returns known emoji
-	GetEmojiList() map[string]string
+	GetEmojiList(bool) map[string]string
 
 	// RegisterFilter creates a filter function for message processing
 	RegisterFilter(string, func(string) string)
@@ -186,7 +186,7 @@ type Connector interface {
 	Send(Kind, ...any) (string, error)
 
 	// GetEmojiList returns a connector's known custom emoji
-	GetEmojiList() map[string]string
+	GetEmojiList(bool) map[string]string
 
 	// Serve starts a connector's connection routine
 	Serve() error
@@ -202,6 +202,12 @@ type Connector interface {
 
 	// Emojy translates emojy to/from services
 	Emojy(string) string
+
+	// UploadEmojy creates a new emojy on the server related to the file at path
+	UploadEmojy(emojy, path string) error
+
+	// DeleteEmojy removes the specified emojy from the server
+	DeleteEmojy(emojy string) error
 
 	// GetChannelName returns the human-friendly name for an ID (if possible)
 	GetChannelName(id string) string

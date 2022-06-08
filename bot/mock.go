@@ -103,7 +103,9 @@ func (mb *MockBot) edit(c Connector, channel, newMessage, identifier string) (st
 	return "", nil
 }
 
-func (mb *MockBot) GetEmojiList() map[string]string                { return make(map[string]string) }
+func (mb *MockBot) GetEmojiList(bool) map[string]string            { return make(map[string]string) }
+func (mb *MockBot) DeleteEmojy(name string) error                  { return nil }
+func (mb *MockBot) UploadEmojy(emojy, path string) error           { return nil }
 func (mb *MockBot) RegisterFilter(s string, f func(string) string) {}
 
 func NewMockBot() *MockBot {

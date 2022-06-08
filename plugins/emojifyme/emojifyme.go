@@ -63,7 +63,7 @@ func (p *EmojifyMePlugin) message(r bot.Request) bool {
 	message := r.Msg
 	if !p.GotBotEmoji {
 		p.GotBotEmoji = true
-		emojiMap := p.Bot.GetEmojiList()
+		emojiMap := p.Bot.GetEmojiList(false)
 		for e := range emojiMap {
 			p.Emoji[e] = e
 		}

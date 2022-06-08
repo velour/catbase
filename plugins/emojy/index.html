@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <!-- Load required Bootstrap and BootstrapVue CSS -->
-    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
-    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.css" />
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.css"/>
 
     <!-- Load polyfills to support older browsers -->
     <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CMutationObserver"></script>
@@ -22,18 +22,39 @@
     <b-navbar>
         <b-navbar-brand>Emojys</b-navbar-brand>
         <b-navbar-nav>
-            <b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Meme'" :key="item.key">{{ item.name }}</b-nav-item>
+            <b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Meme'" :key="item.key">{{ item.name
+                }}
+            </b-nav-item>
         </b-navbar-nav>
     </b-navbar>
-    <b-alert
-            dismissable
-            variant="error"
-            :show="err != ''"
-            @dismissed="err = ''">
-        {{ err }}
-    </b-alert>
 
-    <ul>
+    <b-navbar>
+        <b-navbar-nav>
+            <b-nav-item :active="view == 'stats'" @click="view = 'stats'">Stats</b-nav-item>
+            <b-nav-item :active="view == 'list'" @click="view = 'list'">List</b-nav-item>
+            <b-nav-item :active="view == 'upload'" @click="view = 'upload'">Upload</b-nav-item>
+        </b-navbar-nav>
+    </b-navbar>
+
+    <div
+            style="background-color:red;"
+            variant="error"
+            v-if="err != ''"
+            @click="err = ''">
+        {{ err }}
+    </div>
+
+    <div class="container" v-if="view == 'upload'">
+        <label>Passphrase</label>
+        <b-input v-model="password"></b-input>
+        <label>File
+            <input type="file" @change="handleFileUpload( $event )"/>
+        </label>
+        <br>
+        <button @click="submitFile()">Submit</button>
+    </div>
+
+    <ul v-if="view == 'stats'">
         <li v-for="(category, name) in results" key="name">
             {{name}}:
             <ul>
@@ -44,10 +65,18 @@
                         <span v-else>❎</span>
                         -
                     </span>
-                    <img v-if="emojy.url" :src="emojy.url" :alt="emojy.name" class="img-thumbnail" style="max-width: 64px; max-height: 64px" />
+                    <img v-if="emojy.url" :src="emojy.url" :alt="emojy.name" class="img-thumbnail"
+                         style="max-width: 64px; max-height: 64px"/>
                     <span v-else>{{emojy.emojy}}</span>
                 </li>
             </ul>
+        </li>
+    </ul>
+
+    <ul v-if="view == 'list'">
+        <li v-for="(path, name) in fileList" key="name">
+            {{name}}:
+            <img :src="path" :alt="name" class="img-thumbnail" style="max-width: 64px; max-height: 64px"/>
         </li>
     </ul>
 </div>
@@ -60,10 +89,21 @@
     var app = new Vue({
         el: '#app',
         router,
-        data: {
-            err: '',
-            nav: [],
-            results: [],
+        data: function () {
+            return {
+                err: '',
+                view: '',
+                nav: [],
+                results: [],
+                fileList: {},
+                image: null,
+                password: ''
+            }
+        },
+        watch: {
+            view(newView, oldView) {
+                this.err = '';
+            }
         },
         mounted() {
             axios.get('/nav')
@@ -81,6 +121,35 @@
                         this.err = ''
                     })
                     .catch(err => (this.err = err))
+                axios.get('/emojy/allFiles')
+                    .then(resp => {
+                        this.fileList = resp.data
+                        this.err = ''
+                    })
+                    .catch(err => (this.err = err))
+            },
+            handleFileUpload(evt) {
+                this.file = evt.target.files[0];
+                console.log("added file data: " + this.file);
+            },
+            submitFile() {
+                let formData = new FormData();
+                formData.append('file', this.file);
+                formData.append('password', this.password)
+                console.log('trying to make/save form data: ' + formData)
+                axios.post('/emojy/upload',
+                    formData,
+                    {
+                        headers: {'Content-Type': 'multipart/form-data'}
+                    })
+                    .then(() => {
+                        console.log('SUCCESS!!');
+                        this.view = 'list';
+                    })
+                    .catch(e => {
+                        console.log('FAILURE!!' + e);
+                        this.err = 'Could not upload file.';
+                    });
             }
         }
     })

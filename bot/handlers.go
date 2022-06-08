@@ -91,8 +91,8 @@ func (b *bot) Send(conn Connector, kind Kind, args ...any) (string, error) {
 	return conn.Send(kind, args...)
 }
 
-func (b *bot) GetEmojiList() map[string]string {
-	return b.conn.GetEmojiList()
+func (b *bot) GetEmojiList(force bool) map[string]string {
+	return b.conn.GetEmojiList(force)
 }
 
 // Checks to see if the user is asking for help, returns true if so and handles the situation.

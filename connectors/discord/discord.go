@@ -134,8 +134,8 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 	return st.ID, err
 }
 
-func (d *Discord) GetEmojiList() map[string]string {
-	if d.emojiCache != nil {
+func (d *Discord) GetEmojiList(force bool) map[string]string {
+	if d.emojiCache != nil && !force {
 		return d.emojiCache
 	}
 	guildID := d.config.Get("discord.guildid", "")
@@ -153,6 +153,16 @@ func (d *Discord) GetEmojiList() map[string]string {
 		emojis[e.ID] = e.Name
 	}
 	return emojis
+}
+
+func (d *Discord) GetEmojySnowflake(name string) string {
+	list := d.GetEmojiList(true)
+	for k, v := range list {
+		if name == v {
+			return k
+		}
+	}
+	return name
 }
 
 // Who gets the users in the guild
@@ -296,6 +306,22 @@ func (d *Discord) Emojy(name string) string {
 		return emojy
 	}
 	return name
+}
+
+func (d *Discord) UploadEmojy(emojy, path string) error {
+	guildID := d.config.Get("discord.guildid", "")
+	defaultRoles := d.config.GetArray("discord.emojyRoles", []string{})
+	_, err := d.client.GuildEmojiCreate(guildID, emojy, path, defaultRoles)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Discord) DeleteEmojy(emojy string) error {
+	guildID := d.config.Get("discord.guildid", "")
+	emojyID := d.GetEmojySnowflake(emojy)
+	return d.client.GuildEmojiDelete(guildID, emojyID)
 }
 
 func (d *Discord) URLFormat(title, url string) string {
