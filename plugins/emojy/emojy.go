@@ -76,26 +76,21 @@ func (p *EmojyPlugin) register() {
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^swapemojy (?P<old>.+) (?P<new>.+)$`),
+			Handler: func(r bot.Request) bool {
+				old := sanitizeName(r.Values["old"])
+				new := sanitizeName(r.Values["new"])
+				p.rmEmojy(r, old)
+				p.addEmojy(r, new)
+				return true
+			},
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
 			Regex: regexp.MustCompile(`(?i)^addemojy (?P<name>.+)$`),
 			Handler: func(r bot.Request) bool {
 				name := sanitizeName(r.Values["name"])
-				onServerList := invertEmojyList(p.b.GetEmojiList(false))
-				if _, ok := onServerList[name]; ok {
-					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Emoji already exists")
-					return true
-				}
-				if err := p.uploadEmojy(r.Conn, name); err != nil {
-					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("error adding emojy: %v", err))
-					return true
-				}
-				list := r.Conn.GetEmojiList(true)
-				for k, v := range list {
-					if v == name {
-						p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("added emojy: %s <:%s:%s>", name, name, k))
-						break
-					}
-				}
-				return true
+				return p.addEmojy(r, name)
 			},
 		},
 		{
@@ -103,21 +98,45 @@ func (p *EmojyPlugin) register() {
 			Regex: regexp.MustCompile(`(?i)^rmemojy (?P<name>.+)$`),
 			Handler: func(r bot.Request) bool {
 				name := sanitizeName(r.Values["name"])
-				onServerList := invertEmojyList(p.b.GetEmojiList(false))
-				if _, ok := onServerList[name]; !ok {
-					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Emoji does not exist")
-					return true
-				}
-				if err := r.Conn.DeleteEmojy(name); err != nil {
-					p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "error "+err.Error())
-					return true
-				}
-				p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "removed emojy "+name)
-				return true
+				return p.rmEmojy(r, name)
 			},
 		},
 	}
 	p.b.RegisterTable(p, ht)
+}
+
+func (p *EmojyPlugin) rmEmojy(r bot.Request, name string) bool {
+	onServerList := invertEmojyList(p.b.GetEmojiList(false))
+	if _, ok := onServerList[name]; !ok {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Emoji does not exist")
+		return true
+	}
+	if err := r.Conn.DeleteEmojy(name); err != nil {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "error "+err.Error())
+		return true
+	}
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "removed emojy "+name)
+	return true
+}
+
+func (p *EmojyPlugin) addEmojy(r bot.Request, name string) bool {
+	onServerList := invertEmojyList(p.b.GetEmojiList(false))
+	if _, ok := onServerList[name]; ok {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Emoji already exists")
+		return true
+	}
+	if err := p.uploadEmojy(r.Conn, name); err != nil {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("error adding emojy: %v", err))
+		return true
+	}
+	list := r.Conn.GetEmojiList(true)
+	for k, v := range list {
+		if v == name {
+			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("added emojy: %s <:%s:%s>", name, name, k))
+			break
+		}
+	}
+	return true
 }
 
 func (p *EmojyPlugin) recordReaction(emojy string) error {
