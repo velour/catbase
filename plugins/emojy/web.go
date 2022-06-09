@@ -102,6 +102,10 @@ func (p *EmojyPlugin) FileSave(r *http.Request) (string, error) {
 				return "", fmt.Errorf("error opening part %q: %s", fileHeader.Filename, err)
 			}
 			emojyFileName := fileHeader.Filename
+			emojyName := strings.TrimSuffix(emojyFileName, filepath.Ext(emojyFileName))
+			if ok, _, _, _ := p.isKnownEmojy(emojyName); ok {
+				return "", fmt.Errorf("emojy already exists")
+			}
 			emojyPath := p.c.Get("emojy.path", "emojy")
 			contentType := fileHeader.Header.Get("Content-Type")
 			if !strings.HasPrefix(contentType, "image") {
