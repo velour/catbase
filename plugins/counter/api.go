@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -20,6 +21,9 @@ var embeddedFS embed.FS
 
 func (p *CounterPlugin) registerWeb() {
 	r := chi.NewRouter()
+	requests := p.cfg.GetInt("counter.requestsPer", 1)
+	seconds := p.cfg.GetInt("counter.seconds", 1)
+	r.Use(httprate.LimitByIP(requests, time.Duration(seconds)*time.Second))
 	r.HandleFunc("/api/users/{user}/items/{item}/increment/{delta}", p.mkIncrementByNAPI(1))
 	r.HandleFunc("/api/users/{user}/items/{item}/decrement/{delta}", p.mkIncrementByNAPI(-1))
 	r.HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementAPI(1))
