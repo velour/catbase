@@ -31,6 +31,8 @@ github.com/bwmarrin/discordgo v0.25.0 h1:NXhdfHRNxtwso6FPdzW2i3uBvvU7UIQTghmV2T4
 github.com/bwmarrin/discordgo v0.25.0/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0kIVMCHkZtRY=
 github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598 h1:j2XRGH5Y5uWtBYXGwmrjKeM/kfu/jh7ZcnrGvyN5Ttk=
 github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598/go.mod h1:sduMkaHcXDIWurl/Bd/z0rNEUHw5tr6LUA9IO8E9o0o=
+github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=
+github.com/cespare/xxhash/v2 v2.1.2/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff h1:+TEqaP0eO1unI7XHHFeMDhsxhLDIb0x8KYuZbqbAmxA=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff/go.mod h1:QCRjR0b4qiJiNjuP7RFM89bh4UExGJalcWmYeSvlnRc=
 github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035 h1:3+eJGFTbUgOMDCpa8PTmJABs1Z3EDHRrcz6d3oXfZm0=
@@ -54,6 +56,8 @@ github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 h1:GOfMz6cRgTJ9j
 github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17/go.mod h1:HfkOCN6fkKKaPSAeNq/er3xObxTW4VLeY6UUK895gLQ=
 github.com/go-chi/chi/v5 v5.0.7 h1:rDTPXLDHGATaeHvVlLcR4Qe0zftYethFucbjVQ1PxU8=
 github.com/go-chi/chi/v5 v5.0.7/go.mod h1:DslCQbL2OYiznFReuXYUmQ2hGd1aDpCnlMNITLSKoi8=
+github.com/go-chi/httprate v0.5.3 h1:5HPWb0N6ymIiuotMtCfOGpQKiKeqXVzMexHh1W1yXPc=
+github.com/go-chi/httprate v0.5.3/go.mod h1:kYR4lorHX3It9tTh4eTdHhcF2bzrYnCrRNlv5+IBm2M=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
