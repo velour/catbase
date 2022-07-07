@@ -17,7 +17,7 @@ require (
 	github.com/go-chi/httprate v0.5.3
 	github.com/gocolly/colly v1.2.0
 	github.com/google/uuid v1.3.0
-	github.com/itchyny/gojq v0.12.7
+	github.com/itchyny/gojq v0.12.8
 	github.com/james-bowman/nlp v0.0.0-20191016091239-d9dbfaff30c6
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/kevinburke/twilio-go v0.0.0-20200424172635-4f0b2357b852
@@ -88,5 +88,5 @@ require (
 	gonum.org/v1/gonum v0.6.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
