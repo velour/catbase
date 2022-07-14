@@ -25,7 +25,7 @@ require (
 	github.com/mmcdole/gofeed v1.1.3
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
-	github.com/rs/zerolog v1.26.1
+	github.com/rs/zerolog v1.27.0
 	github.com/slack-go/slack v0.10.3
 	github.com/stretchr/testify v1.7.1
 	github.com/trubitsyn/go-zero-width v1.0.1
@@ -64,7 +64,7 @@ require (
 	github.com/kevinburke/go-types v0.0.0-20200309064045-f2d4aea18a7a // indirect
 	github.com/kevinburke/go.uuid v1.2.0 // indirect
 	github.com/kevinburke/rest v0.0.0-20200429221318-0d2892b400f8 // indirect
-	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
