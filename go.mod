@@ -26,7 +26,7 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
 	github.com/rs/zerolog v1.27.0
-	github.com/slack-go/slack v0.10.3
+	github.com/slack-go/slack v0.11.0
 	github.com/stretchr/testify v1.8.0
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
