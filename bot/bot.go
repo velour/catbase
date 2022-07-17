@@ -318,6 +318,9 @@ func (b *bot) Register(p Plugin, kind Kind, cb Callback) {
 // GetPassword returns a random password generated for the bot
 // Passwords expire in 24h and are used for the web interface
 func (b *bot) GetPassword() string {
+	if override := b.config.Get("bot.password", ""); override != "" {
+		return override
+	}
 	if b.passwordCreated.Before(time.Now().Add(-24 * time.Hour)) {
 		adjs := b.config.GetArray("bot.passwordAdjectives", []string{"very"})
 		nouns := b.config.GetArray("bot.passwordNouns", []string{"noun"})
@@ -404,10 +407,11 @@ func PluginName(p Plugin) string {
 }
 
 func (b *bot) CheckPassword(secret, password string) bool {
+	log.Debug().Msgf("CheckPassword(%s, %s) => b.password=%s, b.GetPassword()=%s", secret, password, b.password, b.GetPassword())
 	if password == "" {
 		return false
 	}
-	if b.password == password {
+	if b.GetPassword() == password {
 		return true
 	}
 	parts := strings.SplitN(password, ":", 2)
