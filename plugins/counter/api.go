@@ -211,7 +211,19 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 			w.Write(j)
 			return
 		}
-		nick, id := p.resolveUser(bot.Request{Conn: p.b.DefaultConnector()}, info.User)
+		req := bot.Request{
+			Conn: p.b.DefaultConnector(),
+			Kind: bot.Message,
+			Msg: msg.Message{
+				User: &user.User{
+					ID:    "",
+					Name:  info.User,
+					Admin: false,
+				},
+			},
+		}
+		// resolveUser requires a "full" request object so we are faking it
+		nick, id := p.resolveUser(req, info.User)
 		item, err := GetUserItem(p.db, nick, id, info.Thing)
 		if err != nil {
 			log.Error().
