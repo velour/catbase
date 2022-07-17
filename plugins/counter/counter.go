@@ -190,7 +190,7 @@ func GetUserItem(db *sqlx.DB, nick, id, itemName string) (Item, error) {
 		item.ID = -1
 		item.Nick = nick
 		item.Item = itemName
-		item.UserID.String = id
+		item.UserID.Scan(id)
 	case nil:
 	default:
 		return Item{}, err
@@ -208,7 +208,7 @@ func GetUserItem(db *sqlx.DB, nick, id, itemName string) (Item, error) {
 // Create saves a counter
 func (i *Item) Create() error {
 	res, err := i.Exec(`insert into counter (nick, item, count, userid) values (?, ?, ?, ?);`,
-		i.Nick, i.Item, i.Count, i.UserID)
+		i.Nick, i.Item, i.Count, i.UserID.String)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,9 @@ func (i *Item) Update(r *bot.Request, value int) error {
 		return i.Delete()
 	}
 	if i.ID == -1 {
-		i.Create()
+		if err := i.Create(); err != nil {
+			return err
+		}
 	}
 	log.Debug().
 		Interface("i", i).
@@ -286,21 +288,20 @@ func (p *CounterPlugin) migrate(r bot.Request) bool {
 
 func setupDB(b bot.Bot) error {
 	db := b.DB()
-	tx := db.MustBegin()
 	db.MustExec(`create table if not exists counter (
 			id integer primary key,
 			nick string,
 			item string,
-			count integer
+			count integer,
+			userid string
 		);`)
 	db.MustExec(`create table if not exists counter_alias (
 			id integer PRIMARY KEY AUTOINCREMENT,
 			item string NOT NULL UNIQUE,
 			points_to string NOT NULL
 		);`)
-	tx.Commit()
 
-	tx = db.MustBegin()
+	tx := db.MustBegin()
 	count := 0
 	err := tx.Get(&count, `SELECT count(*) FROM pragma_table_info('counter') where name='userid'`)
 	if err != nil {
@@ -594,7 +595,10 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 	}
 	log.Debug().Msgf("About to update item: %#v", item)
 	p.b.Send(r.Conn, bot.Message, channel, fmt.Sprintf("%s has %d %s.", nick, item.Count+1, item.Item))
-	item.UpdateDelta(&r, 1)
+	err = item.UpdateDelta(&r, 1)
+	if err != nil {
+		log.Error().Err(err).Msgf("Could not UpdateDelta")
+	}
 	return true
 }
 
