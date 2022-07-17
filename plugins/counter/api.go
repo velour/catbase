@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/velour/catbase/bot/user"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -23,11 +24,14 @@ func (p *CounterPlugin) registerWeb() {
 	r := chi.NewRouter()
 	requests := p.cfg.GetInt("counter.requestsPer", 1)
 	seconds := p.cfg.GetInt("counter.seconds", 1)
-	r.Use(httprate.LimitByIP(requests, time.Duration(seconds)*time.Second))
-	r.HandleFunc("/api/users/{user}/items/{item}/increment/{delta}", p.mkIncrementByNAPI(1))
-	r.HandleFunc("/api/users/{user}/items/{item}/decrement/{delta}", p.mkIncrementByNAPI(-1))
-	r.HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementAPI(1))
-	r.HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementAPI(-1))
+	dur := time.Duration(seconds) * time.Second
+	subrouter := chi.NewRouter()
+	subrouter.Use(httprate.LimitByIP(requests, dur))
+	subrouter.HandleFunc("/api/users/{user}/items/{item}/increment/{delta}", p.mkIncrementByNAPI(1))
+	subrouter.HandleFunc("/api/users/{user}/items/{item}/decrement/{delta}", p.mkIncrementByNAPI(-1))
+	subrouter.HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementAPI(1))
+	subrouter.HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementAPI(-1))
+	r.Mount("/", subrouter)
 	r.HandleFunc("/api", p.handleCounterAPI)
 	r.HandleFunc("/", p.handleCounter)
 	p.b.RegisterWebName(r, "/counter", "Counter")
@@ -250,12 +254,14 @@ func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprint(w, err)
+		log.Error().Err(err).Msg("Error getting items")
 		return
 	}
 	data, err := json.Marshal(all)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprint(w, err)
+		log.Error().Err(err).Msg("Error marshaling items")
 		return
 	}
 	fmt.Fprint(w, string(data))
