@@ -32,7 +32,7 @@ type Item struct {
 	Nick   string
 	Item   string
 	Count  int
-	UserID string
+	UserID sql.NullString
 }
 
 type alias struct {
@@ -190,7 +190,7 @@ func GetUserItem(db *sqlx.DB, nick, id, itemName string) (Item, error) {
 		item.ID = -1
 		item.Nick = nick
 		item.Item = itemName
-		item.UserID = id
+		item.UserID.String = id
 	case nil:
 	default:
 		return Item{}, err
