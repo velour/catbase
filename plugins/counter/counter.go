@@ -3,13 +3,13 @@ package counter
 import (
 	"database/sql"
 	"fmt"
+	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/config"
 	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/rs/zerolog/log"
-	"github.com/velour/catbase/config"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 
@@ -20,9 +20,10 @@ import (
 // This is a counter plugin to count arbitrary things.
 
 type CounterPlugin struct {
-	b   bot.Bot
-	db  *sqlx.DB
-	cfg *config.Config
+	b      bot.Bot
+	db     *sqlx.DB
+	cfg    *config.Config
+	modify sync.Mutex
 }
 
 type Item struct {
@@ -122,8 +123,8 @@ func RmAlias(db *sqlx.DB, aliasName string) error {
 }
 
 func MkAlias(db *sqlx.DB, aliasName, pointsTo string) (*alias, error) {
-	aliasName = strings.ToLower(aliasName)
-	pointsTo = strings.ToLower(pointsTo)
+	aliasName = strings.TrimSpace(strings.ToLower(aliasName))
+	pointsTo = strings.TrimSpace(strings.ToLower(pointsTo))
 	res, err := db.Exec(`insert into counter_alias (item, points_to) values (?, ?)`,
 		aliasName, pointsTo)
 	if err != nil {
@@ -436,6 +437,8 @@ func (p *CounterPlugin) leaderboardCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) resetCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := p.resolveUser(r, "")
 	channel := r.Msg.Channel
 
@@ -509,6 +512,8 @@ func (p *CounterPlugin) inspectCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) clearCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := p.resolveUser(r, "")
 	itemName := strings.ToLower(r.Values["what"])
 	channel := r.Msg.Channel
@@ -575,6 +580,8 @@ func (p *CounterPlugin) countCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := r.Msg.User.Name, r.Msg.User.ID
 	if r.Values["who"] != "" {
 		nick, id = p.resolveUser(r, r.Values["who"])
@@ -603,6 +610,8 @@ func (p *CounterPlugin) incrementCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := r.Msg.User.Name, r.Msg.User.ID
 	if r.Values["who"] != "" {
 		nick, id = p.resolveUser(r, r.Values["who"])
@@ -628,6 +637,8 @@ func (p *CounterPlugin) decrementCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) addToCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := p.resolveUser(r, r.Values["who"])
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
@@ -652,6 +663,8 @@ func (p *CounterPlugin) addToCmd(r bot.Request) bool {
 }
 
 func (p *CounterPlugin) removeFromCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := p.resolveUser(r, r.Values["who"])
 	itemName := r.Values["thing"]
 	channel := r.Msg.Channel
@@ -687,6 +700,8 @@ func (p *CounterPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message
 }
 
 func (p *CounterPlugin) teaMatchCmd(r bot.Request) bool {
+	p.modify.Lock()
+	defer p.modify.Unlock()
 	nick, id := r.Msg.User.Name, r.Msg.User.ID
 	channel := r.Msg.Channel
 
