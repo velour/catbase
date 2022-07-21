@@ -37,6 +37,7 @@ func getEmojy(c *config.Config, name string) (image.Image, error) {
 func getCowboyHat(c *config.Config) (image.Image, error) {
 	emojyPath := c.Get("emojy.path", "emojy")
 	p := path.Join(emojyPath, c.Get("cowboy.hatname", "hat.png"))
+	p = path.Clean(p)
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, err
