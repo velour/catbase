@@ -4,8 +4,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/log"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,6 +11,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 )
 
 //go:embed *.html
@@ -46,7 +47,7 @@ func (p *EmojyPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *EmojyPlugin) handleAllFiles(w http.ResponseWriter, r *http.Request) {
-	_, urlMap, err := p.allFiles()
+	_, urlMap, err := AllFiles(p.c)
 	if err != nil {
 		w.WriteHeader(500)
 		out, _ := json.Marshal(struct{ err error }{err})

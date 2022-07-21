@@ -4,11 +4,13 @@ package main
 
 import (
 	"flag"
-	"github.com/velour/catbase/plugins/emojy"
 	"io"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/velour/catbase/plugins/cowboy"
+	"github.com/velour/catbase/plugins/emojy"
 
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/connectors/discord"
@@ -170,6 +172,7 @@ func main() {
 	b.AddPlugin(rest.New(b))
 	b.AddPlugin(quotegame.New(b))
 	b.AddPlugin(emojy.New(b))
+	b.AddPlugin(cowboy.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 

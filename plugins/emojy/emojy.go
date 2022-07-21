@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/fogleman/gg"
-	"github.com/gabriel-vasile/mimetype"
 	"math"
 	"os"
 	"path"
@@ -13,6 +11,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/fogleman/gg"
+	"github.com/gabriel-vasile/mimetype"
 
 	"github.com/forPelevin/gomoji"
 	"github.com/jmoiron/sqlx"
@@ -192,11 +193,11 @@ func (p *EmojyPlugin) allCounts() (map[string][]EmojyCount, error) {
 	return out, nil
 }
 
-func (p *EmojyPlugin) allFiles() (map[string]string, map[string]string, error) {
+func AllFiles(c *config.Config) (map[string]string, map[string]string, error) {
 	files := map[string]string{}
 	urls := map[string]string{}
-	emojyPath := p.c.Get("emojy.path", "emojy")
-	baseURL := p.c.Get("emojy.baseURL", "/emojy/file")
+	emojyPath := c.Get("emojy.path", "emojy")
+	baseURL := c.Get("emojy.baseURL", "/emojy/file")
 	entries, err := os.ReadDir(emojyPath)
 	if err != nil {
 		return nil, nil, err
@@ -213,7 +214,7 @@ func (p *EmojyPlugin) allFiles() (map[string]string, map[string]string, error) {
 }
 
 func (p *EmojyPlugin) isKnownEmojy(name string) (bool, string, string, error) {
-	allFiles, allURLs, err := p.allFiles()
+	allFiles, allURLs, err := AllFiles(p.c)
 	if err != nil {
 		return false, "", "", err
 	}
