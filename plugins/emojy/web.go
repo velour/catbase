@@ -25,13 +25,22 @@ func (p *EmojyPlugin) registerWeb() {
 	r.HandleFunc("/allFiles", p.handleAllFiles)
 	r.HandleFunc("/upload", p.handleUpload)
 	r.HandleFunc("/file/{name}", p.handleEmojy)
+	r.HandleFunc("/stats", p.handlePage("stats.html"))
+	r.HandleFunc("/list", p.handlePage("list.html"))
+	r.HandleFunc("/upload", p.handlePage("upload.html"))
 	r.HandleFunc("/", p.handleIndex)
 	p.b.RegisterWebName(r, "/emojy", "Emojys")
 }
 
 func (p *EmojyPlugin) handleIndex(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("index.html")
-	w.Write(index)
+	http.Redirect(w, r, "/emojy/stats", http.StatusPermanentRedirect)
+}
+
+func (p *EmojyPlugin) handlePage(file string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		index, _ := embeddedFS.ReadFile(file)
+		w.Write(index)
+	}
 }
 
 func (p *EmojyPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +56,7 @@ func (p *EmojyPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *EmojyPlugin) handleAllFiles(w http.ResponseWriter, r *http.Request) {
-	_, urlMap, err := AllFiles(p.c)
+	_, urlMap, err := AllFiles(p.emojyPath, p.baseURL)
 	if err != nil {
 		w.WriteHeader(500)
 		out, _ := json.Marshal(struct{ err error }{err})
@@ -107,13 +116,12 @@ func (p *EmojyPlugin) FileSave(r *http.Request) (string, error) {
 			if ok, _, _, _ := p.isKnownEmojy(emojyName); ok {
 				return "", fmt.Errorf("emojy already exists")
 			}
-			emojyPath := p.c.Get("emojy.path", "emojy")
 			contentType := fileHeader.Header.Get("Content-Type")
 			if !strings.HasPrefix(contentType, "image") {
 				return "", fmt.Errorf("incorrect mime type - given: %s", contentType)
 			}
-			fullPath := filepath.Clean(filepath.Join(emojyPath, emojyFileName))
-			_ = os.MkdirAll(emojyPath, os.ModePerm)
+			fullPath := filepath.Clean(filepath.Join(p.emojyPath, emojyFileName))
+			_ = os.MkdirAll(p.emojyPath, os.ModePerm)
 			log.Debug().Msgf("trying to create/open file: %s", fullPath)
 			file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 			if err != nil {
@@ -132,8 +140,7 @@ func (p *EmojyPlugin) FileSave(r *http.Request) (string, error) {
 
 func (p *EmojyPlugin) handleEmojy(w http.ResponseWriter, r *http.Request) {
 	fname := chi.URLParam(r, "name")
-	emojyPath := p.c.Get("emojy.path", "emojy")
-	contents, err := ioutil.ReadFile(path.Join(emojyPath, fname))
+	contents, err := ioutil.ReadFile(path.Join(p.emojyPath, fname))
 	if err != nil {
 		w.WriteHeader(404)
 		out, _ := json.Marshal(struct{ err error }{err})

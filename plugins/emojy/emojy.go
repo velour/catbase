@@ -26,16 +26,23 @@ type EmojyPlugin struct {
 	b  bot.Bot
 	c  *config.Config
 	db *sqlx.DB
+
+	emojyPath string
+	baseURL   string
 }
 
 const maxLen = 32
 
 func New(b bot.Bot) *EmojyPlugin {
 	log.Debug().Msgf("emojy.New")
+	emojyPath := b.Config().Get("emojy.path", "emojy")
+	baseURL := b.Config().Get("emojy.baseURL", "/emojy/file")
 	p := &EmojyPlugin{
-		b:  b,
-		c:  b.Config(),
-		db: b.DB(),
+		b:         b,
+		c:         b.Config(),
+		db:        b.DB(),
+		emojyPath: emojyPath,
+		baseURL:   baseURL,
 	}
 	p.setupDB()
 	p.register()
@@ -193,11 +200,9 @@ func (p *EmojyPlugin) allCounts() (map[string][]EmojyCount, error) {
 	return out, nil
 }
 
-func AllFiles(c *config.Config) (map[string]string, map[string]string, error) {
+func AllFiles(emojyPath, baseURL string) (map[string]string, map[string]string, error) {
 	files := map[string]string{}
 	urls := map[string]string{}
-	emojyPath := c.Get("emojy.path", "emojy")
-	baseURL := c.Get("emojy.baseURL", "/emojy/file")
 	entries, err := os.ReadDir(emojyPath)
 	if err != nil {
 		return nil, nil, err
@@ -214,7 +219,7 @@ func AllFiles(c *config.Config) (map[string]string, map[string]string, error) {
 }
 
 func (p *EmojyPlugin) isKnownEmojy(name string) (bool, string, string, error) {
-	allFiles, allURLs, err := AllFiles(p.c)
+	allFiles, allURLs, err := AllFiles(p.emojyPath, p.baseURL)
 	if err != nil {
 		return false, "", "", err
 	}
