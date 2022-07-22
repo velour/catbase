@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"math"
 	"os"
 	"path"
 
@@ -54,12 +55,12 @@ func cowboyifyImage(c *config.Config, input image.Image) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	targetW := uint(c.GetInt("cowboy.targetw", 64))
+	inputW, inputH := float64(input.Bounds().Max.X), float64(input.Bounds().Max.Y)
 	hatW, hatH := float64(hat.Bounds().Max.X), float64(hat.Bounds().Max.Y)
-	newH := uint(float64(targetW) / hatW * hatH)
-	hat = resize.Resize(targetW, newH, hat, resize.MitchellNetravali)
-	input = resize.Resize(targetW, targetW, input, resize.MitchellNetravali)
-	dst := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	targetSZ := math.Max(inputW, inputH)
+	dst := image.NewRGBA(image.Rect(0, 0, int(targetSZ), int(targetSZ)))
+	newH := uint(targetSZ / hatW * hatH)
+	hat = resize.Resize(uint(targetSZ), newH, hat, resize.Lanczos3)
 	draw.Draw(dst, input.Bounds(), input, image.Point{}, draw.Src)
 	draw.Draw(dst, hat.Bounds(), hat, image.Point{}, draw.Over)
 	return dst, nil
