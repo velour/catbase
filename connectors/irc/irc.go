@@ -359,3 +359,5 @@ func (i Irc) GetRoles() ([]bot.Role, error) {
 func (i Irc) SetRole(userID, roleID string) error {
 	return nil
 }
+
+func (i Irc) Shutdown() {}

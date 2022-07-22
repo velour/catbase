@@ -27,6 +27,8 @@ type Discord struct {
 
 	// store IDs -> nick and vice versa for quick conversion
 	uidCache map[string]string
+
+	registeredCmds []*discordgo.ApplicationCommand
 }
 
 func New(config *config.Config) *Discord {
@@ -389,4 +391,24 @@ func (d *Discord) SetRole(userID, roleID string) error {
 		}
 	}
 	return d.client.GuildMemberRoleAdd(guildID, userID, roleID)
+}
+
+func (d *Discord) RegisterSlashCmd(c discordgo.ApplicationCommand) error {
+	guildID := d.config.Get("discord.guildid", "")
+	cmd, err := d.client.ApplicationCommandCreate(d.client.State.User.ID, guildID, &c)
+	if err != nil {
+		return err
+	}
+	d.registeredCmds = append(d.registeredCmds, cmd)
+	return nil
+}
+
+func (d *Discord) Shutdown() {
+	log.Debug().Msgf("Shutting down and deleting %d slash commands", len(d.registeredCmds))
+	guildID := d.config.Get("discord.guildid", "")
+	for _, c := range d.registeredCmds {
+		if err := d.client.ApplicationCommandDelete(d.client.State.User.ID, guildID, c.ID); err != nil {
+			log.Error().Err(err).Msgf("could not delete command %s", c.Name)
+		}
+	}
 }

@@ -43,6 +43,8 @@ func (p *CliPlugin) registerWeb() {
 	p.bot.RegisterWebName(r, "/cli", "CLI")
 }
 
+func (p *CliPlugin) Shutdown() {}
+
 func (p *CliPlugin) GetRouter() (http.Handler, string) {
 	return nil, ""
 }

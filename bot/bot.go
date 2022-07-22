@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
+	"os/signal"
 	"reflect"
 	"regexp"
 	"strings"
@@ -135,8 +137,14 @@ func New(config *config.Config, connector Connector) Bot {
 
 func (b *bot) ListenAndServe() {
 	addr := b.config.Get("HttpAddr", "127.0.0.1:1337")
-	log.Debug().Msgf("starting web service at %s", addr)
-	log.Fatal().Err(http.ListenAndServe(addr, b.router)).Msg("bot killed")
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	go func() {
+		log.Debug().Msgf("starting web service at %s", addr)
+		log.Fatal().Err(http.ListenAndServe(addr, b.router)).Msg("bot killed")
+	}()
+	<-stop
+	b.DefaultConnector().Shutdown()
 }
 
 func (b *bot) RegisterWeb(r http.Handler, root string) {
