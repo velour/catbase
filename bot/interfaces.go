@@ -191,6 +191,9 @@ type Connector interface {
 	// Serve starts a connector's connection routine
 	Serve() error
 
+	// Shutdown cleans up after the connection
+	Shutdown()
+
 	// Who returns a user list for a channel
 	Who(string) []string
 

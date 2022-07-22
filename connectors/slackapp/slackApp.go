@@ -749,3 +749,5 @@ func (s *SlackApp) GetRoles() ([]bot.Role, error) {
 func (s *SlackApp) SetRole(userID, roleID string) error {
 	return nil
 }
+
+func (s *SlackApp) Shutdown() {}

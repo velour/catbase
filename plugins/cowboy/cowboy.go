@@ -2,6 +2,7 @@ package cowboy
 
 import (
 	"fmt"
+	"github.com/velour/catbase/connectors/discord"
 	"regexp"
 
 	"github.com/rs/zerolog/log"
@@ -28,6 +29,10 @@ func New(b bot.Bot) *Cowboy {
 	}
 	c.register()
 	c.registerWeb()
+	switch conn := b.DefaultConnector().(type) {
+	case *discord.Discord:
+		c.registerCmds(conn)
+	}
 	return &c
 }
 
@@ -56,4 +61,8 @@ func (p *Cowboy) makeCowboy(r bot.Request) {
 		Width:  64,
 		Height: 64,
 	})
+}
+
+func (p *Cowboy) registerCmds(d *discord.Discord) {
+	//d.RegisterSlashCmd()
 }
