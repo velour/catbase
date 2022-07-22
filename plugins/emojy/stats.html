@@ -11,7 +11,6 @@
     <!-- Load Vue followed by BootstrapVue -->
     <script src="//unpkg.com/vue@^2/dist/vue.min.js"></script>
     <script src="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.js"></script>
-    <script src="https://unpkg.com/vue-router@^2"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <meta charset="UTF-8">
     <title>Memes</title>
@@ -32,7 +31,7 @@
         <b-navbar-nav>
             <b-nav-item active href="/emojy/stats">Stats</b-nav-item>
             <b-nav-item href="/emojy/list">List</b-nav-item>
-            <b-nav-item href="/emojy/upload">Upload</b-nav-item>
+            <b-nav-item href="/emojy/new">Upload</b-nav-item>
         </b-navbar-nav>
     </b-navbar>
 
@@ -56,7 +55,7 @@
                         -
                     </span>
                     <img v-if="emojy.url" :src="emojy.url" :alt="emojy.name" class="img-thumbnail"
-                         style="max-width: 64px; max-height: 64px"/>
+                         style="max-width: 64px; max-height: 64px"/> {{emojy.name}}
                     <span v-else>{{emojy.emojy}}</span>
                 </li>
             </ul>
@@ -65,13 +64,8 @@
 </div>
 
 <script>
-    var router = new VueRouter({
-        mode: 'history',
-        routes: []
-    });
     var app = new Vue({
         el: '#app',
-        router,
         data: function () {
             return {
                 err: '',

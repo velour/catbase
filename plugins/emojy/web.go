@@ -27,7 +27,7 @@ func (p *EmojyPlugin) registerWeb() {
 	r.HandleFunc("/file/{name}", p.handleEmojy)
 	r.HandleFunc("/stats", p.handlePage("stats.html"))
 	r.HandleFunc("/list", p.handlePage("list.html"))
-	r.HandleFunc("/upload", p.handlePage("upload.html"))
+	r.HandleFunc("/new", p.handlePage("upload.html"))
 	r.HandleFunc("/", p.handleIndex)
 	p.b.RegisterWebName(r, "/emojy", "Emojys")
 }
