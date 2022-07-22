@@ -12,12 +12,19 @@ import (
 type Cowboy struct {
 	b bot.Bot
 	c *config.Config
+
+	emojyPath    string
+	baseEmojyURL string
 }
 
 func New(b bot.Bot) *Cowboy {
+	emojyPath := b.Config().Get("emojy.path", "emojy")
+	baseURL := b.Config().Get("emojy.baseURL", "/emojy/file")
 	c := Cowboy{
-		b: b,
-		c: b.Config(),
+		b:            b,
+		c:            b.Config(),
+		emojyPath:    emojyPath,
+		baseEmojyURL: baseURL,
 	}
 	c.register()
 	c.registerWeb()

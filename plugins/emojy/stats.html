@@ -30,9 +30,9 @@
 
     <b-navbar>
         <b-navbar-nav>
-            <b-nav-item :active="view == 'stats'" @click="view = 'stats'">Stats</b-nav-item>
-            <b-nav-item :active="view == 'list'" @click="view = 'list'">List</b-nav-item>
-            <b-nav-item :active="view == 'upload'" @click="view = 'upload'">Upload</b-nav-item>
+            <b-nav-item active href="/emojy/stats">Stats</b-nav-item>
+            <b-nav-item href="/emojy/list">List</b-nav-item>
+            <b-nav-item href="/emojy/upload">Upload</b-nav-item>
         </b-navbar-nav>
     </b-navbar>
 
@@ -44,17 +44,7 @@
         {{ err }}
     </div>
 
-    <div class="container" v-if="view == 'upload'">
-        <label>Passphrase</label>
-        <b-input v-model="password"></b-input>
-        <label>File
-            <input type="file" @change="handleFileUpload( $event )"/>
-        </label>
-        <br>
-        <button @click="submitFile()">Submit</button>
-    </div>
-
-    <ul v-if="view == 'stats'">
+    <ul>
         <li v-for="(category, name) in results" key="name">
             {{name}}:
             <ul>
@@ -70,13 +60,6 @@
                     <span v-else>{{emojy.emojy}}</span>
                 </li>
             </ul>
-        </li>
-    </ul>
-
-    <ul v-if="view == 'list'">
-        <li v-for="(path, name) in fileList" key="name">
-            {{name}}:
-            <img :src="path" :alt="name" class="img-thumbnail" style="max-width: 64px; max-height: 64px"/>
         </li>
     </ul>
 </div>
@@ -128,29 +111,6 @@
                     })
                     .catch(err => (this.err = err))
             },
-            handleFileUpload(evt) {
-                this.file = evt.target.files[0];
-                console.log("added file data: " + this.file);
-            },
-            submitFile() {
-                let formData = new FormData();
-                formData.append('file', this.file);
-                formData.append('password', this.password)
-                console.log('trying to make/save form data: ' + formData)
-                axios.post('/emojy/upload',
-                    formData,
-                    {
-                        headers: {'Content-Type': 'multipart/form-data'}
-                    })
-                    .then(() => {
-                        console.log('SUCCESS!!');
-                        this.view = 'list';
-                    })
-                    .catch(e => {
-                        console.log('FAILURE!!' + e);
-                        this.err = 'Could not upload file.';
-                    });
-            }
         }
     })
 </script>

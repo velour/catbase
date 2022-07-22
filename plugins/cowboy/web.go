@@ -15,7 +15,7 @@ func (p *Cowboy) registerWeb() {
 
 func (p *Cowboy) handleImage(w http.ResponseWriter, r *http.Request) {
 	what := chi.URLParam(r, "what")
-	img, err := cowboy(p.c, what)
+	img, err := cowboy(p.c, p.emojyPath, p.baseEmojyURL, what)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Error: %s", err)

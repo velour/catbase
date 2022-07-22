@@ -15,8 +15,8 @@ import (
 	"github.com/velour/catbase/plugins/emojy"
 )
 
-func getEmojy(c *config.Config, name string) (image.Image, error) {
-	files, _, err := emojy.AllFiles(c)
+func getEmojy(emojyPath, baseEmojyURL, name string) (image.Image, error) {
+	files, _, err := emojy.AllFiles(emojyPath, baseEmojyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +35,7 @@ func getEmojy(c *config.Config, name string) (image.Image, error) {
 	return img, nil
 }
 
-func getCowboyHat(c *config.Config) (image.Image, error) {
-	emojyPath := c.Get("emojy.path", "emojy")
+func getCowboyHat(c *config.Config, emojyPath string) (image.Image, error) {
 	p := path.Join(emojyPath, c.Get("cowboy.hatname", "hat.png"))
 	p = path.Clean(p)
 	f, err := os.Open(p)
@@ -50,8 +49,8 @@ func getCowboyHat(c *config.Config) (image.Image, error) {
 	return img, nil
 }
 
-func cowboyifyImage(c *config.Config, input image.Image) (image.Image, error) {
-	hat, err := getCowboyHat(c)
+func cowboyifyImage(c *config.Config, emojyPath string, input image.Image) (image.Image, error) {
+	hat, err := getCowboyHat(c, emojyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +65,12 @@ func cowboyifyImage(c *config.Config, input image.Image) (image.Image, error) {
 	return dst, nil
 }
 
-func cowboy(c *config.Config, name string) ([]byte, error) {
-	emojy, err := getEmojy(c, name)
+func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) ([]byte, error) {
+	emojy, err := getEmojy(emojyPath, baseEmojyURL, name)
 	if err != nil {
 		return nil, err
 	}
-	img, err := cowboyifyImage(c, emojy)
+	img, err := cowboyifyImage(c, emojyPath, emojy)
 	if err != nil {
 		return nil, err
 	}

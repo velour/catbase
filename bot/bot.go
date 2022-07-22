@@ -118,7 +118,11 @@ func New(config *config.Config, connector Connector) Bot {
 
 	log.Debug().Msgf("created web router")
 
-	bot.router.Use(middleware.Logger)
+	// Make the http logger optional
+	// It has never served a purpose in production and with the emojy page, can make a rather noisy log
+	if bot.Config().GetInt("bot.useLogger", 0) == 1 {
+		bot.router.Use(middleware.Logger)
+	}
 	bot.router.Use(middleware.StripSlashes)
 
 	bot.router.HandleFunc("/", bot.serveRoot)
