@@ -9,10 +9,17 @@ import (
 	"math"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/nfnt/resize"
+	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/plugins/emojy"
+)
+
+var (
+	cowboyCache = map[string][]byte{}
+	cowboyMutex = sync.Mutex{}
 )
 
 func getEmojy(emojyPath, baseEmojyURL, name string) (image.Image, error) {
@@ -66,11 +73,18 @@ func cowboyifyImage(c *config.Config, emojyPath string, input image.Image) (imag
 }
 
 func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) ([]byte, error) {
-	emojy, err := getEmojy(emojyPath, baseEmojyURL, name)
+	cowboyMutex.Lock()
+	defer cowboyMutex.Unlock()
+	if img, ok := cowboyCache[name]; ok {
+		log.Debug().Msgf(":cowboy_using_cached_image: %s", name)
+		return img, nil
+	}
+	log.Debug().Msgf(":cowboy_generating_image: %s", name)
+	emjy, err := getEmojy(emojyPath, baseEmojyURL, name)
 	if err != nil {
 		return nil, err
 	}
-	img, err := cowboyifyImage(c, emojyPath, emojy)
+	img, err := cowboyifyImage(c, emojyPath, emjy)
 	if err != nil {
 		return nil, err
 	}
@@ -79,5 +93,12 @@ func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
+	cowboyCache[name] = w.Bytes()
 	return w.Bytes(), nil
+}
+
+func cowboyClearCache() {
+	cowboyMutex.Lock()
+	defer cowboyMutex.Unlock()
+	cowboyCache = map[string][]byte{}
 }
