@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	cowboyCache = map[string][]byte{}
+	cowboyCache = map[string]image.Image{}
 	cowboyMutex = sync.Mutex{}
 )
 
@@ -72,7 +72,7 @@ func cowboyifyImage(c *config.Config, emojyPath string, input image.Image) (imag
 	return dst, nil
 }
 
-func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) ([]byte, error) {
+func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) (image.Image, error) {
 	cowboyMutex.Lock()
 	defer cowboyMutex.Unlock()
 	if img, ok := cowboyCache[name]; ok {
@@ -88,17 +88,24 @@ func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
+	cowboyCache[name] = img
+	return img, nil
+}
+
+func encode(img image.Image, err error) ([]byte, error) {
+	if err != nil {
+		return nil, err
+	}
 	w := bytes.NewBuffer([]byte{})
 	err = png.Encode(w, img)
 	if err != nil {
 		return nil, err
 	}
-	cowboyCache[name] = w.Bytes()
 	return w.Bytes(), nil
 }
 
 func cowboyClearCache() {
 	cowboyMutex.Lock()
 	defer cowboyMutex.Unlock()
-	cowboyCache = map[string][]byte{}
+	cowboyCache = map[string]image.Image{}
 }

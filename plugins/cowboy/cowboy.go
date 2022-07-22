@@ -63,7 +63,7 @@ func (p *Cowboy) register() {
 func (p *Cowboy) makeCowboy(r bot.Request) {
 	what := r.Values["what"]
 	// This'll add the image to the cowboy_cache before discord tries to access it over http
-	_, err := cowboy(p.c, p.emojyPath, p.baseEmojyURL, what)
+	i, err := cowboy(p.c, p.emojyPath, p.baseEmojyURL, what)
 	if err != nil {
 		log.Error().Err(err).Msg(":cowboy_fail:")
 		p.b.Send(r.Conn, bot.Ephemeral, r.Msg.Channel, r.Msg.User.ID, "Hey cowboy, that image wasn't there.")
@@ -76,8 +76,8 @@ func (p *Cowboy) makeCowboy(r bot.Request) {
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "", bot.ImageAttachment{
 		URL:    u,
 		AltTxt: fmt.Sprintf("%s: %s", r.Msg.User.Name, r.Msg.Body),
-		Width:  64,
-		Height: 64,
+		Width:  i.Bounds().Max.X,
+		Height: i.Bounds().Max.Y,
 	})
 }
 
