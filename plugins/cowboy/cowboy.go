@@ -2,8 +2,9 @@ package cowboy
 
 import (
 	"fmt"
-	"github.com/velour/catbase/connectors/discord"
 	"regexp"
+
+	"github.com/velour/catbase/connectors/discord"
 
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
@@ -39,6 +40,15 @@ func New(b bot.Bot) *Cowboy {
 func (p *Cowboy) register() {
 	tbl := bot.HandlerTable{
 		{
+			Kind: bot.Message, IsCmd: true,
+			Regex: regexp.MustCompile(`(?i)^:cowboy_clear_cache:$`),
+			Handler: func(r bot.Request) bool {
+				cowboyClearCache()
+				p.b.Send(r.Conn, bot.Ephemeral, r.Msg.Channel, r.Msg.User.ID, ":cowboy_cache_cleared:")
+				return true
+			},
+		},
+		{
 			Kind: bot.Message, IsCmd: false,
 			Regex: regexp.MustCompile(`(?i)^:cowboy_(?P<what>.+):$`),
 			Handler: func(r bot.Request) bool {
@@ -51,6 +61,14 @@ func (p *Cowboy) register() {
 }
 
 func (p *Cowboy) makeCowboy(r bot.Request) {
+	what := r.Values["what"]
+	// This'll add the image to the cowboy_cache before discord tries to access it over http
+	_, err := cowboy(p.c, p.emojyPath, p.baseEmojyURL, what)
+	if err != nil {
+		log.Error().Err(err).Msg(":cowboy_fail:")
+		p.b.Send(r.Conn, bot.Ephemeral, r.Msg.Channel, r.Msg.User.ID, "Hey cowboy, that image wasn't there.")
+		return
+	}
 	log.Debug().Msgf("makeCowboy: %s", r.Values["what"])
 	base := p.c.Get("baseURL", "http://127.0.0.1:1337")
 	u := base + "/cowboy/img/" + r.Values["what"]
