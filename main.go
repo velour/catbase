@@ -180,6 +180,7 @@ func main() {
 		log.Fatal().Err(err)
 	}
 
+	log.Debug().Msgf("Sending bot.Startup message")
 	b.Receive(client, bot.Startup, msg.Message{})
 
 	b.ListenAndServe()
