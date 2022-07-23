@@ -112,6 +112,7 @@ func (p *Cowboy) registerCmds(d *discord.Discord) {
 	}
 	overlays := p.c.GetMap("cowboy.overlays", defaultOverlays)
 	hat := overlays["hat"]
+	log.Debug().Msgf("Overlay: %s", hat)
 	if err := d.RegisterSlashCmd(cmd, p.mkOverlayCB(hat)); err != nil {
 		log.Error().Err(err).Msg("could not register cowboy command")
 	}
@@ -145,8 +146,6 @@ func (p *Cowboy) registerCmds(d *discord.Discord) {
 
 func (p *Cowboy) mkOverlayCB(overlay string) func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		log.Debug().Msg("got a cowboy command")
-
 		lastEmojy := p.c.Get("cowboy.lastEmojy", "rust")
 		emojyPlugin := emojy.NewAPI(p.b)
 
@@ -156,6 +155,9 @@ func (p *Cowboy) mkOverlayCB(overlay string) func(s *discordgo.Session, i *disco
 			name = i.ApplicationCommandData().Options[1].StringValue()
 		}
 		msg := fmt.Sprintf("You asked for %s overlaid by %s", name, overlay)
+		log.Debug().Msgf("got a cowboy command for %s overlaid by %s replacing %s",
+			name, overlay, lastEmojy)
+		prefix := overlay
 
 		newEmojy, err := cowboy(p.emojyPath, p.baseEmojyURL, overlay, name)
 		if err != nil {
@@ -169,11 +171,10 @@ func (p *Cowboy) mkOverlayCB(overlay string) func(s *discordgo.Session, i *disco
 			goto resp
 		}
 
-		// Look, I don't love it as a workaround either
 		if overlay == "hat" {
-			overlay = "cowboy"
+			prefix = "cowboy"
 		}
-		name = emojy.SanitizeName(overlay + "_" + name)
+		name = emojy.SanitizeName(prefix + "_" + name)
 		err = emojyPlugin.UploadEmojyImage(p.b.DefaultConnector(), name, newEmojy)
 		if err != nil {
 			msg = err.Error()
