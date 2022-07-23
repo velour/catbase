@@ -43,10 +43,8 @@ func (p *Cowboy) register() {
 			Kind: bot.Startup, IsCmd: false,
 			Regex: regexp.MustCompile(`.*`),
 			Handler: func(r bot.Request) bool {
-				log.Debug().Msgf("Got bot.Startup")
 				switch conn := r.Conn.(type) {
 				case *discord.Discord:
-					log.Debug().Msg("Found a discord connection")
 					p.registerCmds(conn)
 				}
 				return false
