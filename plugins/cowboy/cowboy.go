@@ -182,14 +182,9 @@ func (p *Cowboy) mkOverlayCB(overlay string) func(s *discordgo.Session, i *disco
 
 		p.c.Set("cowboy.lastEmojy", name)
 
-		list = p.b.DefaultConnector().GetEmojiList(true)
-		for k, v := range list {
-			if v == name {
-				msg = fmt.Sprintf("You replaced %s with a new emojy %s <:%s:%s>, pardner!", lastEmojy, name, name, k)
-				goto resp
-			}
-		}
-		msg = "Something probably went wrong. I don't see your new emojy, pardner."
+		list = emojy.InvertEmojyList(p.b.DefaultConnector().GetEmojiList(true))
+		msg = fmt.Sprintf("You replaced %s with a new emojy %s <:%s:%s>, pardner!",
+			lastEmojy, name, name, list[name])
 
 	resp:
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

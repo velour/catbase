@@ -133,7 +133,7 @@ func (p *EmojyPlugin) register() {
 }
 
 func (p *EmojyPlugin) RmEmojy(c bot.Connector, name string) error {
-	onServerList := invertEmojyList(p.b.GetEmojiList(false))
+	onServerList := InvertEmojyList(p.b.GetEmojiList(false))
 	// Call a non-existent emojy a successful remove
 	if _, ok := onServerList[name]; !ok {
 		return fmt.Errorf("could not find emojy %s", name)
@@ -155,7 +155,7 @@ func (p *EmojyPlugin) rmEmojyHandler(r bot.Request, name string) bool {
 }
 
 func (p *EmojyPlugin) AddEmojy(c bot.Connector, name string) error {
-	onServerList := invertEmojyList(p.b.GetEmojiList(false))
+	onServerList := InvertEmojyList(p.b.GetEmojiList(false))
 	if _, ok := onServerList[name]; ok {
 		return fmt.Errorf("emojy already exists")
 	}
@@ -199,7 +199,7 @@ type EmojyCount struct {
 	OnServer bool   `json:"onServer"`
 }
 
-func invertEmojyList(emojy map[string]string) map[string]string {
+func InvertEmojyList(emojy map[string]string) map[string]string {
 	out := map[string]string{}
 	for k, v := range emojy {
 		out[v] = k
@@ -209,7 +209,7 @@ func invertEmojyList(emojy map[string]string) map[string]string {
 
 func (p *EmojyPlugin) allCounts() (map[string][]EmojyCount, error) {
 	out := map[string][]EmojyCount{}
-	onServerList := invertEmojyList(p.b.GetEmojiList(true))
+	onServerList := InvertEmojyList(p.b.GetEmojiList(true))
 	q := `select emojy, count(observed) as count from emojyLog group by emojy order by count desc`
 	result := []EmojyCount{}
 	err := p.db.Select(&result, q)

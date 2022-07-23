@@ -53,7 +53,7 @@ func (p *EmojyPlugin) overlayCB(s *discordgo.Session, i *discordgo.InteractionCr
 
 	p.c.Set("emojy.lastEmojy", name)
 
-	list = invertEmojyList(p.b.DefaultConnector().GetEmojiList(true))
+	list = InvertEmojyList(p.b.DefaultConnector().GetEmojiList(true))
 	msg = fmt.Sprintf("You replaced %s with a new emojy %s <:%s:%s>, pardner!", lastEmojy, name, name, list[name])
 
 resp:
