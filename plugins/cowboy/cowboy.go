@@ -115,6 +115,11 @@ func (p *Cowboy) registerCmds(d *discord.Discord) {
 	if err := d.RegisterSlashCmd(cmd, p.mkOverlayCB(hat)); err != nil {
 		log.Error().Err(err).Msg("could not register cowboy command")
 	}
+
+	if p.c.GetInt("cowboy.overlaysEnabled", 0) == 0 {
+		return
+	}
+
 	cmd = discordgo.ApplicationCommand{
 		Name:        "overlay",
 		Description: "overlay-ify an emojy",
