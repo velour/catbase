@@ -207,12 +207,12 @@ func InvertEmojyList(emojy map[string]string) map[string]string {
 	return out
 }
 
-func (p *EmojyPlugin) allCounts() (map[string][]EmojyCount, error) {
+func (p *EmojyPlugin) allCounts(threshold int) (map[string][]EmojyCount, error) {
 	out := map[string][]EmojyCount{}
 	onServerList := InvertEmojyList(p.b.GetEmojiList(true))
-	q := `select emojy, count(observed) as count from emojyLog group by emojy order by count desc`
+	q := `select emojy, count(observed) as count from emojyLog group by emojy having count(observed) > ? order by count desc`
 	result := []EmojyCount{}
-	err := p.db.Select(&result, q)
+	err := p.db.Select(&result, q, threshold)
 	if err != nil {
 		return nil, err
 	}
