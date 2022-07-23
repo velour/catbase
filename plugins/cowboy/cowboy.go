@@ -84,7 +84,7 @@ func (p *Cowboy) makeCowboy(r bot.Request) {
 	}
 	log.Debug().Msgf("makeCowboy: %s", r.Values["what"])
 	base := p.c.Get("baseURL", "http://127.0.0.1:1337")
-	u := base + "/cowboy/img/" + r.Values["what"]
+	u := base + "/cowboy/img/hat/" + r.Values["what"]
 	p.b.Send(r.Conn, bot.Delete, r.Msg.Channel, r.Msg.ID)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "", bot.ImageAttachment{
 		URL:    u,
