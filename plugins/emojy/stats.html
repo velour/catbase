@@ -54,8 +54,10 @@
                         <span v-else>❎</span>
                         -
                     </span>
-                    <img v-if="emojy.url" :src="emojy.url" :alt="emojy.name" class="img-thumbnail"
-                         style="max-width: 64px; max-height: 64px"/> {{emojy.name}}
+                    <span v-if="emojy.url">
+                        <img :src="emojy.url" :alt="emojy.name" class="img-thumbnail"
+                             style="max-width: 64px; max-height: 64px"/> {{emojy.emojy}}
+                    </span>
                     <span v-else>{{emojy.emojy}}</span>
                 </li>
             </ul>
