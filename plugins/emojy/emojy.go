@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/velour/catbase/connectors/discord"
 	"image"
 	"image/draw"
 	"math"
@@ -67,6 +68,17 @@ func (p *EmojyPlugin) setupDB() {
 
 func (p *EmojyPlugin) register() {
 	ht := bot.HandlerTable{
+		{
+			Kind: bot.Startup, IsCmd: false,
+			Regex: regexp.MustCompile(`.*`),
+			Handler: func(r bot.Request) bool {
+				switch conn := r.Conn.(type) {
+				case *discord.Discord:
+					p.registerCmds(conn)
+				}
+				return false
+			},
+		},
 		{
 			Kind: bot.Message, IsCmd: false,
 			Regex: regexp.MustCompile(`.*`),
