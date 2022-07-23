@@ -256,14 +256,14 @@ func (i *Item) Delete() error {
 	return err
 }
 
-func (p *CounterPlugin) migrate(r bot.Request) bool {
+func (p *CounterPlugin) migrate(r bot.Request) (retVal bool) {
 	db := p.db
 
 	nicks := []string{}
 	err := db.Select(&nicks, `select distinct nick from counter where userid is null`)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get nick list")
-		return false
+		return
 	}
 
 	log.Debug().Msgf("Migrating %d nicks to IDs", len(nicks))
@@ -284,7 +284,7 @@ func (p *CounterPlugin) migrate(r bot.Request) bool {
 	if err := tx.Commit(); err != nil {
 		log.Error().Err(err).Msg("Could not migrate users")
 	}
-	return false
+	return
 }
 
 func setupDB(b bot.Bot) error {

@@ -13,7 +13,6 @@ import (
 
 	"github.com/nfnt/resize"
 	"github.com/rs/zerolog/log"
-	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/plugins/emojy"
 )
 
@@ -42,10 +41,17 @@ func getEmojy(emojyPath, baseEmojyURL, name string) (image.Image, error) {
 	return img, nil
 }
 
-func getCowboyHat(c *config.Config, emojyPath string) (image.Image, error) {
-	p := path.Join(emojyPath, c.Get("cowboy.hatname", "hat.png"))
-	p = path.Clean(p)
-	f, err := os.Open(p)
+func getCowboyHat(emojyPath, overlay string) (image.Image, error) {
+	emojies, _, err := emojy.AllFiles(emojyPath, "")
+	if err != nil {
+		return nil, err
+	}
+	overlay, ok := emojies[overlay]
+	if !ok {
+		return nil, fmt.Errorf("could not find overlay %s", overlay)
+	}
+	overlay = path.Clean(overlay)
+	f, err := os.Open(overlay)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +62,8 @@ func getCowboyHat(c *config.Config, emojyPath string) (image.Image, error) {
 	return img, nil
 }
 
-func cowboyifyImage(c *config.Config, emojyPath string, input image.Image) (image.Image, error) {
-	hat, err := getCowboyHat(c, emojyPath)
+func cowboyifyImage(emojyPath, overlay string, input image.Image) (image.Image, error) {
+	hat, err := getCowboyHat(emojyPath, overlay)
 	if err != nil {
 		return nil, err
 	}
@@ -72,19 +78,19 @@ func cowboyifyImage(c *config.Config, emojyPath string, input image.Image) (imag
 	return dst, nil
 }
 
-func cowboy(c *config.Config, emojyPath, baseEmojyURL, name string) (image.Image, error) {
+func cowboy(emojyPath, baseEmojyURL, overlay, name string) (image.Image, error) {
 	cowboyMutex.Lock()
 	defer cowboyMutex.Unlock()
 	if img, ok := cowboyCache[name]; ok {
 		log.Debug().Msgf(":cowboy_using_cached_image: %s", name)
 		return img, nil
 	}
-	log.Debug().Msgf(":cowboy_generating_image: %s", name)
+	log.Debug().Msgf(":cowboy_generating_image: %s with overlay %s", name, overlay)
 	emjy, err := getEmojy(emojyPath, baseEmojyURL, name)
 	if err != nil {
 		return nil, err
 	}
-	img, err := cowboyifyImage(c, emojyPath, emjy)
+	img, err := cowboyifyImage(emojyPath, overlay, emjy)
 	if err != nil {
 		return nil, err
 	}

@@ -29,6 +29,7 @@ type Discord struct {
 	uidCache map[string]string
 
 	registeredCmds []*discordgo.ApplicationCommand
+	cmdHandlers    map[string]CmdHandler
 }
 
 func New(config *config.Config) *Discord {
@@ -37,10 +38,17 @@ func New(config *config.Config) *Discord {
 		log.Fatal().Err(err).Msg("Could not connect to Discord")
 	}
 	d := &Discord{
-		config:   config,
-		client:   client,
-		uidCache: map[string]string{},
+		config:         config,
+		client:         client,
+		uidCache:       map[string]string{},
+		registeredCmds: []*discordgo.ApplicationCommand{},
+		cmdHandlers:    map[string]CmdHandler{},
 	}
+	d.client.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if h, ok := d.cmdHandlers[i.ApplicationCommandData().Name]; ok {
+			h(s, i)
+		}
+	})
 	return d
 }
 func (d *Discord) GetRouter() (http.Handler, string) {
@@ -393,9 +401,12 @@ func (d *Discord) SetRole(userID, roleID string) error {
 	return d.client.GuildMemberRoleAdd(guildID, userID, roleID)
 }
 
-func (d *Discord) RegisterSlashCmd(c discordgo.ApplicationCommand) error {
+type CmdHandler func(s *discordgo.Session, i *discordgo.InteractionCreate)
+
+func (d *Discord) RegisterSlashCmd(c discordgo.ApplicationCommand, handler CmdHandler) error {
 	guildID := d.config.Get("discord.guildid", "")
 	cmd, err := d.client.ApplicationCommandCreate(d.client.State.User.ID, guildID, &c)
+	d.cmdHandlers[c.Name] = handler
 	if err != nil {
 		return err
 	}
