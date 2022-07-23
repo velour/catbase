@@ -44,7 +44,8 @@ func (p *EmojyPlugin) handlePage(file string) func(w http.ResponseWriter, r *htt
 }
 
 func (p *EmojyPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
-	emojy, err := p.allCounts()
+	threshold := p.c.GetInt("emojy.statthreshold", 1)
+	emojy, err := p.allCounts(threshold)
 	if err != nil {
 		w.WriteHeader(500)
 		log.Error().Err(err).Msgf("handleAll")
