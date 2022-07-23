@@ -43,10 +43,9 @@
         {{ err }}
     </div>
 
-    <ul>
-        <li v-for="(category, name) in results" key="name">
-            {{name}}:
-            <ul>
+    <ul style="list-style-type: none;">
+        <li v-for="category in results">
+            <ul v-if="category" style="list-style-type: none;">
                 <li v-for="emojy in category" key="emojy">
                     {{emojy.count}} -
                     <span v-if="name != 'emoji'">
@@ -96,7 +95,7 @@
             refresh: function () {
                 axios.get('/emojy/all')
                     .then(resp => {
-                        this.results = resp.data
+                        this.results = [resp.data["emojy"], resp.data["unknown"], resp.data["emoji"]]
                         this.err = ''
                     })
                     .catch(err => (this.err = err))
