@@ -78,7 +78,7 @@ func (p *RolesPlugin) toggleRole(r bot.Request) bool {
 		return true
 	}
 	for _, rr := range roles {
-		if rr.Name == role {
+		if strings.ToLower(rr.Name) == strings.ToLower(role) {
 			if err = r.Conn.SetRole(r.Msg.User.ID, rr.ID); err != nil {
 				log.Error().Err(err).Msg("setRole")
 				p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "I couldn't set that role.")
