@@ -25,7 +25,6 @@ func New(b bot.Bot) *RolesPlugin {
 		c:  b.Config(),
 		db: b.DB(),
 	}
-	p.RegisterWeb()
 	p.Register()
 	return p
 }
