@@ -109,7 +109,7 @@ var getConfigRegex = regexp.MustCompile(`(?i)^get (?P<key>\S+)$`)
 
 func (p *AdminPlugin) isAdmin(rh bot.ResponseHandler) bot.ResponseHandler {
 	return func(r bot.Request) bool {
-		if !p.bot.CheckAdmin(r.Msg.User.Name) {
+		if !p.bot.CheckAdmin(r.Msg.User.ID) {
 			log.Debug().Msgf("User %s is not an admin", r.Msg.User.Name)
 			return false
 		}
