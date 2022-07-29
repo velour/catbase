@@ -179,7 +179,7 @@ func (p *FirstPlugin) register() {
 		{Kind: bot.Message, IsCmd: true,
 			Regex: regexp.MustCompile(`(?i)^clear first$`),
 			Handler: func(r bot.Request) bool {
-				if !p.bot.CheckAdmin(r.Msg.User.Name) {
+				if !p.bot.CheckAdmin(r.Msg.User.ID) {
 					p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "You are not authorized to do that.")
 					return true
 				}

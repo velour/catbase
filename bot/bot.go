@@ -260,11 +260,11 @@ func IsCmd(c *config.Config, message string) (bool, string) {
 	return iscmd, message
 }
 
-func (b *bot) CheckAdmin(nick string) bool {
+func (b *bot) CheckAdmin(ID string) bool {
 	admins := b.Config().GetArray("Admins", []string{})
-	log.Info().Interface("admins", admins).Msgf("Checking admin for %s", nick)
+	log.Info().Interface("admins", admins).Msgf("Checking admin for %s", ID)
 	for _, u := range admins {
-		if nick == u {
+		if ID == u {
 			log.Info().Msg("%s admin check: passed")
 			return true
 		}

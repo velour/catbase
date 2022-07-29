@@ -124,7 +124,7 @@ func (p *RolesPlugin) lsRoles(r bot.Request) bool {
 }
 
 func (p *RolesPlugin) setOffering(r bot.Request) bool {
-	if !p.b.CheckAdmin(r.Msg.User.Name) {
+	if !p.b.CheckAdmin(r.Msg.User.ID) {
 		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "You must be an admin to set an offering.")
 		return true
 	}
