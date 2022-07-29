@@ -46,10 +46,9 @@ func (p *RolesPlugin) Register() {
 			Handler:  p.lsRoles,
 		},
 		{
-			Kind: bot.Help, IsCmd: true,
-			Regex:    regexp.MustCompile(`.`),
-			HelpText: "Lists roles with an optional offering set specifier",
-			Handler:  p.lsRoles,
+			Kind: bot.Message, IsCmd: true,
+			Regex:   regexp.MustCompile(`(?i)^setoffering (?P<offering>.+)$`),
+			Handler: p.setOffering,
 		},
 	}
 	p.b.Register(p, bot.Help, func(c bot.Connector, k bot.Kind, m msg.Message, args ...any) bool {
