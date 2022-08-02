@@ -107,7 +107,7 @@ var setConfigRegex = regexp.MustCompile(`(?i)^set (?P<key>\S+) (?P<value>.*)$`)
 var pushConfigRegex = regexp.MustCompile(`(?i)^push (?P<key>\S+) (?P<value>.*)$`)
 var setKeyConfigRegex = regexp.MustCompile(`(?i)^setkey (?P<key>\S+) (?P<name>\S+) (?P<value>.*)$`)
 var getConfigRegex = regexp.MustCompile(`(?i)^get (?P<key>\S+)$`)
-var setNickRegex = regexp.MustCompile(`(?i)^nick (?P<nick>\S+)$`)
+var setNickRegex = regexp.MustCompile(`(?i)^nick (?P<nick>.+)$`)
 
 func (p *AdminPlugin) isAdmin(rh bot.ResponseHandler) bot.ResponseHandler {
 	return func(r bot.Request) bool {
