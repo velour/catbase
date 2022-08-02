@@ -361,3 +361,8 @@ func (i Irc) SetRole(userID, roleID string) error {
 }
 
 func (i Irc) Shutdown() {}
+
+func (i Irc) Nick(nick string) error {
+	// Yeah, I could figure this out, but I don't want to test/debug it
+	return fmt.Errorf("nick changes not supported on irc")
+}

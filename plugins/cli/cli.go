@@ -140,3 +140,4 @@ func (p *CliPlugin) GetChannelName(id string) string     { return id }
 func (p *CliPlugin) GetChannelID(name string) string     { return name }
 func (p *CliPlugin) GetRoles() ([]bot.Role, error)       { return []bot.Role{}, nil }
 func (p *CliPlugin) SetRole(userID, roleID string) error { return nil }
+func (p *CliPlugin) Nick(string) error                   { return nil }

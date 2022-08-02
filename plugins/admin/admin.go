@@ -57,6 +57,7 @@ func New(b bot.Bot) *AdminPlugin {
 	b.RegisterRegexCmd(p, bot.Message, pushConfigRegex, p.isAdmin(p.pushConfigCmd))
 	b.RegisterRegexCmd(p, bot.Message, setKeyConfigRegex, p.isAdmin(p.setKeyConfigCmd))
 	b.RegisterRegexCmd(p, bot.Message, getConfigRegex, p.isAdmin(p.getConfigCmd))
+	b.RegisterRegexCmd(p, bot.Message, setNickRegex, p.isAdmin(p.setNick))
 
 	b.Register(p, bot.Help, p.help)
 	p.registerWeb()
@@ -106,6 +107,7 @@ var setConfigRegex = regexp.MustCompile(`(?i)^set (?P<key>\S+) (?P<value>.*)$`)
 var pushConfigRegex = regexp.MustCompile(`(?i)^push (?P<key>\S+) (?P<value>.*)$`)
 var setKeyConfigRegex = regexp.MustCompile(`(?i)^setkey (?P<key>\S+) (?P<name>\S+) (?P<value>.*)$`)
 var getConfigRegex = regexp.MustCompile(`(?i)^get (?P<key>\S+)$`)
+var setNickRegex = regexp.MustCompile(`(?i)^nick (?P<nick>\S+)$`)
 
 func (p *AdminPlugin) isAdmin(rh bot.ResponseHandler) bot.ResponseHandler {
 	return func(r bot.Request) bool {
@@ -406,4 +408,15 @@ func (p *AdminPlugin) modList(query, channel, plugin string) error {
 	}
 	err := fmt.Errorf("unknown plugin named '%s'", plugin)
 	return err
+}
+
+func (p *AdminPlugin) setNick(r bot.Request) bool {
+	nick := r.Values["nick"]
+	if err := r.Conn.Nick(nick); err != nil {
+		log.Error().Err(err).Msg("set nick")
+		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I can't seem to set a new nick.")
+		return true
+	}
+	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I shall now be known as %s.", nick))
+	return true
 }

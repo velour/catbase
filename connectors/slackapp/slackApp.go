@@ -751,3 +751,7 @@ func (s *SlackApp) SetRole(userID, roleID string) error {
 }
 
 func (s *SlackApp) Shutdown() {}
+
+func (s *SlackApp) Nick(nick string) error {
+	return s.api.SetUserRealName(nick)
+}
