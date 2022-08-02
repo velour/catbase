@@ -57,7 +57,7 @@ func New(b bot.Bot) *AdminPlugin {
 	b.RegisterRegexCmd(p, bot.Message, pushConfigRegex, p.isAdmin(p.pushConfigCmd))
 	b.RegisterRegexCmd(p, bot.Message, setKeyConfigRegex, p.isAdmin(p.setKeyConfigCmd))
 	b.RegisterRegexCmd(p, bot.Message, getConfigRegex, p.isAdmin(p.getConfigCmd))
-	b.RegisterRegexCmd(p, bot.Message, setNickRegex, p.isAdmin(p.setNick))
+	b.RegisterRegexCmd(p, bot.Message, setNickRegex, p.setNick)
 
 	b.Register(p, bot.Help, p.help)
 	p.registerWeb()
@@ -411,6 +411,9 @@ func (p *AdminPlugin) modList(query, channel, plugin string) error {
 }
 
 func (p *AdminPlugin) setNick(r bot.Request) bool {
+	if needAdmin := p.cfg.GetInt("nick.needsadmin", 1); needAdmin == 1 && !p.bot.CheckAdmin(r.Msg.User.ID) {
+		return false
+	}
 	nick := r.Values["nick"]
 	if err := r.Conn.Nick(nick); err != nil {
 		log.Error().Err(err).Msg("set nick")
