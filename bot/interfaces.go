@@ -226,6 +226,9 @@ type Connector interface {
 
 	// SetRole toggles a role on/off for a user by ID
 	SetRole(userID, roleID string) error
+
+	// Nick sets the username of the bot on the server
+	Nick(string) error
 }
 
 // Plugin interface used for compatibility with the Plugin interface

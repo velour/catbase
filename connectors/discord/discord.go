@@ -423,3 +423,8 @@ func (d *Discord) Shutdown() {
 		}
 	}
 }
+
+func (d *Discord) Nick(nick string) error {
+	guildID := d.config.Get("discord.guildid", "")
+	return d.client.GuildMemberNickname(guildID, "@me", nick)
+}
