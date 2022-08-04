@@ -46,33 +46,6 @@ func (p *SecretsPlugin) registerWeb() {
 	p.b.RegisterWebName(r, "/secrets", "Secrets")
 }
 
-func (p *SecretsPlugin) registerSecret(key, value string) error {
-	q := `insert into secrets (key, value) values (?, ?)`
-	_, err := p.db.Exec(q, key, value)
-	if err != nil {
-		return err
-	}
-	return p.c.RefreshSecrets()
-}
-
-func (p *SecretsPlugin) removeSecret(key string) error {
-	q := `delete from secrets where key=?`
-	_, err := p.db.Exec(q, key)
-	if err != nil {
-		return err
-	}
-	return p.c.RefreshSecrets()
-}
-
-func (p *SecretsPlugin) updateSecret(key, value string) error {
-	q := `update secrets set value=? where key=?`
-	_, err := p.db.Exec(q, value, key)
-	if err != nil {
-		return err
-	}
-	return p.c.RefreshSecrets()
-}
-
 func mkCheckError(w http.ResponseWriter) func(error) bool {
 	return func(err error) bool {
 		if err != nil {
@@ -130,7 +103,7 @@ func (p *SecretsPlugin) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug().Msgf("Secret: %s", secret)
-	err = p.registerSecret(secret.Key, secret.Value)
+	err = p.c.RegisterSecret(secret.Key, secret.Value)
 	if checkError(err) {
 		return
 	}
@@ -148,7 +121,7 @@ func (p *SecretsPlugin) handleRemove(w http.ResponseWriter, r *http.Request) {
 	if checkError(err) {
 		return
 	}
-	err = p.removeSecret(secret.Key)
+	err = p.c.RemoveSecret(secret.Key)
 	if checkError(err) {
 		return
 	}
