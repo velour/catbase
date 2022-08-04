@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
@@ -75,8 +76,10 @@ func New(b bot.Bot) *TwitchPlugin {
 				}
 			}
 		}
-		go p.twitchLoop(b.DefaultConnector(), ch)
+		go p.twitchChannelLoop(b.DefaultConnector(), ch)
 	}
+
+	go p.twitchAuthLoop(b.DefaultConnector())
 
 	b.Register(p, bot.Message, p.message)
 	b.Register(p, bot.Help, p.help)
@@ -128,7 +131,10 @@ func (p *TwitchPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 		if users := p.config.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
 			for _, twitcherName := range users {
 				if _, ok := p.twitchList[twitcherName]; ok {
-					p.checkTwitch(c, channel, p.twitchList[twitcherName], true)
+					err := p.checkTwitch(c, channel, p.twitchList[twitcherName], true)
+					if err != nil {
+						log.Error().Err(err).Msgf("error in checking twitch")
+					}
 				}
 			}
 		}
@@ -153,25 +159,52 @@ func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message,
 	return true
 }
 
-func (p *TwitchPlugin) twitchLoop(c bot.Connector, channel string) {
+func (p *TwitchPlugin) twitchAuthLoop(c bot.Connector) {
+	frequency := p.config.GetInt("Twitch.AuthFreq", 60*60)
+	cid := p.config.Get("twitch.clientid", "")
+	secret := p.config.Get("twitch.secret", "")
+	if cid == "" || secret == "" {
+		log.Info().Msgf("Disabling twitch autoauth.")
+		return
+	}
+
+	log.Info().Msgf("Checking auth every %d seconds", frequency)
+
+	if err := p.validateCredentials(); err != nil {
+		log.Error().Err(err).Msgf("error checking twitch validity")
+	}
+
+	for {
+		select {
+		case <-time.After(time.Duration(frequency) * time.Second):
+			if err := p.validateCredentials(); err != nil {
+				log.Error().Err(err).Msgf("error checking twitch validity")
+			}
+		}
+	}
+}
+
+func (p *TwitchPlugin) twitchChannelLoop(c bot.Connector, channel string) {
 	frequency := p.config.GetInt("Twitch.Freq", 60)
-	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.token", "") == "" {
+	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.secret", "") == "" {
 		log.Info().Msgf("Disabling twitch autochecking.")
 		return
 	}
 
-	log.Info().Msgf("Checking every %d seconds", frequency)
+	log.Info().Msgf("Checking channels every %d seconds", frequency)
 
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
 
 		for _, twitcherName := range p.config.GetArray("Twitch."+channel+".Users", []string{}) {
-			p.checkTwitch(c, channel, p.twitchList[twitcherName], false)
+			if err := p.checkTwitch(c, channel, p.twitchList[twitcherName], false); err != nil {
+				log.Error().Err(err).Msgf("error in twitch loop")
+			}
 		}
 	}
 }
 
-func getRequest(url, clientID, token string) ([]byte, bool) {
+func getRequest(url, clientID, token string) ([]byte, int, bool) {
 	bearer := fmt.Sprintf("Bearer %s", token)
 	var body []byte
 	var resp *http.Response
@@ -193,18 +226,19 @@ func getRequest(url, clientID, token string) ([]byte, bool) {
 	if err != nil {
 		goto errCase
 	}
-	return body, true
+	return body, resp.StatusCode, true
 
 errCase:
 	log.Error().Err(err)
-	return []byte{}, false
+	return []byte{}, resp.StatusCode, false
 }
 
-func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) {
+func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) error {
 	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
 	if err != nil {
-		log.Error().Msg("Error parsing twitch stream URL")
-		return
+		err := fmt.Errorf("error parsing twitch stream URL")
+		log.Error().Msg(err.Error())
+		return err
 	}
 
 	query := baseURL.Query()
@@ -216,25 +250,28 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 	token := p.config.Get("twitch.token", "")
 	if cid == token && cid == "" {
 		log.Info().Msgf("Twitch plugin not enabled.")
-		return
+		return nil
 	}
 
-	body, ok := getRequest(baseURL.String(), cid, token)
+	body, status, ok := getRequest(baseURL.String(), cid, token)
 	if !ok {
-		return
+		return fmt.Errorf("got status %d: %s", status, string(body))
 	}
 
 	var s stream
 	err = json.Unmarshal(body, &s)
 	if err != nil {
-		log.Error().Err(err)
-		return
+		log.Error().Err(err).Msgf("error reading twitch data")
+		return err
 	}
 
 	games := s.Data
 	gameID, title := "", ""
 	if len(games) > 0 {
 		gameID = games[0].GameID
+		if gameID == "" {
+			gameID = "unknown"
+		}
 		title = games[0].Title
 	}
 
@@ -298,4 +335,47 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 		}
 		twitcher.gameID = gameID
 	}
+	return nil
+}
+
+func (p *TwitchPlugin) validateCredentials() error {
+	cid := p.config.Get("twitch.clientid", "")
+	token := p.config.Get("twitch.token", "")
+	if token == "" {
+		return p.reAuthenticate()
+	}
+	_, status, ok := getRequest("https://id.twitch.tv/oauth2/validate", cid, token)
+	if !ok || status == http.StatusUnauthorized {
+		return p.reAuthenticate()
+	}
+	log.Debug().Msgf("checked credentials and they were valid")
+	return nil
+}
+
+func (p *TwitchPlugin) reAuthenticate() error {
+	cid := p.config.Get("twitch.clientid", "")
+	secret := p.config.Get("twitch.secret", "")
+	if cid == "" || secret == "" {
+		return fmt.Errorf("could not request a new token without config values set")
+	}
+	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", url.Values{
+		"client_id":     {cid},
+		"client_secret": {secret},
+		"grant_type":    {"client_credentials"},
+	})
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	credentials := struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int    `json:"expires_in"`
+		TokenType   string `json:"token_type"`
+	}{}
+	err = json.Unmarshal(body, &credentials)
+	log.Debug().Int("expires", credentials.ExpiresIn).Msgf("setting new twitch token")
+	return p.config.RegisterSecret("twitch.token", credentials.AccessToken)
 }

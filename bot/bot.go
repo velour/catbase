@@ -265,7 +265,7 @@ func (b *bot) CheckAdmin(ID string) bool {
 	log.Info().Interface("admins", admins).Msgf("Checking admin for %s", ID)
 	for _, u := range admins {
 		if ID == u {
-			log.Info().Msg("%s admin check: passed")
+			log.Info().Msgf("%s admin check: passed", u)
 			return true
 		}
 	}

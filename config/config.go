@@ -201,6 +201,32 @@ func (c *Config) SecretKeys() []string {
 	return keys
 }
 
+func (c *Config) setSecret(key, value string) error {
+	q := `insert into secrets (key,value) values (?, ?)
+			on conflict(key) do update set value=?;`
+	_, err := c.Exec(q, key, value, value)
+	if err != nil {
+		log.Fatal().Err(err).Msgf("secret")
+		return err
+	}
+	return c.RefreshSecrets()
+}
+
+// RegisterSecret creates a new secret
+func (c *Config) RegisterSecret(key, value string) error {
+	return c.setSecret(key, value)
+}
+
+// RemoveSecret deregisters a secret
+func (c *Config) RemoveSecret(key string) error {
+	q := `delete from secrets where key=?`
+	_, err := c.Exec(q, key)
+	if err != nil {
+		return err
+	}
+	return c.RefreshSecrets()
+}
+
 func (c *Config) SetMap(key string, values map[string]string) error {
 	b, err := json.Marshal(values)
 	if err != nil {
@@ -256,7 +282,7 @@ func ReadConfig(dbpath string) *Config {
 		value string,
 		primary key (key)
 	);`); err != nil {
-		log.Fatal().Err(err).Msgf("failed to initialize config")
+		log.Fatal().Err(err).Msgf("failed to initialize secrets")
 	}
 
 	if err := c.RefreshSecrets(); err != nil {
