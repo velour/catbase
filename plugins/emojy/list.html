@@ -45,8 +45,10 @@
 
     <div class="row row-cols-5">
         <div class="card text-center" v-for="name in fileKeys" key="name">
-            <img :src="fileList[name]" class="card-img-top mx-auto d-block" :alt="name" style="max-width: 100px">
             <div class="card-body">
+                <span>
+                    <b-img-lazy :src="fileList[name]" class="card-img-top mx-auto d-block" :alt="name" width=100 style="max-width: 100px">
+                </span>
                 <h5 class="card-title">{{name}}</h5>
             </div>
         </div>

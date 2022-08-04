@@ -4,6 +4,8 @@ package bot
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"math/rand"
 	"net/http"
 	"os"
@@ -14,7 +16,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/history"
@@ -120,19 +121,32 @@ func New(config *config.Config, connector Connector) Bot {
 
 	log.Debug().Msgf("created web router")
 
-	// Make the http logger optional
-	// It has never served a purpose in production and with the emojy page, can make a rather noisy log
-	if bot.Config().GetInt("bot.useLogger", 0) == 1 {
-		bot.router.Use(middleware.Logger)
-	}
-	bot.router.Use(middleware.StripSlashes)
-
-	bot.router.HandleFunc("/", bot.serveRoot)
-	bot.router.HandleFunc("/nav", bot.serveNav)
+	bot.setupHTTP()
 
 	connector.RegisterEvent(bot.Receive)
 
 	return bot
+}
+
+func (b *bot) setupHTTP() {
+	// Make the http logger optional
+	// It has never served a purpose in production and with the emojy page, can make a rather noisy log
+	if b.Config().GetInt("bot.useLogger", 0) == 1 {
+		b.router.Use(middleware.Logger)
+	}
+
+	reqCount := b.Config().GetInt("bot.httprate.requests", 500)
+	reqTime := time.Duration(b.Config().GetInt("bot.httprate.seconds", 5))
+	if reqCount > 0 && reqTime > 0 {
+		b.router.Use(httprate.LimitByIP(reqCount, reqTime*time.Second))
+	}
+
+	b.router.Use(middleware.RequestID)
+	b.router.Use(middleware.Recoverer)
+	b.router.Use(middleware.StripSlashes)
+
+	b.router.HandleFunc("/", b.serveRoot)
+	b.router.HandleFunc("/nav", b.serveNav)
 }
 
 func (b *bot) ListenAndServe() {
