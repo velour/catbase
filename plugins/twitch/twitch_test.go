@@ -13,6 +13,17 @@ import (
 	"github.com/velour/catbase/bot/user"
 )
 
+func makeRequest(payload string) bot.Request {
+	c, k, m := makeMessage(payload)
+	return bot.Request{
+		Conn:   c,
+		Kind:   k,
+		Msg:    m,
+		Values: nil,
+		Args:   nil,
+	}
+}
+
 func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
@@ -31,8 +42,8 @@ func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 	c := New(mb)
 	mb.Config().Set("twitch.clientid", "fake")
 	mb.Config().Set("twitch.authorization", "fake")
-	c.config.SetArray("Twitch.Channels", []string{"test"})
-	c.config.SetArray("Twitch.test.Users", []string{"drseabass"})
+	c.c.SetArray("Twitch.Channels", []string{"test"})
+	c.c.SetArray("Twitch.test.Users", []string{"drseabass"})
 	assert.NotNil(t, c)
 
 	c.twitchList["drseabass"] = &Twitcher{
@@ -45,6 +56,6 @@ func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 
 func TestTwitch(t *testing.T) {
 	b, mb := makeTwitchPlugin(t)
-	b.message(makeMessage("!twitch status"))
+	b.twitchStatus(makeRequest("!twitch status"))
 	assert.NotEmpty(t, mb.Messages)
 }
