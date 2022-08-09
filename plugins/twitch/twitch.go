@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -26,9 +27,10 @@ const (
 )
 
 type TwitchPlugin struct {
-	bot        bot.Bot
-	config     *config.Config
+	b          bot.Bot
+	c          *config.Config
 	twitchList map[string]*Twitcher
+	tbl        bot.HandlerTable
 }
 
 type Twitcher struct {
@@ -62,13 +64,14 @@ type stream struct {
 
 func New(b bot.Bot) *TwitchPlugin {
 	p := &TwitchPlugin{
-		bot:        b,
-		config:     b.Config(),
+		b:          b,
+		c:          b.Config(),
 		twitchList: map[string]*Twitcher{},
 	}
 
-	for _, ch := range p.config.GetArray("Twitch.Channels", []string{}) {
-		for _, twitcherName := range p.config.GetArray("Twitch."+ch+".Users", []string{}) {
+	for _, ch := range p.c.GetArray("Twitch.Channels", []string{}) {
+		for _, twitcherName := range p.c.GetArray("Twitch."+ch+".Users", []string{}) {
+			twitcherName = strings.ToLower(twitcherName)
 			if _, ok := p.twitchList[twitcherName]; !ok {
 				p.twitchList[twitcherName] = &Twitcher{
 					name:   twitcherName,
@@ -81,8 +84,7 @@ func New(b bot.Bot) *TwitchPlugin {
 
 	go p.twitchAuthLoop(b.DefaultConnector())
 
-	b.Register(p, bot.Message, p.message)
-	b.Register(p, bot.Help, p.help)
+	p.register()
 	p.registerWeb()
 
 	return p
@@ -91,11 +93,11 @@ func New(b bot.Bot) *TwitchPlugin {
 func (p *TwitchPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/{user}", p.serveStreaming)
-	p.bot.RegisterWeb(r, "/isstreaming")
+	p.b.RegisterWeb(r, "/isstreaming")
 }
 
 func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
-	userName := chi.URLParam(r, "user")
+	userName := strings.ToLower(chi.URLParam(r, "user"))
 	if userName == "" {
 		fmt.Fprint(w, "User not found.")
 		return
@@ -124,28 +126,68 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *TwitchPlugin) message(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
-	body := strings.ToLower(message.Body)
-	if body == "twitch status" {
-		channel := message.Channel
-		if users := p.config.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
-			for _, twitcherName := range users {
-				if _, ok := p.twitchList[twitcherName]; ok {
-					err := p.checkTwitch(c, channel, p.twitchList[twitcherName], true)
-					if err != nil {
-						log.Error().Err(err).Msgf("error in checking twitch")
-					}
+func (p *TwitchPlugin) register() {
+	p.tbl = bot.HandlerTable{
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^twitch status$`),
+			HelpText: "Get status of all twitchers",
+			Handler:  p.twitchStatus,
+		},
+		{
+			Kind: bot.Message, IsCmd: false,
+			Regex:    regexp.MustCompile(`(?i)^is (?P<who>.+) streaming\??$`),
+			HelpText: "Check if a specific twitcher is streaming",
+			Handler:  p.twitchUserStatus,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^reset twitch$`),
+			HelpText: "Reset the twitch templates",
+			Handler:  p.resetTwitch,
+		},
+	}
+	p.b.Register(p, bot.Help, p.help)
+	p.b.RegisterTable(p, p.tbl)
+}
+
+func (p *TwitchPlugin) twitchStatus(r bot.Request) bool {
+	channel := r.Msg.Channel
+	if users := p.c.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
+		for _, twitcherName := range users {
+			twitcherName = strings.ToLower(twitcherName)
+			// we could re-add them here instead of needing to restart the bot.
+			if t, ok := p.twitchList[twitcherName]; ok {
+				err := p.checkTwitch(r.Conn, channel, t, true)
+				if err != nil {
+					log.Error().Err(err).Msgf("error in checking twitch")
 				}
 			}
 		}
-		return true
-	} else if body == "reset twitch" {
-		p.config.Set("twitch.istpl", isStreamingTplFallback)
-		p.config.Set("twitch.nottpl", notStreamingTplFallback)
-		p.config.Set("twitch.stoppedtpl", stoppedStreamingTplFallback)
 	}
+	return true
+}
 
-	return false
+func (p *TwitchPlugin) twitchUserStatus(r bot.Request) bool {
+	who := strings.ToLower(r.Values["who"])
+	if t, ok := p.twitchList[who]; ok {
+		err := p.checkTwitch(r.Conn, r.Msg.Channel, t, true)
+		if err != nil {
+			log.Error().Err(err).Msgf("error in checking twitch")
+			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "I had trouble with that.")
+		}
+	} else {
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "I don't know who that is.")
+	}
+	return true
+}
+
+func (p *TwitchPlugin) resetTwitch(r bot.Request) bool {
+	p.c.Set("twitch.istpl", isStreamingTplFallback)
+	p.c.Set("twitch.nottpl", notStreamingTplFallback)
+	p.c.Set("twitch.stoppedtpl", stoppedStreamingTplFallback)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "The Twitch templates have been reset.")
+	return true
 }
 
 func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
@@ -155,14 +197,14 @@ func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message,
 	msg += fmt.Sprintf("twitch.stoppedtpl (default: %s)\n", stoppedStreamingTplFallback)
 	msg += "You can reset all messages with `!reset twitch`"
 	msg += "And you can ask who is streaming with `!twitch status`"
-	p.bot.Send(c, bot.Message, message.Channel, msg)
+	p.b.Send(c, bot.Message, message.Channel, msg)
 	return true
 }
 
 func (p *TwitchPlugin) twitchAuthLoop(c bot.Connector) {
-	frequency := p.config.GetInt("Twitch.AuthFreq", 60*60)
-	cid := p.config.Get("twitch.clientid", "")
-	secret := p.config.Get("twitch.secret", "")
+	frequency := p.c.GetInt("Twitch.AuthFreq", 60*60)
+	cid := p.c.Get("twitch.clientid", "")
+	secret := p.c.Get("twitch.secret", "")
 	if cid == "" || secret == "" {
 		log.Info().Msgf("Disabling twitch autoauth.")
 		return
@@ -185,8 +227,8 @@ func (p *TwitchPlugin) twitchAuthLoop(c bot.Connector) {
 }
 
 func (p *TwitchPlugin) twitchChannelLoop(c bot.Connector, channel string) {
-	frequency := p.config.GetInt("Twitch.Freq", 60)
-	if p.config.Get("twitch.clientid", "") == "" || p.config.Get("twitch.secret", "") == "" {
+	frequency := p.c.GetInt("Twitch.Freq", 60)
+	if p.c.Get("twitch.clientid", "") == "" || p.c.Get("twitch.secret", "") == "" {
 		log.Info().Msgf("Disabling twitch autochecking.")
 		return
 	}
@@ -196,7 +238,8 @@ func (p *TwitchPlugin) twitchChannelLoop(c bot.Connector, channel string) {
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
 
-		for _, twitcherName := range p.config.GetArray("Twitch."+channel+".Users", []string{}) {
+		for _, twitcherName := range p.c.GetArray("Twitch."+channel+".Users", []string{}) {
+			twitcherName = strings.ToLower(twitcherName)
 			if err := p.checkTwitch(c, channel, p.twitchList[twitcherName], false); err != nil {
 				log.Error().Err(err).Msgf("error in twitch loop")
 			}
@@ -246,8 +289,8 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 
 	baseURL.RawQuery = query.Encode()
 
-	cid := p.config.Get("twitch.clientid", "")
-	token := p.config.Get("twitch.token", "")
+	cid := p.c.Get("twitch.clientid", "")
+	token := p.c.Get("twitch.token", "")
 	if cid == token && cid == "" {
 		log.Info().Msgf("Twitch plugin not enabled.")
 		return nil
@@ -275,9 +318,9 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 		title = games[0].Title
 	}
 
-	notStreamingTpl := p.config.Get("Twitch.NotTpl", notStreamingTplFallback)
-	isStreamingTpl := p.config.Get("Twitch.IsTpl", isStreamingTplFallback)
-	stoppedStreamingTpl := p.config.Get("Twitch.StoppedTpl", stoppedStreamingTplFallback)
+	notStreamingTpl := p.c.Get("Twitch.NotTpl", notStreamingTplFallback)
+	isStreamingTpl := p.c.Get("Twitch.IsTpl", isStreamingTplFallback)
+	stoppedStreamingTpl := p.c.Get("Twitch.StoppedTpl", stoppedStreamingTplFallback)
 	buf := bytes.Buffer{}
 
 	info := struct {
@@ -295,31 +338,31 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 			t, err := template.New("notStreaming").Parse(notStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.bot.Send(c, bot.Message, channel, err)
+				p.b.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("notStreaming").Parse(notStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.bot.Send(c, bot.Message, channel, buf.String())
+			p.b.Send(c, bot.Message, channel, buf.String())
 		} else {
 			t, err := template.New("isStreaming").Parse(isStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.bot.Send(c, bot.Message, channel, err)
+				p.b.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.bot.Send(c, bot.Message, channel, buf.String())
+			p.b.Send(c, bot.Message, channel, buf.String())
 		}
 	} else if gameID == "" {
 		if twitcher.gameID != "" {
 			t, err := template.New("stoppedStreaming").Parse(stoppedStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.bot.Send(c, bot.Message, channel, err)
+				p.b.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("stoppedStreaming").Parse(stoppedStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.bot.Send(c, bot.Message, channel, buf.String())
+			p.b.Send(c, bot.Message, channel, buf.String())
 		}
 		twitcher.gameID = ""
 	} else {
@@ -327,11 +370,11 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 			t, err := template.New("isStreaming").Parse(isStreamingTpl)
 			if err != nil {
 				log.Error().Err(err)
-				p.bot.Send(c, bot.Message, channel, err)
+				p.b.Send(c, bot.Message, channel, err)
 				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
 			}
 			t.Execute(&buf, info)
-			p.bot.Send(c, bot.Message, channel, buf.String())
+			p.b.Send(c, bot.Message, channel, buf.String())
 		}
 		twitcher.gameID = gameID
 	}
@@ -339,8 +382,8 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 }
 
 func (p *TwitchPlugin) validateCredentials() error {
-	cid := p.config.Get("twitch.clientid", "")
-	token := p.config.Get("twitch.token", "")
+	cid := p.c.Get("twitch.clientid", "")
+	token := p.c.Get("twitch.token", "")
 	if token == "" {
 		return p.reAuthenticate()
 	}
@@ -353,8 +396,8 @@ func (p *TwitchPlugin) validateCredentials() error {
 }
 
 func (p *TwitchPlugin) reAuthenticate() error {
-	cid := p.config.Get("twitch.clientid", "")
-	secret := p.config.Get("twitch.secret", "")
+	cid := p.c.Get("twitch.clientid", "")
+	secret := p.c.Get("twitch.secret", "")
 	if cid == "" || secret == "" {
 		return fmt.Errorf("could not request a new token without config values set")
 	}
@@ -377,5 +420,5 @@ func (p *TwitchPlugin) reAuthenticate() error {
 	}{}
 	err = json.Unmarshal(body, &credentials)
 	log.Debug().Int("expires", credentials.ExpiresIn).Msgf("setting new twitch token")
-	return p.config.RegisterSecret("twitch.token", credentials.AccessToken)
+	return p.c.RegisterSecret("twitch.token", credentials.AccessToken)
 }
