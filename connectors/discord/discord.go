@@ -240,6 +240,7 @@ func (d *Discord) Serve() error {
 	d.client.Identify.Intents = discordgo.MakeIntent(
 		discordgo.IntentsGuilds |
 			discordgo.IntentsGuildMessages |
+			discordgo.IntentsDirectMessages |
 			discordgo.IntentsGuildEmojis |
 			discordgo.IntentsGuildMessageReactions)
 
