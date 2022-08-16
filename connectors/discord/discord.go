@@ -429,3 +429,19 @@ func (d *Discord) Nick(nick string) error {
 	guildID := d.config.Get("discord.guildid", "")
 	return d.client.GuildMemberNickname(guildID, "@me", nick)
 }
+
+func (d *Discord) Topic(channelID string) (string, error) {
+	channel, err := d.client.Channel(channelID)
+	if err != nil {
+		return "", err
+	}
+	return channel.Topic, nil
+}
+
+func (d *Discord) SetTopic(channelID, topic string) error {
+	ce := &discordgo.ChannelEdit{
+		Topic: topic,
+	}
+	_, err := d.client.ChannelEditComplex(channelID, ce)
+	return err
+}

@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"github.com/velour/catbase/plugins/topic"
 	"io"
 	"math/rand"
 	"os"
@@ -173,6 +174,7 @@ func main() {
 	b.AddPlugin(quotegame.New(b))
 	b.AddPlugin(emojy.New(b))
 	b.AddPlugin(cowboy.New(b))
+	b.AddPlugin(topic.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
