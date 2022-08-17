@@ -7,6 +7,7 @@ import (
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/connectors/discord"
 	"regexp"
+	"strings"
 )
 
 type Topic struct {
@@ -24,14 +25,9 @@ func New(b bot.Bot) *Topic {
 }
 
 func (p *Topic) register() {
-	p.b.RegisterRegexCmd(p, bot.Message, regexp.MustCompile(`(?i)^topic (?P<topic>.+)$`), func(r bot.Request) bool {
+	p.b.RegisterRegexCmd(p, bot.Message, regexp.MustCompile(`(?i)^topic$`), func(r bot.Request) bool {
 		switch conn := r.Conn.(type) {
 		case *discord.Discord:
-			err := conn.SetTopic(r.Msg.Channel, r.Values["topic"])
-			if err != nil {
-				log.Error().Err(err).Msg("couldn't set topic")
-				return false
-			}
 			topic, err := conn.Topic(r.Msg.Channel)
 			if err != nil {
 				log.Error().Err(err).Msg("couldn't get topic")
@@ -43,9 +39,15 @@ func (p *Topic) register() {
 		}
 		return false
 	})
-	p.b.RegisterRegexCmd(p, bot.Message, regexp.MustCompile(`(?i)^topic$`), func(r bot.Request) bool {
+	p.b.RegisterRegexCmd(p, bot.Message, regexp.MustCompile(`(?i)^topic (?P<topic>.*)`), func(r bot.Request) bool {
+		topic := strings.TrimPrefix(r.Msg.Body, "topic ")
 		switch conn := r.Conn.(type) {
 		case *discord.Discord:
+			err := conn.SetTopic(r.Msg.Channel, topic)
+			if err != nil {
+				log.Error().Err(err).Msg("couldn't set topic")
+				return false
+			}
 			topic, err := conn.Topic(r.Msg.Channel)
 			if err != nil {
 				log.Error().Err(err).Msg("couldn't get topic")
