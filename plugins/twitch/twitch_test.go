@@ -41,7 +41,7 @@ func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	mb.Config().Set("twitch.clientid", "fake")
-	mb.Config().Set("twitch.authorization", "fake")
+	mb.Config().Set("twitch.secret", "fake")
 	c.c.SetArray("Twitch.Channels", []string{"test"})
 	c.c.SetArray("Twitch.test.Users", []string{"drseabass"})
 	assert.NotNil(t, c)
