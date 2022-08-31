@@ -382,6 +382,7 @@ func (p *ReminderPlugin) reminderer(c bot.Connector) {
 		reminder := p.getNextReminder()
 
 		if reminder != nil && time.Now().UTC().After(reminder.when) {
+			p.lastReminder[reminder.channel] = reminder
 			var message string
 			if reminder.from == reminder.who {
 				reminder.from = "you"
