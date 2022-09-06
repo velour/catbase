@@ -191,7 +191,7 @@ func (p *Cowboy) mkOverlayCB(overlay string) func(s *discordgo.Session, i *disco
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: msg,
-				Flags:   uint64(discordgo.MessageFlagsEphemeral),
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 	}

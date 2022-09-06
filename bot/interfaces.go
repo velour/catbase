@@ -44,6 +44,12 @@ type EphemeralID string
 
 type UnfurlLinks bool
 
+type EmbedAuthor struct {
+	ID      string
+	Who     string
+	IconURL string
+}
+
 type ImageAttachment struct {
 	URL    string
 	AltTxt string

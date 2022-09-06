@@ -61,7 +61,7 @@ resp:
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: msg,
-			Flags:   uint64(discordgo.MessageFlagsEphemeral),
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
 }
