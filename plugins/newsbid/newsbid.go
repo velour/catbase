@@ -44,7 +44,7 @@ func New(b bot.Bot) *NewsBid {
 var balanceRegex = regexp.MustCompile(`(?i)^balance$`)
 var bidsRegex = regexp.MustCompile(`(?i)^bids$`)
 var scoresRegex = regexp.MustCompile(`(?i)^scores$`)
-var bidRegex = regexp.MustCompile(`(?i)^bid (?P<amount>\S+) (?P<url>)\S+$`)
+var bidRegex = regexp.MustCompile(`(?i)^bid (?P<amount>\S+) (?P<url>\S+)\s?(?P<comment>.+)?$`)
 var checkRegex = regexp.MustCompile(`(?i)^check ngate$`)
 
 func (p *NewsBid) balanceCmd(r bot.Request) bool {

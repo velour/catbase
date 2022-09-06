@@ -103,25 +103,32 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 		message = "_" + message + "_"
 	}
 
-	var embeds *discordgo.MessageEmbed
+	embeds := []*discordgo.MessageEmbed{}
 
 	for _, arg := range args {
 		switch a := arg.(type) {
+		case bot.EmbedAuthor:
+			embed := &discordgo.MessageEmbed{}
+			embed.Author = &discordgo.MessageEmbedAuthor{
+				Name:    a.Who,
+				IconURL: a.IconURL,
+			}
+			embeds = append(embeds, embed)
 		case bot.ImageAttachment:
-			//embeds.URL = a.URL
-			embeds = &discordgo.MessageEmbed{}
-			embeds.Description = a.AltTxt
-			embeds.Image = &discordgo.MessageEmbedImage{
+			embed := &discordgo.MessageEmbed{}
+			embed.Description = a.AltTxt
+			embed.Image = &discordgo.MessageEmbedImage{
 				URL:    a.URL,
 				Width:  a.Width,
 				Height: a.Height,
 			}
+			embeds = append(embeds, embed)
 		}
 	}
 
 	data := &discordgo.MessageSend{
 		Content: message,
-		Embed:   embeds,
+		Embeds:  embeds,
 	}
 
 	log.Debug().
@@ -322,7 +329,9 @@ func (d *Discord) Emojy(name string) string {
 func (d *Discord) UploadEmojy(emojy, path string) error {
 	guildID := d.config.Get("discord.guildid", "")
 	defaultRoles := d.config.GetArray("discord.emojyRoles", []string{})
-	_, err := d.client.GuildEmojiCreate(guildID, emojy, path, defaultRoles)
+	_, err := d.client.GuildEmojiCreate(guildID, &discordgo.EmojiParams{
+		emojy, path, defaultRoles,
+	})
 	if err != nil {
 		return err
 	}

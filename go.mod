@@ -6,7 +6,7 @@ require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/PuerkitoBio/goquery v1.8.0
-	github.com/bwmarrin/discordgo v0.25.0
+	github.com/bwmarrin/discordgo v0.26.1
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
@@ -30,7 +30,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	gopkg.in/go-playground/webhooks.v5 v5.17.0
 )
 
@@ -83,7 +83,7 @@ require (
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/net v0.0.0-20211118161319-6a13c67c3ce4 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/sys v0.0.0-20220906165534-d0df966e6959 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gonum.org/v1/gonum v0.6.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect

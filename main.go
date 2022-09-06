@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"github.com/velour/catbase/plugins/pagecomment"
 	"github.com/velour/catbase/plugins/topic"
 	"io"
 	"math/rand"
@@ -131,6 +132,7 @@ func main() {
 
 	b.AddPlugin(admin.New(b))
 	b.AddPlugin(roles.New(b))
+	b.AddPlugin(pagecomment.New(b))
 	b.AddPlugin(gpt3.New(b))
 	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(mayi.New(b))
