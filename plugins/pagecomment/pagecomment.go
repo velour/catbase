@@ -53,7 +53,7 @@ func (p *PageComment) handleURLReq(r bot.Request) bool {
 	if strings.HasPrefix(u, "<") && strings.HasSuffix(u, ">") {
 		u = u[1 : len(u)-1]
 	}
-	msg := p.handleURL(u, fullComment, r.Msg.User.Name)
+	msg := handleURL(u, fullComment, r.Msg.User.Name)
 	p.b.Send(r.Conn, bot.Delete, r.Msg.Channel, r.Msg.ID)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
 	return true
@@ -68,7 +68,7 @@ func (p *PageComment) handleURLCmd(conn bot.Connector) func(*discordgo.Session, 
 		if err == nil {
 			who = profile.Name
 		}
-		msg := p.handleURL(u, cmt, who)
+		msg := handleURL(u, cmt, who)
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -82,17 +82,28 @@ func (p *PageComment) handleURLCmd(conn bot.Connector) func(*discordgo.Session, 
 	}
 }
 
-func (p *PageComment) handleURL(u, cmt, who string) string {
-	req, err := http.Get(u)
+func handleURL(u, cmt, who string) string {
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
+		return "Couldn't parse that URL"
+	}
+	req.Header.Set("User-Agent", "catbase/1.0")
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode > 299 {
+		log.Error().Err(err).Int("status", resp.StatusCode).Msgf("error with request")
 		return "Couldn't get that URL"
 	}
-	doc, err := goquery.NewDocumentFromReader(req.Body)
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		return "Couldn't parse that URL"
 	}
 	wait := make(chan string, 1)
-	doc.Find("title").First().Each(func(i int, s *goquery.Selection) {
+	sel := doc.Find("title")
+	if sel.Length() == 0 {
+		return fmt.Sprintf("> %s: %s\n(<%s>)", who, cmt, u)
+	}
+	sel.First().Each(func(i int, s *goquery.Selection) {
 		wait <- fmt.Sprintf("> %s\n%s: %s\n(<%s>)", s.Text(), who, cmt, u)
 	})
 	return <-wait
