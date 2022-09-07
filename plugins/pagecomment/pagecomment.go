@@ -63,13 +63,8 @@ func (p *PageComment) handleURLCmd(conn bot.Connector) func(*discordgo.Session, 
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		u := i.ApplicationCommandData().Options[0].StringValue()
 		cmt := i.ApplicationCommandData().Options[1].StringValue()
-		who := i.Member.User.Username
-		profile, err := conn.Profile(i.Member.User.ID)
-		if err == nil {
-			who = profile.Name
-		}
-		msg := handleURL(u, cmt, who)
-		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		msg := handleURL(u, cmt, "")
+		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: msg,
@@ -83,6 +78,9 @@ func (p *PageComment) handleURLCmd(conn bot.Connector) func(*discordgo.Session, 
 }
 
 func handleURL(u, cmt, who string) string {
+	if who != "" {
+		who = who + ": "
+	}
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
@@ -101,10 +99,10 @@ func handleURL(u, cmt, who string) string {
 	wait := make(chan string, 1)
 	sel := doc.Find("title")
 	if sel.Length() == 0 {
-		return fmt.Sprintf("> %s: %s\n(<%s>)", who, cmt, u)
+		return fmt.Sprintf("%s%s\n(<%s>)", who, cmt, u)
 	}
 	sel.First().Each(func(i int, s *goquery.Selection) {
-		wait <- fmt.Sprintf("> %s\n%s: %s\n(<%s>)", s.Text(), who, cmt, u)
+		wait <- fmt.Sprintf("> %s\n%s%s\n(<%s>)", s.Text(), who, cmt, u)
 	})
 	return <-wait
 }
