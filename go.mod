@@ -11,7 +11,7 @@ require (
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
 	github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90
-	github.com/forPelevin/gomoji v1.1.4
+	github.com/forPelevin/gomoji v1.1.6
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/httprate v0.7.0
@@ -71,7 +71,7 @@ require (
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rivo/uniseg v0.3.4 // indirect
 	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
