@@ -14,7 +14,7 @@ require (
 	github.com/forPelevin/gomoji v1.1.4
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/go-chi/chi/v5 v5.0.7
-	github.com/go-chi/httprate v0.5.3
+	github.com/go-chi/httprate v0.7.0
 	github.com/gocolly/colly v1.2.0
 	github.com/google/uuid v1.3.0
 	github.com/itchyny/gojq v0.12.8
