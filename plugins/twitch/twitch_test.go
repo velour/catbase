@@ -37,7 +37,7 @@ func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	}
 }
 
-func makeTwitchPlugin(t *testing.T) (*TwitchPlugin, *bot.MockBot) {
+func makeTwitchPlugin(t *testing.T) (*Twitch, *bot.MockBot) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	mb.Config().Set("twitch.clientid", "fake")

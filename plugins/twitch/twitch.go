@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -26,11 +27,15 @@ const (
 	stoppedStreamingTplFallback = "{{.Name}} just stopped streaming"
 )
 
-type TwitchPlugin struct {
-	b          bot.Bot
-	c          *config.Config
-	twitchList map[string]*Twitcher
-	tbl        bot.HandlerTable
+type Twitch struct {
+	b            bot.Bot
+	c            *config.Config
+	twitchList   map[string]*Twitcher
+	tbl          bot.HandlerTable
+	ircConnected bool
+	irc          *IRC
+	ircLock      sync.Mutex
+	bridgeMap    map[string]string
 }
 
 type Twitcher struct {
@@ -62,11 +67,12 @@ type stream struct {
 	} `json:"pagination"`
 }
 
-func New(b bot.Bot) *TwitchPlugin {
-	p := &TwitchPlugin{
+func New(b bot.Bot) *Twitch {
+	p := &Twitch{
 		b:          b,
 		c:          b.Config(),
 		twitchList: map[string]*Twitcher{},
+		bridgeMap:  map[string]string{},
 	}
 
 	for _, ch := range p.c.GetArray("Twitch.Channels", []string{}) {
@@ -90,13 +96,13 @@ func New(b bot.Bot) *TwitchPlugin {
 	return p
 }
 
-func (p *TwitchPlugin) registerWeb() {
+func (p *Twitch) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/{user}", p.serveStreaming)
 	p.b.RegisterWeb(r, "/isstreaming")
 }
 
-func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
+func (p *Twitch) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	userName := strings.ToLower(chi.URLParam(r, "user"))
 	if userName == "" {
 		fmt.Fprint(w, "User not found.")
@@ -126,7 +132,7 @@ func (p *TwitchPlugin) serveStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *TwitchPlugin) register() {
+func (p *Twitch) register() {
 	p.tbl = bot.HandlerTable{
 		{
 			Kind: bot.Message, IsCmd: true,
@@ -146,12 +152,29 @@ func (p *TwitchPlugin) register() {
 			HelpText: "Reset the twitch templates",
 			Handler:  p.resetTwitch,
 		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^track (?P<twitchChannel>.+)$`),
+			HelpText: "Bridge to this channel",
+			Handler:  p.mkBridge,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?i)^untrack$`),
+			HelpText: "Disconnect a bridge (only in bridged channel)",
+			Handler:  p.rmBridge,
+		},
+		{
+			Kind: bot.Message, IsCmd: false,
+			Regex:   regexp.MustCompile(`.*`),
+			Handler: p.bridgeMsg,
+		},
 	}
 	p.b.Register(p, bot.Help, p.help)
 	p.b.RegisterTable(p, p.tbl)
 }
 
-func (p *TwitchPlugin) twitchStatus(r bot.Request) bool {
+func (p *Twitch) twitchStatus(r bot.Request) bool {
 	channel := r.Msg.Channel
 	if users := p.c.GetArray("Twitch."+channel+".Users", []string{}); len(users) > 0 {
 		for _, twitcherName := range users {
@@ -168,7 +191,7 @@ func (p *TwitchPlugin) twitchStatus(r bot.Request) bool {
 	return true
 }
 
-func (p *TwitchPlugin) twitchUserStatus(r bot.Request) bool {
+func (p *Twitch) twitchUserStatus(r bot.Request) bool {
 	who := strings.ToLower(r.Values["who"])
 	if t, ok := p.twitchList[who]; ok {
 		err := p.checkTwitch(r.Conn, r.Msg.Channel, t, true)
@@ -182,7 +205,7 @@ func (p *TwitchPlugin) twitchUserStatus(r bot.Request) bool {
 	return true
 }
 
-func (p *TwitchPlugin) resetTwitch(r bot.Request) bool {
+func (p *Twitch) resetTwitch(r bot.Request) bool {
 	p.c.Set("twitch.istpl", isStreamingTplFallback)
 	p.c.Set("twitch.nottpl", notStreamingTplFallback)
 	p.c.Set("twitch.stoppedtpl", stoppedStreamingTplFallback)
@@ -190,7 +213,7 @@ func (p *TwitchPlugin) resetTwitch(r bot.Request) bool {
 	return true
 }
 
-func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
+func (p *Twitch) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
 	msg := "You can set the templates for streams with\n"
 	msg += fmt.Sprintf("twitch.istpl (default: %s)\n", isStreamingTplFallback)
 	msg += fmt.Sprintf("twitch.nottpl (default: %s)\n", notStreamingTplFallback)
@@ -201,7 +224,7 @@ func (p *TwitchPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message,
 	return true
 }
 
-func (p *TwitchPlugin) twitchAuthLoop(c bot.Connector) {
+func (p *Twitch) twitchAuthLoop(c bot.Connector) {
 	frequency := p.c.GetInt("Twitch.AuthFreq", 60*60)
 	cid := p.c.Get("twitch.clientid", "")
 	secret := p.c.Get("twitch.secret", "")
@@ -226,7 +249,7 @@ func (p *TwitchPlugin) twitchAuthLoop(c bot.Connector) {
 	}
 }
 
-func (p *TwitchPlugin) twitchChannelLoop(c bot.Connector, channel string) {
+func (p *Twitch) twitchChannelLoop(c bot.Connector, channel string) {
 	frequency := p.c.GetInt("Twitch.Freq", 60)
 	if p.c.Get("twitch.clientid", "") == "" || p.c.Get("twitch.secret", "") == "" {
 		log.Info().Msgf("Disabling twitch autochecking.")
@@ -276,7 +299,7 @@ errCase:
 	return []byte{}, resp.StatusCode, false
 }
 
-func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) error {
+func (p *Twitch) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) error {
 	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
 	if err != nil {
 		err := fmt.Errorf("error parsing twitch stream URL")
@@ -333,6 +356,7 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 		twitcher.URL(),
 	}
 
+	// This is a logic mess and needs to be rejiggered. I am not doing that today. (2022-09-18)
 	if alwaysPrintStatus {
 		if gameID == "" {
 			t, err := template.New("notStreaming").Parse(notStreamingTpl)
@@ -363,6 +387,13 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 			}
 			t.Execute(&buf, info)
 			p.b.Send(c, bot.Message, channel, buf.String())
+			log.Debug().Msgf("Disconnecting bridge: %s -> %+v", twitcher.name, p.bridgeMap)
+			for threadID, ircCh := range p.bridgeMap {
+				if strings.HasSuffix(ircCh, twitcher.name) {
+					delete(p.bridgeMap, threadID)
+					p.b.Send(c, bot.Message, threadID, "Stopped tracking #"+twitcher.name)
+				}
+			}
 		}
 		twitcher.gameID = ""
 	} else {
@@ -375,13 +406,24 @@ func (p *TwitchPlugin) checkTwitch(c bot.Connector, channel string, twitcher *Tw
 			}
 			t.Execute(&buf, info)
 			p.b.Send(c, bot.Message, channel, buf.String())
+			// start the bridge here
+			msg := fmt.Sprintf("This post is tracking #%s\n<%s>", twitcher.name, twitcher.URL())
+			err = p.startBridgeMsg(
+				fmt.Sprintf("%s-%s-%s", info.Name, info.Game, time.Now().Format("2006-01-02-15:04")),
+				twitcher.name,
+				msg,
+			)
+			if err != nil {
+				log.Error().Err(err).Msgf("unable to start bridge")
+				return err
+			}
 		}
 		twitcher.gameID = gameID
 	}
 	return nil
 }
 
-func (p *TwitchPlugin) validateCredentials() error {
+func (p *Twitch) validateCredentials() error {
 	cid := p.c.Get("twitch.clientid", "")
 	token := p.c.Get("twitch.token", "")
 	if token == "" {
@@ -395,7 +437,7 @@ func (p *TwitchPlugin) validateCredentials() error {
 	return nil
 }
 
-func (p *TwitchPlugin) reAuthenticate() error {
+func (p *Twitch) reAuthenticate() error {
 	cid := p.c.Get("twitch.clientid", "")
 	secret := p.c.Get("twitch.secret", "")
 	if cid == "" || secret == "" {
