@@ -30,6 +30,8 @@ type Discord struct {
 
 	registeredCmds []*discordgo.ApplicationCommand
 	cmdHandlers    map[string]CmdHandler
+
+	guildID string
 }
 
 func New(config *config.Config) *Discord {
@@ -37,12 +39,17 @@ func New(config *config.Config) *Discord {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to Discord")
 	}
+	guildID := config.Get("discord.guildid", "")
+	if guildID == "" {
+		log.Fatal().Msgf("You must set either DISCORD_GUILDID env or discord.guildid db config")
+	}
 	d := &Discord{
 		config:         config,
 		client:         client,
 		uidCache:       map[string]string{},
 		registeredCmds: []*discordgo.ApplicationCommand{},
 		cmdHandlers:    map[string]CmdHandler{},
+		guildID:        guildID,
 	}
 	d.client.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := d.cmdHandlers[i.ApplicationCommandData().Name]; ok {
@@ -155,12 +162,7 @@ func (d *Discord) GetEmojiList(force bool) map[string]string {
 	if d.emojiCache != nil && !force {
 		return d.emojiCache
 	}
-	guildID := d.config.Get("discord.guildid", "")
-	if guildID == "" {
-		log.Error().Msg("no guild ID set")
-		return map[string]string{}
-	}
-	e, err := d.client.GuildEmojis(guildID)
+	e, err := d.client.GuildEmojis(d.guildID)
 	if err != nil {
 		log.Error().Err(err).Msg("could not retrieve emojis")
 		return map[string]string{}
@@ -220,16 +222,11 @@ func (d *Discord) convertUser(u *discordgo.User) *user.User {
 	}
 	nick := u.Username
 
-	guildID := d.config.Get("discord.guildid", "")
-	if guildID == "" {
-		log.Error().Msg("no guild ID set")
-	} else {
-		mem, err := d.client.GuildMember(guildID, u.ID)
-		if err != nil {
-			log.Error().Err(err).Msg("could not get guild member")
-		} else if mem.Nick != "" {
-			nick = mem.Nick
-		}
+	mem, err := d.client.GuildMember(d.guildID, u.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("could not get guild member")
+	} else if mem.Nick != "" {
+		nick = mem.Nick
 	}
 
 	return &user.User{
@@ -327,9 +324,8 @@ func (d *Discord) Emojy(name string) string {
 }
 
 func (d *Discord) UploadEmojy(emojy, path string) error {
-	guildID := d.config.Get("discord.guildid", "")
 	defaultRoles := d.config.GetArray("discord.emojyRoles", []string{})
-	_, err := d.client.GuildEmojiCreate(guildID, &discordgo.EmojiParams{
+	_, err := d.client.GuildEmojiCreate(d.guildID, &discordgo.EmojiParams{
 		emojy, path, defaultRoles,
 	})
 	if err != nil {
@@ -339,9 +335,8 @@ func (d *Discord) UploadEmojy(emojy, path string) error {
 }
 
 func (d *Discord) DeleteEmojy(emojy string) error {
-	guildID := d.config.Get("discord.guildid", "")
 	emojyID := d.GetEmojySnowflake(emojy)
-	return d.client.GuildEmojiDelete(guildID, emojyID)
+	return d.client.GuildEmojiDelete(d.guildID, emojyID)
 }
 
 func (d *Discord) URLFormat(title, url string) string {
@@ -350,11 +345,7 @@ func (d *Discord) URLFormat(title, url string) string {
 
 // GetChannelName returns the channel ID for a human-friendly name (if possible)
 func (d *Discord) GetChannelID(name string) string {
-	guildID := d.config.Get("discord.guildid", "")
-	if guildID == "" {
-		return name
-	}
-	chs, err := d.client.GuildChannels(guildID)
+	chs, err := d.client.GuildChannels(d.guildID)
 	if err != nil {
 		return name
 	}
@@ -378,11 +369,7 @@ func (d *Discord) GetChannelName(id string) string {
 func (d *Discord) GetRoles() ([]bot.Role, error) {
 	ret := []bot.Role{}
 
-	guildID := d.config.Get("discord.guildid", "")
-	if guildID == "" {
-		return nil, errors.New("no guildID set")
-	}
-	roles, err := d.client.GuildRoles(guildID)
+	roles, err := d.client.GuildRoles(d.guildID)
 	if err != nil {
 		return nil, err
 	}
@@ -398,24 +385,22 @@ func (d *Discord) GetRoles() ([]bot.Role, error) {
 }
 
 func (d *Discord) SetRole(userID, roleID string) error {
-	guildID := d.config.Get("discord.guildid", "")
-	member, err := d.client.GuildMember(guildID, userID)
+	member, err := d.client.GuildMember(d.guildID, userID)
 	if err != nil {
 		return err
 	}
 	for _, r := range member.Roles {
 		if r == roleID {
-			return d.client.GuildMemberRoleRemove(guildID, userID, roleID)
+			return d.client.GuildMemberRoleRemove(d.guildID, userID, roleID)
 		}
 	}
-	return d.client.GuildMemberRoleAdd(guildID, userID, roleID)
+	return d.client.GuildMemberRoleAdd(d.guildID, userID, roleID)
 }
 
 type CmdHandler func(s *discordgo.Session, i *discordgo.InteractionCreate)
 
 func (d *Discord) RegisterSlashCmd(c discordgo.ApplicationCommand, handler CmdHandler) error {
-	guildID := d.config.Get("discord.guildid", "")
-	cmd, err := d.client.ApplicationCommandCreate(d.client.State.User.ID, guildID, &c)
+	cmd, err := d.client.ApplicationCommandCreate(d.client.State.User.ID, d.guildID, &c)
 	d.cmdHandlers[c.Name] = handler
 	if err != nil {
 		return err
@@ -426,17 +411,15 @@ func (d *Discord) RegisterSlashCmd(c discordgo.ApplicationCommand, handler CmdHa
 
 func (d *Discord) Shutdown() {
 	log.Debug().Msgf("Shutting down and deleting %d slash commands", len(d.registeredCmds))
-	guildID := d.config.Get("discord.guildid", "")
 	for _, c := range d.registeredCmds {
-		if err := d.client.ApplicationCommandDelete(d.client.State.User.ID, guildID, c.ID); err != nil {
+		if err := d.client.ApplicationCommandDelete(d.client.State.User.ID, d.guildID, c.ID); err != nil {
 			log.Error().Err(err).Msgf("could not delete command %s", c.Name)
 		}
 	}
 }
 
 func (d *Discord) Nick(nick string) error {
-	guildID := d.config.Get("discord.guildid", "")
-	return d.client.GuildMemberNickname(guildID, "@me", nick)
+	return d.client.GuildMemberNickname(d.guildID, "@me", nick)
 }
 
 func (d *Discord) Topic(channelID string) (string, error) {
@@ -453,4 +436,35 @@ func (d *Discord) SetTopic(channelID, topic string) error {
 	}
 	_, err := d.client.ChannelEditComplex(channelID, ce)
 	return err
+}
+
+type ThreadStart struct {
+	Name                string           `json:"name"`
+	AutoArchiveDuration int              `json:"auto_archive_duration,omitempty"`
+	RateLimitPerUser    int              `json:"rate_limit_per_user,omitempty"`
+	AppliedTags         []string         `json:"applied_tags,omitempty"`
+	Message             ForumMessageData `json:"message"`
+}
+
+type ForumMessageData struct {
+	Content string `json:"content"`
+}
+
+func (d *Discord) CreateRoom(name, message, parent string, duration int) (string, error) {
+	data := &ThreadStart{
+		Name:                name,
+		AutoArchiveDuration: duration,
+		Message:             ForumMessageData{message},
+	}
+	ch := &discordgo.Channel{}
+	endpoint := discordgo.EndpointChannelThreads(parent)
+	body, err := d.client.RequestWithBucketID("POST", endpoint, data, endpoint)
+	if err != nil {
+		return "", err
+	}
+
+	if err = discordgo.Unmarshal(body, &ch); err != nil {
+		return "", err
+	}
+	return ch.ID, nil
 }

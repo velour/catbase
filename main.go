@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"github.com/velour/catbase/plugins/pagecomment"
+	"github.com/velour/catbase/plugins/talker"
 	"github.com/velour/catbase/plugins/topic"
 	"io"
 	"math/rand"
@@ -64,7 +65,6 @@ import (
 	"github.com/velour/catbase/plugins/rss"
 	"github.com/velour/catbase/plugins/sisyphus"
 	"github.com/velour/catbase/plugins/stock"
-	"github.com/velour/catbase/plugins/talker"
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/tldr"
 	"github.com/velour/catbase/plugins/twitch"
@@ -132,6 +132,7 @@ func main() {
 
 	b.AddPlugin(admin.New(b))
 	b.AddPlugin(roles.New(b))
+	b.AddPlugin(twitch.New(b))
 	b.AddPlugin(pagecomment.New(b))
 	b.AddPlugin(gpt3.New(b))
 	b.AddPlugin(secrets.New(b))
@@ -141,7 +142,6 @@ func main() {
 	b.AddPlugin(last.New(b))
 	b.AddPlugin(first.New(b))
 	b.AddPlugin(leftpad.New(b))
-	b.AddPlugin(talker.New(b))
 	b.AddPlugin(dice.New(b))
 	b.AddPlugin(picker.New(b))
 	b.AddPlugin(beers.New(b))
@@ -153,7 +153,6 @@ func main() {
 	b.AddPlugin(babbler.New(b))
 	b.AddPlugin(rss.New(b))
 	b.AddPlugin(reaction.New(b))
-	b.AddPlugin(twitch.New(b))
 	b.AddPlugin(inventory.New(b))
 	b.AddPlugin(rpgORdie.New(b))
 	b.AddPlugin(sisyphus.New(b))
@@ -177,6 +176,7 @@ func main() {
 	b.AddPlugin(emojy.New(b))
 	b.AddPlugin(cowboy.New(b))
 	b.AddPlugin(topic.New(b))
+	b.AddPlugin(talker.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
 
