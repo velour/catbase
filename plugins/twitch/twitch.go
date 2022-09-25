@@ -39,8 +39,9 @@ type Twitch struct {
 }
 
 type Twitcher struct {
-	name   string
-	gameID string
+	name        string
+	gameID      string
+	isStreaming bool
 }
 
 func (t Twitcher) URL() string {
@@ -262,6 +263,7 @@ func (p *Twitch) twitchChannelLoop(c bot.Connector, channel string) {
 		time.Sleep(time.Duration(frequency) * time.Second)
 
 		for _, twitcherName := range p.c.GetArray("Twitch."+channel+".Users", []string{}) {
+			log.Debug().Msgf("checking %s on twiwch", twitcherName)
 			twitcherName = strings.ToLower(twitcherName)
 			if err := p.checkTwitch(c, channel, p.twitchList[twitcherName], false); err != nil {
 				log.Error().Err(err).Msgf("error in twitch loop")
@@ -299,6 +301,12 @@ errCase:
 	return []byte{}, resp.StatusCode, false
 }
 
+type twitchInfo struct {
+	Name string
+	Game string
+	URL  string
+}
+
 func (p *Twitch) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) error {
 	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
 	if err != nil {
@@ -333,7 +341,10 @@ func (p *Twitch) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher
 
 	games := s.Data
 	gameID, title := "", ""
-	if len(games) > 0 {
+	if len(games) == 0 {
+		p.twitchList[twitcher.name].isStreaming = false
+	} else {
+		p.twitchList[twitcher.name].isStreaming = true
 		gameID = games[0].GameID
 		if gameID == "" {
 			gameID = "unknown"
@@ -341,86 +352,91 @@ func (p *Twitch) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher
 		title = games[0].Title
 	}
 
-	notStreamingTpl := p.c.Get("Twitch.NotTpl", notStreamingTplFallback)
-	isStreamingTpl := p.c.Get("Twitch.IsTpl", isStreamingTplFallback)
-	stoppedStreamingTpl := p.c.Get("Twitch.StoppedTpl", stoppedStreamingTplFallback)
-	buf := bytes.Buffer{}
-
-	info := struct {
-		Name string
-		Game string
-		URL  string
-	}{
+	info := twitchInfo{
 		twitcher.name,
 		title,
 		twitcher.URL(),
 	}
 
-	// This is a logic mess and needs to be rejiggered. I am not doing that today. (2022-09-18)
-	if alwaysPrintStatus {
-		if gameID == "" {
-			t, err := template.New("notStreaming").Parse(notStreamingTpl)
-			if err != nil {
-				log.Error().Err(err)
-				p.b.Send(c, bot.Message, channel, err)
-				t = template.Must(template.New("notStreaming").Parse(notStreamingTplFallback))
-			}
-			t.Execute(&buf, info)
-			p.b.Send(c, bot.Message, channel, buf.String())
-		} else {
-			t, err := template.New("isStreaming").Parse(isStreamingTpl)
-			if err != nil {
-				log.Error().Err(err)
-				p.b.Send(c, bot.Message, channel, err)
-				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
-			}
-			t.Execute(&buf, info)
-			p.b.Send(c, bot.Message, channel, buf.String())
-		}
-	} else if gameID == "" {
-		if twitcher.gameID != "" {
-			t, err := template.New("stoppedStreaming").Parse(stoppedStreamingTpl)
-			if err != nil {
-				log.Error().Err(err)
-				p.b.Send(c, bot.Message, channel, err)
-				t = template.Must(template.New("stoppedStreaming").Parse(stoppedStreamingTplFallback))
-			}
-			t.Execute(&buf, info)
-			p.b.Send(c, bot.Message, channel, buf.String())
-			log.Debug().Msgf("Disconnecting bridge: %s -> %+v", twitcher.name, p.bridgeMap)
-			for threadID, ircCh := range p.bridgeMap {
-				if strings.HasSuffix(ircCh, twitcher.name) {
-					delete(p.bridgeMap, threadID)
-					p.b.Send(c, bot.Message, threadID, "Stopped tracking #"+twitcher.name)
-				}
-			}
-		}
+	log.Debug().Interface("info", info).Interface("twitcher", twitcher).Msgf("checking twitch")
+
+	if alwaysPrintStatus && twitcher.isStreaming {
+		p.streaming(c, channel, info)
+	} else if alwaysPrintStatus && !twitcher.isStreaming {
+		p.notStreaming(c, channel, info)
+	} else if twitcher.gameID != "" && !twitcher.isStreaming {
 		twitcher.gameID = ""
-	} else {
-		if twitcher.gameID != gameID {
-			t, err := template.New("isStreaming").Parse(isStreamingTpl)
-			if err != nil {
-				log.Error().Err(err)
-				p.b.Send(c, bot.Message, channel, err)
-				t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
-			}
-			t.Execute(&buf, info)
-			p.b.Send(c, bot.Message, channel, buf.String())
-			// start the bridge here
-			msg := fmt.Sprintf("This post is tracking #%s\n<%s>", twitcher.name, twitcher.URL())
-			err = p.startBridgeMsg(
-				fmt.Sprintf("%s-%s-%s", info.Name, info.Game, time.Now().Format("2006-01-02-15:04")),
-				twitcher.name,
-				msg,
-			)
-			if err != nil {
-				log.Error().Err(err).Msgf("unable to start bridge")
-				return err
-			}
-		}
+		p.disconnectBridge(c, twitcher)
+		p.stopped(c, channel, info)
+		twitcher.gameID = ""
+	} else if twitcher.gameID != gameID && twitcher.isStreaming {
+		p.streaming(c, channel, info)
+		p.connectBridge(c, channel, info, twitcher)
 		twitcher.gameID = gameID
 	}
 	return nil
+}
+
+func (p *Twitch) connectBridge(c bot.Connector, ch string, info twitchInfo, twitcher *Twitcher) {
+	msg := fmt.Sprintf("This post is tracking #%s\n<%s>", twitcher.name, twitcher.URL())
+	err := p.startBridgeMsg(
+		fmt.Sprintf("%s-%s-%s", info.Name, info.Game, time.Now().Format("2006-01-02-15:04")),
+		twitcher.name,
+		msg,
+	)
+	if err != nil {
+		log.Error().Err(err).Msgf("unable to start bridge")
+		p.b.Send(c, bot.Message, ch, fmt.Sprintf("Unable to start bridge: %s", err))
+	}
+}
+
+func (p *Twitch) disconnectBridge(c bot.Connector, twitcher *Twitcher) {
+	log.Debug().Msgf("Disconnecting bridge: %s -> %+v", twitcher.name, p.bridgeMap)
+	for threadID, ircCh := range p.bridgeMap {
+		if strings.HasSuffix(ircCh, twitcher.name) {
+			delete(p.bridgeMap, threadID)
+			p.b.Send(c, bot.Message, threadID, "Stopped tracking #"+twitcher.name)
+		}
+	}
+}
+
+func (p *Twitch) stopped(c bot.Connector, ch string, info twitchInfo) {
+	notStreamingTpl := p.c.Get("Twitch.StoppedTpl", stoppedStreamingTplFallback)
+	buf := bytes.Buffer{}
+	t, err := template.New("notStreaming").Parse(notStreamingTpl)
+	if err != nil {
+		log.Error().Err(err)
+		p.b.Send(c, bot.Message, ch, err)
+		t = template.Must(template.New("notStreaming").Parse(stoppedStreamingTplFallback))
+	}
+	t.Execute(&buf, info)
+	p.b.Send(c, bot.Message, ch, buf.String())
+}
+
+func (p *Twitch) streaming(c bot.Connector, channel string, info twitchInfo) {
+	isStreamingTpl := p.c.Get("Twitch.IsTpl", isStreamingTplFallback)
+	buf := bytes.Buffer{}
+	t, err := template.New("isStreaming").Parse(isStreamingTpl)
+	if err != nil {
+		log.Error().Err(err)
+		p.b.Send(c, bot.Message, channel, err)
+		t = template.Must(template.New("isStreaming").Parse(isStreamingTplFallback))
+	}
+	t.Execute(&buf, info)
+	p.b.Send(c, bot.Message, channel, buf.String())
+}
+
+func (p *Twitch) notStreaming(c bot.Connector, ch string, info twitchInfo) {
+	notStreamingTpl := p.c.Get("Twitch.NotTpl", notStreamingTplFallback)
+	buf := bytes.Buffer{}
+	t, err := template.New("notStreaming").Parse(notStreamingTpl)
+	if err != nil {
+		log.Error().Err(err)
+		p.b.Send(c, bot.Message, ch, err)
+		t = template.Must(template.New("notStreaming").Parse(notStreamingTplFallback))
+	}
+	t.Execute(&buf, info)
+	p.b.Send(c, bot.Message, ch, buf.String())
 }
 
 func (p *Twitch) validateCredentials() error {
