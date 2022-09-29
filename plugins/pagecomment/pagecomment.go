@@ -53,7 +53,8 @@ func (p *PageComment) handleURLReq(r bot.Request) bool {
 	if strings.HasPrefix(u, "<") && strings.HasSuffix(u, ">") {
 		u = u[1 : len(u)-1]
 	}
-	msg := handleURL(u, fullComment, r.Msg.User.Name)
+	ua := p.c.Get("url.useragent", "catbase/1.0")
+	msg := handleURL(u, fullComment, r.Msg.User.Name, ua)
 	p.b.Send(r.Conn, bot.Delete, r.Msg.Channel, r.Msg.ID)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, msg)
 	return true
@@ -63,7 +64,8 @@ func (p *PageComment) handleURLCmd(conn bot.Connector) func(*discordgo.Session, 
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		u := i.ApplicationCommandData().Options[0].StringValue()
 		cmt := i.ApplicationCommandData().Options[1].StringValue()
-		msg := handleURL(u, cmt, "")
+		ua := p.c.Get("url.useragent", "catbase/1.0")
+		msg := handleURL(u, cmt, "", ua)
 		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -77,7 +79,7 @@ func (p *PageComment) handleURLCmd(conn bot.Connector) func(*discordgo.Session, 
 	}
 }
 
-func handleURL(u, cmt, who string) string {
+func handleURL(u, cmt, who, ua string) string {
 	if who != "" {
 		who = who + ": "
 	}
@@ -86,7 +88,7 @@ func handleURL(u, cmt, who string) string {
 	if err != nil {
 		return "Couldn't parse that URL"
 	}
-	req.Header.Set("User-Agent", "catbase/1.0")
+	req.Header.Set("User-Agent", ua)
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode > 299 {
 		log.Error().Err(err).Int("status", resp.StatusCode).Msgf("error with request")
