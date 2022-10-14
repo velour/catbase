@@ -306,7 +306,15 @@ var defaultFormats = map[string]string{
 	"raptor": "https://imgflip.com/s/meme/Philosoraptor.jpg",
 }
 
-func (p *MemePlugin) findFontSize(config []memeText, fontLocation string, w, h int, sizes []float64) float64 {
+func FindFontSizeConfigs(configs []memeText, fontLocation string, w, h int, sizes []float64) float64 {
+	texts := []string{}
+	for _, c := range configs {
+		texts = append(texts, c.Text)
+	}
+	return FindFontSize(texts, fontLocation, w, h, sizes)
+}
+
+func FindFontSize(config []string, fontLocation string, w, h int, sizes []float64) float64 {
 	fontSize := 12.0
 
 	m := gg.NewContext(w, h)
@@ -320,9 +328,9 @@ func (p *MemePlugin) findFontSize(config []memeText, fontLocation string, w, h i
 			return fontSize
 		}
 
-		w, _ := m.MeasureString(s.Text)
+		w, _ := m.MeasureString(s)
 		if w > longestW {
-			longestStr = s.Text
+			longestStr = s
 			longestW = w
 		}
 	}
@@ -449,6 +457,7 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 	// Apply black stroke
 	m.SetHexColor("#000")
 	strokeSize := 6
+	fontSize := FindFontSizeConfigs(spec.Configs, defaultFont, w, h, fontSizes)
 	for dy := -strokeSize; dy <= strokeSize; dy++ {
 		for dx := -strokeSize; dx <= strokeSize; dx++ {
 			// give it rounded corners
@@ -460,7 +469,6 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 				if fontLocation == "" {
 					fontLocation = defaultFont
 				}
-				fontSize := p.findFontSize(spec.Configs, fontLocation, w, h, fontSizes)
 				m.LoadFontFace(fontLocation, fontSize)
 				x := float64(w)*c.XPerc + float64(dx)
 				y := float64(h)*c.YPerc + float64(dy)
@@ -476,7 +484,6 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 		if fontLocation == "" {
 			fontLocation = defaultFont
 		}
-		fontSize := p.findFontSize(spec.Configs, fontLocation, w, h, fontSizes)
 		m.LoadFontFace(fontLocation, fontSize)
 		x := float64(w) * c.XPerc
 		y := float64(h) * c.YPerc
