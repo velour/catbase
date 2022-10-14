@@ -112,13 +112,13 @@ func (p *Tappd) registerDiscord(d *discord.Discord) {
 func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	who := i.Interaction.Member.Nick
 	channel := i.Interaction.ChannelID
-	msg := fmt.Sprintf("%s checked in: %s",
-		i.Interaction.Member.Nick,
-		i.ApplicationCommandData().Options[1].StringValue())
+	shortMsg := i.ApplicationCommandData().Options[1].StringValue()
+	longMsg := fmt.Sprintf("%s checked in: %s",
+		i.Interaction.Member.Nick, shortMsg)
 	attachID := i.ApplicationCommandData().Options[0].Value.(string)
 	attach := i.ApplicationCommandData().Resolved.Attachments[attachID]
 	spec := defaultSpec()
-	spec.text = msg
+	spec.text = shortMsg
 	info, err := p.getAndOverlay(attachID, attach.URL, []textSpec{spec})
 	if err != nil {
 		log.Error().Err(err).Msgf("error with interaction")
@@ -135,7 +135,7 @@ func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 	embed := &discordgo.MessageEmbed{
-		Description: msg,
+		Description: longMsg,
 		Image: &discordgo.MessageEmbedImage{
 			URL:    info.BotURL,
 			Width:  info.W,
@@ -152,7 +152,7 @@ func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		log.Error().Err(err).Msgf("error with interaction")
 		return
 	}
-	err = p.log(who, channel, msg)
+	err = p.log(who, channel, shortMsg)
 	if err != nil {
 		log.Error().Err(err).Msgf("error recording tap")
 	}
