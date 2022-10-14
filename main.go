@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/velour/catbase/plugins/pagecomment"
 	"github.com/velour/catbase/plugins/talker"
+	"github.com/velour/catbase/plugins/tappd"
 	"github.com/velour/catbase/plugins/topic"
 	"io"
 	"math/rand"
@@ -144,6 +145,7 @@ func main() {
 	b.AddPlugin(leftpad.New(b))
 	b.AddPlugin(dice.New(b))
 	b.AddPlugin(picker.New(b))
+	b.AddPlugin(tappd.New(b))
 	b.AddPlugin(beers.New(b))
 	b.AddPlugin(remember.New(b))
 	b.AddPlugin(your.New(b))
