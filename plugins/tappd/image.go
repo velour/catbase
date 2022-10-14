@@ -2,6 +2,7 @@ package tappd
 
 import (
 	"bytes"
+	"github.com/disintegration/imageorient"
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
 	"github.com/rs/zerolog/log"
@@ -18,10 +19,8 @@ func (p *Tappd) getImage(url string) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().
-		Str("url", url).
-		Msgf("about to decode and crash")
-	img, _, err := image.Decode(resp.Body)
+
+	img, _, err := imageorient.Decode(resp.Body)
 	if err != nil {
 		return nil, err
 	}
