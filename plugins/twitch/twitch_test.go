@@ -53,9 +53,3 @@ func makeTwitchPlugin(t *testing.T) (*Twitch, *bot.MockBot) {
 
 	return c, mb
 }
-
-func TestTwitch(t *testing.T) {
-	b, mb := makeTwitchPlugin(t)
-	b.twitchStatus(makeRequest("!twitch status"))
-	assert.NotEmpty(t, mb.Messages)
-}
