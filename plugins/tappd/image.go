@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/disintegration/imageorient"
 	"github.com/fogleman/gg"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/nfnt/resize"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/plugins/meme"
@@ -127,14 +128,17 @@ func (p *Tappd) getAndOverlay(id, srcURL string, texts []textSpec) (imageInfo, e
 		return imageInfo{}, err
 	}
 	bounds := img.Bounds()
+	mime := mimetype.Detect(data)
 	info := imageInfo{
-		ID:     id,
-		SrcURL: srcURL,
-		BotURL: u.String(),
-		Img:    img,
-		Repr:   data,
-		W:      bounds.Dx(),
-		H:      bounds.Dy(),
+		ID:       id,
+		SrcURL:   srcURL,
+		BotURL:   u.String(),
+		Img:      img,
+		Repr:     data,
+		W:        bounds.Dx(),
+		H:        bounds.Dy(),
+		MimeType: mime.String(),
+		FileName: id + mime.Extension(),
 	}
 	p.imageMap[id] = info
 	log.Debug().

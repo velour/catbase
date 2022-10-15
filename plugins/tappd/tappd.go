@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/gabriel-vasile/mimetype"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/connectors/discord"
 	"image"
+	"os"
+	"path"
 	"regexp"
 	"time"
 )
@@ -21,13 +22,15 @@ type Tappd struct {
 }
 
 type imageInfo struct {
-	ID     string
-	SrcURL string
-	BotURL string
-	Img    image.Image
-	Repr   []byte
-	W      int
-	H      int
+	ID       string
+	SrcURL   string
+	BotURL   string
+	Img      image.Image
+	Repr     []byte
+	W        int
+	H        int
+	MimeType string
+	FileName string
 }
 
 func New(b bot.Bot) *Tappd {
@@ -144,10 +147,9 @@ func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			Height: info.H,
 		},
 	}}
-	mime := mimetype.Detect(info.Repr)
 	files := []*discordgo.File{{
-		Name:        info.ID + mime.Extension(),
-		ContentType: mime.String(),
+		Name:        info.FileName,
+		ContentType: info.MimeType,
 		Reader:      bytes.NewBuffer(info.Repr),
 	}}
 	content := info.BotURL
@@ -174,6 +176,16 @@ func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	err = p.log(who, channel, shortMsg)
 	if err != nil {
 		log.Error().Err(err).Msgf("error recording tap")
+	}
+	imgPath := p.c.Get("tappd.imagepath", "tappdimg")
+	err = os.MkdirAll(imgPath, 0775)
+	if err != nil {
+		log.Error().Err(err).Msgf("error creating directory")
+		return
+	}
+	err = os.WriteFile(path.Join(imgPath, info.FileName), info.Repr, 0664)
+	if err != nil {
+		log.Error().Err(err).Msgf("error writing file")
 	}
 }
 
