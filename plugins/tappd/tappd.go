@@ -53,7 +53,7 @@ func (p *Tappd) mkDB() error {
 		return err
 	}
 	_, err = tx.Exec(`create table if not exists tappd (
-		id integer primary key autoincrement,
+		id string primary key,
 		who string,
 		channel string,
 		message string,
@@ -70,15 +70,15 @@ func (p *Tappd) mkDB() error {
 	return nil
 }
 
-func (p *Tappd) log(who, channel, message string) error {
+func (p *Tappd) log(id, who, channel, message string) error {
 	db := p.b.DB()
 	tx, err := db.Beginx()
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	_, err = tx.Exec(`insert into tappd (who, channel, message, ts) values (?, ?, ? ,?)`,
-		who, channel, message, time.Now())
+	_, err = tx.Exec(`insert into tappd (id, who, channel, message, ts) values (?, ?, ?, ? ,?)`,
+		id, who, channel, message, time.Now())
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -173,7 +173,7 @@ func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		log.Error().Err(err).Msgf("error with interaction")
 		return
 	}
-	err = p.log(who, channel, shortMsg)
+	err = p.log(info.ID, who, channel, shortMsg)
 	if err != nil {
 		log.Error().Err(err).Msgf("error recording tap")
 	}
