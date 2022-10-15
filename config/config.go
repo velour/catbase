@@ -73,6 +73,13 @@ func (c *Config) GetInt(key string, fallback int) int {
 	return i
 }
 
+// GetBool returns true or false for config key
+// It will assume false for any string except "true"
+func (c *Config) GetBool(key string, fallback bool) bool {
+	val := c.GetString(key, strconv.FormatBool(fallback))
+	return val == "true"
+}
+
 // Get is a shortcut for GetString
 func (c *Config) Get(key, fallback string) string {
 	return c.GetString(key, fallback)
