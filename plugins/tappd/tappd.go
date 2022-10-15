@@ -1,8 +1,10 @@
 package tappd
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
@@ -134,18 +136,35 @@ func (p *Tappd) tap(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 		return
 	}
-	embed := &discordgo.MessageEmbed{
+	embeds := []*discordgo.MessageEmbed{{
 		Description: longMsg,
 		Image: &discordgo.MessageEmbedImage{
 			URL:    info.BotURL,
 			Width:  info.W,
 			Height: info.H,
 		},
+	}}
+	mime := mimetype.Detect(info.Repr)
+	files := []*discordgo.File{{
+		Name:        info.ID + mime.Extension(),
+		ContentType: mime.String(),
+		Reader:      bytes.NewBuffer(info.Repr),
+	}}
+	content := info.BotURL
+	// Yes, the configs are all stringly typed. Get over it.
+	useEmbed := p.c.GetBool("tappd.embed", false)
+	if useEmbed {
+		files = nil
+	} else {
+		embeds = nil
+		content = ""
 	}
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Embeds: []*discordgo.MessageEmbed{embed},
+			Embeds:  embeds,
+			Files:   files,
+			Content: content,
 		},
 	})
 	if err != nil {
