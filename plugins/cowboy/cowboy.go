@@ -90,6 +90,7 @@ func (p *Cowboy) makeCowboy(r bot.Request) {
 		e = strings.Trim(e, ":")
 		e = fmt.Sprintf("<:%s:%s>", e, list[e])
 	}
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, r.Msg.User.Name+":")
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, e)
 }
 
