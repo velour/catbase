@@ -5,6 +5,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/velour/catbase/plugins/emojy"
 	"regexp"
+	"strings"
 
 	"github.com/velour/catbase/connectors/discord"
 
@@ -72,26 +73,24 @@ func (p *Cowboy) register() {
 }
 
 func (p *Cowboy) makeCowboy(r bot.Request) {
-	what := r.Values["what"]
-	// This'll add the image to the cowboy_cache before discord tries to access it over http
 	overlays := p.c.GetMap("cowboy.overlays", defaultOverlays)
 	hat := overlays["hat"]
-	i, err := cowboy(p.emojyPath, p.baseEmojyURL, hat, what)
+	what := r.Values["what"]
+	_, err := p.mkEmojy(what, hat)
 	if err != nil {
-		log.Error().Err(err).Msg(":cowboy_fail:")
-		p.b.Send(r.Conn, bot.Ephemeral, r.Msg.Channel, r.Msg.User.ID, "Hey cowboy, that image wasn't there.")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Couldn't cowboify that, pardner.")
 		return
 	}
-	log.Debug().Msgf("makeCowboy: %s", r.Values["what"])
-	base := p.c.Get("baseURL", "http://127.0.0.1:1337")
-	u := base + "/cowboy/img/hat/" + r.Values["what"]
 	p.b.Send(r.Conn, bot.Delete, r.Msg.Channel, r.Msg.ID)
-	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "", bot.ImageAttachment{
-		URL:    u,
-		AltTxt: fmt.Sprintf("%s: %s", r.Msg.User.Name, r.Msg.Body),
-		Width:  i.Bounds().Max.X,
-		Height: i.Bounds().Max.Y,
-	})
+	e := ":cowboy_" + what + ":"
+
+	switch c := r.Conn.(type) {
+	case *discord.Discord:
+		list := emojy.InvertEmojyList(c.GetEmojiList(true))
+		e = strings.Trim(e, ":")
+		e = fmt.Sprintf("<:%s:%s>", e, list[e])
+	}
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, e)
 }
 
 func (p *Cowboy) registerCmds(d *discord.Discord) {
@@ -142,56 +141,68 @@ func (p *Cowboy) registerCmds(d *discord.Discord) {
 	}
 }
 
+func (p *Cowboy) mkEmojy(name, overlay string) (string, error) {
+	lastEmojy := p.c.Get("cowboy.lastEmojy", "rust")
+	emojyPlugin := emojy.NewAPI(p.b)
+	list := map[string]string{}
+
+	msg := fmt.Sprintf("You asked for %s overlaid by %s", name, overlay)
+	log.Debug().Msgf("got a cowboy command for %s overlaid by %s replacing %s",
+		name, overlay, lastEmojy)
+	prefix := overlay
+
+	newEmojy, err := cowboy(p.emojyPath, p.baseEmojyURL, overlay, name)
+	if err != nil {
+		return "", err
+	}
+
+	err = emojyPlugin.RmEmojy(p.b.DefaultConnector(), lastEmojy)
+	if err != nil {
+		return "", err
+	}
+
+	if overlay == "hat" {
+		prefix = "cowboy"
+	}
+	name = emojy.SanitizeName(prefix + "_" + name)
+	err = emojyPlugin.UploadEmojyImage(p.b.DefaultConnector(), name, newEmojy)
+	if err != nil {
+		return "", err
+	}
+
+	p.c.Set("cowboy.lastEmojy", name)
+
+	list = emojy.InvertEmojyList(p.b.DefaultConnector().GetEmojiList(true))
+	msg = fmt.Sprintf("You replaced %s with a new emojy %s <:%s:%s>, pardner!",
+		lastEmojy, name, name, list[name])
+
+	return msg, nil
+}
+
 func (p *Cowboy) mkOverlayCB(overlay string) func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		lastEmojy := p.c.Get("cowboy.lastEmojy", "rust")
-		emojyPlugin := emojy.NewAPI(p.b)
-		list := map[string]string{}
-
 		name := i.ApplicationCommandData().Options[0].StringValue()
 		if overlay == "" {
 			overlay = name
 			name = i.ApplicationCommandData().Options[1].StringValue()
 		}
-		msg := fmt.Sprintf("You asked for %s overlaid by %s", name, overlay)
-		log.Debug().Msgf("got a cowboy command for %s overlaid by %s replacing %s",
-			name, overlay, lastEmojy)
-		prefix := overlay
 
-		newEmojy, err := cowboy(p.emojyPath, p.baseEmojyURL, overlay, name)
+		msg, err := p.mkEmojy(name, overlay)
 		if err != nil {
-			msg = err.Error()
-			goto resp
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: err.Error(),
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
 		}
 
-		err = emojyPlugin.RmEmojy(p.b.DefaultConnector(), lastEmojy)
-		if err != nil {
-			msg = err.Error()
-			goto resp
-		}
-
-		if overlay == "hat" {
-			prefix = "cowboy"
-		}
-		name = emojy.SanitizeName(prefix + "_" + name)
-		err = emojyPlugin.UploadEmojyImage(p.b.DefaultConnector(), name, newEmojy)
-		if err != nil {
-			msg = err.Error()
-			goto resp
-		}
-
-		p.c.Set("cowboy.lastEmojy", name)
-
-		list = emojy.InvertEmojyList(p.b.DefaultConnector().GetEmojiList(true))
-		msg = fmt.Sprintf("You replaced %s with a new emojy %s <:%s:%s>, pardner!",
-			lastEmojy, name, name, list[name])
-
-	resp:
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: msg,
-				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 	}
