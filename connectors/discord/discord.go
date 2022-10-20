@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -111,6 +112,7 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 	}
 
 	embeds := []*discordgo.MessageEmbed{}
+	files := []*discordgo.File{}
 
 	for _, arg := range args {
 		switch a := arg.(type) {
@@ -130,17 +132,23 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 				Height: a.Height,
 			}
 			embeds = append(embeds, embed)
+		case bot.File:
+			files = append(files, &discordgo.File{
+				Name:        a.FileName(),
+				ContentType: a.ContentType(),
+				Reader:      bytes.NewBuffer(a.Data),
+			})
 		}
 	}
 
 	data := &discordgo.MessageSend{
 		Content: message,
 		Embeds:  embeds,
+		Files:   files,
 	}
 
 	log.Debug().
 		Interface("data", data).
-		Interface("args", args).
 		Msg("sending message")
 
 	st, err := d.client.ChannelMessageSendComplex(channel, data)
