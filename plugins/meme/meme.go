@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"image"
 	"image/color"
 	"image/draw"
@@ -209,7 +210,7 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 
 	encodedSpec, _ := json.Marshal(spec)
 
-	w, h, err := p.checkMeme(imgURL)
+	_, _, err = p.checkMeme(imgURL)
 	if err != nil {
 		msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
 		p.bot.Send(c, bot.Ephemeral, channel, from.ID, msg)
@@ -222,12 +223,18 @@ func (p *MemePlugin) sendMeme(c bot.Connector, channel, channelName, msgID strin
 	q.Add("spec", string(encodedSpec))
 	u.RawQuery = q.Encode()
 
+	img, err := p.genMeme(spec)
+	if err != nil {
+		msg := fmt.Sprintf("Hey %v, I couldn't download that image you asked for.", from.Name)
+		p.bot.Send(c, bot.Ephemeral, channel, from.ID, msg)
+		return
+	}
+
 	log.Debug().Msgf("image is at %s", u.String())
-	_, err = p.bot.Send(c, bot.Message, channel, "", bot.ImageAttachment{
-		URL:    u.String(),
-		AltTxt: fmt.Sprintf("%s: %s", from.Name, message),
-		Width:  w,
-		Height: h,
+	p.bot.Send(c, bot.Message, channel, fmt.Sprintf("%s sent a meme:", from.Name))
+	_, err = p.bot.Send(c, bot.Message, channel, "", bot.File{
+		Description: uuid.NewString(),
+		Data:        img,
 	})
 
 	if err == nil && msgID != "" {

@@ -3,8 +3,10 @@
 package bot
 
 import (
+	"github.com/gabriel-vasile/mimetype"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 
@@ -48,6 +50,28 @@ type EmbedAuthor struct {
 	ID      string
 	Who     string
 	IconURL string
+}
+
+type File struct {
+	Description string
+	Data        []byte
+	mime        *mimetype.MIME
+}
+
+func (f File) Mime() *mimetype.MIME {
+	if f.mime == nil {
+		f.mime = mimetype.Detect(f.Data)
+	}
+	return f.mime
+}
+
+func (f File) ContentType() string {
+	return f.Mime().String()
+}
+
+func (f File) FileName() string {
+	ext := f.Mime().Extension()
+	return strings.ReplaceAll(f.Description, " ", "-") + ext
 }
 
 type ImageAttachment struct {
