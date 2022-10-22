@@ -3,15 +3,13 @@
 package config
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 
-	sqlite3 "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -247,18 +245,6 @@ func (c *Config) SetArray(key string, values []string) error {
 	return c.Set(key, vals)
 }
 
-func init() {
-	regex := func(re, s string) (bool, error) {
-		return regexp.MatchString(re, s)
-	}
-	sql.Register("sqlite3_custom",
-		&sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("REGEXP", regex, true)
-			},
-		})
-}
-
 // Readconfig loads the config data out of a JSON file located in cfile
 func ReadConfig(dbpath string) *Config {
 	if dbpath == "" {
@@ -266,7 +252,7 @@ func ReadConfig(dbpath string) *Config {
 	}
 	log.Info().Msgf("Using %s as database file.\n", dbpath)
 
-	sqlDB, err := sqlx.Open("sqlite3_custom", dbpath)
+	sqlDB, err := sqlx.Open("sqlite", dbpath)
 	if err != nil {
 		log.Fatal().Err(err)
 	}
