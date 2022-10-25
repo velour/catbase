@@ -153,7 +153,7 @@ func (p *FactoidPlugin) learnFact(message msg.Message, fact, verb, tidbit string
 
 // findTrigger checks to see if a given string is a trigger or not
 func (p *FactoidPlugin) findTrigger(fact string) (bool, *Factoid) {
-	fact = strings.ToLower(fact) // TODO: make sure this needs to be lowered here
+	fact = strings.TrimSpace(strings.ToLower(fact))
 
 	f, err := GetSingleFact(p.db, fact)
 	if err != nil {
