@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -252,7 +252,7 @@ func ReadConfig(dbpath string) *Config {
 	}
 	log.Info().Msgf("Using %s as database file.\n", dbpath)
 
-	sqlDB, err := sqlx.Open("sqlite", dbpath)
+	sqlDB, err := sqlx.Open("sqlite3", dbpath)
 	if err != nil {
 		log.Fatal().Err(err)
 	}
