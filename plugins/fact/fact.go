@@ -50,6 +50,9 @@ func findAlias(db *sqlx.DB, fact string) (bool, *Factoid) {
 		return false, nil
 	}
 	f, err := a.resolve(db)
+	if err != nil {
+		log.Error().Err(err).Msg("findAlias")
+	}
 	return err == nil, f
 }
 

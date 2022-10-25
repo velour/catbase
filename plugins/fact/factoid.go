@@ -157,6 +157,7 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *Factoid) {
 
 	f, err := GetSingleFact(p.db, fact)
 	if err != nil {
+		log.Error().Err(err).Msg("GetSingleFact")
 		return findAlias(p.db, fact)
 	}
 	return true, f
@@ -465,7 +466,6 @@ func (p *FactoidPlugin) register() {
 
 				log.Debug().Msgf("Message: %+v", r)
 
-				// This plugin has no business with normal messages
 				if !message.Command {
 					// look for any triggers in the db matching this message
 					return p.trigger(c, message)
