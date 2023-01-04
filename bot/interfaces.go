@@ -40,6 +40,8 @@ const (
 	Delete
 	// Startup is triggered after the connector has run the Serve function
 	Startup
+	// Shutdown is triggered after an OS interrupt
+	Shutdown
 )
 
 type EphemeralID string
