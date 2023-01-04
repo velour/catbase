@@ -159,6 +159,7 @@ func (b *bot) ListenAndServe() {
 	}()
 	<-stop
 	b.DefaultConnector().Shutdown()
+	b.Receive(b.DefaultConnector(), Shutdown, msg.Message{})
 }
 
 func (b *bot) RegisterWeb(r http.Handler, root string) {

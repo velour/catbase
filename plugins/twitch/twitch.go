@@ -3,8 +3,10 @@ package twitch
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"github.com/nicklaw5/helix"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -36,17 +38,24 @@ type Twitch struct {
 	irc          *IRC
 	ircLock      sync.Mutex
 	bridgeMap    map[string]string
+
+	helix *helix.Client
+	subs  map[string]bool
 }
 
 type Twitcher struct {
-	name        string
-	gameID      string
-	isStreaming bool
+	id     string
+	gameID string
+	online bool
+
+	Name string
+	Game string
+	URL  string
 }
 
-func (t Twitcher) URL() string {
+func (t Twitcher) url() string {
 	u, _ := url.Parse("https://twitch.tv/")
-	u2, _ := url.Parse(t.name)
+	u2, _ := url.Parse(t.Name)
 	return u.ResolveReference(u2).String()
 }
 
@@ -76,20 +85,12 @@ func New(b bot.Bot) *Twitch {
 		bridgeMap:  map[string]string{},
 	}
 
-	for _, ch := range p.c.GetArray("Twitch.Channels", []string{}) {
-		for _, twitcherName := range p.c.GetArray("Twitch."+ch+".Users", []string{}) {
-			twitcherName = strings.ToLower(twitcherName)
-			if _, ok := p.twitchList[twitcherName]; !ok {
-				p.twitchList[twitcherName] = &Twitcher{
-					name:   twitcherName,
-					gameID: "",
-				}
-			}
+	for _, twitcherName := range p.c.GetArray("Twitch.Users", []string{}) {
+		twitcherName = strings.ToLower(twitcherName)
+		p.twitchList[twitcherName] = &Twitcher{
+			Name: twitcherName,
 		}
-		go p.twitchChannelLoop(b.DefaultConnector(), ch)
 	}
-
-	go p.twitchAuthLoop(b.DefaultConnector())
 
 	p.register()
 	p.registerWeb()
@@ -99,38 +100,9 @@ func New(b bot.Bot) *Twitch {
 
 func (p *Twitch) registerWeb() {
 	r := chi.NewRouter()
-	r.HandleFunc("/{user}", p.serveStreaming)
-	p.b.RegisterWeb(r, "/isstreaming")
-}
-
-func (p *Twitch) serveStreaming(w http.ResponseWriter, r *http.Request) {
-	userName := strings.ToLower(chi.URLParam(r, "user"))
-	if userName == "" {
-		fmt.Fprint(w, "User not found.")
-		return
-	}
-
-	twitcher := p.twitchList[userName]
-	if twitcher == nil {
-		fmt.Fprint(w, "User not found.")
-		return
-	}
-
-	status := "NO."
-	if twitcher.gameID != "" {
-		status = "YES."
-	}
-	context := map[string]any{"Name": twitcher.name, "Status": status}
-
-	t, err := template.New("streaming").Parse(page)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not parse template!")
-		return
-	}
-	err = t.Execute(w, context)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not execute template!")
-	}
+	r.HandleFunc("/online", p.onlineCB)
+	r.HandleFunc("/offline", p.offlineCB)
+	p.b.RegisterWeb(r, "/twitch")
 }
 
 func (p *Twitch) register() {
@@ -170,9 +142,116 @@ func (p *Twitch) register() {
 			Regex:   regexp.MustCompile(`.*`),
 			Handler: p.bridgeMsg,
 		},
+		{
+			Kind: bot.Startup, IsCmd: false,
+			Regex:   regexp.MustCompile(`.*`),
+			Handler: p.startup,
+		},
+		{
+			Kind: bot.Shutdown, IsCmd: false,
+			Regex:   regexp.MustCompile(`.*`),
+			Handler: p.shutdown,
+		},
 	}
 	p.b.Register(p, bot.Help, p.help)
 	p.b.RegisterTable(p, p.tbl)
+}
+
+func (p *Twitch) shutdown(r bot.Request) bool {
+	return false
+}
+
+func (p *Twitch) startup(r bot.Request) bool {
+	var err error
+	clientID := p.c.Get("twitch.clientid", "")
+	clientSecret := p.c.Get("twitch.secret", "")
+
+	if clientID == "" || clientSecret == "" {
+		log.Info().Msg("No clientID/secret, twitch disabled")
+		return false
+	}
+
+	p.helix, err = helix.NewClient(&helix.Options{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	})
+	if err != nil {
+		log.Printf("Login error: %v", err)
+		return false
+	}
+
+	access, err := p.helix.RequestAppAccessToken([]string{"user:read:email"})
+	if err != nil {
+		log.Printf("Login error: %v", err)
+		return false
+	}
+
+	fmt.Printf("%+v\n", access)
+
+	// Set the access token on the client
+	p.helix.SetAppAccessToken(access.Data.AccessToken)
+
+	p.subs = map[string]bool{}
+
+	for _, t := range p.twitchList {
+		if err := p.follow(t); err != nil {
+			log.Error().Err(err).Msg("")
+		}
+	}
+
+	return false
+}
+
+func (p *Twitch) follow(twitcher *Twitcher) error {
+	if twitcher.id == "" {
+		users, err := p.helix.GetUsers(&helix.UsersParams{
+			Logins: []string{twitcher.Name},
+		})
+		if err != nil {
+			return err
+		}
+
+		if users.Error != "" {
+			return errors.New(users.Error)
+		}
+		twitcher.id = users.Data.Users[0].ID
+	}
+
+	base := p.c.Get("baseurl", "") + "/twitch"
+
+	_, err := p.helix.CreateEventSubSubscription(&helix.EventSubSubscription{
+		Type:    helix.EventSubTypeStreamOnline,
+		Version: "1",
+		Condition: helix.EventSubCondition{
+			BroadcasterUserID: twitcher.id,
+		},
+		Transport: helix.EventSubTransport{
+			Method:   "webhook",
+			Callback: base + "/online",
+			Secret:   "s3cre7w0rd",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = p.helix.CreateEventSubSubscription(&helix.EventSubSubscription{
+		Type:    helix.EventSubTypeStreamOffline,
+		Version: "1",
+		Condition: helix.EventSubCondition{
+			BroadcasterUserID: twitcher.id,
+		},
+		Transport: helix.EventSubTransport{
+			Method:   "webhook",
+			Callback: base + "/offline",
+			Secret:   "s3cre7w0rd",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Twitch) twitchStatus(r bot.Request) bool {
@@ -182,9 +261,8 @@ func (p *Twitch) twitchStatus(r bot.Request) bool {
 			twitcherName = strings.ToLower(twitcherName)
 			// we could re-add them here instead of needing to restart the bot.
 			if t, ok := p.twitchList[twitcherName]; ok {
-				err := p.checkTwitch(r.Conn, channel, t, true)
-				if err != nil {
-					log.Error().Err(err).Msgf("error in checking twitch")
+				if t.online {
+					p.streaming(r.Conn, r.Msg.Channel, t)
 				}
 			}
 		}
@@ -195,10 +273,8 @@ func (p *Twitch) twitchStatus(r bot.Request) bool {
 func (p *Twitch) twitchUserStatus(r bot.Request) bool {
 	who := strings.ToLower(r.Values["who"])
 	if t, ok := p.twitchList[who]; ok {
-		err := p.checkTwitch(r.Conn, r.Msg.Channel, t, true)
-		if err != nil {
-			log.Error().Err(err).Msgf("error in checking twitch")
-			p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "I had trouble with that.")
+		if t.online {
+			p.streaming(r.Conn, r.Msg.Channel, t)
 		}
 	} else {
 		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "I don't know who that is.")
@@ -225,163 +301,11 @@ func (p *Twitch) help(c bot.Connector, kind bot.Kind, message msg.Message, args 
 	return true
 }
 
-func (p *Twitch) twitchAuthLoop(c bot.Connector) {
-	frequency := p.c.GetInt("Twitch.AuthFreq", 60*60)
-	cid := p.c.Get("twitch.clientid", "")
-	secret := p.c.Get("twitch.secret", "")
-	if cid == "" || secret == "" {
-		log.Info().Msgf("Disabling twitch autoauth.")
-		return
-	}
-
-	log.Info().Msgf("Checking auth every %d seconds", frequency)
-
-	if err := p.validateCredentials(); err != nil {
-		log.Error().Err(err).Msgf("error checking twitch validity")
-	}
-
-	for {
-		select {
-		case <-time.After(time.Duration(frequency) * time.Second):
-			if err := p.validateCredentials(); err != nil {
-				log.Error().Err(err).Msgf("error checking twitch validity")
-			}
-		}
-	}
-}
-
-func (p *Twitch) twitchChannelLoop(c bot.Connector, channel string) {
-	frequency := p.c.GetInt("Twitch.Freq", 60)
-	if p.c.Get("twitch.clientid", "") == "" || p.c.Get("twitch.secret", "") == "" {
-		log.Info().Msgf("Disabling twitch autochecking.")
-		return
-	}
-
-	log.Info().Msgf("Checking channels every %d seconds", frequency)
-
-	for {
-		time.Sleep(time.Duration(frequency) * time.Second)
-
-		for _, twitcherName := range p.c.GetArray("Twitch."+channel+".Users", []string{}) {
-			log.Debug().Msgf("checking %s on twiwch", twitcherName)
-			twitcherName = strings.ToLower(twitcherName)
-			if err := p.checkTwitch(c, channel, p.twitchList[twitcherName], false); err != nil {
-				log.Error().Err(err).Msgf("error in twitch loop")
-			}
-		}
-	}
-}
-
-func getRequest(url, clientID, token string) ([]byte, int, bool) {
-	bearer := fmt.Sprintf("Bearer %s", token)
-	var body []byte
-	var resp *http.Response
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		goto errCase
-	}
-
-	req.Header.Add("Client-ID", clientID)
-	req.Header.Add("Authorization", bearer)
-
-	resp, err = client.Do(req)
-	if err != nil {
-		goto errCase
-	}
-
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		goto errCase
-	}
-	return body, resp.StatusCode, true
-
-errCase:
-	log.Error().Err(err)
-	return []byte{}, resp.StatusCode, false
-}
-
-type twitchInfo struct {
-	Name string
-	Game string
-	URL  string
-}
-
-func (p *Twitch) checkTwitch(c bot.Connector, channel string, twitcher *Twitcher, alwaysPrintStatus bool) error {
-	baseURL, err := url.Parse("https://api.twitch.tv/helix/streams")
-	if err != nil {
-		err := fmt.Errorf("error parsing twitch stream URL")
-		log.Error().Msg(err.Error())
-		return err
-	}
-
-	query := baseURL.Query()
-	query.Add("user_login", twitcher.name)
-
-	baseURL.RawQuery = query.Encode()
-
-	cid := p.c.Get("twitch.clientid", "")
-	token := p.c.Get("twitch.token", "")
-	if cid == token && cid == "" {
-		log.Info().Msgf("Twitch plugin not enabled.")
-		return nil
-	}
-
-	body, status, ok := getRequest(baseURL.String(), cid, token)
-	if !ok {
-		return fmt.Errorf("got status %d: %s", status, string(body))
-	}
-
-	var s stream
-	err = json.Unmarshal(body, &s)
-	if err != nil {
-		log.Error().Err(err).Msgf("error reading twitch data")
-		return err
-	}
-
-	games := s.Data
-	gameID, title := "", ""
-	if len(games) == 0 {
-		p.twitchList[twitcher.name].isStreaming = false
-	} else {
-		p.twitchList[twitcher.name].isStreaming = true
-		gameID = games[0].GameID
-		if gameID == "" {
-			gameID = "unknown"
-		}
-		title = games[0].Title
-	}
-
-	info := twitchInfo{
-		twitcher.name,
-		title,
-		twitcher.URL(),
-	}
-
-	log.Debug().Interface("info", info).Interface("twitcher", twitcher).Msgf("checking twitch")
-
-	if alwaysPrintStatus && twitcher.isStreaming {
-		p.streaming(c, channel, info)
-	} else if alwaysPrintStatus && !twitcher.isStreaming {
-		p.notStreaming(c, channel, info)
-	} else if twitcher.gameID != "" && !twitcher.isStreaming {
-		twitcher.gameID = ""
-		p.disconnectBridge(c, twitcher)
-		p.stopped(c, channel, info)
-		twitcher.gameID = ""
-	} else if twitcher.gameID != gameID && twitcher.isStreaming {
-		p.streaming(c, channel, info)
-		p.connectBridge(c, channel, info, twitcher)
-		twitcher.gameID = gameID
-	}
-	return nil
-}
-
-func (p *Twitch) connectBridge(c bot.Connector, ch string, info twitchInfo, twitcher *Twitcher) {
-	msg := fmt.Sprintf("This post is tracking #%s\n<%s>", twitcher.name, twitcher.URL())
+func (p *Twitch) connectBridge(c bot.Connector, ch string, info *Twitcher) {
+	msg := fmt.Sprintf("This post is tracking #%s\n<%s>", info.Name, info.url())
 	err := p.startBridgeMsg(
 		fmt.Sprintf("%s-%s-%s", info.Name, info.Game, time.Now().Format("2006-01-02-15:04")),
-		twitcher.name,
+		info.Name,
 		msg,
 	)
 	if err != nil {
@@ -391,16 +315,16 @@ func (p *Twitch) connectBridge(c bot.Connector, ch string, info twitchInfo, twit
 }
 
 func (p *Twitch) disconnectBridge(c bot.Connector, twitcher *Twitcher) {
-	log.Debug().Msgf("Disconnecting bridge: %s -> %+v", twitcher.name, p.bridgeMap)
+	log.Debug().Msgf("Disconnecting bridge: %s -> %+v", twitcher.Name, p.bridgeMap)
 	for threadID, ircCh := range p.bridgeMap {
-		if strings.HasSuffix(ircCh, twitcher.name) {
+		if strings.HasSuffix(ircCh, twitcher.Name) {
 			delete(p.bridgeMap, threadID)
-			p.b.Send(c, bot.Message, threadID, "Stopped tracking #"+twitcher.name)
+			p.b.Send(c, bot.Message, threadID, "Stopped tracking #"+twitcher.Name)
 		}
 	}
 }
 
-func (p *Twitch) stopped(c bot.Connector, ch string, info twitchInfo) {
+func (p *Twitch) stopped(c bot.Connector, ch string, info *Twitcher) {
 	notStreamingTpl := p.c.Get("Twitch.StoppedTpl", stoppedStreamingTplFallback)
 	buf := bytes.Buffer{}
 	t, err := template.New("notStreaming").Parse(notStreamingTpl)
@@ -413,7 +337,7 @@ func (p *Twitch) stopped(c bot.Connector, ch string, info twitchInfo) {
 	p.b.Send(c, bot.Message, ch, buf.String())
 }
 
-func (p *Twitch) streaming(c bot.Connector, channel string, info twitchInfo) {
+func (p *Twitch) streaming(c bot.Connector, channel string, info *Twitcher) {
 	isStreamingTpl := p.c.Get("Twitch.IsTpl", isStreamingTplFallback)
 	buf := bytes.Buffer{}
 	t, err := template.New("isStreaming").Parse(isStreamingTpl)
@@ -426,7 +350,7 @@ func (p *Twitch) streaming(c bot.Connector, channel string, info twitchInfo) {
 	p.b.Send(c, bot.Message, channel, buf.String())
 }
 
-func (p *Twitch) notStreaming(c bot.Connector, ch string, info twitchInfo) {
+func (p *Twitch) notStreaming(c bot.Connector, ch string, info *Twitcher) {
 	notStreamingTpl := p.c.Get("Twitch.NotTpl", notStreamingTplFallback)
 	buf := bytes.Buffer{}
 	t, err := template.New("notStreaming").Parse(notStreamingTpl)
@@ -439,44 +363,120 @@ func (p *Twitch) notStreaming(c bot.Connector, ch string, info twitchInfo) {
 	p.b.Send(c, bot.Message, ch, buf.String())
 }
 
-func (p *Twitch) validateCredentials() error {
-	cid := p.c.Get("twitch.clientid", "")
-	token := p.c.Get("twitch.token", "")
-	if token == "" {
-		return p.reAuthenticate()
-	}
-	_, status, ok := getRequest("https://id.twitch.tv/oauth2/validate", cid, token)
-	if !ok || status == http.StatusUnauthorized {
-		return p.reAuthenticate()
-	}
-	log.Debug().Msgf("checked credentials and they were valid")
-	return nil
+type twitchCB struct {
+	Challenge    string `json:"challenge"`
+	Subscription struct {
+		ID        string `json:"id"`
+		Type      string `json:"type"`
+		Version   string `json:"version"`
+		Status    string `json:"status"`
+		Cost      int    `json:"cost"`
+		Condition struct {
+			BroadcasterUserID string `json:"broadcaster_user_id"`
+		} `json:"condition"`
+		CreatedAt time.Time `json:"created_at"`
+		Transport struct {
+			Method   string `json:"method"`
+			Callback string `json:"callback"`
+		} `json:"transport"`
+	} `json:"subscription"`
+	Event struct {
+		BroadcasterUserID    string `json:"broadcaster_user_id"`
+		BroadcasterUserLogin string `json:"broadcaster_user_login"`
+		BroadcasterUserName  string `json:"broadcaster_user_name"`
+	} `json:"event"`
 }
 
-func (p *Twitch) reAuthenticate() error {
-	cid := p.c.Get("twitch.clientid", "")
-	secret := p.c.Get("twitch.secret", "")
-	if cid == "" || secret == "" {
-		return fmt.Errorf("could not request a new token without config values set")
+func (p *Twitch) offlineCB(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		return
 	}
-	resp, err := http.PostForm("https://id.twitch.tv/oauth2/token", url.Values{
-		"client_id":     {cid},
-		"client_secret": {secret},
-		"grant_type":    {"client_credentials"},
+	defer r.Body.Close()
+	// verify that the notification came from twitch using the secret.
+	if !helix.VerifyEventSubNotification("s3cre7w0rd", r.Header, string(body)) {
+		log.Error().Msg("no valid signature on subscription")
+		return
+	} else {
+		log.Info().Msg("verified signature for subscription")
+	}
+	var vals twitchCB
+	if err = json.Unmarshal(body, &vals); err != nil {
+		log.Error().Err(err).Msg("")
+		return
+	}
+
+	if vals.Challenge != "" {
+		w.Write([]byte(vals.Challenge))
+		return
+	}
+
+	log.Printf("got offline webhook: %v\n", vals)
+	w.WriteHeader(200)
+	w.Write([]byte("ok"))
+
+	twitcher := p.twitchList[vals.Event.BroadcasterUserLogin]
+	if !twitcher.online {
+		return
+	}
+	twitcher.online = false
+	twitcher.URL = twitcher.url()
+	if ch := p.c.Get("twitch.channel", ""); ch != "" {
+		p.stopped(p.b.DefaultConnector(), ch, twitcher)
+		p.disconnectBridge(p.b.DefaultConnector(), twitcher)
+	}
+}
+
+func (p *Twitch) onlineCB(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		return
+	}
+	defer r.Body.Close()
+	// verify that the notification came from twitch using the secret.
+	if !helix.VerifyEventSubNotification("s3cre7w0rd", r.Header, string(body)) {
+		log.Error().Msg("no valid signature on subscription")
+		return
+	} else {
+		log.Info().Msg("verified signature for subscription")
+	}
+	var vals twitchCB
+	if err = json.Unmarshal(body, &vals); err != nil {
+		log.Error().Err(err).Msg("")
+		return
+	}
+
+	if vals.Challenge != "" {
+		w.Write([]byte(vals.Challenge))
+		return
+	}
+
+	log.Printf("got online webhook: %v\n", vals)
+	w.WriteHeader(200)
+	w.Write([]byte("ok"))
+
+	streams, err := p.helix.GetStreams(&helix.StreamsParams{
+		UserIDs: []string{vals.Event.BroadcasterUserID},
 	})
 	if err != nil {
-		return err
+		log.Error().Err(err).Msg("")
+		return
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
+
+	twitcher := p.twitchList[vals.Event.BroadcasterUserLogin]
+
+	if twitcher.online {
+		return
 	}
-	credentials := struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-	}{}
-	err = json.Unmarshal(body, &credentials)
-	log.Debug().Int("expires", credentials.ExpiresIn).Msgf("setting new twitch token")
-	return p.c.RegisterSecret("twitch.token", credentials.AccessToken)
+
+	twitcher.online = true
+	twitcher.URL = twitcher.url()
+	twitcher.gameID = streams.Data.Streams[0].GameID
+	twitcher.Game = streams.Data.Streams[0].GameName
+	if ch := p.c.Get("twitch.channel", ""); ch != "" {
+		p.streaming(p.b.DefaultConnector(), ch, twitcher)
+		p.connectBridge(p.b.DefaultConnector(), ch, twitcher)
+	}
 }
