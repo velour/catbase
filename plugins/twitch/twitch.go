@@ -424,7 +424,9 @@ func (p *Twitch) offlineCB(w http.ResponseWriter, r *http.Request) {
 	twitcher.URL = twitcher.url()
 	if ch := p.c.Get("twitch.channel", ""); ch != "" {
 		p.stopped(p.b.DefaultConnector(), ch, twitcher)
-		p.disconnectBridge(p.b.DefaultConnector(), twitcher)
+		if p.c.GetBool("twitch.irc", false) {
+			p.disconnectBridge(p.b.DefaultConnector(), twitcher)
+		}
 	}
 }
 
@@ -477,6 +479,8 @@ func (p *Twitch) onlineCB(w http.ResponseWriter, r *http.Request) {
 	twitcher.Game = streams.Data.Streams[0].GameName
 	if ch := p.c.Get("twitch.channel", ""); ch != "" {
 		p.streaming(p.b.DefaultConnector(), ch, twitcher)
-		p.connectBridge(p.b.DefaultConnector(), ch, twitcher)
+		if p.c.GetBool("twitch.irc", false) {
+			p.connectBridge(p.b.DefaultConnector(), ch, twitcher)
+		}
 	}
 }
