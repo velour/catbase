@@ -475,8 +475,13 @@ func (p *Twitch) onlineCB(w http.ResponseWriter, r *http.Request) {
 
 	twitcher.online = true
 	twitcher.URL = twitcher.url()
-	twitcher.gameID = streams.Data.Streams[0].GameID
-	twitcher.Game = streams.Data.Streams[0].GameName
+	if len(streams.Data.Streams) > 0 {
+		twitcher.gameID = streams.Data.Streams[0].GameID
+		twitcher.Game = streams.Data.Streams[0].GameName
+	} else {
+		twitcher.gameID = "-1"
+		twitcher.Game = p.c.Get("twitch.unknowngame", "IDK, Twitch didn't tell me")
+	}
 	if ch := p.c.Get("twitch.channel", ""); ch != "" {
 		p.streaming(p.b.DefaultConnector(), ch, twitcher)
 		if p.c.GetBool("twitch.irc", false) {
