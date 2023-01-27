@@ -313,15 +313,15 @@ var defaultFormats = map[string]string{
 	"raptor": "https://imgflip.com/s/meme/Philosoraptor.jpg",
 }
 
-func FindFontSizeConfigs(configs []memeText, fontLocation string, w, h int, sizes []float64) float64 {
+func FindFontSizeConfigs(c *config.Config, configs []memeText, fontLocation string, w, h int, sizes []float64) float64 {
 	texts := []string{}
 	for _, c := range configs {
 		texts = append(texts, c.Text)
 	}
-	return FindFontSize(texts, fontLocation, w, h, sizes)
+	return FindFontSize(c, texts, fontLocation, w, h, sizes)
 }
 
-func FindFontSize(config []string, fontLocation string, w, h int, sizes []float64) float64 {
+func FindFontSize(c *config.Config, config []string, fontLocation string, w, h int, sizes []float64) float64 {
 	fontSize := 12.0
 
 	m := gg.NewContext(w, h)
@@ -329,7 +329,7 @@ func FindFontSize(config []string, fontLocation string, w, h int, sizes []float6
 	longestStr, longestW := "", 0.0
 
 	for _, s := range config {
-		err := m.LoadFontFace(fontLocation, 12) // problem
+		err := m.LoadFontFace(getFont(c, fontLocation), 12)
 		if err != nil {
 			log.Error().Err(err).Msg("could not load font")
 			return fontSize
@@ -343,7 +343,7 @@ func FindFontSize(config []string, fontLocation string, w, h int, sizes []float6
 	}
 
 	for _, sz := range sizes {
-		err := m.LoadFontFace(fontLocation, sz) // problem
+		err := m.LoadFontFace(getFont(c, fontLocation), sz) // problem
 		if err != nil {
 			log.Error().Err(err).Msg("could not load font")
 			return fontSize
@@ -464,7 +464,7 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 	// Apply black stroke
 	m.SetHexColor("#000")
 	strokeSize := 6
-	fontSize := FindFontSizeConfigs(spec.Configs, defaultFont, w, h, fontSizes)
+	fontSize := FindFontSizeConfigs(p.c, spec.Configs, defaultFont, w, h, fontSizes)
 	for dy := -strokeSize; dy <= strokeSize; dy++ {
 		for dx := -strokeSize; dx <= strokeSize; dx++ {
 			// give it rounded corners
@@ -476,7 +476,7 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 				if fontLocation == "" {
 					fontLocation = defaultFont
 				}
-				m.LoadFontFace(fontLocation, fontSize)
+				m.LoadFontFace(getFont(p.c, fontLocation), fontSize)
 				x := float64(w)*c.XPerc + float64(dx)
 				y := float64(h)*c.YPerc + float64(dy)
 				m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
@@ -491,7 +491,7 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 		if fontLocation == "" {
 			fontLocation = defaultFont
 		}
-		m.LoadFontFace(fontLocation, fontSize)
+		m.LoadFontFace(getFont(p.c, fontLocation), fontSize)
 		x := float64(w) * c.XPerc
 		y := float64(h) * c.YPerc
 		m.DrawStringAnchored(c.Text, x, y, 0.5, 0.5)
@@ -504,6 +504,15 @@ func (p *MemePlugin) genMeme(spec specification) ([]byte, error) {
 	log.Debug().Msgf("Saved to %s\n", jsonSpec)
 
 	return p.images[jsonSpec].repr, nil
+}
+
+func getFont(c *config.Config, name string) string {
+	location := c.Get("meme.fontLocation", "")
+	fontShortcuts := c.GetMap("meme.fontShortcuts", map[string]string{"impact": "impact.ttf"})
+	if file, ok := fontShortcuts[name]; ok {
+		name = file
+	}
+	return path.Join(location, name)
 }
 
 func (p *MemePlugin) applyStamp(img image.Image, bullyURL string) (image.Image, error) {

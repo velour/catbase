@@ -78,7 +78,7 @@ func (p *Tappd) overlay(img image.Image, texts []textSpec) ([]byte, error) {
 		txts = append(txts, t.text)
 	}
 
-	fontSize := meme.FindFontSize(txts, font, w, h, fontSizes)
+	fontSize := meme.FindFontSize(p.c, txts, font, w, h, fontSizes)
 
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
