@@ -112,8 +112,6 @@ func (p *NewsBid) bidCmd(r bot.Request) bool {
 	ch := r.Msg.Channel
 	conn := r.Conn
 
-	log.Debug().Interface("request", r).Msg("bid request")
-
 	parts := strings.Fields(body)
 	if len(parts) != 3 {
 		p.bot.Send(conn, bot.Message, ch, "You must bid with an amount and a URL.")
@@ -122,6 +120,13 @@ func (p *NewsBid) bidCmd(r bot.Request) bool {
 
 	amount, _ := strconv.Atoi(parts[1])
 	url := parts[2]
+	log.Debug().Msgf("URL: %s", url)
+	if id, err := strconv.Atoi(url); err == nil {
+		url = fmt.Sprintf("https://news.ycombinator.com/item?id=%d", id)
+		log.Debug().Msgf("New URL: %s", url)
+	}
+	log.Debug().Msgf("URL: %s", url)
+
 	if bid, err := p.ws.Bid(r.Msg.User.Name, amount, parts[1], url); err != nil {
 		p.bot.Send(conn, bot.Message, ch, fmt.Sprintf("Error placing bid: %s", err))
 	} else {
