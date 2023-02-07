@@ -56,7 +56,7 @@ func (p *GPT3Plugin) message(r bot.Request) bool {
 func (p *GPT3Plugin) mkRequest(stem string) string {
 	log.Debug().Msgf("Got GPT3 request: %s", stem)
 	if err := p.checkStem(stem); err != nil {
-		return "GPT3 Moderation " + err.Error()
+		return "GPT3 moderation " + err.Error()
 	}
 	postStruct := gpt3Request{
 		Prompt:      stem,
@@ -104,6 +104,9 @@ func (p *GPT3Plugin) mkRequest(stem string) string {
 }
 
 func (p *GPT3Plugin) checkStem(stem string) error {
+	if !p.c.GetBool("gpt3.moderation", true) {
+		return nil
+	}
 	postBody, _ := json.Marshal(gpt3ModRequest{Input: stem})
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", gpt3ModURL, bytes.NewBuffer(postBody))
