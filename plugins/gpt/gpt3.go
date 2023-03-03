@@ -96,7 +96,7 @@ func (p *GPTPlugin) gpt3(stem string) string {
 		TopP:        p.c.GetFloat64("gpt3.top_p", 1),
 		N:           p.c.GetInt("gpt3.n", 1),
 		Stop:        p.c.GetArray("gpt3.stop", []string{"\n"}),
-		Echo:        true,
+		Echo:        p.c.GetBool("gpt3.echo", false),
 	}
 	val, err := p.mkRequest(gpt3URL, postStruct)
 	if err != nil {
