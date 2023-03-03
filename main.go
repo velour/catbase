@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"github.com/velour/catbase/plugins/gpt"
 	"github.com/velour/catbase/plugins/pagecomment"
 	"github.com/velour/catbase/plugins/talker"
 	"github.com/velour/catbase/plugins/tappd"
@@ -19,7 +20,6 @@ import (
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/connectors/discord"
 	"github.com/velour/catbase/plugins/giphy"
-	"github.com/velour/catbase/plugins/gpt3"
 	"github.com/velour/catbase/plugins/last"
 	"github.com/velour/catbase/plugins/mayi"
 	"github.com/velour/catbase/plugins/quotegame"
@@ -135,7 +135,7 @@ func main() {
 	b.AddPlugin(roles.New(b))
 	b.AddPlugin(twitch.New(b))
 	b.AddPlugin(pagecomment.New(b))
-	b.AddPlugin(gpt3.New(b))
+	b.AddPlugin(gpt.New(b))
 	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(mayi.New(b))
 	b.AddPlugin(giphy.New(b))
