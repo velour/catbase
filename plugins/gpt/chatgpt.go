@@ -6,7 +6,7 @@ import (
 )
 import "github.com/andrewstuart/openai"
 
-var session *openai.ChatSession
+var session openai.ChatSession
 var client *openai.Client
 
 func (p *GPTPlugin) getClient() (*openai.Client, error) {
@@ -14,14 +14,11 @@ func (p *GPTPlugin) getClient() (*openai.Client, error) {
 	if token == "" {
 		return nil, fmt.Errorf("no GPT token given")
 	}
-	if client == nil {
-		return openai.NewClient(token)
-	}
-	return client, nil
+	return openai.NewClient(token)
 }
 
 func (p *GPTPlugin) chatGPT(request string) (string, error) {
-	if session == nil {
+	if client == nil {
 		if err := p.setDefaultPrompt(); err != nil {
 			return "", err
 		}
@@ -38,7 +35,6 @@ func (p *GPTPlugin) setPrompt(prompt string) error {
 	if err != nil {
 		return err
 	}
-	sess := client.NewChatSession(prompt)
-	session = &sess
+	session = client.NewChatSession(prompt)
 	return nil
 }
