@@ -31,7 +31,8 @@ func (p *GPTPlugin) setDefaultPrompt() error {
 }
 
 func (p *GPTPlugin) setPrompt(prompt string) error {
-	client, err := p.getClient()
+	var err error
+	client, err = p.getClient()
 	if err != nil {
 		return err
 	}
