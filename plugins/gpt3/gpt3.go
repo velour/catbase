@@ -19,14 +19,14 @@ import (
 const gpt3URL = "https://api.openai.com/v1/engines/%s/completions"
 const gpt3ModURL = "https://api.openai.com/v1/moderations"
 
-type GPT3Plugin struct {
+type GPTPlugin struct {
 	b bot.Bot
 	c *config.Config
 	h bot.HandlerTable
 }
 
-func New(b bot.Bot) *GPT3Plugin {
-	p := &GPT3Plugin{
+func New(b bot.Bot) *GPTPlugin {
+	p := &GPTPlugin{
 		b: b,
 		c: b.Config(),
 	}
@@ -34,7 +34,7 @@ func New(b bot.Bot) *GPT3Plugin {
 	return p
 }
 
-func (p *GPT3Plugin) register() {
+func (p *GPTPlugin) register() {
 	p.h = bot.HandlerTable{
 		{
 			Kind: bot.Message, IsCmd: true,
@@ -42,18 +42,49 @@ func (p *GPT3Plugin) register() {
 			HelpText: "request text completion",
 			Handler:  p.message,
 		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?is)^gpt (?P<text>.*)`),
+			HelpText: "chat completion",
+			Handler:  p.chatMessage,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?is)^gpt-prompt: (?P<text>.*)`),
+			HelpText: "set the ChatGPT prompt",
+			Handler:  p.setPromptMessage,
+		},
 	}
 	log.Debug().Msg("Registering GPT3 handlers")
 	p.b.RegisterTable(p, p.h)
 }
 
-func (p *GPT3Plugin) message(r bot.Request) bool {
-	stem := r.Values["text"]
-	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, p.mkRequest(stem))
+func (p *GPTPlugin) setPromptMessage(r bot.Request) bool {
+	prompt := r.Values["text"]
+	if err := p.setPrompt(prompt); err != nil {
+		resp := fmt.Sprintf("Error: %s", err)
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
+	}
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Okay. I set the prompt to: "%s"`, prompt))
 	return true
 }
 
-func (p *GPT3Plugin) mkRequest(stem string) string {
+func (p *GPTPlugin) chatMessage(r bot.Request) bool {
+	resp, err := p.chatGPT(r.Values["text"])
+	if err != nil {
+		resp = fmt.Sprintf("Error: %s", err)
+	}
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
+	return true
+}
+
+func (p *GPTPlugin) message(r bot.Request) bool {
+	stem := r.Values["text"]
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, p.gpt3(stem))
+	return true
+}
+
+func (p *GPTPlugin) gpt3(stem string) string {
 	log.Debug().Msgf("Got GPT3 request: %s", stem)
 	if err := p.checkStem(stem); err != nil {
 		return "GPT3 moderation " + err.Error()
@@ -67,24 +98,36 @@ func (p *GPT3Plugin) mkRequest(stem string) string {
 		Stop:        p.c.GetArray("gpt3.stop", []string{"\n"}),
 		Echo:        true,
 	}
+	val, err := p.mkRequest(gpt3URL, postStruct)
+	if err != nil {
+		return err.Error()
+	}
+	choices := val.(gpt3Response).Choices
+	if len(choices) > 0 {
+		return choices[rand.Intn(len(choices))].Text
+	}
+	return "OpenAI is too shitty to respond to that."
+}
+
+func (p *GPTPlugin) mkRequest(endPoint string, postStruct interface{}) (interface{}, error) {
 	postBody, _ := json.Marshal(postStruct)
 	client := &http.Client{}
-	u := fmt.Sprintf(gpt3URL, p.c.Get("gpt3.engine", "ada"))
+	u := fmt.Sprintf(endPoint, p.c.Get("gpt3.engine", "ada"))
 	req, err := http.NewRequest("POST", u, bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Error().Err(err).Msg("could not make gpt3 request")
-		return err.Error()
+		return nil, err
 	}
 	gpt3Key := p.c.Get("gpt3.bearer", "")
 	if gpt3Key == "" {
 		log.Error().Msgf("no GPT3 key given")
-		return "No GPT3 API key"
+		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", gpt3Key))
 	res, err := client.Do(req)
 	if err != nil {
-		return err.Error()
+		return nil, err
 	}
 
 	resBody, _ := io.ReadAll(res.Body)
@@ -96,14 +139,10 @@ func (p *GPT3Plugin) mkRequest(stem string) string {
 		Interface("resp", gpt3Resp).
 		Msg("OpenAI Response")
 
-	msg := "OpenAI is too shitty to respond to that."
-	if len(gpt3Resp.Choices) > 0 {
-		msg = gpt3Resp.Choices[rand.Intn(len(gpt3Resp.Choices))].Text
-	}
-	return msg
+	return gpt3Resp, nil
 }
 
-func (p *GPT3Plugin) checkStem(stem string) error {
+func (p *GPTPlugin) checkStem(stem string) error {
 	if !p.c.GetBool("gpt3.moderation", true) {
 		return nil
 	}
