@@ -135,7 +135,6 @@ func main() {
 	b.AddPlugin(roles.New(b))
 	b.AddPlugin(twitch.New(b))
 	b.AddPlugin(pagecomment.New(b))
-	b.AddPlugin(gpt.New(b))
 	b.AddPlugin(secrets.New(b))
 	b.AddPlugin(mayi.New(b))
 	b.AddPlugin(giphy.New(b))
@@ -179,8 +178,9 @@ func main() {
 	b.AddPlugin(cowboy.New(b))
 	b.AddPlugin(topic.New(b))
 	b.AddPlugin(talker.New(b))
-	// catches anything left, will always return true
 	b.AddPlugin(fact.New(b))
+	// catches anything left, will always return true
+	b.AddPlugin(gpt.New(b))
 
 	if err := client.Serve(); err != nil {
 		log.Fatal().Err(err)
