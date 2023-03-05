@@ -90,21 +90,8 @@ func New(botInst bot.Bot) *FactoidPlugin {
 
 // findAction simply regexes a string for the action verb
 func findAction(message string) string {
-	r, err := regexp.Compile("<.+?>")
-	if err != nil {
-		panic(err)
-	}
-	action := r.FindString(message)
-
-	if action == "" {
-		if strings.Contains(message, " is ") {
-			return "is"
-		} else if strings.Contains(message, " are ") {
-			return "are"
-		}
-	}
-
-	return action
+	r := regexp.MustCompile("<.+?>")
+	return r.FindString(message)
 }
 
 // learnFact assumes we have a learning situation and inserts a new fact
