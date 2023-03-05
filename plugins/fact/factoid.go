@@ -485,18 +485,7 @@ func (p *FactoidPlugin) register() {
 					return true
 				}
 
-				notFound := p.c.GetArray("fact.notfound", []string{
-					"I don't know.",
-					"NONONONO",
-					"((",
-					"*pukes*",
-					"NOPE! NOPE! NOPE!",
-					"One time, I learned how to jump rope.",
-				})
-
-				// We didn't find anything, panic!
-				p.b.Send(c, bot.Message, message.Channel, notFound[rand.Intn(len(notFound))])
-				return true
+				return false
 			}},
 	}
 	p.b.RegisterTable(p, p.handlers)

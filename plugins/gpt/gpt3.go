@@ -54,6 +54,11 @@ func (p *GPTPlugin) register() {
 			HelpText: "set the ChatGPT prompt",
 			Handler:  p.setPromptMessage,
 		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:   regexp.MustCompile(`(?P<text>.*)`),
+			Handler: p.chatMessage,
+		},
 	}
 	log.Debug().Msg("Registering GPT3 handlers")
 	p.b.RegisterTable(p, p.h)

@@ -151,7 +151,27 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 		Interface("data", data).
 		Msg("sending message")
 
-	st, err := d.client.ChannelMessageSendComplex(channel, data)
+	maxLen := 2000
+	chunkSize := maxLen - 100
+	var st *discordgo.Message
+	var err error
+	if len(data.Content) > maxLen {
+		tmp := data.Content
+		data.Content = tmp[:chunkSize]
+		st, err = d.client.ChannelMessageSendComplex(channel, data)
+		if err != nil {
+			return "", err
+		}
+		for i := chunkSize; i < len(data.Content); i += chunkSize {
+			data := &discordgo.MessageSend{Content: tmp[i : i+chunkSize]}
+			st, err = d.client.ChannelMessageSendComplex(channel, data)
+			if err != nil {
+				break
+			}
+		}
+	} else {
+		st, err = d.client.ChannelMessageSendComplex(channel, data)
+	}
 
 	//st, err := d.client.ChannelMessageSend(channel, message)
 	if err != nil {
