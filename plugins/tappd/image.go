@@ -67,7 +67,7 @@ func defaultSpec() textSpec {
 }
 
 func (p *Tappd) overlay(img image.Image, texts []textSpec) ([]byte, error) {
-	font := p.c.Get("meme.font", "impact.ttf")
+	font := meme.GetFont(p.c, p.c.Get("meme.font", "impact.ttf"))
 	fontSizes := []float64{48, 36, 24, 16, 12}
 	r := img.Bounds()
 	w := r.Dx()
@@ -79,6 +79,7 @@ func (p *Tappd) overlay(img image.Image, texts []textSpec) ([]byte, error) {
 	}
 
 	fontSize := meme.FindFontSize(p.c, txts, font, w, h, fontSizes)
+	log.Debug().Msgf("Decided on font size: %d", fontSize)
 
 	m := gg.NewContext(w, h)
 	m.DrawImage(img, 0, 0)
