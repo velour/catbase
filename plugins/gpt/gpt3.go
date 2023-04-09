@@ -23,6 +23,8 @@ type GPTPlugin struct {
 	b bot.Bot
 	c *config.Config
 	h bot.HandlerTable
+
+	chatCount int
 }
 
 func New(b bot.Bot) *GPTPlugin {
