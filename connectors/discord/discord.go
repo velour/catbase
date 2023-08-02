@@ -74,6 +74,9 @@ func (d Discord) Send(kind bot.Kind, args ...any) (string, error) {
 		return d.sendMessage(args[0].(string), args[2].(string), false, args...)
 	case bot.Message:
 		return d.sendMessage(args[0].(string), args[1].(string), false, args...)
+	case bot.Spoiler:
+		outgoing := "||" + args[1].(string) + "||"
+		return d.sendMessage(args[0].(string), outgoing, false, args...)
 	case bot.Action:
 		return d.sendMessage(args[0].(string), args[1].(string), true, args...)
 	case bot.Edit:

@@ -37,6 +37,9 @@ func (mb *MockBot) GetPassword() string         { return "12345" }
 func (mb *MockBot) SetQuiet(bool)               {}
 func (mb *MockBot) Send(c Connector, kind Kind, args ...any) (string, error) {
 	switch kind {
+	case Spoiler:
+		mb.Messages = append(mb.Messages, "||"+args[1].(string)+"||")
+		return fmt.Sprintf("m-%d", len(mb.Actions)-1), nil
 	case Message:
 		mb.Messages = append(mb.Messages, args[1].(string))
 		return fmt.Sprintf("m-%d", len(mb.Actions)-1), nil

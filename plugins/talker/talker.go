@@ -104,7 +104,7 @@ func (p *TalkerPlugin) message(c bot.Connector, kind bot.Kind, message msg.Messa
 			line = strings.Replace(line, "{nick}", nick, 1)
 			output += line + "\n"
 		}
-		p.bot.Send(c, bot.Message, channel, output)
+		p.bot.Send(c, bot.Spoiler, channel, output)
 		return true
 	}
 
