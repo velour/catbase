@@ -120,7 +120,6 @@ func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 	channel := message.Channel
 	from := message.User.Name
 
-	message.Body = replaceDuration(p.when, message.Body)
 	parts := strings.Fields(message.Body)
 
 	if len(parts) >= 5 {
