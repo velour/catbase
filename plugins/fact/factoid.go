@@ -144,7 +144,6 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *Factoid) {
 
 	f, err := GetSingleFact(p.db, fact)
 	if err != nil {
-		log.Error().Err(err).Msg("GetSingleFact")
 		return findAlias(p.db, fact)
 	}
 	return true, f

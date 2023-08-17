@@ -1,0 +1,22 @@
+<nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">catbase</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                {{- $currentPage := .CurrentPage -}}
+                {{range .Items}}
+                <li class="nav-item">
+                    {{ if (eq $currentPage .Name) }}
+                        <a class="nav-link active" aria-current="page" href="{{.URL}}">{{.Name}}</a>
+                    {{ else }}
+                        <a class="nav-link" href="{{.URL}}">{{.Name}}</a>
+                    {{ end }}
+                </li>
+                {{end}}
+            </ul>
+        </div>
+    </div>
+</nav>

@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -166,9 +167,32 @@ func writeErr(w http.ResponseWriter, err error) {
 	fmt.Fprint(w, string(j))
 }
 
+type configEntry struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("vars.html")
-	w.Write(index)
+	tpl := template.Must(template.ParseFS(embeddedFS, "vars.html"))
+	var configEntries []configEntry
+	q := `select key, value from config`
+	err := p.db.Select(&configEntries, q)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Error getting config entries.")
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+
+	if err := tpl.Execute(w, struct {
+		Items []configEntry
+	}{configEntries}); err != nil {
+		log.Error().Err(err).Msg("template error")
+		w.WriteHeader(500)
+		fmt.Fprint(w, "Error parsing template")
+	}
 }
 
 func (p *AdminPlugin) handleVarsAPI(w http.ResponseWriter, r *http.Request) {
