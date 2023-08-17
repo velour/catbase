@@ -8,10 +8,10 @@
     <script src="https://unpkg.com/htmx.org@1.9.4"></script>
 </head>
 <body>
-    <div class="container">
-        <div hx-get="/navHTML/Variables" hx-trigger="load" hx-swap="outerHTML"></div>
+    <div hx-get="/navHTML/Variables" hx-trigger="load" hx-swap="outerHTML"></div>
 
-        <table class="table table-striped">
+    <div class="container">
+        <table class="table-responsive table-striped">
             <thead>
             <tr>
                 <th>Key</th>
