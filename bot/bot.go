@@ -147,6 +147,8 @@ func (b *bot) setupHTTP() {
 
 	b.router.HandleFunc("/", b.serveRoot)
 	b.router.HandleFunc("/nav", b.serveNav)
+	b.router.HandleFunc("/navHTML", b.serveNavHTML)
+	b.router.HandleFunc("/navHTML/{currentPage}", b.serveNavHTML)
 }
 
 func (b *bot) ListenAndServe() {
