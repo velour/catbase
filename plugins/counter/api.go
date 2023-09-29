@@ -7,6 +7,7 @@ import (
 	"github.com/velour/catbase/bot/user"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -39,8 +40,8 @@ func (p *CounterPlugin) registerWeb() {
 
 func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userName := chi.URLParam(r, "user")
-		itemName := chi.URLParam(r, "item")
+		userName, _ := url.QueryUnescape(chi.URLParam(r, "user"))
+		itemName, _ := url.QueryUnescape(chi.URLParam(r, "item"))
 		delta, _ := strconv.Atoi(chi.URLParam(r, "delta"))
 
 		secret, pass, ok := r.BasicAuth()
@@ -85,7 +86,11 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
 		}
 
-		chs := p.cfg.GetArray("channels", []string{p.cfg.Get("channels", "none")})
+		//chs := p.cfg.GetArray("channels", []string{p.cfg.Get("channels", "none")})
+		chs := p.cfg.GetMap("counter.channelItems", map[string]string{})
+		if len(chs) == 0 {
+			return
+		}
 		req := &bot.Request{
 			Conn: p.b.DefaultConnector(),
 			Kind: bot.Message,
@@ -93,7 +98,7 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 				User: &u,
 				// Noting here that we're only going to do goals in a "default"
 				// channel even if it should send updates to others.
-				Channel: chs[0],
+				Channel: chs[itemName],
 				Body:    fmt.Sprintf("%s += %d", itemName, delta),
 				Time:    time.Now(),
 			},
