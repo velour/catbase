@@ -164,11 +164,9 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
 		}
 
-		chs := p.cfg.GetMap("counter.channelItems", map[string]string{})
-		ch, ok := chs[itemName]
-		if len(chs) == 0 || !ok {
-			return
-		}
+		genericChs := p.cfg.GetArray("counter.channels", []string{})
+		specificChs := p.cfg.GetMap("counter.channelItems", map[string]string{})
+		ch, ok := specificChs[itemName]
 		req := &bot.Request{
 			Conn: p.b.DefaultConnector(),
 			Kind: bot.Message,
@@ -185,7 +183,12 @@ func (p *CounterPlugin) mkIncrementAPI(delta int) func(w http.ResponseWriter, r 
 		}
 		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
 			userName, itemName, delta, item.Count+delta, p.cfg.Get("nick", "catbase"), personalMsg)
-		for _, ch := range chs {
+		if !ok {
+			for _, ch := range genericChs {
+				p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+				req.Msg.Channel = ch
+			}
+		} else {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
 			req.Msg.Channel = ch
 		}
