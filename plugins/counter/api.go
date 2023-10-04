@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/velour/catbase/bot/user"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -81,7 +81,7 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 			return
 		}
 
-		body, _ := ioutil.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
 		postData := map[string]string{}
 		err = json.Unmarshal(body, &postData)
 		personalMsg := ""
@@ -110,7 +110,13 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 		}
 		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
 			userName, itemName, delta, item.Count+delta*direction, p.cfg.Get("nick", "catbase"), personalMsg)
-		for _, ch := range chs {
+		if !ok {
+			chs := p.cfg.GetArray("counter.channels", []string{})
+			for _, ch := range chs {
+				p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+				req.Msg.Channel = ch
+			}
+		} else {
 			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
 			req.Msg.Channel = ch
 		}
