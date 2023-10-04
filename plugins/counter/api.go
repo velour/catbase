@@ -45,6 +45,8 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 		delta, err := strconv.Atoi(chi.URLParam(r, "delta"))
 		if err != nil || delta == 0 {
 			delta = direction
+		} else {
+			delta = delta * direction
 		}
 
 		secret, pass, ok := r.BasicAuth()
