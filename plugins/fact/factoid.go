@@ -90,21 +90,8 @@ func New(botInst bot.Bot) *FactoidPlugin {
 
 // findAction simply regexes a string for the action verb
 func findAction(message string) string {
-	r, err := regexp.Compile("<.+?>")
-	if err != nil {
-		panic(err)
-	}
-	action := r.FindString(message)
-
-	if action == "" {
-		if strings.Contains(message, " is ") {
-			return "is"
-		} else if strings.Contains(message, " are ") {
-			return "are"
-		}
-	}
-
-	return action
+	r := regexp.MustCompile("<.+?>")
+	return r.FindString(message)
 }
 
 // learnFact assumes we have a learning situation and inserts a new fact
@@ -157,7 +144,6 @@ func (p *FactoidPlugin) findTrigger(fact string) (bool, *Factoid) {
 
 	f, err := GetSingleFact(p.db, fact)
 	if err != nil {
-		log.Error().Err(err).Msg("GetSingleFact")
 		return findAlias(p.db, fact)
 	}
 	return true, f
@@ -485,18 +471,7 @@ func (p *FactoidPlugin) register() {
 					return true
 				}
 
-				notFound := p.c.GetArray("fact.notfound", []string{
-					"I don't know.",
-					"NONONONO",
-					"((",
-					"*pukes*",
-					"NOPE! NOPE! NOPE!",
-					"One time, I learned how to jump rope.",
-				})
-
-				// We didn't find anything, panic!
-				p.b.Send(c, bot.Message, message.Channel, notFound[rand.Intn(len(notFound))])
-				return true
+				return false
 			}},
 	}
 	p.b.RegisterTable(p, p.handlers)

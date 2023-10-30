@@ -26,6 +26,8 @@ const (
 	Reply
 	// Action any /me action
 	Action
+	// Spoiler is for commented out messages
+	Spoiler
 	// Reaction Icon reaction if service supports it
 	Reaction
 	// Edit message ref'd new message to replace

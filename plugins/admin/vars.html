@@ -1,77 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <!-- Load required Bootstrap and BootstrapVue CSS -->
-    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
-    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.css"/>
-
-    <!-- Load polyfills to support older browsers -->
-    <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CMutationObserver"></script>
-
-    <!-- Load Vue followed by BootstrapVue -->
-    <script src="//unpkg.com/vue@^2/dist/vue.min.js"></script>
-    <script src="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.js"></script>
-    <script src="//unpkg.com/axios/dist/axios.min.js"></script>
-    <meta charset="UTF-8">
-    <title>Vars</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>vars</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+    <script src="https://unpkg.com/htmx.org@1.9.4"></script>
 </head>
 <body>
+    <div hx-get="/navHTML/Variables" hx-trigger="load" hx-swap="outerHTML"></div>
 
-<div id="app">
-    <b-navbar>
-        <b-navbar-brand>Variables</b-navbar-brand>
-        <b-navbar-nav>
-            <b-nav-item v-for="item in nav" :href="item.url" :active="item.name === 'Variables'">{{ item.name }}
-            </b-nav-item>
-        </b-navbar-nav>
-    </b-navbar>
-    <b-alert
-            dismissable
-            variant="error"
-            v-if="err"
-            @dismissed="err = ''">
-        {{ err }}
-    </b-alert>
-    <b-container>
-        <b-table
-                fixed
-                :items="vars"
-                :sort-by.sync="sortBy"
-                :fields="fields"></b-table>
-    </b-container>
-</div>
-
-<script>
-  var app = new Vue({
-    el: '#app',
-    data: {
-      err: '',
-      nav: [],
-      vars: [],
-      sortBy: 'key',
-      fields: [
-        {key: {sortable: true}},
-        'value'
-      ]
-    },
-    mounted() {
-      this.getData();
-      axios.get('/nav')
-        .then(resp => {
-          this.nav = resp.data;
-        })
-        .catch(err => console.log(err))
-    },
-    methods: {
-      getData: function () {
-        axios.get('/vars/api')
-          .then(resp => {
-            this.vars = resp.data;
-          })
-          .catch(err => this.err = err);
-      }
-    }
-  })
-</script>
+    <div class="container">
+        <table class="table-responsive table-striped">
+            <thead>
+            <tr>
+                <th>Key</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{range .Items}}
+            <tr>
+                <td>{{.Key}}</td><td>{{.Value}}</td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="2">No data</td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
 </body>
 </html>

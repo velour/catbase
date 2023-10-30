@@ -74,6 +74,9 @@ func (d Discord) Send(kind bot.Kind, args ...any) (string, error) {
 		return d.sendMessage(args[0].(string), args[2].(string), false, args...)
 	case bot.Message:
 		return d.sendMessage(args[0].(string), args[1].(string), false, args...)
+	case bot.Spoiler:
+		outgoing := "||" + args[1].(string) + "||"
+		return d.sendMessage(args[0].(string), outgoing, false, args...)
 	case bot.Action:
 		return d.sendMessage(args[0].(string), args[1].(string), true, args...)
 	case bot.Edit:
@@ -151,7 +154,27 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 		Interface("data", data).
 		Msg("sending message")
 
-	st, err := d.client.ChannelMessageSendComplex(channel, data)
+	maxLen := 2000
+	chunkSize := maxLen - 100
+	var st *discordgo.Message
+	var err error
+	if len(data.Content) > maxLen {
+		tmp := data.Content
+		data.Content = tmp[:chunkSize]
+		st, err = d.client.ChannelMessageSendComplex(channel, data)
+		if err != nil {
+			return "", err
+		}
+		for i := chunkSize; i < len(data.Content); i += chunkSize {
+			data := &discordgo.MessageSend{Content: tmp[i : i+chunkSize]}
+			st, err = d.client.ChannelMessageSendComplex(channel, data)
+			if err != nil {
+				break
+			}
+		}
+	} else {
+		st, err = d.client.ChannelMessageSendComplex(channel, data)
+	}
 
 	//st, err := d.client.ChannelMessageSend(channel, message)
 	if err != nil {

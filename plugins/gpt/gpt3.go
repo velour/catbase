@@ -23,6 +23,8 @@ type GPTPlugin struct {
 	b bot.Bot
 	c *config.Config
 	h bot.HandlerTable
+
+	chatCount int
 }
 
 func New(b bot.Bot) *GPTPlugin {
@@ -53,6 +55,11 @@ func (p *GPTPlugin) register() {
 			Regex:    regexp.MustCompile(`(?is)^gpt-prompt: (?P<text>.*)`),
 			HelpText: "set the ChatGPT prompt",
 			Handler:  p.setPromptMessage,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:   regexp.MustCompile(`(?P<text>.*)`),
+			Handler: p.chatMessage,
 		},
 	}
 	log.Debug().Msg("Registering GPT3 handlers")
@@ -96,7 +103,7 @@ func (p *GPTPlugin) gpt3(stem string) string {
 		TopP:        p.c.GetFloat64("gpt3.top_p", 1),
 		N:           p.c.GetInt("gpt3.n", 1),
 		Stop:        p.c.GetArray("gpt3.stop", []string{"\n"}),
-		Echo:        true,
+		Echo:        p.c.GetBool("gpt3.echo", false),
 	}
 	val, err := p.mkRequest(gpt3URL, postStruct)
 	if err != nil {

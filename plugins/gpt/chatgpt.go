@@ -6,7 +6,7 @@ import (
 )
 import "github.com/andrewstuart/openai"
 
-var session *openai.ChatSession
+var session openai.ChatSession
 var client *openai.Client
 
 func (p *GPTPlugin) getClient() (*openai.Client, error) {
@@ -14,31 +14,37 @@ func (p *GPTPlugin) getClient() (*openai.Client, error) {
 	if token == "" {
 		return nil, fmt.Errorf("no GPT token given")
 	}
-	if client == nil {
-		return openai.NewClient(token)
-	}
-	return client, nil
+	return openai.NewClient(token)
 }
 
 func (p *GPTPlugin) chatGPT(request string) (string, error) {
-	if session == nil {
-		if err := p.setDefaultPrompt(); err != nil {
+	if client == nil {
+		if err := p.setPrompt(p.getDefaultPrompt()); err != nil {
 			return "", err
 		}
 	}
+	if p.chatCount > p.c.GetInt("gpt.maxchats", 10) {
+		p.setPrompt(p.c.Get("gpt3.lastprompt", p.getDefaultPrompt()))
+		p.chatCount = 0
+	}
+	p.chatCount++
 	return session.Complete(context.Background(), request)
 }
 
-func (p *GPTPlugin) setDefaultPrompt() error {
-	return p.setPrompt(p.c.Get("gpt.prompt", ""))
+func (p *GPTPlugin) getDefaultPrompt() string {
+	return p.c.Get("gpt.prompt", "")
 }
 
 func (p *GPTPlugin) setPrompt(prompt string) error {
-	client, err := p.getClient()
+	var err error
+	client, err = p.getClient()
 	if err != nil {
 		return err
 	}
-	sess := client.NewChatSession(prompt)
-	session = &sess
+	session = client.NewChatSession(prompt)
+	err = p.c.Set("gpt3.lastprompt", prompt)
+	if err != nil {
+		return err
+	}
 	return nil
 }
