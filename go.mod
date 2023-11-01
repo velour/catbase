@@ -30,7 +30,7 @@ require (
 	github.com/nicklaw5/helix v1.25.0
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
 	github.com/rs/zerolog v1.28.0
-	github.com/slack-go/slack v0.11.3
+	github.com/slack-go/slack v0.12.3
 	github.com/stretchr/testify v1.8.2
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
