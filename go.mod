@@ -16,7 +16,7 @@ require (
 	github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90
 	github.com/forPelevin/gomoji v1.1.6
 	github.com/gabriel-vasile/mimetype v1.4.1
-	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/httprate v0.7.0
 	github.com/gocolly/colly v1.2.0
 	github.com/google/uuid v1.3.0
