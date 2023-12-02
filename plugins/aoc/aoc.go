@@ -65,7 +65,7 @@ func (p *AOC) aocCmd(r bot.Request) bool {
 	})
 
 	gold, silver, bronze := -1, -1, -1
-	goldID, silverID, bronzeID := "", "", ""
+	goldID, silverID, bronzeID := -1, -1, -1
 	for _, m := range members {
 		if m.LocalScore > gold {
 			gold = m.LocalScore
