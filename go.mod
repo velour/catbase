@@ -3,7 +3,7 @@ module github.com/velour/catbase
 go 1.18
 
 require (
-	code.chrissexton.org/cws/getaoc v0.0.0-20201118154901-e4b21fc080c8
+	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/andrewstuart/openai v0.8.0
