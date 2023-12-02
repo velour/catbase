@@ -30,8 +30,8 @@ cloud.google.com/go/storage v1.5.0/go.mod h1:tpKbwo567HUNpVclU5sGELwQWBDZ8gh0Zeo
 cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohlUTyfDhBk=
 cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RXyy7KQOVs=
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
-code.chrissexton.org/cws/getaoc v0.0.0-20201118154901-e4b21fc080c8 h1:1yyeO907xy6GHYUnZHDQfXf8YldlxF7mK+lneuardqk=
-code.chrissexton.org/cws/getaoc v0.0.0-20201118154901-e4b21fc080c8/go.mod h1:rEpfJR9MplF2TUj2Oy+u4XAaLve2kwB8I2zlzeIQxl8=
+code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d h1:s2OEp4YDwfdKVZVkt2hrN/tZlbpHtC2GPNRYWgtqMDw=
+code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d/go.mod h1:rEpfJR9MplF2TUj2Oy+u4XAaLve2kwB8I2zlzeIQxl8=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 git.stuart.fun/andrew/rester/v2 v2.2.0 h1:h8VSZC1MKmYQdpbpbDRYg5HrPaqyW5lbU69C+433BAs=
 git.stuart.fun/andrew/rester/v2 v2.2.0/go.mod h1:Uc4e4vUP/Y7bSmTE4U+eSqbREaoudpKOrHyhcSGWeHk=
