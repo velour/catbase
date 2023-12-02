@@ -3,7 +3,7 @@ module github.com/velour/catbase
 go 1.18
 
 require (
-	code.chrissexton.org/cws/getaoc v0.0.0-20191201043947-d5417d4b618d
+	code.chrissexton.org/cws/getaoc v0.0.0-20201118154901-e4b21fc080c8
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/andrewstuart/openai v0.8.0
@@ -113,3 +113,5 @@ require (
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/mattn/go-sqlite3 => github.com/leso-kn/go-sqlite3 v0.0.0-20230710125852-03158dc838ed
