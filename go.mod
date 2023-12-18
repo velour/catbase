@@ -34,7 +34,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
-	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+	golang.org/x/crypto v0.17.0
 	gopkg.in/go-playground/webhooks.v5 v5.17.0
 )
 
@@ -101,10 +101,10 @@ require (
 	github.com/ttacon/libphonenumber v1.1.0 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gonum.org/v1/gonum v0.6.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
