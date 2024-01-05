@@ -68,8 +68,8 @@ func TestDoubleUp(t *testing.T) {
 func TestAddHistoryLimitsMessages(t *testing.T) {
 	c, _ := setup(t)
 	max := 1000
-	c.bot.Config().Set("TLDR.HistorySize", strconv.Itoa(max))
-	c.bot.Config().Set("TLDR.KeepHours", "24")
+	c.b.Config().Set("TLDR.HistorySize", strconv.Itoa(max))
+	c.b.Config().Set("TLDR.KeepHours", "24")
 	t0 := time.Now().Add(-24 * time.Hour)
 	for i := 0; i < max*2; i++ {
 		hist := history{
@@ -86,8 +86,8 @@ func TestAddHistoryLimitsDays(t *testing.T) {
 	c, _ := setup(t)
 	hrs := 24
 	expected := 24
-	c.bot.Config().Set("TLDR.HistorySize", "100")
-	c.bot.Config().Set("TLDR.KeepHours", strconv.Itoa(hrs))
+	c.b.Config().Set("TLDR.HistorySize", "100")
+	c.b.Config().Set("TLDR.KeepHours", strconv.Itoa(hrs))
 	t0 := time.Now().Add(-time.Duration(hrs*2) * time.Hour)
 	for i := 0; i < 48; i++ {
 		hist := history{
