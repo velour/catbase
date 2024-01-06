@@ -29,6 +29,7 @@ type TLDRPlugin struct {
 
 type history struct {
 	timestamp time.Time
+	channel   string
 	user      string
 	body      string
 }
@@ -81,6 +82,7 @@ func (p *TLDRPlugin) record(r bot.Request) bool {
 	hist := history{
 		body:      strings.ToLower(r.Msg.Body),
 		user:      r.Msg.User.Name,
+		channel:   r.Msg.Channel,
 		timestamp: time.Now(),
 	}
 	p.addHistory(hist)
@@ -226,7 +228,9 @@ func (p *TLDRPlugin) betterTLDR(r bot.Request) bool {
 	promptTpl.Execute(&prompt, data)
 	backlog := ""
 	for _, h := range p.history {
-		backlog += fmt.Sprintf("%s: %s\n", h.user, h.body)
+		if h.channel == r.Msg.Channel {
+			backlog += fmt.Sprintf("%s: %s\n", h.user, h.body)
+		}
 	}
 	sess := c.NewChatSession(prompt.String())
 	completion, err := sess.Complete(context.TODO(), backlog)
