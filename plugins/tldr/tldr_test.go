@@ -20,6 +20,8 @@ func init() {
 	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 }
 
+var ch = "test"
+
 func makeMessageBy(payload, by string) bot.Request {
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
@@ -31,7 +33,7 @@ func makeMessageBy(payload, by string) bot.Request {
 		Kind: bot.Message,
 		Msg: msg.Message{
 			User:    &user.User{Name: by},
-			Channel: "test",
+			Channel: ch,
 			Body:    payload,
 			Command: isCmd,
 		},
@@ -61,7 +63,7 @@ func TestAddHistoryLimitsDays(t *testing.T) {
 			user:      "tester",
 			timestamp: t0.Add(time.Duration(i) * time.Hour),
 		}
-		c.addHistory(hist)
+		c.addHistory(ch, hist)
 	}
-	assert.Len(t, c.history, expected, "%d != %d", len(c.history), expected)
+	assert.Len(t, c.history[ch], expected, "%d != %d", len(c.history), expected)
 }
