@@ -59,8 +59,14 @@ func (p *TLDRPlugin) register() {
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`tl;?dr-prompt$`),
+			HelpText: "Get the tl;dr prompt",
+			Handler:  p.squawkTLDR,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`tl;?dr-prompt reset`),
-			HelpText: "Set the tl;dr prompt",
+			HelpText: "Reset the tl;dr prompt",
 			Handler:  p.resetTLDR,
 		},
 		{
@@ -268,6 +274,13 @@ func (p *TLDRPlugin) betterTLDR(r bot.Request) bool {
 	return true
 }
 
+func (p *TLDRPlugin) squawkTLDR(r bot.Request) bool {
+	prompt := p.c.Get(templateKey, defaultTemplate)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Current prompt is: "%s"`,
+		strings.TrimSpace(prompt)))
+	return true
+}
+
 func (p *TLDRPlugin) resetTLDR(r bot.Request) bool {
 	p.c.Set(templateKey, defaultTemplate)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Set prompt to: "%s"`,
@@ -278,7 +291,7 @@ func (p *TLDRPlugin) resetTLDR(r bot.Request) bool {
 func (p *TLDRPlugin) setTLDR(r bot.Request) bool {
 	prompt := r.Values["prompt"] + "\n"
 	p.c.Set(defaultTemplate, prompt)
-	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Set prompt to: "%s"`, prompt))
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Set prompt to: "%s"`, strings.TrimSpace(prompt)))
 	return true
 }
 
