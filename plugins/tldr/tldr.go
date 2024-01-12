@@ -19,6 +19,10 @@ import (
 	"github.com/james-bowman/nlp"
 )
 
+const templateKey = "tldr.prompttemplate"
+
+var defaultTemplate = "Summarize the following conversation:\n"
+
 type TLDRPlugin struct {
 	b           bot.Bot
 	c           *config.Config
@@ -55,7 +59,19 @@ func (p *TLDRPlugin) register() {
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`tl;dr`),
+			Regex:    regexp.MustCompile(`tl;?dr-prompt reset`),
+			HelpText: "Set the tl;dr prompt",
+			Handler:  p.resetTLDR,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`tl;?dr-prompt (?P<prompt>.*)`),
+			HelpText: "Set the tl;dr prompt",
+			Handler:  p.setTLDR,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`tl;?dr`),
 			HelpText: "Get a summary of the channel",
 			Handler:  p.betterTLDR,
 		},
@@ -222,7 +238,7 @@ func (p *TLDRPlugin) betterTLDR(r bot.Request) bool {
 		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Couldn't fetch an OpenAI client")
 		return true
 	}
-	promptConfig := p.c.Get("tldr.prompttemplate", "Summarize the following conversation:\n")
+	promptConfig := p.c.Get(templateKey, defaultTemplate)
 	promptTpl := template.Must(template.New("gptprompt").Parse(promptConfig))
 	prompt := bytes.Buffer{}
 	data := p.c.GetMap("tldr.promptdata", map[string]string{})
@@ -249,6 +265,20 @@ func (p *TLDRPlugin) betterTLDR(r bot.Request) bool {
 		Str("completion", completion).
 		Msgf("tl;dr")
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, completion)
+	return true
+}
+
+func (p *TLDRPlugin) resetTLDR(r bot.Request) bool {
+	p.c.Set(templateKey, defaultTemplate)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Set prompt to: "%s"`,
+		strings.TrimSpace(defaultTemplate)))
+	return true
+}
+
+func (p *TLDRPlugin) setTLDR(r bot.Request) bool {
+	prompt := r.Values["prompt"] + "\n"
+	p.c.Set(defaultTemplate, prompt)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Set prompt to: "%s"`, prompt))
 	return true
 }
 
