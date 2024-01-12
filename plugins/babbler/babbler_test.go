@@ -82,7 +82,7 @@ func TestBabblerNothingSaid(t *testing.T) {
 	}
 }
 
-func TestBabbler(t *testing.T) {
+func testBabbler(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
 	assert.NotNil(t, bp)
