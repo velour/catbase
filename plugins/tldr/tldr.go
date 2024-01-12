@@ -290,7 +290,7 @@ func (p *TLDRPlugin) resetTLDR(r bot.Request) bool {
 
 func (p *TLDRPlugin) setTLDR(r bot.Request) bool {
 	prompt := r.Values["prompt"] + "\n"
-	p.c.Set(defaultTemplate, prompt)
+	p.c.Set(templateKey, prompt)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Set prompt to: "%s"`, strings.TrimSpace(prompt)))
 	return true
 }
