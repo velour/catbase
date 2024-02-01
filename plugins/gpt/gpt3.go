@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -48,7 +49,7 @@ func (p *GPTPlugin) register() {
 			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^gpt (?P<text>.*)`),
 			HelpText: "chat completion",
-			Handler:  p.chatMessage,
+			Handler:  p.chatMessageForce,
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
@@ -62,7 +63,6 @@ func (p *GPTPlugin) register() {
 			Handler: p.chatMessage,
 		},
 	}
-	log.Debug().Msg("Registering GPT3 handlers")
 	p.b.RegisterTable(p, p.h)
 }
 
@@ -77,6 +77,14 @@ func (p *GPTPlugin) setPromptMessage(r bot.Request) bool {
 }
 
 func (p *GPTPlugin) chatMessage(r bot.Request) bool {
+	if slices.Contains(p.c.GetArray("gpt.silence", []string{}), r.Msg.Channel) {
+		log.Debug().Msgf("%s silenced", r.Msg.Channel)
+		return true
+	}
+	return p.chatMessageForce(r)
+}
+
+func (p *GPTPlugin) chatMessageForce(r bot.Request) bool {
 	resp, err := p.chatGPT(r.Values["text"])
 	if err != nil {
 		resp = fmt.Sprintf("Error: %s", err)

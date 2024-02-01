@@ -106,7 +106,7 @@ func (c *Config) GetString(key, fallback string) string {
 	q := `select value from config where key=?`
 	err := c.DB.Get(&configValue, q, key)
 	if err != nil {
-		log.Debug().Msgf("WARN: Key %s is empty", key)
+		log.Info().Msgf("WARN: Key %s is empty", key)
 		return fallback
 	}
 	return configValue
