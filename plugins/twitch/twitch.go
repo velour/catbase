@@ -102,7 +102,7 @@ func (p *Twitch) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/online", p.onlineCB)
 	r.HandleFunc("/offline", p.offlineCB)
-	p.b.RegisterWeb(r, "/twitch")
+	p.b.GetWeb().RegisterWeb(r, "/twitch")
 }
 
 func (p *Twitch) register() {

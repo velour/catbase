@@ -29,7 +29,7 @@ func (p *EmojyPlugin) registerWeb() {
 	r.HandleFunc("/list", p.handlePage("list.html"))
 	r.HandleFunc("/new", p.handlePage("upload.html"))
 	r.HandleFunc("/", p.handleIndex)
-	p.b.RegisterWebName(r, "/emojy", "Emojys")
+	p.b.GetWeb().RegisterWebName(r, "/emojy", "Emojys")
 }
 
 func (p *EmojyPlugin) handleIndex(w http.ResponseWriter, r *http.Request) {

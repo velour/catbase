@@ -130,7 +130,7 @@ func main() {
 	b := bot.New(c, client)
 
 	if r, path := client.GetRouter(); r != nil {
-		b.RegisterWeb(r, path)
+		b.GetWeb().RegisterWeb(r, path)
 	}
 
 	b.AddPlugin(admin.New(b))

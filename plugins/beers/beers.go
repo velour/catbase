@@ -598,7 +598,7 @@ func (p *BeersPlugin) untappdLoop(c bot.Connector, channel string) {
 func (p *BeersPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/img/{id}", p.img)
-	p.b.RegisterWeb(r, "/beers")
+	p.b.GetWeb().RegisterWeb(r, "/beers")
 }
 
 func (p *BeersPlugin) img(w http.ResponseWriter, r *http.Request) {

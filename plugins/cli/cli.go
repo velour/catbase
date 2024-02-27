@@ -40,7 +40,7 @@ func (p *CliPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/api", p.handleWebAPI)
 	r.HandleFunc("/", p.handleWeb)
-	p.bot.RegisterWebName(r, "/cli", "CLI")
+	p.bot.GetWeb().RegisterWebName(r, "/cli", "CLI")
 }
 
 func (p *CliPlugin) Shutdown() {}

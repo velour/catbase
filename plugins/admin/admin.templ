@@ -3,18 +3,6 @@ package admin
 import "fmt"
 
 templ (a *AdminPlugin) page() {
-    <!DOCTYPE html />
-    <html lang="en">
-    <head>
-        <!-- Load required Bootstrap and BootstrapVue CSS -->
-        <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
-        <meta charset="UTF-8" />
-        <title>Vars</title>
-    </head>
-    <body>
-
-    <div hx-get="/navHTML/Variables" hx-trigger="load" hx-swap="outerHTML"></div>
-
     <div class="container">
         <form>
         <div class="row">
@@ -39,10 +27,6 @@ templ (a *AdminPlugin) page() {
             <div id="data"></div>
         </div>
     </div>
-
-    <script src="//unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
-    </body>
-    </html>
 }
 
 templ (a *AdminPlugin) showPassword(entry PassEntry) {
@@ -74,4 +58,29 @@ templ (a *AdminPlugin) entries(items []PassEntry) {
 
 templ renderError(err error) {
     <div>{ err.Error() }</div>
+}
+
+templ vars(items []configEntry) {
+        <div class="container">
+            <table class="table-responsive table-striped">
+                <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                for _, item := range items {
+                    <tr>
+                        <td>{ item.Key }</td><td>{ item.Value }</td>
+                    </tr>
+                }
+                if len(items) == 0 {
+                    <tr>
+                        <td colspan="2">No data</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
 }

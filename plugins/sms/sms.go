@@ -121,7 +121,7 @@ func (p *SMSPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, ar
 func (p *SMSPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/new", p.receive)
-	p.b.RegisterWeb(r, "/sms")
+	p.b.GetWeb().RegisterWeb(r, "/sms")
 }
 
 func (p *SMSPlugin) receive(w http.ResponseWriter, r *http.Request) {

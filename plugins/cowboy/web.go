@@ -10,7 +10,7 @@ import (
 func (p *Cowboy) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/img/{overlay}/{what}", p.handleImage)
-	p.b.RegisterWeb(r, "/cowboy")
+	p.b.GetWeb().RegisterWeb(r, "/cowboy")
 }
 
 func (p *Cowboy) handleImage(w http.ResponseWriter, r *http.Request) {

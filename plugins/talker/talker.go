@@ -186,5 +186,5 @@ func (p *TalkerPlugin) registerWeb(c bot.Connector) {
 		p.bot.Send(c, bot.Message, channel, msg)
 		w.WriteHeader(200)
 	})
-	p.bot.RegisterWeb(r, "/cowsay")
+	p.bot.GetWeb().RegisterWeb(r, "/cowsay")
 }

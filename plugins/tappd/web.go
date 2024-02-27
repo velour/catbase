@@ -14,7 +14,7 @@ import (
 func (p *Tappd) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/", p.serveImage)
-	p.b.RegisterWeb(r, "/tappd/{id}")
+	p.b.GetWeb().RegisterWeb(r, "/tappd/{id}")
 }
 
 func (p *Tappd) getImg(id string) ([]byte, error) {
