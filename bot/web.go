@@ -3,33 +3,21 @@ package bot
 import (
 	"embed"
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"strings"
-	"text/template"
 )
 
 //go:embed *.html
 var embeddedFS embed.FS
 
 func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("index.html")
-	w.Write(index)
+	b.index().Render(r.Context(), w)
 }
 
 func (b *bot) serveNavHTML(w http.ResponseWriter, r *http.Request) {
 	currentPage := chi.URLParam(r, "currentPage")
-	tpl := template.Must(template.ParseFS(embeddedFS, "nav.html"))
-	if err := tpl.Execute(w, struct {
-		CurrentPage string
-		Items       []EndPoint
-	}{currentPage, b.GetWebNavigation()}); err != nil {
-		log.Error().Err(err).Msg("template error")
-		w.WriteHeader(500)
-		fmt.Fprint(w, "Error parsing nav template")
-	}
+	b.Nav(currentPage, b.GetWebNavigation()).Render(r.Context(), w)
 }
 
 func (b *bot) serveNav(w http.ResponseWriter, r *http.Request) {

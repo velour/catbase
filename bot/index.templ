@@ -1,0 +1,21 @@
+package bot
+
+templ (b *bot) index() {
+    <!DOCTYPE html />
+    <html lang="en">
+    <head>
+        <!-- Load required Bootstrap and BootstrapVue CSS -->
+        <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+        <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.css" />
+        <meta charset="UTF-8" />
+        <title>catbase</title>
+    </head>
+    <body>
+
+    <div id="app">
+        @b.Nav("", b.GetWebNavigation())
+    </div>
+
+    </body>
+    </html>
+}
