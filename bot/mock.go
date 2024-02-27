@@ -4,6 +4,7 @@ package bot
 
 import (
 	"fmt"
+	"github.com/velour/catbase/bot/web"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -26,6 +27,8 @@ type MockBot struct {
 	Messages  []string
 	Actions   []string
 	Reactions []string
+
+	web *web.Web
 }
 
 func (mb *MockBot) Config() *config.Config      { return mb.Cfg }
@@ -60,9 +63,7 @@ func (mb *MockBot) Register(p Plugin, kind Kind, cb Callback)                   
 func (mb *MockBot) RegisterTable(p Plugin, hs HandlerTable)                                   {}
 func (mb *MockBot) RegisterRegex(p Plugin, kind Kind, r *regexp.Regexp, h ResponseHandler)    {}
 func (mb *MockBot) RegisterRegexCmd(p Plugin, kind Kind, r *regexp.Regexp, h ResponseHandler) {}
-func (mb *MockBot) RegisterWebName(_ http.Handler, _, _ string)                               {}
-func (mb *MockBot) RegisterWeb(_ http.Handler, _ string)                                      {}
-func (mb *MockBot) GetWebNavigation() []EndPoint                                              { return nil }
+func (mb *MockBot) GetWeb() *web.Web                                                          { return mb.web }
 func (mb *MockBot) Receive(c Connector, kind Kind, msg msg.Message, args ...any) bool {
 	return false
 }
@@ -118,6 +119,7 @@ func NewMockBot() *MockBot {
 		Messages: make([]string, 0),
 		Actions:  make([]string, 0),
 	}
+	b.web = web.New(cfg)
 	// If any plugin registered a route, we need to reset those before any new test
 	http.DefaultServeMux = new(http.ServeMux)
 	return &b

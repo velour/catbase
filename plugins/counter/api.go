@@ -35,7 +35,7 @@ func (p *CounterPlugin) registerWeb() {
 	r.Mount("/", subrouter)
 	r.HandleFunc("/api", p.handleCounterAPI)
 	r.HandleFunc("/", p.handleCounter)
-	p.b.RegisterWebName(r, "/counter", "Counter")
+	p.b.GetWeb().RegisterWebName(r, "/counter", "Counter")
 }
 
 func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWriter, r *http.Request) {

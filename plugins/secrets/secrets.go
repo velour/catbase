@@ -1,20 +1,17 @@
 package secrets
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
+	"io"
+	"net/http"
+	"net/url"
 )
-
-//go:embed *.html
-var embeddedFS embed.FS
 
 type SecretsPlugin struct {
 	b  bot.Bot
@@ -36,14 +33,8 @@ func (p *SecretsPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/add", p.handleRegister)
 	r.HandleFunc("/remove", p.handleRemove)
-	r.HandleFunc("/all", p.handleAll)
-	r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		value := r.URL.Query().Get("test")
-		j, _ := json.Marshal(map[string]string{"value": value})
-		w.Write(j)
-	})
 	r.HandleFunc("/", p.handleIndex)
-	p.b.RegisterWebName(r, "/secrets", "Secrets")
+	p.b.GetWeb().RegisterWebName(r, "/secrets", "Secrets")
 }
 
 func mkCheckError(w http.ResponseWriter) func(error) bool {
@@ -68,20 +59,12 @@ func checkMethod(method string, w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
+func (p *SecretsPlugin) keys() []string {
+	return p.c.SecretKeys()
+}
+
 func (p *SecretsPlugin) sendKeys(w http.ResponseWriter, r *http.Request) {
-	checkError := mkCheckError(w)
-	log.Debug().Msgf("Keys before refresh: %v", p.c.SecretKeys())
-	err := p.c.RefreshSecrets()
-	log.Debug().Msgf("Keys after refresh: %v", p.c.SecretKeys())
-	if checkError(err) {
-		return
-	}
-	keys, err := json.Marshal(p.c.SecretKeys())
-	if checkError(err) {
-		return
-	}
-	w.WriteHeader(200)
-	w.Write(keys)
+	p.keysList().Render(r.Context(), w)
 }
 
 func (p *SecretsPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
@@ -89,21 +72,13 @@ func (p *SecretsPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *SecretsPlugin) handleRegister(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("handleRegister")
 	if checkMethod(http.MethodPost, w, r) {
 		log.Debug().Msgf("failed post %s", r.Method)
 		return
 	}
 	checkError := mkCheckError(w)
-	decoder := json.NewDecoder(r.Body)
-	secret := config.Secret{}
-	err := decoder.Decode(&secret)
-	log.Debug().Msgf("decoding: %s", err)
-	if checkError(err) {
-		return
-	}
-	log.Debug().Msgf("Secret: %s", secret)
-	err = p.c.RegisterSecret(secret.Key, secret.Value)
+	key, value := r.FormValue("key"), r.FormValue("value")
+	err := p.c.RegisterSecret(key, value)
 	if checkError(err) {
 		return
 	}
@@ -115,13 +90,16 @@ func (p *SecretsPlugin) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	checkError := mkCheckError(w)
-	decoder := json.NewDecoder(r.Body)
-	secret := config.Secret{}
-	err := decoder.Decode(&secret)
+	b, err := io.ReadAll(r.Body)
 	if checkError(err) {
 		return
 	}
-	err = p.c.RemoveSecret(secret.Key)
+	q, err := url.ParseQuery(string(b))
+	if checkError(err) {
+		return
+	}
+	secret := q.Get("key")
+	err = p.c.RemoveSecret(secret)
 	if checkError(err) {
 		return
 	}
@@ -129,6 +107,5 @@ func (p *SecretsPlugin) handleRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *SecretsPlugin) handleIndex(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("index.html")
-	w.Write(index)
+	p.b.GetWeb().Index("Secrets", p.index()).Render(r.Context(), w)
 }

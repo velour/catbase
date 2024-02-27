@@ -4,10 +4,8 @@ package bot
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httprate"
+	"github.com/velour/catbase/bot/web"
 	"math/rand"
-	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -15,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/history"
@@ -53,8 +50,7 @@ type bot struct {
 
 	version string
 
-	// The entries to the bot's HTTP interface
-	httpEndPoints []EndPoint
+	web *web.Web
 
 	// filters registered by plugins
 	filters map[string]func(string) string
@@ -66,14 +62,7 @@ type bot struct {
 
 	quiet bool
 
-	router *chi.Mux
-
 	history *history.History
-}
-
-type EndPoint struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
 }
 
 // Variable represents a $var replacement
@@ -107,10 +96,8 @@ func New(config *config.Config, connector Connector) Bot {
 		me:              users[0],
 		logIn:           logIn,
 		logOut:          logOut,
-		httpEndPoints:   make([]EndPoint, 0),
 		filters:         make(map[string]func(string) string),
 		callbacks:       make(CallbackMap),
-		router:          chi.NewRouter(),
 		history:         history.New(historySz),
 	}
 
@@ -119,36 +106,11 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.RefreshPluginBlacklist()
 	bot.RefreshPluginWhitelist()
 
-	log.Debug().Msgf("created web router")
-
-	bot.setupHTTP()
+	bot.web = web.New(bot.config)
 
 	connector.RegisterEvent(bot.Receive)
 
 	return bot
-}
-
-func (b *bot) setupHTTP() {
-	// Make the http logger optional
-	// It has never served a purpose in production and with the emojy page, can make a rather noisy log
-	if b.Config().GetInt("bot.useLogger", 0) == 1 {
-		b.router.Use(middleware.Logger)
-	}
-
-	reqCount := b.Config().GetInt("bot.httprate.requests", 500)
-	reqTime := time.Duration(b.Config().GetInt("bot.httprate.seconds", 5))
-	if reqCount > 0 && reqTime > 0 {
-		b.router.Use(httprate.LimitByIP(reqCount, reqTime*time.Second))
-	}
-
-	b.router.Use(middleware.RequestID)
-	b.router.Use(middleware.Recoverer)
-	b.router.Use(middleware.StripSlashes)
-
-	b.router.HandleFunc("/", b.serveRoot)
-	b.router.HandleFunc("/nav", b.serveNav)
-	b.router.HandleFunc("/navHTML", b.serveNavHTML)
-	b.router.HandleFunc("/navHTML/{currentPage}", b.serveNavHTML)
 }
 
 func (b *bot) ListenAndServe() {
@@ -156,21 +118,11 @@ func (b *bot) ListenAndServe() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	go func() {
-		log.Debug().Msgf("starting web service at %s", addr)
-		log.Fatal().Err(http.ListenAndServe(addr, b.router)).Msg("bot killed")
+		b.web.ListenAndServe(addr)
 	}()
 	<-stop
 	b.DefaultConnector().Shutdown()
 	b.Receive(b.DefaultConnector(), Shutdown, msg.Message{})
-}
-
-func (b *bot) RegisterWeb(r http.Handler, root string) {
-	b.router.Mount(root, r)
-}
-
-func (b *bot) RegisterWebName(r http.Handler, root, name string) {
-	b.httpEndPoints = append(b.httpEndPoints, EndPoint{name, root})
-	b.router.Mount(root, r)
 }
 
 // DefaultConnector is the main connector used for the bot
@@ -457,4 +409,8 @@ func (b *bot) CheckPassword(secret, password string) bool {
 		}
 	}
 	return false
+}
+
+func (b *bot) GetWeb() *web.Web {
+	return b.web
 }

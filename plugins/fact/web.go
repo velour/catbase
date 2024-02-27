@@ -19,7 +19,7 @@ func (p *FactoidPlugin) registerWeb() {
 	r.HandleFunc("/api", p.serveAPI)
 	r.HandleFunc("/req", p.serveQuery)
 	r.HandleFunc("/", p.serveQuery)
-	p.b.RegisterWebName(r, "/factoid", "Factoid")
+	p.b.GetWeb().RegisterWebName(r, "/factoid", "Factoid")
 }
 
 func linkify(text string) template.HTML {

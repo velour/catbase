@@ -4,6 +4,7 @@ package bot
 
 import (
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/velour/catbase/bot/web"
 	"net/http"
 	"regexp"
 	"strings"
@@ -168,20 +169,14 @@ type Bot interface {
 	// RegisterFilter creates a filter function for message processing
 	RegisterFilter(string, func(string) string)
 
-	// RegisterWeb records a web endpoint for the UI
-	RegisterWebName(http.Handler, string, string)
-
-	// RegisterWeb records a web endpoint for the API
-	RegisterWeb(http.Handler, string)
-
 	// Start the HTTP service
 	ListenAndServe()
 
 	// DefaultConnector returns the base connector, which may not be the only connector
 	DefaultConnector() Connector
 
-	// GetWebNavigation returns the current known web endpoints
-	GetWebNavigation() []EndPoint
+	// GetWeb returns the bot's webserver structure
+	GetWeb() *web.Web
 
 	// GetPassword generates a unique password for modification commands on the public website
 	GetPassword() string

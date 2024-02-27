@@ -19,16 +19,16 @@ import (
 func (p *AdminPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/", p.handleVars)
-	p.bot.RegisterWebName(r, "/vars", "Variables")
+	p.bot.GetWeb().RegisterWebName(r, "/vars", "Variables")
 	r = chi.NewRouter()
 	r.HandleFunc("/verify", p.handleAppPassCheck)
 	r.HandleFunc("/api", p.handleAppPassAPI)
 	r.HandleFunc("/", p.handleAppPass)
-	p.bot.RegisterWebName(r, "/apppass", "App Pass")
+	p.bot.GetWeb().RegisterWebName(r, "/apppass", "App Pass")
 }
 
 func (p *AdminPlugin) handleAppPass(w http.ResponseWriter, r *http.Request) {
-	p.page().Render(r.Context(), w)
+	p.bot.GetWeb().Index("App Pass", p.page()).Render(r.Context(), w)
 }
 
 type PassEntry struct {
@@ -188,5 +188,5 @@ func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars(configEntries).Render(r.Context(), w)
+	p.bot.GetWeb().Index("Variables", vars(configEntries)).Render(r.Context(), w)
 }

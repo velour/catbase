@@ -1,0 +1,61 @@
+package web
+
+templ (w *Web) Header(title string) {
+    <head>
+        <!-- Load required Bootstrap and BootstrapVue CSS -->
+        <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta charset="UTF-8" />
+        if title != "" {
+            <title>catbase - { title }</title>
+        } else {
+            <title>catbase</title>
+        }
+    </head>
+}
+
+templ (w *Web) Footer() {
+    <script src="//unpkg.com/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="//unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+}
+
+templ (w *Web) Index(title string, contents templ.Component) {
+    <!DOCTYPE html />
+    <html lang="en">
+    @w.Header(title)
+    <body>
+
+    @w.Nav(title)
+
+    if contents != nil {
+        @contents
+    }
+
+    @w.Footer()
+    </body>
+    </html>
+}
+
+templ (w *Web) Nav(currentPage string) {
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">catbase</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    for _, item := range w.GetWebNavigation() {
+                        <li class="nav-item">
+                            if currentPage == item.Name {
+                                <a class="nav-link active" aria-current="page" href={ templ.URL(item.URL) }>{ item.Name }</a>
+                            } else {
+                                <a class="nav-link" href={ templ.URL(item.URL) }>{ item.Name }</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+}
