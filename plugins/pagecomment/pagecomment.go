@@ -18,7 +18,7 @@ type PageComment struct {
 	c *config.Config
 }
 
-func New(b bot.Bot) *PageComment {
+func New(b bot.Bot) bot.Plugin {
 	p := &PageComment{
 		b: b,
 		c: b.Config(),

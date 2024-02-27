@@ -20,11 +20,12 @@ var embeddedFS embed.FS
 func (p *MemePlugin) registerWeb(c bot.Connector) {
 	r := chi.NewRouter()
 	r.HandleFunc("/slash", p.slashMeme(c))
-	r.HandleFunc("/img", p.img)
-	r.HandleFunc("/all", p.all)
-	r.HandleFunc("/add", p.addMeme)
-	r.HandleFunc("/rm", p.rmMeme)
-	r.HandleFunc("/", p.webRoot)
+	r.Get("/img", p.img)
+	r.Put("/save/{name}", p.saveMeme)
+	r.Post("/add", p.saveMeme)
+	r.Delete("/rm/{name}", p.rmMeme)
+	r.Get("/edit/{name}", p.editMeme)
+	r.Get("/", p.webRoot)
 	p.bot.GetWeb().RegisterWebName(r, "/meme", "Memes")
 }
 
@@ -43,7 +44,7 @@ type ByName struct{ webResps }
 
 func (s ByName) Less(i, j int) bool { return s.webResps[i].Name < s.webResps[j].Name }
 
-func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
+func (p *MemePlugin) all() webResps {
 	memes := p.c.GetMap("meme.memes", defaultFormats)
 	configs := p.c.GetMap("meme.memeconfigs", map[string]string{})
 
@@ -51,7 +52,7 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 	for n, u := range memes {
 		config, ok := configs[n]
 		if !ok {
-			b, _ := json.Marshal(p.defaultFormatConfig())
+			b, _ := json.MarshalIndent(p.defaultFormatConfig(), " ", " ")
 			config = string(b)
 		}
 		realURL, err := url.Parse(u)
@@ -64,13 +65,7 @@ func (p *MemePlugin) all(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Sort(ByName{values})
 
-	out, err := json.Marshal(values)
-	if err != nil {
-		w.WriteHeader(500)
-		log.Error().Err(err).Msgf("could not serve all memes route")
-		return
-	}
-	w.Write(out)
+	return values
 }
 
 func mkCheckError(w http.ResponseWriter) func(error) bool {
@@ -87,56 +82,61 @@ func mkCheckError(w http.ResponseWriter) func(error) bool {
 }
 
 func (p *MemePlugin) rmMeme(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "Incorrect HTTP method")
-		return
-	}
-	checkError := mkCheckError(w)
-	decoder := json.NewDecoder(r.Body)
-	values := webResp{}
-	err := decoder.Decode(&values)
-	if checkError(err) {
-		return
-	}
+	name := chi.URLParam(r, "name")
 	formats := p.c.GetMap("meme.memes", defaultFormats)
-	delete(formats, values.Name)
-	err = p.c.SetMap("meme.memes", formats)
-	checkError(err)
+	delete(formats, name)
+	err := p.c.SetMap("meme.memes", formats)
+	mkCheckError(w)(err)
 }
 
-func (p *MemePlugin) addMeme(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "Incorrect HTTP method")
-		return
+func (p *MemePlugin) saveMeme(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	if name == "" {
+		name = r.FormValue("name")
 	}
 	checkError := mkCheckError(w)
-	decoder := json.NewDecoder(r.Body)
-	values := webResp{}
-	err := decoder.Decode(&values)
-	if checkError(err) {
-		log.Error().Err(err).Msgf("could not decode body")
-		return
-	}
-	log.Debug().Msgf("POSTed values: %+v", values)
+
 	formats := p.c.GetMap("meme.memes", defaultFormats)
-	formats[values.Name] = values.URL
-	err = p.c.SetMap("meme.memes", formats)
+	formats[name] = r.FormValue("url")
+	err := p.c.SetMap("meme.memes", formats)
 	checkError(err)
 
-	if values.Config == "" {
-		values.Config = p.defaultFormatConfigJSON()
+	config := r.FormValue("config")
+	if config == "" {
+		config = p.defaultFormatConfigJSON()
 	}
 	configs := p.c.GetMap("meme.memeconfigs", map[string]string{})
-	configs[values.Name] = values.Config
+	configs[name] = config
 	err = p.c.SetMap("meme.memeconfigs", configs)
 	checkError(err)
+
+	meme := webResp{
+		Name:   name,
+		URL:    formats[name],
+		Config: configs[name],
+	}
+
+	p.Show(meme).Render(r.Context(), w)
 }
 
 func (p *MemePlugin) webRoot(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("index.html")
-	w.Write(index)
+	p.bot.GetWeb().Index("Meme", p.index(p.all())).Render(r.Context(), w)
+}
+
+func (p *MemePlugin) editMeme(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	memes := p.c.GetMap("meme.memes", defaultFormats)
+	configs := p.c.GetMap("meme.memeconfigs", map[string]string{})
+	meme, ok := memes[name]
+	if !ok {
+		fmt.Fprintf(w, "Didn't find that meme.")
+	}
+	resp := webResp{
+		Name:   name,
+		URL:    meme,
+		Config: configs[name],
+	}
+	p.Edit(resp).Render(r.Context(), w)
 }
 
 func (p *MemePlugin) img(w http.ResponseWriter, r *http.Request) {
