@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/rand"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -16,9 +15,6 @@ import (
 	"net/url"
 	"strconv"
 )
-
-//go:embed *.html
-var embeddedFS embed.FS
 
 func (p *AdminPlugin) registerWeb() {
 	r := chi.NewRouter()
