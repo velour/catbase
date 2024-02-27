@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -21,7 +19,6 @@ func makeMessage(payload string) bot.Request {
 	}
 	values := bot.ParseValues(rollRegex, payload)
 	return bot.Request{
-		Conn:   &cli.CliPlugin{},
 		Kind:   bot.Message,
 		Values: values,
 		Msg: msg.Message{
@@ -67,6 +64,6 @@ func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
+	c.help(nil, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

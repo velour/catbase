@@ -4,7 +4,6 @@ package reminder
 
 import (
 	"fmt"
-	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ func makeMessageBy(payload, by string) (bot.Connector, bot.Kind, msg.Message) {
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
+	return nil, bot.Message, msg.Message{
 		User:    &user.User{Name: by},
 		Channel: "test",
 		Body:    payload,
@@ -224,6 +223,6 @@ func TestLimitList(t *testing.T) {
 func TestHelp(t *testing.T) {
 	c, mb := setup(t)
 	assert.NotNil(t, c)
-	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
+	c.help(nil, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

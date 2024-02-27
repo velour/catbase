@@ -12,8 +12,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/velour/catbase/bot"
@@ -45,7 +43,6 @@ func makeMessage(payload string) bot.Request {
 		payload = payload[1:]
 	}
 	return bot.Request{
-		Conn: &cli.CliPlugin{},
 		Kind: bot.Message,
 		Msg: msg.Message{
 			User:    &user.User{Name: "tester"},

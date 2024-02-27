@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -34,10 +32,8 @@ func makeMessage(payload string, r *regexp.Regexp) bot.Request {
 	if isCmd {
 		payload = payload[1:]
 	}
-	c := cli.CliPlugin{}
 	values := bot.ParseValues(r, payload)
 	return bot.Request{
-		Conn:   &c,
 		Kind:   bot.Message,
 		Values: values,
 		Msg: msg.Message{

@@ -1,7 +1,6 @@
 package tldr
 
 import (
-	"github.com/velour/catbase/plugins/cli"
 	"os"
 	"strconv"
 	"strings"
@@ -29,7 +28,6 @@ func makeMessageBy(payload, by string) bot.Request {
 	}
 
 	return bot.Request{
-		Conn: &cli.CliPlugin{},
 		Kind: bot.Message,
 		Msg: msg.Message{
 			User:    &user.User{Name: by},
