@@ -1,15 +1,11 @@
 package bot
 
 import (
-	"embed"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strings"
 )
-
-//go:embed *.html
-var embeddedFS embed.FS
 
 func (b *bot) serveRoot(w http.ResponseWriter, r *http.Request) {
 	b.index().Render(r.Context(), w)
