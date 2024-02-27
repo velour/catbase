@@ -1,0 +1,58 @@
+package counter
+
+import "fmt"
+
+func urlFor(who, what, dir string) string {
+    return fmt.Sprintf("/counter/users/%s/items/%s/%s", who, what, dir)
+}
+
+func (p *CounterPlugin) allItems() map[string][]Item {
+    items, err := GetAllItemsByUser(p.db)
+    if err != nil {
+        return map[string][]Item{"error": []Item{}}
+    }
+    return items
+}
+
+templ (p *CounterPlugin) index() {
+    <div class="container">
+        <div class="row">
+            <label>Password: <input type="text" name="password" /></label>
+        </div>
+        for user, items := range p.allItems() {
+            <div class="row">
+                { user }:
+                <div class="container">
+                for _, thing := range items {
+                    @p.renderItem(user, thing)
+                }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+templ (p *CounterPlugin) renderItem(user string, item Item) {
+    <div class="row" id={ fmt.Sprintf("item%d", item.ID) }>
+        <div class="col offset-1">
+            { item.Item }
+        </div>
+        <div class="col">
+            { fmt.Sprintf("%d", item.Count) }
+        </div>
+        <div class="col-2">
+            <button
+                hx-target={ "#"+fmt.Sprintf("item%d", item.ID) }
+                hx-include="[name='password']"
+                hx-swap="outerHTML"
+                hx-post={ urlFor(user, item.Item, "decrement") }
+            >-</button>
+            <button
+                hx-target={ "#"+fmt.Sprintf("item%d", item.ID) }
+                hx-include="[name='password']"
+                hx-swap="outerHTML"
+                hx-post={ urlFor(user, item.Item, "increment") }
+            >+</button>
+        </div>
+    </div>
+}

@@ -45,7 +45,7 @@ type alias struct {
 }
 
 // GetItems returns all counters
-func GetAllItems(db *sqlx.DB) ([]Item, error) {
+func GetAllItemsByUser(db *sqlx.DB) (map[string][]Item, error) {
 	var items []Item
 	err := db.Select(&items, `select * from counter`)
 	if err != nil {
@@ -55,7 +55,11 @@ func GetAllItems(db *sqlx.DB) ([]Item, error) {
 	for i := range items {
 		items[i].DB = db
 	}
-	return items, nil
+	out := map[string][]Item{}
+	for _, it := range items {
+		out[it.Nick] = append(out[it.Nick], it)
+	}
+	return out, nil
 }
 
 // GetItems returns all counters for a subject

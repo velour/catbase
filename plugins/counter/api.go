@@ -1,10 +1,8 @@
 package counter
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/velour/catbase/bot/user"
 	"io"
 	"net/http"
 	"net/url"
@@ -18,9 +16,6 @@ import (
 	"github.com/velour/catbase/bot/msg"
 )
 
-//go:embed *.html
-var embeddedFS embed.FS
-
 func (p *CounterPlugin) registerWeb() {
 	r := chi.NewRouter()
 	requests := p.cfg.GetInt("counter.requestsPer", 1)
@@ -33,9 +28,77 @@ func (p *CounterPlugin) registerWeb() {
 	subrouter.HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementByNAPI(1))
 	subrouter.HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementByNAPI(-1))
 	r.Mount("/", subrouter)
-	r.HandleFunc("/api", p.handleCounterAPI)
+	r.HandleFunc("/users/{user}/items/{item}/increment", p.incHandler(1))
+	r.HandleFunc("/users/{user}/items/{item}/decrement", p.incHandler(-1))
 	r.HandleFunc("/", p.handleCounter)
 	p.b.GetWeb().RegisterWebName(r, "/counter", "Counter")
+}
+
+func (p *CounterPlugin) incHandler(delta int) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userName, _ := url.QueryUnescape(chi.URLParam(r, "user"))
+		itemName, _ := url.QueryUnescape(chi.URLParam(r, "item"))
+		pass := r.FormValue("password")
+		if !p.b.CheckPassword("", pass) {
+			w.WriteHeader(401)
+			fmt.Fprintf(w, "error")
+			return
+		}
+		item, err := p.delta(userName, itemName, "", delta)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "error")
+			return
+		}
+		p.renderItem(userName, item).Render(r.Context(), w)
+	}
+}
+
+func (p *CounterPlugin) delta(userName, itemName, personalMessage string, delta int) (Item, error) {
+	// Try to find an ID if possible
+	id := ""
+	u, err := p.b.DefaultConnector().Profile(userName)
+	if err == nil {
+		id = u.ID
+	}
+
+	item, err := GetUserItem(p.db, userName, id, itemName)
+	if err != nil {
+		return item, err
+	}
+
+	chs := p.cfg.GetMap("counter.channelItems", map[string]string{})
+	ch, ok := chs[itemName]
+	req := &bot.Request{
+		Conn: p.b.DefaultConnector(),
+		Kind: bot.Message,
+		Msg: msg.Message{
+			User: &u,
+			// Noting here that we're only going to do goals in a "default"
+			// channel even if it should send updates to others.
+			Channel: ch,
+			Body:    fmt.Sprintf("%s += %d", itemName, delta),
+			Time:    time.Now(),
+		},
+		Values: nil,
+		Args:   nil,
+	}
+	msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
+		userName, itemName, delta, item.Count+delta, p.cfg.Get("nick", "catbase"), personalMessage)
+	if !ok {
+		chs := p.cfg.GetArray("counter.channels", []string{})
+		for _, ch := range chs {
+			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+			req.Msg.Channel = ch
+		}
+	} else {
+		p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
+		req.Msg.Channel = ch
+	}
+	if err := item.UpdateDelta(req, delta); err != nil {
+		return item, err
+	}
+	return item, nil
 }
 
 func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWriter, r *http.Request) {
@@ -64,15 +127,15 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 			return
 		}
 
-		// Try to find an ID if possible
-		id := ""
-		u, err := p.b.DefaultConnector().Profile(userName)
-		if err == nil {
-			id = u.ID
+		body, _ := io.ReadAll(r.Body)
+		postData := map[string]string{}
+		err = json.Unmarshal(body, &postData)
+		personalMsg := ""
+		if inputMsg, ok := postData["message"]; ok {
+			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
 		}
 
-		item, err := GetUserItem(p.db, userName, id, itemName)
-		if err != nil {
+		if _, err := p.delta(userName, itemName, personalMsg, delta*direction); err != nil {
 			log.Error().Err(err).Msg("error finding item")
 			w.WriteHeader(400)
 			j, _ := json.Marshal(struct {
@@ -83,130 +146,13 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 			return
 		}
 
-		body, _ := io.ReadAll(r.Body)
-		postData := map[string]string{}
-		err = json.Unmarshal(body, &postData)
-		personalMsg := ""
-		if inputMsg, ok := postData["message"]; ok {
-			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
-		}
-
-		chs := p.cfg.GetMap("counter.channelItems", map[string]string{})
-		ch, ok := chs[itemName]
-		if len(chs) == 0 || !ok {
-			return
-		}
-		req := &bot.Request{
-			Conn: p.b.DefaultConnector(),
-			Kind: bot.Message,
-			Msg: msg.Message{
-				User: &u,
-				// Noting here that we're only going to do goals in a "default"
-				// channel even if it should send updates to others.
-				Channel: ch,
-				Body:    fmt.Sprintf("%s += %d", itemName, delta),
-				Time:    time.Now(),
-			},
-			Values: nil,
-			Args:   nil,
-		}
-		msg := fmt.Sprintf("%s changed their %s counter by %d for a total of %d via the amazing %s API. %s",
-			userName, itemName, delta, item.Count+delta*direction, p.cfg.Get("nick", "catbase"), personalMsg)
-		if !ok {
-			chs := p.cfg.GetArray("counter.channels", []string{})
-			for _, ch := range chs {
-				p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
-				req.Msg.Channel = ch
-			}
-		} else {
-			p.b.Send(p.b.DefaultConnector(), bot.Message, ch, msg)
-			req.Msg.Channel = ch
-		}
-		item.UpdateDelta(req, delta*direction)
 		j, _ := json.Marshal(struct{ Status bool }{true})
 		fmt.Fprint(w, string(j))
 	}
 }
 
 func (p *CounterPlugin) handleCounter(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("index.html")
-	w.Write(index)
-}
-
-func (p *CounterPlugin) handleCounterAPI(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		info := struct {
-			User     string
-			Thing    string
-			Action   string
-			Password string
-		}{}
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&info)
-		if err != nil {
-			w.WriteHeader(500)
-			fmt.Fprint(w, err)
-			return
-		}
-		log.Debug().
-			Interface("postbody", info).
-			Msg("Got a POST")
-		if !p.b.CheckPassword("", info.Password) {
-			w.WriteHeader(http.StatusForbidden)
-			j, _ := json.Marshal(struct{ Err string }{Err: "Invalid Password"})
-			w.Write(j)
-			return
-		}
-		req := bot.Request{
-			Conn: p.b.DefaultConnector(),
-			Kind: bot.Message,
-			Msg: msg.Message{
-				User: &user.User{
-					ID:    "",
-					Name:  info.User,
-					Admin: false,
-				},
-			},
-		}
-		// resolveUser requires a "full" request object so we are faking it
-		nick, id := p.resolveUser(req, info.User)
-		item, err := GetUserItem(p.db, nick, id, info.Thing)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("subject", info.User).
-				Str("itemName", info.Thing).
-				Msg("error finding item")
-			w.WriteHeader(404)
-			fmt.Fprint(w, err)
-			return
-		}
-		if info.Action == "++" {
-			item.UpdateDelta(nil, 1)
-		} else if info.Action == "--" {
-			item.UpdateDelta(nil, -1)
-		} else {
-			w.WriteHeader(400)
-			fmt.Fprint(w, "Invalid increment")
-			return
-		}
-
-	}
-	all, err := GetAllItems(p.db)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		log.Error().Err(err).Msg("Error getting items")
-		return
-	}
-	data, err := json.Marshal(all)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		log.Error().Err(err).Msg("Error marshaling items")
-		return
-	}
-	fmt.Fprint(w, string(data))
+	p.b.GetWeb().Index("Counter", p.index()).Render(r.Context(), w)
 }
 
 // Update represents a change that gets sent off to other plugins such as goals
