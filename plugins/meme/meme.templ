@@ -1,0 +1,83 @@
+package meme
+
+templ (p *MemePlugin) index(all webResps) {
+    <div class="container">
+    <form>
+    <div class="row">
+        <div class="col-3">
+            <input type="text" name="name" placeholder="Name..." />
+        </div>
+        <div class="col-3">
+            <input type="text" name="url" placeholder="URL..." />
+        </div>
+        <div class="col-3">
+            <textarea name="config">
+            </textarea>
+        </div>
+        <div class="col-3">
+            <button class="btn btn-primary"
+                hx-post="/meme/add"
+                hx-target="#newMemes"
+            >Save</button>
+        </div>
+    </div>
+    </form>
+    <div id="newMemes">
+    </div>
+    for _, meme := range all {
+        @p.Show(meme)
+    }
+    </div>
+}
+
+templ (p *MemePlugin) Show(meme webResp) {
+    <div class="row" id={ meme.Name }>
+        <div class="col-3">
+            { meme.Name }
+            <img
+                class="img-thumbnail rounded"
+                alt={ meme.Name }
+                src={ meme.URL } />
+        </div>
+        <div class="col-3">
+            <pre>
+                { meme.Config }
+            </pre>
+        </div>
+        <div class="col-3">
+            <button class="btn btn-primary"
+                hx-get={ "/meme/edit/"+meme.Name }
+                hx-target={ "#"+meme.Name }
+            >Edit</button>
+        </div>
+    </div>
+}
+
+templ (p *MemePlugin) Edit(meme webResp) {
+    <form>
+    <div class="row" id={ meme.Name }>
+        <div class="col-3">
+            <img
+                class="img-thumbnail rounded"
+                alt={ meme.Name }
+                src={ meme.URL } />
+        </div>
+        <div class="col-3">
+            <textarea name="config">
+                { meme.Config }
+            </textarea>
+            <input type="text" name="url" value={ meme.URL } />
+        </div>
+        <div class="col-3">
+            <button class="btn btn-primary"
+                hx-put={ "/meme/save/"+meme.Name }
+                hx-target={ "#"+meme.Name }
+            >Save</button>
+            <button class="btn btn-danger"
+                hx-delete={ "/meme/rm/"+meme.Name }
+                hx-target={ "#"+meme.Name }
+            >Delete</button>
+        </div>
+    </div>
+    </form>
+}

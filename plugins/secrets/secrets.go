@@ -19,7 +19,7 @@ type SecretsPlugin struct {
 	db *sqlx.DB
 }
 
-func New(b bot.Bot) *SecretsPlugin {
+func New(b bot.Bot) bot.Plugin {
 	p := &SecretsPlugin{
 		b:  b,
 		c:  b.Config(),

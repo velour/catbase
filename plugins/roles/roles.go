@@ -19,7 +19,7 @@ type RolesPlugin struct {
 	h  bot.HandlerTable
 }
 
-func New(b bot.Bot) *RolesPlugin {
+func New(b bot.Bot) bot.Plugin {
 	p := &RolesPlugin{
 		b:  b,
 		c:  b.Config(),
