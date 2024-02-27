@@ -6,7 +6,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -173,7 +172,6 @@ type configEntry struct {
 }
 
 func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
-	tpl := template.Must(template.ParseFS(embeddedFS, "vars.html"))
 	var configEntries []configEntry
 	q := `select key, value from config`
 	err := p.db.Select(&configEntries, q)
@@ -186,13 +184,7 @@ func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tpl.Execute(w, struct {
-		Items []configEntry
-	}{configEntries}); err != nil {
-		log.Error().Err(err).Msg("template error")
-		w.WriteHeader(500)
-		fmt.Fprint(w, "Error parsing template")
-	}
+	vars(configEntries).Render(r.Context(), w)
 }
 
 func (p *AdminPlugin) handleVarsAPI(w http.ResponseWriter, r *http.Request) {
