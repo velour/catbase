@@ -23,7 +23,7 @@ func (b *bot) index() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html /><html lang=\"en\"><head><!-- Load required Bootstrap and BootstrapVue CSS --><link type=\"text/css\" rel=\"stylesheet\" href=\"//unpkg.com/bootstrap/dist/css/bootstrap.min.css\"><link type=\"text/css\" rel=\"stylesheet\" href=\"//unpkg.com/bootstrap-vue@^2/dist/bootstrap-vue.min.css\"><meta charset=\"UTF-8\"><title>catbase</title></head><body><div id=\"app\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html /><html lang=\"en\"><head><!-- Load required Bootstrap and BootstrapVue CSS --><link type=\"text/css\" rel=\"stylesheet\" href=\"//unpkg.com/bootstrap/dist/css/bootstrap.min.css\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta charset=\"UTF-8\"><title>catbase</title></head><body><div id=\"app\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -31,7 +31,7 @@ func (b *bot) index() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div><script src=\"//unpkg.com/bootstrap/dist/js/bootstrap.bundle.min.js\"></script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
