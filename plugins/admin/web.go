@@ -1,18 +1,20 @@
 package admin
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
 )
 
 //go:embed *.html
@@ -20,7 +22,6 @@ var embeddedFS embed.FS
 
 func (p *AdminPlugin) registerWeb() {
 	r := chi.NewRouter()
-	r.HandleFunc("/api", p.handleVarsAPI)
 	r.HandleFunc("/", p.handleVars)
 	p.bot.RegisterWebName(r, "/vars", "Variables")
 	r = chi.NewRouter()
@@ -31,8 +32,7 @@ func (p *AdminPlugin) registerWeb() {
 }
 
 func (p *AdminPlugin) handleAppPass(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("apppass.html")
-	w.Write(index)
+	p.page().Render(r.Context(), w)
 }
 
 type PassEntry struct {
@@ -76,26 +76,41 @@ func (p *AdminPlugin) handleAppPassCheck(w http.ResponseWriter, r *http.Request)
 }
 
 func (p *AdminPlugin) handleAppPassAPI(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	b, _ := io.ReadAll(r.Body)
+	query, _ := url.ParseQuery(string(b))
+	secret := r.FormValue("secret")
+	password := r.FormValue("password")
+	id, _ := strconv.ParseInt(r.FormValue("id"), 10, 64)
+	if !r.Form.Has("secret") && query.Has("secret") {
+		secret = query.Get("secret")
+	}
+	if !r.Form.Has("password") && query.Has("password") {
+		password = query.Get("password")
+	}
+	if !r.Form.Has("id") && query.Has("id") {
+		id, _ = strconv.ParseInt(query.Get("id"), 10, 64)
+	}
 	req := struct {
 		Password  string    `json:"password"`
 		PassEntry PassEntry `json:"passEntry"`
-	}{}
-	body, _ := ioutil.ReadAll(r.Body)
-	_ = json.Unmarshal(body, &req)
+	}{
+		password,
+		PassEntry{
+			ID:     id,
+			Secret: secret,
+		},
+	}
 	if req.PassEntry.Secret == "" {
-		writeErr(w, fmt.Errorf("missing secret"))
+		writeErr(r.Context(), w, fmt.Errorf("missing secret"))
 		return
 	}
 	if req.Password == "" || !p.bot.CheckPassword(req.PassEntry.Secret, req.Password) {
-		writeErr(w, fmt.Errorf("missing or incorrect password"))
+		writeErr(r.Context(), w, fmt.Errorf("missing or incorrect password"))
 		return
 	}
 	switch r.Method {
 	case http.MethodPut:
-		if req.PassEntry.Secret == "" {
-			writeErr(w, fmt.Errorf("missing secret"))
-			return
-		}
 		if string(req.PassEntry.Pass) == "" {
 			c := 10
 			b := make([]byte, c)
@@ -120,27 +135,27 @@ func (p *AdminPlugin) handleAppPassAPI(w http.ResponseWriter, r *http.Request) {
 
 		res, err := p.db.Exec(q, req.PassEntry.Secret, req.PassEntry.encodedPass, req.PassEntry.Cost)
 		if err != nil {
-			writeErr(w, err)
+			writeErr(r.Context(), w, err)
 			return
 		}
 		id, err := res.LastInsertId()
 		if err != nil {
-			writeErr(w, err)
+			writeErr(r.Context(), w, err)
 			return
 		}
 		req.PassEntry.ID = id
-		j, _ := json.Marshal(req.PassEntry)
-		fmt.Fprint(w, string(j))
+		p.showPassword(req.PassEntry).Render(r.Context(), w)
 		return
 	case http.MethodDelete:
+
 		if req.PassEntry.ID <= 0 {
-			writeErr(w, fmt.Errorf("missing ID"))
+			writeErr(r.Context(), w, fmt.Errorf("missing ID"))
 			return
 		}
 		q := `delete from apppass where id = ?`
 		_, err := p.db.Exec(q, req.PassEntry.ID)
 		if err != nil {
-			writeErr(w, err)
+			writeErr(r.Context(), w, err)
 			return
 		}
 	}
@@ -148,22 +163,15 @@ func (p *AdminPlugin) handleAppPassAPI(w http.ResponseWriter, r *http.Request) {
 	passEntries := []PassEntry{}
 	err := p.db.Select(&passEntries, q, req.PassEntry.Secret)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(r.Context(), w, err)
 		return
 	}
-	j, _ := json.Marshal(passEntries)
-	_, _ = fmt.Fprint(w, string(j))
+	p.entries(passEntries).Render(r.Context(), w)
 }
 
-func writeErr(w http.ResponseWriter, err error) {
+func writeErr(ctx context.Context, w http.ResponseWriter, err error) {
 	log.Error().Err(err).Msg("apppass error")
-	j, _ := json.Marshal(struct {
-		Err string `json:"err"`
-	}{
-		err.Error(),
-	})
-	w.WriteHeader(400)
-	fmt.Fprint(w, string(j))
+	renderError(err).Render(ctx, w)
 }
 
 type configEntry struct {
@@ -185,30 +193,4 @@ func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars(configEntries).Render(r.Context(), w)
-}
-
-func (p *AdminPlugin) handleVarsAPI(w http.ResponseWriter, r *http.Request) {
-	var configEntries []struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
-	}
-	q := `select key, value from config`
-	err := p.db.Select(&configEntries, q)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Error getting config entries.")
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-	for i, e := range configEntries {
-		if strings.Contains(e.Value, ";;") {
-			e.Value = strings.ReplaceAll(e.Value, ";;", ", ")
-			e.Value = fmt.Sprintf("[%s]", e.Value)
-			configEntries[i] = e
-		}
-	}
-	j, _ := json.Marshal(configEntries)
-	fmt.Fprintf(w, "%s", j)
 }
