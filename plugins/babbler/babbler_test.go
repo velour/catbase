@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -16,13 +14,11 @@ import (
 )
 
 func makeMessage(payload string, r *regexp.Regexp) bot.Request {
-	c := &cli.CliPlugin{}
 	isCmd := strings.HasPrefix(payload, "!")
 	if isCmd {
 		payload = payload[1:]
 	}
 	return bot.Request{
-		Conn:   c,
 		Kind:   bot.Message,
 		Values: bot.ParseValues(r, payload),
 		Msg: msg.Message{
@@ -272,7 +268,6 @@ func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	bp := newBabblerPlugin(mb)
 	assert.NotNil(t, bp)
-	c := &cli.CliPlugin{}
-	bp.help(c, bot.Help, msg.Message{Channel: "channel"}, []string{})
+	bp.help(nil, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

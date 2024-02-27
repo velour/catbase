@@ -12,7 +12,6 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/bot/user"
-	"github.com/velour/catbase/plugins/cli"
 )
 
 func makeMessage(payload string) bot.Request {
@@ -22,7 +21,6 @@ func makeMessage(payload string) bot.Request {
 	}
 	values := bot.ParseValues(pickRegex, payload)
 	return bot.Request{
-		Conn:   &cli.CliPlugin{},
 		Kind:   bot.Message,
 		Values: values,
 		Msg: msg.Message{

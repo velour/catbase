@@ -5,8 +5,6 @@ package leftpad
 import (
 	"testing"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -18,7 +16,6 @@ func makeMessage(payload string) bot.Request {
 	values := bot.ParseValues(leftpadRegex, payload)
 	return bot.Request{
 		Kind:   bot.Message,
-		Conn:   &cli.CliPlugin{},
 		Values: values,
 		Msg: msg.Message{
 			User:    &user.User{Name: "tester"},

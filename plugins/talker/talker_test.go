@@ -3,7 +3,6 @@
 package talker
 
 import (
-	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -18,7 +17,7 @@ func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
+	return nil, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
@@ -79,6 +78,6 @@ func TestHelp(t *testing.T) {
 	mb := bot.NewMockBot()
 	c := New(mb)
 	assert.NotNil(t, c)
-	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
+	c.help(nil, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

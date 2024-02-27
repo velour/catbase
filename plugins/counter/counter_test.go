@@ -4,11 +4,11 @@ package counter
 
 import (
 	"fmt"
+	"github.com/velour/catbase/config"
+	"github.com/velour/catbase/connectors/irc"
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/velour/catbase/plugins/cli"
 
 	"github.com/stretchr/testify/assert"
 
@@ -33,7 +33,7 @@ func makeMessage(payload string, r *regexp.Regexp) bot.Request {
 	}
 	values := bot.ParseValues(r, payload)
 	return bot.Request{
-		Conn: &cli.CliPlugin{},
+		Conn: irc.New(&config.Config{}),
 		Msg: msg.Message{
 			User:    &user.User{Name: "tester", ID: "id"},
 			Body:    payload,
@@ -280,6 +280,6 @@ func TestInspectMe(t *testing.T) {
 func TestHelp(t *testing.T) {
 	mb, c := setup(t)
 	assert.NotNil(t, c)
-	c.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
+	c.help(nil, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Greater(t, len(mb.Messages), 1)
 }

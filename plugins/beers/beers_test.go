@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/velour/catbase/plugins/cli"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"
@@ -21,10 +19,8 @@ func makeMessage(payload string, r *regexp.Regexp) bot.Request {
 	if isCmd {
 		payload = payload[1:]
 	}
-	c := &cli.CliPlugin{}
 	values := bot.ParseValues(r, payload)
 	return bot.Request{
-		Conn:   c,
 		Kind:   bot.Message,
 		Values: values,
 		Msg: msg.Message{
@@ -136,6 +132,6 @@ func TestBeersReport(t *testing.T) {
 
 func TestHelp(t *testing.T) {
 	b, mb := makeBeersPlugin(t)
-	b.help(&cli.CliPlugin{}, bot.Help, msg.Message{Channel: "channel"}, []string{})
+	b.help(nil, bot.Help, msg.Message{Channel: "channel"}, []string{})
 	assert.Len(t, mb.Messages, 1)
 }

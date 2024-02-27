@@ -2,7 +2,6 @@ package rss
 
 import (
 	"fmt"
-	"github.com/velour/catbase/plugins/cli"
 	"strings"
 	"testing"
 
@@ -17,7 +16,7 @@ func makeMessage(payload string) (bot.Connector, bot.Kind, msg.Message) {
 	if isCmd {
 		payload = payload[1:]
 	}
-	return &cli.CliPlugin{}, bot.Message, msg.Message{
+	return nil, bot.Message, msg.Message{
 		User:    &user.User{Name: "tester"},
 		Channel: "test",
 		Body:    payload,
