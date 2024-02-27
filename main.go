@@ -47,7 +47,6 @@ import (
 	"github.com/velour/catbase/plugins/admin"
 	"github.com/velour/catbase/plugins/babbler"
 	"github.com/velour/catbase/plugins/beers"
-	"github.com/velour/catbase/plugins/cli"
 	"github.com/velour/catbase/plugins/couldashouldawoulda"
 	"github.com/velour/catbase/plugins/counter"
 	"github.com/velour/catbase/plugins/dice"
@@ -168,7 +167,6 @@ func main() {
 	b.AddPlugin(twitter.New(b))
 	b.AddPlugin(git.New(b))
 	b.AddPlugin(impossible.New(b))
-	b.AddPlugin(cli.New(b))
 	b.AddPlugin(aoc.New(b))
 	b.AddPlugin(meme.New(b))
 	b.AddPlugin(achievements.New(b))
