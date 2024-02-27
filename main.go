@@ -2,6 +2,8 @@
 
 package main
 
+//go:generate templ generate
+
 import (
 	"flag"
 	"github.com/velour/catbase/plugins/gpt"
