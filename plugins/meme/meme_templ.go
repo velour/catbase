@@ -23,7 +23,7 @@ func (p *MemePlugin) index(all webResps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<h2>Meme</h2><div class=\"grid-container\"><form><div class=\"grid-x grid-margin-x\"><div class=\"cell auto\"><input type=\"text\" name=\"name\" placeholder=\"Name...\"></div><div class=\"cell auto\"><input type=\"text\" name=\"url\" placeholder=\"URL...\"></div><div class=\"cell auto\"><textarea name=\"config\"></textarea></div><div class=\"cell small-2\"><button class=\"button\" hx-post=\"/meme/add\" hx-target=\"#newMemes\">Save</button></div></div></form><div id=\"newMemes\"></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"grid-container\"><h2>Meme</h2><form><div class=\"grid-x grid-margin-x\"><div class=\"cell auto\"><input type=\"text\" name=\"name\" placeholder=\"Name...\"></div><div class=\"cell auto\"><input type=\"text\" name=\"url\" placeholder=\"URL...\"></div><div class=\"cell auto\"><textarea name=\"config\"></textarea></div><div class=\"cell small-2\"><button class=\"button\" hx-post=\"/meme/add\" hx-target=\"#newMemes\">Save</button></div></div></form><div id=\"newMemes\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -147,7 +147,7 @@ func (p *MemePlugin) Edit(meme webResp) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form><div class=\"grid-x\" id=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form><div class=\"grid-x grid-margin-x\" id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

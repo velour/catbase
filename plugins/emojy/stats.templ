@@ -3,44 +3,51 @@ package emojy
 import "fmt"
 
 templ (p *EmojyPlugin) emojyNav() {
-    <nav class="navbar navbar-expand-lg bg-body-tertiary">
-      <div class="container-fluid">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link" href="/emojy/stats">Stats</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/emojy/list">List</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/emojy/new">Upload</a>
-            </li>
-          </ul>
-        </div>
-    </nav>
+    <ul class="menu">
+        <li>
+            <a href="/emojy/stats">Stats</a>
+        </li>
+        <li>
+            <a href="/emojy/list">List</a>
+        </li>
+        <li>
+            <a href="/emojy/new">Upload</a>
+        </li>
+    </ul>
 }
 
 templ (p *EmojyPlugin) statsIndex(emojy emojyMap) {
-    @p.emojyNav()
-    for categoryName, v := range emojy {
-        <div class="container">
-            <ul class="list-group list-group-flush">
-            for _, c := range v {
-                <li class="list-group-item">
-                { fmt.Sprintf("%d", c.Count) } -
-                if categoryName != "emoji" && c.OnServer {
-                    <span>✅</span>
-                } else if categoryName != "emoji" {
-                    <span>✅</span>
-                }
-                if c.URL != "" {
-                    <img src={ c.URL } alt={ c.Emojy } />
-                } else {
-                    { c.Emojy }
-                }
-                </li>
-            }
-            </ul>
+    <div class="grid-container">
+        <div class="grid-x">
+            <div class="cell">
+                <h2>Emojy</h2>
+            </div>
         </div>
-    }
+        <div class="grid-x">
+            <div class="cell">
+                @p.emojyNav()
+            </div>
+        </div>
+        <div class="cell">
+            for categoryName, v := range emojy {
+                <ul class="no-bullet">
+                    for _, c := range v {
+                        <li class="">
+                        { fmt.Sprintf("%d", c.Count) } -
+                        if categoryName != "emoji" && c.OnServer {
+                            <span>✅</span>
+                        } else if categoryName != "emoji" {
+                            <span>✅</span>
+                        }
+                        if c.URL != "" {
+                            <img src={ c.URL } alt={ c.Emojy } />
+                        } else {
+                            { c.Emojy }
+                        }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
 }

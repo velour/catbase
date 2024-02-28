@@ -23,7 +23,15 @@ func (p *EmojyPlugin) uploadIndex() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"container\"><label>Passphrase</label> <input type=\"text\" name=\"password\" placeholder=\"Password...\"> <label>File <input type=\"file\"></label><br><button hx-post=\"/emojy/upload\">Submit</button></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"grid-container\"><div class=\"grid-x\"><div class=\"cell\"><h2>Emojy</h2></div></div><div class=\"grid-x\"><div class=\"cell\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = p.emojyNav().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><div class=\"grid-x\"><div class=\"cell\"><label>Passphrase</label> <input type=\"text\" name=\"password\" placeholder=\"Password...\"></div><div class=\"cell\"><label>File <input type=\"file\"></label></div><div class=\"cell\"><button hx-post=\"/emojy/upload\">Submit</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
