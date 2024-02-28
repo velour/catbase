@@ -1,0 +1,46 @@
+package emojy
+
+import "fmt"
+
+templ (p *EmojyPlugin) emojyNav() {
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container-fluid">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="/emojy/stats">Stats</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/emojy/list">List</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/emojy/new">Upload</a>
+            </li>
+          </ul>
+        </div>
+    </nav>
+}
+
+templ (p *EmojyPlugin) statsIndex(emojy emojyMap) {
+    @p.emojyNav()
+    for categoryName, v := range emojy {
+        <div class="container">
+            <ul class="list-group list-group-flush">
+            for _, c := range v {
+                <li class="list-group-item">
+                { fmt.Sprintf("%d", c.Count) } -
+                if categoryName != "emoji" && c.OnServer {
+                    <span>✅</span>
+                } else if categoryName != "emoji" {
+                    <span>✅</span>
+                }
+                if c.URL != "" {
+                    <img src={ c.URL } alt={ c.Emojy } />
+                } else {
+                    { c.Emojy }
+                }
+                </li>
+            }
+            </ul>
+        </div>
+    }
+}

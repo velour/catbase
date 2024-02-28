@@ -1,0 +1,23 @@
+package emojy
+
+templ (p *EmojyPlugin) listTempl(emojy emojyMap) {
+    @p.emojyNav()
+    for _, v := range emojy {
+        <div class="row row-cols-5">
+            for _, c := range v {
+                <div class="card text-center">
+                    <div class="card-body">
+                        <span>
+                            <img src={ c.URL }
+                                class="card-img-top mx-auto d-block"
+                                alt={ c.Emojy }
+                                width="100"
+                                style="max-width: 100px" />
+                        </span>
+                        <h5 class="card-title">{ c.Emojy }</h5>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
