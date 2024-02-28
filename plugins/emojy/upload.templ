@@ -1,0 +1,13 @@
+package emojy
+
+templ (p *EmojyPlugin) uploadIndex() {
+    <div class="container">
+        <label>Passphrase</label>
+        <input type="text" name="password" placeholder="Password..."></input>
+        <label>File
+            <input type="file" />
+        </label>
+        <br />
+        <button hx-post="/emojy/upload">Submit</button>
+    </div>
+}
