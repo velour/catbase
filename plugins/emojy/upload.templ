@@ -1,13 +1,30 @@
 package emojy
 
 templ (p *EmojyPlugin) uploadIndex() {
-    <div class="container">
-        <label>Passphrase</label>
-        <input type="text" name="password" placeholder="Password..."></input>
-        <label>File
-            <input type="file" />
-        </label>
-        <br />
-        <button hx-post="/emojy/upload">Submit</button>
+    <div class="grid-container">
+        <div class="grid-x">
+            <div class="cell">
+                <h2>Emojy</h2>
+            </div>
+        </div>
+        <div class="grid-x">
+            <div class="cell">
+                @p.emojyNav()
+            </div>
+        </div>
+        <div class="grid-x">
+            <div class="cell">
+                <label>Passphrase</label>
+                <input type="text" name="password" placeholder="Password..."></input>
+            </div>
+            <div class="cell">
+                <label>File
+                    <input type="file" />
+                </label>
+            </div>
+            <div class="cell">
+                <button class="button" hx-post="/emojy/upload">Submit</button>
+            </div>
+        </div>
     </div>
 }
