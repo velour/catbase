@@ -2,7 +2,6 @@ package fact
 
 import (
 	"embed"
-	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"html/template"
@@ -16,7 +15,7 @@ var embeddedFS embed.FS
 // Register any web URLs desired
 func (p *FactoidPlugin) registerWeb() {
 	r := chi.NewRouter()
-	r.HandleFunc("/api", p.serveAPI)
+	r.Post("/search", p.handleSearch)
 	r.HandleFunc("/req", p.serveQuery)
 	r.HandleFunc("/", p.serveQuery)
 	p.b.GetWeb().RegisterWebName(r, "/factoid", "Factoid")
@@ -32,39 +31,19 @@ func linkify(text string) template.HTML {
 	return template.HTML(strings.Join(parts, " "))
 }
 
-func (p *FactoidPlugin) serveAPI(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		fmt.Fprintf(w, "Incorrect HTTP method")
-		return
-	}
-	info := struct {
-		Query string `json:"query"`
-	}{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&info)
+func (p *FactoidPlugin) handleSearch(w http.ResponseWriter, r *http.Request) {
+	query := r.FormValue("query")
+
+	entries, err := getFacts(p.db, query, "")
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprint(w, err)
 		return
 	}
 
-	entries, err := getFacts(p.db, info.Query, "")
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-
-	data, err := json.Marshal(entries)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err)
-		return
-	}
-	w.Write(data)
+	p.searchResults(entries).Render(r.Context(), w)
 }
 
 func (p *FactoidPlugin) serveQuery(w http.ResponseWriter, r *http.Request) {
-	index, _ := embeddedFS.ReadFile("index.html")
-	w.Write(index)
+	p.b.GetWeb().Index("Fact", p.factIndex()).Render(r.Context(), w)
 }
