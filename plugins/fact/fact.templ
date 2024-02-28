@@ -28,24 +28,28 @@ templ (p *FactoidPlugin) factIndex() {
 }
 
 templ (p *FactoidPlugin) searchResults(facts []*Factoid) {
-    <table>
-        <th>
-            <td>Fact</td>
-            <td>Tidbit</td>
-            <td>Owner</td>
-            <td>Count</td>
-        </th>
+    <table class="table">
+        <thead>
+        <tr class="d-flex">
+            <th class="col-2">Fact</th>
+            <th class="col-8">Tidbit</th>
+            <th class="col-1">Owner</th>
+            <th class="col-1">Count</th>
+        </tr>
+        </thead>
+        <tbody>
         for _, f := range facts {
             @p.searchResult(f)
         }
+        </tbody>
     </table>
 }
 
 templ (p *FactoidPlugin) searchResult(fact *Factoid) {
-    <tr>
-        <td>{ fact.Fact }</td>
-        <td>{ fact.Tidbit }</td>
-        <td>{ fact.Owner }</td>
-        <td>{ fmt.Sprint(fact.Count) }</td>
+    <tr class="d-flex">
+        <td class="col-2">{ fact.Fact }</td>
+        <td class="col-8">{ fact.Tidbit }</td>
+        <td class="col-1">{ fact.Owner }</td>
+        <td class="col-1">{ fmt.Sprint(fact.Count) }</td>
     </tr>
 }
