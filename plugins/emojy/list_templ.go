@@ -37,7 +37,7 @@ func (p *EmojyPlugin) listTempl(emojy emojyMap) templ.Component {
 		}
 		for _, v := range emojy {
 			for _, c := range v {
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"cell\"><div class=\"card\"><img src=\"")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"cell\"><div class=\"card\" style=\"max-width: 100px\"><img src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -45,7 +45,7 @@ func (p *EmojyPlugin) listTempl(emojy emojyMap) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" class=\"\" style=\"max-height: 100px\" alt=\"")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" style=\"max-height: 100px\" style=\"max-width: 100px\" alt=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -60,7 +60,7 @@ func (p *EmojyPlugin) listTempl(emojy emojyMap) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(c.Emojy)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `plugins/emojy/list.templ`, Line: 25, Col: 33}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `plugins/emojy/list.templ`, Line: 26, Col: 33}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {

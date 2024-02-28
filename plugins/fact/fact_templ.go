@@ -25,7 +25,7 @@ func (p *FactoidPlugin) factIndex() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"grid-container\"><div class=\"grid-x\"><div class=\"cell\"><h2>Fact</h2></div></div><form hx-post=\"/factoid/search\" hx-target=\"#results\"><div class=\"grid-x grid-margin-x\"><div class=\"cell auto\"><input type=\"text\" name=\"query\" class=\"form-control\" placeholder=\"Query...\"></div><div class=\"cell small-1\"><button class=\"button\">Search</button></div></div></form><div class=\"grid-x\" id=\"results\"></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"grid-container\"><div class=\"grid-x\"><div class=\"cell\"><h2>Factoid</h2></div></div><form hx-post=\"/factoid/search\" hx-target=\"#results\"><div class=\"grid-x grid-margin-x\"><div class=\"cell auto\"><input type=\"text\" name=\"query\" class=\"form-control\" placeholder=\"Query...\"></div><div class=\"cell small-1\"><button class=\"button\">Search</button></div></div></form><div class=\"grid-x\" id=\"results\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

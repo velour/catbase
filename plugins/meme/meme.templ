@@ -34,12 +34,17 @@ templ (p *MemePlugin) index(all webResps) {
 templ (p *MemePlugin) Show(meme webResp) {
     <div class="grid-x grid-margin-x" id={ meme.Name }>
         <div class="cell small-3">
-            <img
-                class="thumbnail"
-                style="max-height: 150px"
-                alt={ meme.Name }
-                src={ meme.URL } />
-            <p>{ meme.Name }</p>
+            <div class="card"
+                style="max-width: 200px">
+                <img
+                    class="thumbnail"
+                    style="max-height: 250px; max-width: 250px;"
+                    alt={ meme.Name }
+                    src={ meme.URL } />
+                <div class="card-divider">
+                    <p>{ meme.Name }</p>
+                </div>
+            </div>
         </div>
         <div class="cell small-7">
             <pre>
