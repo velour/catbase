@@ -1,7 +1,6 @@
 package meme
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,9 +12,6 @@ import (
 
 	"github.com/velour/catbase/bot"
 )
-
-//go:embed *.html
-var embeddedFS embed.FS
 
 func (p *MemePlugin) registerWeb(c bot.Connector) {
 	r := chi.NewRouter()
