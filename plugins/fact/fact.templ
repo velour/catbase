@@ -1,0 +1,51 @@
+package fact
+
+import "fmt"
+
+templ (p *FactoidPlugin) factIndex() {
+    <div class="container">
+        <form
+            hx-post="/factoid/search"
+            hx-target="#results">
+        <div class="row">
+            <div class="col-10">
+                <input type="text"
+                    name="query"
+                    class="form-control"
+                    placeholder="Query..."
+                 />
+             </div>
+             <div class="col-1">
+                <button
+                    class="btn btn-secondary"
+                    >Search</button>
+            </div>
+        </div>
+        </form>
+        <div class="row" id="results">
+        </div>
+    </div>
+}
+
+templ (p *FactoidPlugin) searchResults(facts []*Factoid) {
+    <table>
+        <th>
+            <td>Fact</td>
+            <td>Tidbit</td>
+            <td>Owner</td>
+            <td>Count</td>
+        </th>
+        for _, f := range facts {
+            @p.searchResult(f)
+        }
+    </table>
+}
+
+templ (p *FactoidPlugin) searchResult(fact *Factoid) {
+    <tr>
+        <td>{ fact.Fact }</td>
+        <td>{ fact.Tidbit }</td>
+        <td>{ fact.Owner }</td>
+        <td>{ fmt.Sprint(fact.Count) }</td>
+    </tr>
+}
