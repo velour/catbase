@@ -76,7 +76,7 @@ templ (w *Web) showStats() {
         </tr>
         <tr>
             <td>Uptime</td>
-            <td>{ fmt.Sprintf("%v", w.stats.Uptime()) }</td>
+            <td>{ w.stats.Uptime() }</td>
         </tr>
     </table>
     </div>

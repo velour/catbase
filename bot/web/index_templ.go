@@ -314,9 +314,9 @@ func (w *Web) showStats() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%v", w.stats.Uptime()))
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(w.stats.Uptime())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 78, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 78, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
