@@ -16,10 +16,11 @@ templ (p *EmojyPlugin) listTempl(emojy emojyMap) {
             for _, v := range emojy {
                 for _, c := range v {
                     <div class="cell">
-                    <div class="card">
+                    <div class="card"
+                        style="max-width: 100px">
                       <img src={ c.URL }
-                            class=""
                             style="max-height: 100px"
+                            style="max-width: 100px"
                             alt={ c.Emojy }
                             />
                       <div class="card-divider">
