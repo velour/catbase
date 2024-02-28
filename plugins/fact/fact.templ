@@ -3,26 +3,29 @@ package fact
 import "fmt"
 
 templ (p *FactoidPlugin) factIndex() {
-    <div class="container">
+    <div class="grid-container">
+        <div class="grid-x">
+            <div class="cell">
+                <h2>Factoid</h2>
+            </div>
+        </div>
         <form
             hx-post="/factoid/search"
             hx-target="#results">
-        <div class="row">
-            <div class="col-10">
+        <div class="grid-x grid-margin-x">
+            <div class="cell auto">
                 <input type="text"
                     name="query"
                     class="form-control"
                     placeholder="Query..."
                  />
              </div>
-             <div class="col-1">
-                <button
-                    class="btn btn-secondary"
-                    >Search</button>
+             <div class="cell small-1">
+                <button class="button">Search</button>
             </div>
         </div>
         </form>
-        <div class="row" id="results">
+        <div class="grid-x" id="results">
         </div>
     </div>
 }
@@ -30,11 +33,11 @@ templ (p *FactoidPlugin) factIndex() {
 templ (p *FactoidPlugin) searchResults(facts []*Factoid) {
     <table class="table">
         <thead>
-        <tr class="d-flex">
-            <th class="col-2">Fact</th>
-            <th class="col-8">Tidbit</th>
-            <th class="col-1">Owner</th>
-            <th class="col-1">Count</th>
+        <tr>
+            <th>Fact</th>
+            <th>Tidbit</th>
+            <th>Owner</th>
+            <th>Count</th>
         </tr>
         </thead>
         <tbody>
@@ -46,10 +49,10 @@ templ (p *FactoidPlugin) searchResults(facts []*Factoid) {
 }
 
 templ (p *FactoidPlugin) searchResult(fact *Factoid) {
-    <tr class="d-flex">
-        <td class="col-2">{ fact.Fact }</td>
-        <td class="col-8">{ fact.Tidbit }</td>
-        <td class="col-1">{ fact.Owner }</td>
-        <td class="col-1">{ fmt.Sprint(fact.Count) }</td>
+    <tr>
+        <td>{ fact.Fact }</td>
+        <td>{ fact.Tidbit }</td>
+        <td>{ fact.Owner }</td>
+        <td>{ fmt.Sprint(fact.Count) }</td>
     </tr>
 }
