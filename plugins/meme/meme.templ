@@ -1,21 +1,22 @@
 package meme
 
 templ (p *MemePlugin) index(all webResps) {
-    <div class="container">
+    <div class="grid-container">
+    <h2>Meme</h2>
     <form>
-    <div class="row">
-        <div class="col-3">
+    <div class="grid-x grid-margin-x">
+        <div class="cell auto">
             <input type="text" name="name" placeholder="Name..." />
         </div>
-        <div class="col-3">
+        <div class="cell auto">
             <input type="text" name="url" placeholder="URL..." />
         </div>
-        <div class="col-3">
+        <div class="cell auto">
             <textarea name="config">
             </textarea>
         </div>
-        <div class="col-3">
-            <button class="btn btn-primary"
+        <div class="cell small-2">
+            <button class="button"
                 hx-post="/meme/add"
                 hx-target="#newMemes"
             >Save</button>
@@ -31,23 +32,25 @@ templ (p *MemePlugin) index(all webResps) {
 }
 
 templ (p *MemePlugin) Show(meme webResp) {
-    <div class="row" id={ meme.Name }>
-        <div class="col-3">
-            { meme.Name }
+    <div class="grid-x grid-margin-x" id={ meme.Name }>
+        <div class="cell small-3">
             <img
-                class="img-thumbnail rounded"
+                class="thumbnail"
+                style="max-height: 150px"
                 alt={ meme.Name }
                 src={ meme.URL } />
+            <p>{ meme.Name }</p>
         </div>
-        <div class="col-3">
+        <div class="cell small-7">
             <pre>
                 { meme.Config }
             </pre>
         </div>
-        <div class="col-3">
-            <button class="btn btn-primary"
+        <div class="cell small-2">
+            <button class="button"
                 hx-get={ "/meme/edit/"+meme.Name }
                 hx-target={ "#"+meme.Name }
+                hx-swap="outerHTML"
             >Edit</button>
         </div>
     </div>
@@ -55,27 +58,30 @@ templ (p *MemePlugin) Show(meme webResp) {
 
 templ (p *MemePlugin) Edit(meme webResp) {
     <form>
-    <div class="row" id={ meme.Name }>
-        <div class="col-3">
+    <div class="grid-x grid-margin-x" id={ meme.Name }>
+        <div class="cell-small-3">
             <img
-                class="img-thumbnail rounded"
+                class="thumbnail"
+                style="max-height: 150px"
                 alt={ meme.Name }
                 src={ meme.URL } />
         </div>
-        <div class="col-3">
-            <textarea name="config">
+        <div class="cell small-7">
+            <textarea name="config" rows="10">
                 { meme.Config }
             </textarea>
             <input type="text" name="url" value={ meme.URL } />
         </div>
-        <div class="col-3">
-            <button class="btn btn-primary"
+        <div class="cell small-2">
+            <button class="button"
                 hx-put={ "/meme/save/"+meme.Name }
                 hx-target={ "#"+meme.Name }
+                hx-swap="outerHTML"
             >Save</button>
-            <button class="btn btn-danger"
+            <button class="button alert"
                 hx-delete={ "/meme/rm/"+meme.Name }
                 hx-target={ "#"+meme.Name }
+                hx-swap="outerHTML"
             >Delete</button>
         </div>
     </div>
