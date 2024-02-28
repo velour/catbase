@@ -431,6 +431,9 @@ func (d *Discord) SetRole(userID, roleID string) error {
 type CmdHandler func(s *discordgo.Session, i *discordgo.InteractionCreate)
 
 func (d *Discord) RegisterSlashCmd(c discordgo.ApplicationCommand, handler CmdHandler) error {
+	if !d.config.GetBool("registerSlash", true) {
+		return nil
+	}
 	cmd, err := d.client.ApplicationCommandCreate(d.client.State.User.ID, d.guildID, &c)
 	d.cmdHandlers[c.Name] = handler
 	if err != nil {
