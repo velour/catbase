@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/bot/stats"
 	"github.com/velour/catbase/config"
 	"net/http"
 	"strings"
@@ -16,6 +17,7 @@ type Web struct {
 	config        *config.Config
 	router        *chi.Mux
 	httpEndPoints []EndPoint
+	stats         *stats.Stats
 }
 
 type EndPoint struct {
@@ -40,7 +42,7 @@ func (ws *Web) GetWebNavigation() []EndPoint {
 }
 
 func (ws *Web) serveRoot(w http.ResponseWriter, r *http.Request) {
-	ws.Index("Home", nil).Render(r.Context(), w)
+	ws.Index("Home", ws.showStats()).Render(r.Context(), w)
 }
 
 func (ws *Web) serveNavHTML(w http.ResponseWriter, r *http.Request) {
@@ -95,10 +97,11 @@ func (ws *Web) ListenAndServe(addr string) {
 	log.Fatal().Err(http.ListenAndServe(addr, ws.router)).Msg("bot killed")
 }
 
-func New(config *config.Config) *Web {
+func New(config *config.Config, s *stats.Stats) *Web {
 	w := &Web{
 		config: config,
 		router: chi.NewRouter(),
+		stats:  s,
 	}
 	w.setupHTTP()
 	return w
