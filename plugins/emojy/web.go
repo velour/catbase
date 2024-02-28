@@ -25,15 +25,40 @@ func (p *EmojyPlugin) registerWeb() {
 	r.HandleFunc("/allFiles", p.handleAllFiles)
 	r.HandleFunc("/upload", p.handleUpload)
 	r.HandleFunc("/file/{name}", p.handleEmojy)
-	r.HandleFunc("/stats", p.handlePage("stats.html"))
-	r.HandleFunc("/list", p.handlePage("list.html"))
-	r.HandleFunc("/new", p.handlePage("upload.html"))
-	r.HandleFunc("/", p.handleIndex)
+	r.HandleFunc("/stats", p.handleStats)
+	r.HandleFunc("/list", p.handleList)
+	r.HandleFunc("/new", p.handleUploadForm)
+	r.HandleFunc("/", p.handleStats)
 	p.b.GetWeb().RegisterWebName(r, "/emojy", "Emojys")
 }
 
-func (p *EmojyPlugin) handleIndex(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/emojy/stats", http.StatusPermanentRedirect)
+type emojyMap map[string][]EmojyCount
+
+func (p *EmojyPlugin) handleUploadForm(w http.ResponseWriter, r *http.Request) {
+	p.b.GetWeb().Index("Emojy", p.uploadIndex()).Render(r.Context(), w)
+}
+
+func (p *EmojyPlugin) handleList(w http.ResponseWriter, r *http.Request) {
+	threshold := p.c.GetInt("emojy.statthreshold", 1)
+	emojy, err := p.allCounts(threshold)
+	if err != nil {
+		fmt.Fprintf(w, "Error: %s", err)
+		return
+	}
+	p.b.GetWeb().Index("Emojy", p.listTempl(emojy)).Render(r.Context(), w)
+}
+
+func (p *EmojyPlugin) handleStats(w http.ResponseWriter, r *http.Request) {
+	threshold := p.c.GetInt("emojy.statthreshold", 1)
+	emojy, err := p.allCounts(threshold)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Error().Err(err).Msgf("handleAll")
+		out, _ := json.Marshal(struct{ err error }{err})
+		w.Write(out)
+		return
+	}
+	p.b.GetWeb().Index("Emojy", p.statsIndex(emojy)).Render(r.Context(), w)
 }
 
 func (p *EmojyPlugin) handlePage(file string) func(w http.ResponseWriter, r *http.Request) {
@@ -74,18 +99,16 @@ func (p *EmojyPlugin) handleAllFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *EmojyPlugin) handleUpload(w http.ResponseWriter, r *http.Request) {
-	enc := json.NewEncoder(w)
 	newFilePath, err := p.FileSave(r)
 	if err != nil {
 		log.Error().Err(err).Msgf("could not upload file")
 		w.WriteHeader(500)
-		enc.Encode(struct{ err error }{fmt.Errorf("file not saved: %s", err)})
+		fmt.Fprintf(w, "Error with file upload")
 		return
 	}
 	log.Debug().Msgf("uploaded file to %s", newFilePath)
 	w.WriteHeader(200)
-	enc.Encode(struct{ file string }{newFilePath})
-
+	fmt.Fprintf(w, "success")
 }
 
 func (p *EmojyPlugin) FileSave(r *http.Request) (string, error) {
@@ -101,7 +124,7 @@ func (p *EmojyPlugin) FileSave(r *http.Request) (string, error) {
 		return "", fmt.Errorf("no files")
 	}
 
-	password := r.Form.Get("password")
+	password := r.FormValue("password")
 	if password != p.b.GetPassword() {
 		return "", fmt.Errorf("incorrect password")
 	}
