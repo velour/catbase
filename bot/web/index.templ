@@ -1,5 +1,7 @@
 package web
 
+import "fmt"
+
 templ (w *Web) Header(title string) {
     <head>
         <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/foundation-sites@6.8.1/dist/css/foundation.min.css" />
@@ -41,7 +43,7 @@ templ (w *Web) Nav(currentPage string) {
     <div class="top-bar">
         <div class="top-bar-left">
             <ul class="menu">
-                <li class="menu-text">{ w.botName() }</li>
+                <li><a style="color: black; font-weight: bold;" href="/">{ w.botName() }</a></li>
                 for _, item := range w.GetWebNavigation() {
                     <li>
                         if currentPage == item.Name {
@@ -53,5 +55,30 @@ templ (w *Web) Nav(currentPage string) {
                 }
             </ul>
         </div>
+    </div>
+}
+
+templ (w *Web) showStats() {
+    <div class="grid-container">
+    <div class="cell">
+    <h2>Stats</h2>
+    </div>
+    <div class="cell">
+
+    <table>
+        <tr>
+            <td>Messages Seen</td>
+            <td>{ fmt.Sprintf("%d", w.stats.MessagesRcv) }</td>
+        </tr>
+        <tr>
+            <td>Messages Sent</td>
+            <td>{ fmt.Sprintf("%d", w.stats.MessagesSent) }</td>
+        </tr>
+        <tr>
+            <td>Uptime</td>
+            <td>{ fmt.Sprintf("%v", w.stats.Uptime()) }</td>
+        </tr>
+    </table>
+    </div>
     </div>
 }

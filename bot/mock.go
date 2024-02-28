@@ -4,6 +4,7 @@ package bot
 
 import (
 	"fmt"
+	"github.com/velour/catbase/bot/stats"
 	"github.com/velour/catbase/bot/web"
 	"net/http"
 	"regexp"
@@ -119,7 +120,7 @@ func NewMockBot() *MockBot {
 		Messages: make([]string, 0),
 		Actions:  make([]string, 0),
 	}
-	b.web = web.New(cfg)
+	b.web = web.New(cfg, stats.New())
 	// If any plugin registered a route, we need to reset those before any new test
 	http.DefaultServeMux = new(http.ServeMux)
 	return &b

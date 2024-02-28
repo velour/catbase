@@ -4,6 +4,7 @@ package bot
 
 import (
 	"fmt"
+	"github.com/velour/catbase/bot/stats"
 	"github.com/velour/catbase/bot/web"
 	"math/rand"
 	"os"
@@ -63,6 +64,7 @@ type bot struct {
 	quiet bool
 
 	history *history.History
+	stats   *stats.Stats
 }
 
 // Variable represents a $var replacement
@@ -99,6 +101,7 @@ func New(config *config.Config, connector Connector) Bot {
 		filters:         make(map[string]func(string) string),
 		callbacks:       make(CallbackMap),
 		history:         history.New(historySz),
+		stats:           stats.New(),
 	}
 
 	bot.migrateDB()
@@ -106,7 +109,7 @@ func New(config *config.Config, connector Connector) Bot {
 	bot.RefreshPluginBlacklist()
 	bot.RefreshPluginWhitelist()
 
-	bot.web = web.New(bot.config)
+	bot.web = web.New(bot.config, bot.stats)
 
 	connector.RegisterEvent(bot.Receive)
 

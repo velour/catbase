@@ -25,6 +25,8 @@ func (b *bot) Receive(conn Connector, kind Kind, msg msg.Message, args ...any) b
 	// msg := b.buildMessage(client, inMsg)
 	// do need to look up user and fix it
 
+	b.stats.MessagesRcv++
+
 	if kind == Edit {
 		b.history.Edit(msg.ID, &msg)
 	} else {
@@ -88,6 +90,7 @@ func (b *bot) Send(conn Connector, kind Kind, args ...any) (string, error) {
 	if b.quiet {
 		return "", nil
 	}
+	b.stats.MessagesSent++
 	return conn.Send(kind, args...)
 }
 
