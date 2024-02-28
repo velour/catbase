@@ -3,28 +3,31 @@ package admin
 import "fmt"
 
 templ (a *AdminPlugin) page() {
-    <div class="container">
+    <div class="grid-container">
         <form>
-        <div class="row">
-            <div class="col">
+        <div class="grid-x grid-margin-x align-bottom">
+            <h2>App Pass</h2>
+        </div>
+        <div class="grid-x grid-margin-x align-bottom">
+            <div class="cell auto">
                 <label for="password">Password:
                     <input type="text" name="password"></input>
                 </label>
             </div>
-            <div class="col">
+            <div class="cell auto">
                 <label for="secret">Secret:
                     <input type="text" name="secret"></input>
                 </label>
             </div>
-            <div class="col">
-                <button hx-post="/apppass/api" hx-target="#data" class="btn btn-primary">List</button>
-                <button hx-put="/apppass/api" hx-target="#data" class="btn btn-secondary">New</button>
+            <div class="cell auto">
+                <button hx-post="/apppass/api" hx-target="#data" class="button">List</button>
+                <button hx-put="/apppass/api" hx-target="#data" class="submit success button">New</button>
             </div>
         </div>
         </form>
 
-        <div class="row">
-            <div id="data"></div>
+        <div class="grid-x">
+            <div class="cell" id="data"></div>
         </div>
     </div>
 }
@@ -43,7 +46,8 @@ templ (a *AdminPlugin) entries(items []PassEntry) {
                 for _, entry := range items {
                     <li>
                         <button href="#"
-                            class="btn btn-danger"
+                            class="button alert tiny"
+                            style="vertical-align: baseline"
                             hx-delete="/apppass/api"
                             hx-confirm={ fmt.Sprintf("Are you sure you want to delete %d?", entry.ID) }
                             hx-target="#data"
@@ -62,7 +66,8 @@ templ renderError(err error) {
 
 templ vars(items []configEntry) {
         <div class="container">
-            <table class="table-responsive table-striped">
+            <h2>Variables</h2>
+            <table class="hover striped">
                 <thead>
                 <tr>
                     <th>Key</th>

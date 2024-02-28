@@ -103,3 +103,7 @@ func New(config *config.Config) *Web {
 	w.setupHTTP()
 	return w
 }
+
+func (ws *Web) botName() string {
+	return ws.config.Get("nick", "catbase")
+}
