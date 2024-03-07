@@ -6,71 +6,21 @@ package main
 
 import (
 	"flag"
-	"github.com/velour/catbase/plugins/gpt"
-	"github.com/velour/catbase/plugins/pagecomment"
-	"github.com/velour/catbase/plugins/talker"
-	"github.com/velour/catbase/plugins/tappd"
-	"github.com/velour/catbase/plugins/topic"
+	"github.com/velour/catbase/plugins"
 	"io"
 	"math/rand"
 	"os"
 	"time"
 
-	"github.com/velour/catbase/plugins/cowboy"
-	"github.com/velour/catbase/plugins/emojy"
-
-	"github.com/velour/catbase/bot/msg"
-	"github.com/velour/catbase/connectors/discord"
-	"github.com/velour/catbase/plugins/giphy"
-	"github.com/velour/catbase/plugins/last"
-	"github.com/velour/catbase/plugins/mayi"
-	"github.com/velour/catbase/plugins/quotegame"
-	"github.com/velour/catbase/plugins/rest"
-	"github.com/velour/catbase/plugins/roles"
-	"github.com/velour/catbase/plugins/secrets"
-
-	"github.com/velour/catbase/plugins/achievements"
-	"github.com/velour/catbase/plugins/aoc"
-	"github.com/velour/catbase/plugins/countdown"
-	"github.com/velour/catbase/plugins/goals"
-	"github.com/velour/catbase/plugins/meme"
-	"github.com/velour/catbase/plugins/sms"
-	"github.com/velour/catbase/plugins/twitter"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/velour/catbase/bot/msg"
+	"github.com/velour/catbase/connectors/discord"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/connectors/irc"
 	"github.com/velour/catbase/connectors/slackapp"
-	"github.com/velour/catbase/plugins/admin"
-	"github.com/velour/catbase/plugins/babbler"
-	"github.com/velour/catbase/plugins/beers"
-	"github.com/velour/catbase/plugins/couldashouldawoulda"
-	"github.com/velour/catbase/plugins/counter"
-	"github.com/velour/catbase/plugins/dice"
-	"github.com/velour/catbase/plugins/emojifyme"
-	"github.com/velour/catbase/plugins/fact"
-	"github.com/velour/catbase/plugins/first"
-	"github.com/velour/catbase/plugins/git"
-	"github.com/velour/catbase/plugins/impossible"
-	"github.com/velour/catbase/plugins/inventory"
-	"github.com/velour/catbase/plugins/leftpad"
-	"github.com/velour/catbase/plugins/nerdepedia"
-	"github.com/velour/catbase/plugins/newsbid"
-	"github.com/velour/catbase/plugins/picker"
-	"github.com/velour/catbase/plugins/reaction"
-	"github.com/velour/catbase/plugins/remember"
-	"github.com/velour/catbase/plugins/reminder"
-	"github.com/velour/catbase/plugins/rpgORdie"
-	"github.com/velour/catbase/plugins/rss"
-	"github.com/velour/catbase/plugins/sisyphus"
-	"github.com/velour/catbase/plugins/stock"
-	"github.com/velour/catbase/plugins/tell"
-	"github.com/velour/catbase/plugins/tldr"
-	"github.com/velour/catbase/plugins/twitch"
-	"github.com/velour/catbase/plugins/your"
 )
 
 var (
@@ -132,55 +82,7 @@ func main() {
 		b.GetWeb().RegisterWeb(r, path)
 	}
 
-	b.AddPlugin(admin.New(b))
-	b.AddPlugin(roles.New(b))
-	b.AddPlugin(twitch.New(b))
-	b.AddPlugin(pagecomment.New(b))
-	b.AddPlugin(secrets.New(b))
-	b.AddPlugin(mayi.New(b))
-	b.AddPlugin(giphy.New(b))
-	b.AddPlugin(emojifyme.New(b))
-	b.AddPlugin(last.New(b))
-	b.AddPlugin(first.New(b))
-	b.AddPlugin(leftpad.New(b))
-	b.AddPlugin(dice.New(b))
-	b.AddPlugin(picker.New(b))
-	b.AddPlugin(tappd.New(b))
-	b.AddPlugin(beers.New(b))
-	b.AddPlugin(remember.New(b))
-	b.AddPlugin(your.New(b))
-	b.AddPlugin(counter.New(b))
-	b.AddPlugin(goals.New(b))
-	b.AddPlugin(reminder.New(b))
-	b.AddPlugin(babbler.New(b))
-	b.AddPlugin(rss.New(b))
-	b.AddPlugin(reaction.New(b))
-	b.AddPlugin(inventory.New(b))
-	b.AddPlugin(rpgORdie.New(b))
-	b.AddPlugin(sisyphus.New(b))
-	b.AddPlugin(tell.New(b))
-	b.AddPlugin(couldashouldawoulda.New(b))
-	b.AddPlugin(nerdepedia.New(b))
-	b.AddPlugin(tldr.New(b))
-	b.AddPlugin(stock.New(b))
-	b.AddPlugin(newsbid.New(b))
-	b.AddPlugin(twitter.New(b))
-	b.AddPlugin(git.New(b))
-	b.AddPlugin(impossible.New(b))
-	b.AddPlugin(aoc.New(b))
-	b.AddPlugin(meme.New(b))
-	b.AddPlugin(achievements.New(b))
-	b.AddPlugin(sms.New(b))
-	b.AddPlugin(countdown.New(b))
-	b.AddPlugin(rest.New(b))
-	b.AddPlugin(quotegame.New(b))
-	b.AddPlugin(emojy.New(b))
-	b.AddPlugin(cowboy.New(b))
-	b.AddPlugin(topic.New(b))
-	b.AddPlugin(talker.New(b))
-	b.AddPlugin(fact.New(b))
-	// catches anything left, will always return true
-	b.AddPlugin(gpt.New(b))
+	plugins.Register(b)
 
 	if err := client.Serve(); err != nil {
 		log.Fatal().Err(err)
