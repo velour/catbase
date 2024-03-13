@@ -31,7 +31,7 @@ func (p *EmojyPlugin) uploadIndex() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><div class=\"grid-x\"><div class=\"cell\"><label>Passphrase</label> <input type=\"text\" name=\"password\" placeholder=\"Password...\"></div><div class=\"cell\"><label>File <input type=\"file\"></label></div><div class=\"cell\"><button class=\"button\" hx-post=\"/emojy/upload\">Submit</button></div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div><form hx-post=\"/emojy/upload\" enctype=\"multipart/form-data\"><div class=\"grid-x\"><div class=\"cell\"><label>Passphrase</label> <input type=\"text\" name=\"password\" placeholder=\"Password...\"></div><div class=\"cell\"><label>File <input type=\"file\" name=\"attachment\"></label></div><div class=\"cell\"><button class=\"button\" type=\"submit\">Submit</button></div></div></form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
