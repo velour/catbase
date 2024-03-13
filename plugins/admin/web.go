@@ -4,13 +4,12 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
+	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -21,8 +20,15 @@ func (p *AdminPlugin) registerWeb() {
 	r.HandleFunc("/", p.handleVars)
 	p.bot.GetWeb().RegisterWebName(r, "/vars", "Variables")
 	r = chi.NewRouter()
-	r.HandleFunc("/verify", p.handleAppPassCheck)
-	r.HandleFunc("/api", p.handleAppPassAPI)
+	r.With(httpin.NewInput(AppPassCheckReq{})).
+		HandleFunc("/verify", p.handleAppPassCheck)
+	//r.HandleFunc("/api", p.handleAppPassAPI)
+	r.With(httpin.NewInput(AppPassAPIReq{})).
+		Put("/api", p.handleAppPassAPIPut)
+	r.With(httpin.NewInput(AppPassAPIReq{})).
+		Delete("/api", p.handleAppPassAPIDelete)
+	r.With(httpin.NewInput(AppPassAPIReq{})).
+		Post("/api", p.handleAppPassAPIPost)
 	r.HandleFunc("/", p.handleAppPass)
 	p.bot.GetWeb().RegisterWebName(r, "/apppass", "App Pass")
 }
@@ -32,8 +38,8 @@ func (p *AdminPlugin) handleAppPass(w http.ResponseWriter, r *http.Request) {
 }
 
 type PassEntry struct {
-	ID     int64  `json:"id"`
-	Secret string `json:"secret"`
+	ID     int64  `json:"id" in:"form=id;query=password"`
+	Secret string `json:"secret" in:"form=secret;query=password"`
 
 	// Should be null unless inserting a new entry
 	Pass        string `json:"pass"`
@@ -57,107 +63,117 @@ func (p *PassEntry) Compare(pass string) bool {
 	return true
 }
 
+type AppPassCheckReq struct {
+	Secret   string `json:"secret"`
+	Password string `json:"password"`
+}
+
 func (p *AdminPlugin) handleAppPassCheck(w http.ResponseWriter, r *http.Request) {
-	req := struct {
-		Secret   string `json:"secret"`
-		Password string `json:"password"`
-	}{}
-	body, _ := ioutil.ReadAll(r.Body)
-	_ = json.Unmarshal(body, &req)
-	if p.bot.CheckPassword(req.Secret, req.Password) {
+	input := r.Context().Value(httpin.Input).(*AppPassCheckReq)
+	if p.bot.CheckPassword(input.Secret, input.Password) {
 		w.WriteHeader(204)
 	} else {
 		w.WriteHeader(403)
 	}
 }
 
-func (p *AdminPlugin) handleAppPassAPI(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	b, _ := io.ReadAll(r.Body)
-	query, _ := url.ParseQuery(string(b))
-	secret := r.FormValue("secret")
-	password := r.FormValue("password")
-	id, _ := strconv.ParseInt(r.FormValue("id"), 10, 64)
-	if !r.Form.Has("secret") && query.Has("secret") {
-		secret = query.Get("secret")
+type AppPassAPIReq struct {
+	Password  string `in:"form=password;query=password"`
+	PassEntry PassEntry
+}
+
+func (p *AdminPlugin) checkAPIInput(w http.ResponseWriter, r *http.Request) *AppPassAPIReq {
+	input := r.Context().Value(httpin.Input).(*AppPassAPIReq)
+
+	if input.Password == "" && input.PassEntry.Secret == "" {
+		b, _ := io.ReadAll(r.Body)
+		query, _ := url.ParseQuery(string(b))
+		input.Password = query.Get("password")
+		input.PassEntry.ID, _ = strconv.ParseInt(query.Get("id"), 10, 64)
+		input.PassEntry.Secret = query.Get("secret")
 	}
-	if !r.Form.Has("password") && query.Has("password") {
-		password = query.Get("password")
-	}
-	if !r.Form.Has("id") && query.Has("id") {
-		id, _ = strconv.ParseInt(query.Get("id"), 10, 64)
-	}
-	req := struct {
-		Password  string    `json:"password"`
-		PassEntry PassEntry `json:"passEntry"`
-	}{
-		password,
-		PassEntry{
-			ID:     id,
-			Secret: secret,
-		},
-	}
-	if req.PassEntry.Secret == "" {
+
+	log.Printf("checkAPIInput: %#v", input)
+
+	if input.PassEntry.Secret == "" {
 		writeErr(r.Context(), w, fmt.Errorf("missing secret"))
-		return
+		return nil
 	}
-	if req.Password == "" || !p.bot.CheckPassword(req.PassEntry.Secret, req.Password) {
+	if input.Password == "" || !p.bot.CheckPassword(input.PassEntry.Secret, input.Password) {
 		writeErr(r.Context(), w, fmt.Errorf("missing or incorrect password"))
+		return nil
+	}
+	return input
+}
+
+func (p *AdminPlugin) handleAppPassAPIPut(w http.ResponseWriter, r *http.Request) {
+	input := p.checkAPIInput(w, r)
+	if input == nil {
 		return
 	}
-	switch r.Method {
-	case http.MethodPut:
-		if string(req.PassEntry.Pass) == "" {
-			c := 10
-			b := make([]byte, c)
-			_, err := rand.Read(b)
-			if err != nil {
-				fmt.Println("error:", err)
-				return
-			}
-			req.PassEntry.Pass = fmt.Sprintf("%x", md5.Sum(b))
-		}
-		q := `insert into apppass (secret, encoded_pass, cost) values (?, ?, ?)`
-		req.PassEntry.EncodePass()
-
-		check := bcrypt.CompareHashAndPassword(req.PassEntry.encodedPass, []byte(req.PassEntry.Pass))
-
-		log.Debug().
-			Str("secret", req.PassEntry.Secret).
-			Str("encoded", string(req.PassEntry.encodedPass)).
-			Str("password", string(req.PassEntry.Pass)).
-			Interface("check", check).
-			Msg("debug pass creation")
-
-		res, err := p.db.Exec(q, req.PassEntry.Secret, req.PassEntry.encodedPass, req.PassEntry.Cost)
+	if string(input.PassEntry.Pass) == "" {
+		c := 10
+		b := make([]byte, c)
+		_, err := rand.Read(b)
 		if err != nil {
-			writeErr(r.Context(), w, err)
+			fmt.Println("error:", err)
 			return
 		}
-		id, err := res.LastInsertId()
-		if err != nil {
-			writeErr(r.Context(), w, err)
-			return
-		}
-		req.PassEntry.ID = id
-		p.showPassword(req.PassEntry).Render(r.Context(), w)
+		input.PassEntry.Pass = fmt.Sprintf("%x", md5.Sum(b))
+	}
+	q := `insert into apppass (secret, encoded_pass, cost) values (?, ?, ?)`
+	input.PassEntry.EncodePass()
+
+	check := bcrypt.CompareHashAndPassword(input.PassEntry.encodedPass, []byte(input.PassEntry.Pass))
+
+	log.Debug().
+		Str("secret", input.PassEntry.Secret).
+		Str("encoded", string(input.PassEntry.encodedPass)).
+		Str("password", string(input.PassEntry.Pass)).
+		Interface("check", check).
+		Msg("debug pass creation")
+
+	res, err := p.db.Exec(q, input.PassEntry.Secret, input.PassEntry.encodedPass, input.PassEntry.Cost)
+	if err != nil {
+		writeErr(r.Context(), w, err)
 		return
-	case http.MethodDelete:
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		writeErr(r.Context(), w, err)
+		return
+	}
+	input.PassEntry.ID = id
+	p.showPassword(input.PassEntry).Render(r.Context(), w)
+}
 
-		if req.PassEntry.ID <= 0 {
-			writeErr(r.Context(), w, fmt.Errorf("missing ID"))
-			return
-		}
-		q := `delete from apppass where id = ?`
-		_, err := p.db.Exec(q, req.PassEntry.ID)
-		if err != nil {
-			writeErr(r.Context(), w, err)
-			return
-		}
+func (p *AdminPlugin) handleAppPassAPIDelete(w http.ResponseWriter, r *http.Request) {
+	input := p.checkAPIInput(w, r)
+	if input == nil {
+		return
+	}
+	if input.PassEntry.ID <= 0 {
+		writeErr(r.Context(), w, fmt.Errorf("missing ID"))
+		return
+	}
+	q := `delete from apppass where id = ?`
+	_, err := p.db.Exec(q, input.PassEntry.ID)
+	if err != nil {
+		writeErr(r.Context(), w, err)
+		return
+	}
+	p.handleAppPassAPIPost(w, r)
+}
+
+func (p *AdminPlugin) handleAppPassAPIPost(w http.ResponseWriter, r *http.Request) {
+	input := p.checkAPIInput(w, r)
+	if input == nil {
+		return
 	}
 	q := `select id,secret from apppass where secret = ?`
 	passEntries := []PassEntry{}
-	err := p.db.Select(&passEntries, q, req.PassEntry.Secret)
+
+	err := p.db.Select(&passEntries, q, input.PassEntry.Secret)
 	if err != nil {
 		writeErr(r.Context(), w, err)
 		return
