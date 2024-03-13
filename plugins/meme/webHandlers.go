@@ -3,6 +3,7 @@ package meme
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ggicci/httpin"
 	"net/http"
 	"net/url"
 	"sort"
@@ -17,8 +18,10 @@ func (p *MemePlugin) registerWeb(c bot.Connector) {
 	r := chi.NewRouter()
 	r.HandleFunc("/slash", p.slashMeme(c))
 	r.Get("/img", p.img)
-	r.Put("/save/{name}", p.saveMeme)
-	r.Post("/add", p.saveMeme)
+	r.With(httpin.NewInput(SaveReq{})).
+		Put("/save/{name}", p.saveMeme)
+	r.With(httpin.NewInput(SaveReq{})).
+		Post("/add", p.saveMeme)
 	r.Delete("/rm/{name}", p.rmMeme)
 	r.Get("/edit/{name}", p.editMeme)
 	r.Get("/", p.webRoot)
@@ -85,31 +88,33 @@ func (p *MemePlugin) rmMeme(w http.ResponseWriter, r *http.Request) {
 	mkCheckError(w)(err)
 }
 
+type SaveReq struct {
+	Name   string `in:"path=name"`
+	Config string `in:"form=config"`
+	URL    string `in:"form=url"`
+}
+
 func (p *MemePlugin) saveMeme(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
-	if name == "" {
-		name = r.FormValue("name")
-	}
+	input := r.Context().Value(httpin.Input).(*SaveReq)
 	checkError := mkCheckError(w)
 
 	formats := p.c.GetMap("meme.memes", defaultFormats)
-	formats[name] = r.FormValue("url")
+	formats[input.Name] = input.URL
 	err := p.c.SetMap("meme.memes", formats)
 	checkError(err)
 
-	config := r.FormValue("config")
-	if config == "" {
-		config = p.defaultFormatConfigJSON()
+	if input.Config == "" {
+		input.Config = p.defaultFormatConfigJSON()
 	}
 	configs := p.c.GetMap("meme.memeconfigs", map[string]string{})
-	configs[name] = config
+	configs[input.Name] = input.Config
 	err = p.c.SetMap("meme.memeconfigs", configs)
 	checkError(err)
 
 	meme := webResp{
-		Name:   name,
-		URL:    formats[name],
-		Config: configs[name],
+		Name:   input.Name,
+		URL:    formats[input.Name],
+		Config: configs[input.Name],
 	}
 
 	p.Show(meme).Render(r.Context(), w)
