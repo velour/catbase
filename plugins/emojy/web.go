@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/ggicci/httpin"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -23,8 +24,10 @@ func (p *EmojyPlugin) registerWeb() {
 	r := chi.NewRouter()
 	r.HandleFunc("/all", p.handleAll)
 	r.HandleFunc("/allFiles", p.handleAllFiles)
-	r.HandleFunc("/upload", p.handleUpload)
-	r.HandleFunc("/file/{name}", p.handleEmojy)
+	r.With(httpin.NewInput(UploadReq{})).
+		Post("/upload", p.handleUpload)
+	r.With(httpin.NewInput(EmojyReq{})).
+		HandleFunc("/file/{name}", p.handleEmojy)
 	r.HandleFunc("/stats", p.handleStats)
 	r.HandleFunc("/list", p.handleList)
 	r.HandleFunc("/new", p.handleUploadForm)
@@ -98,8 +101,15 @@ func (p *EmojyPlugin) handleAllFiles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type UploadReq struct {
+	Password   string       `in:"form=password"`
+	Attachment *httpin.File `in:"form=attachment"`
+}
+
 func (p *EmojyPlugin) handleUpload(w http.ResponseWriter, r *http.Request) {
-	newFilePath, err := p.FileSave(r)
+	input := r.Context().Value(httpin.Input).(*UploadReq)
+	log.Printf("handleUpload: %#v", input)
+	newFilePath, err := p.FileSave(input)
 	if err != nil {
 		log.Error().Err(err).Msgf("could not upload file")
 		w.WriteHeader(500)
@@ -111,60 +121,46 @@ func (p *EmojyPlugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "success")
 }
 
-func (p *EmojyPlugin) FileSave(r *http.Request) (string, error) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		if err != http.ErrNotMultipart {
-			return "", err
-		}
-		if err := r.ParseForm(); err != nil {
-			return "", err
-		}
-	}
-	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
-		return "", fmt.Errorf("no files")
-	}
-
-	password := r.FormValue("password")
-	if password != p.b.GetPassword() {
+func (p *EmojyPlugin) FileSave(input *UploadReq) (string, error) {
+	if !p.b.CheckPassword("", input.Password) {
 		return "", fmt.Errorf("incorrect password")
 	}
 
-	for _, fileHeaders := range r.MultipartForm.File {
-		for _, fileHeader := range fileHeaders {
-			body, err := fileHeader.Open()
-			if err != nil {
-				return "", fmt.Errorf("error opening part %q: %s", fileHeader.Filename, err)
-			}
-			emojyFileName := fileHeader.Filename
-			emojyName := strings.TrimSuffix(emojyFileName, filepath.Ext(emojyFileName))
-			if ok, _, _, _ := p.isKnownEmojy(emojyName); ok {
-				return "", fmt.Errorf("emojy already exists")
-			}
-			contentType := fileHeader.Header.Get("Content-Type")
-			if !strings.HasPrefix(contentType, "image") {
-				return "", fmt.Errorf("incorrect mime type - given: %s", contentType)
-			}
-			fullPath := filepath.Clean(filepath.Join(p.emojyPath, emojyFileName))
-			_ = os.MkdirAll(p.emojyPath, os.ModePerm)
-			log.Debug().Msgf("trying to create/open file: %s", fullPath)
-			file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
-			if err != nil {
-				return "", err
-			}
-			defer file.Close()
-			_, err = io.Copy(file, body)
-			if err != nil {
-				return "", err
-			}
-			return emojyFileName, nil
-		}
+	file := input.Attachment
+	emojyFileName := file.Filename()
+	emojyName := strings.TrimSuffix(emojyFileName, filepath.Ext(emojyFileName))
+	if ok, _, _, _ := p.isKnownEmojy(emojyName); ok {
+		return "", fmt.Errorf("emojy already exists")
 	}
-	return "", fmt.Errorf("did not find file")
+	contentType := file.MIMEHeader().Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image") {
+		return "", fmt.Errorf("incorrect mime type - given: %s", contentType)
+	}
+	fullPath := filepath.Clean(filepath.Join(p.emojyPath, emojyFileName))
+	_ = os.MkdirAll(p.emojyPath, os.ModePerm)
+	log.Debug().Msgf("trying to create/open file: %s", fullPath)
+	outFile, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		return "", err
+	}
+	defer outFile.Close()
+	inFile, _ := file.ReadAll()
+	stream, _ := file.OpenReceiveStream()
+	_, err = outFile.Write(inFile)
+	_, err = io.Copy(outFile, stream)
+	if err != nil {
+		return "", err
+	}
+	return emojyFileName, nil
+}
+
+type EmojyReq struct {
+	Name string `in:"path=name"`
 }
 
 func (p *EmojyPlugin) handleEmojy(w http.ResponseWriter, r *http.Request) {
-	fname := chi.URLParam(r, "name")
-	contents, err := ioutil.ReadFile(path.Join(p.emojyPath, fname))
+	input := r.Context().Value(httpin.Input).(*EmojyReq)
+	contents, err := ioutil.ReadFile(path.Join(p.emojyPath, input.Name))
 	if err != nil {
 		w.WriteHeader(404)
 		out, _ := json.Marshal(struct{ err error }{err})

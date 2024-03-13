@@ -12,6 +12,7 @@ templ (p *EmojyPlugin) uploadIndex() {
                 @p.emojyNav()
             </div>
         </div>
+        <form hx-post="/emojy/upload" enctype="multipart/form-data">
         <div class="grid-x">
             <div class="cell">
                 <label>Passphrase</label>
@@ -19,12 +20,13 @@ templ (p *EmojyPlugin) uploadIndex() {
             </div>
             <div class="cell">
                 <label>File
-                    <input type="file" />
+                    <input type="file" name="attachment" />
                 </label>
             </div>
             <div class="cell">
-                <button class="button" hx-post="/emojy/upload">Submit</button>
+                <button class="button" type="submit">Submit</button>
             </div>
         </div>
+        </form>
     </div>
 }
