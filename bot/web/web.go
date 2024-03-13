@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	httpin_integration "github.com/ggicci/httpin/integration"
 )
 
 type Web struct {
@@ -76,6 +78,8 @@ func (ws *Web) setupHTTP() {
 	ws.router.Use(middleware.RequestID)
 	ws.router.Use(middleware.Recoverer)
 	ws.router.Use(middleware.StripSlashes)
+
+	httpin_integration.UseGochiURLParam("path", chi.URLParam)
 
 	ws.router.HandleFunc("/", ws.serveRoot)
 	ws.router.HandleFunc("/nav", ws.serveNav)

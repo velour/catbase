@@ -17,7 +17,8 @@ require (
 	github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90
 	github.com/forPelevin/gomoji v1.1.6
 	github.com/gabriel-vasile/mimetype v1.4.1
-	github.com/go-chi/chi/v5 v5.0.7
+	github.com/ggicci/httpin v0.16.0
+	github.com/go-chi/chi/v5 v5.0.11
 	github.com/go-chi/httprate v0.7.0
 	github.com/gocolly/colly v1.2.0
 	github.com/google/uuid v1.3.0
@@ -32,7 +33,7 @@ require (
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
 	golang.org/x/crypto v0.14.0
@@ -57,6 +58,7 @@ require (
 	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
 	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
+	github.com/ggicci/owl v0.7.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
