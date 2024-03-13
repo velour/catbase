@@ -3,10 +3,8 @@ package counter
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"github.com/ggicci/httpin"
 	"net/http"
-	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,34 +21,48 @@ func (p *CounterPlugin) registerWeb() {
 	dur := time.Duration(seconds) * time.Second
 	subrouter := chi.NewRouter()
 	subrouter.Use(httprate.LimitByIP(requests, dur))
-	subrouter.HandleFunc("/api/users/{user}/items/{item}/increment/{delta}", p.mkIncrementByNAPI(1))
-	subrouter.HandleFunc("/api/users/{user}/items/{item}/decrement/{delta}", p.mkIncrementByNAPI(-1))
-	subrouter.HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementByNAPI(1))
-	subrouter.HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementByNAPI(-1))
+	subrouter.With(httpin.NewInput(CounterChangeReq{})).
+		HandleFunc("/api/users/{user}/items/{item}/increment/{delta}", p.mkIncrementByNAPI(1))
+	subrouter.With(httpin.NewInput(CounterChangeReq{})).
+		HandleFunc("/api/users/{user}/items/{item}/decrement/{delta}", p.mkIncrementByNAPI(-1))
+	subrouter.With(httpin.NewInput(CounterChangeReq{})).
+		HandleFunc("/api/users/{user}/items/{item}/increment", p.mkIncrementByNAPI(1))
+	subrouter.With(httpin.NewInput(CounterChangeReq{})).
+		HandleFunc("/api/users/{user}/items/{item}/decrement", p.mkIncrementByNAPI(-1))
 	r.Mount("/", subrouter)
-	r.HandleFunc("/users/{user}/items/{item}/increment", p.incHandler(1))
-	r.HandleFunc("/users/{user}/items/{item}/decrement", p.incHandler(-1))
+	r.With(httpin.NewInput(CounterChangeReq{})).
+		HandleFunc("/users/{user}/items/{item}/increment", p.incHandler(1))
+	r.With(httpin.NewInput(CounterChangeReq{})).
+		HandleFunc("/users/{user}/items/{item}/decrement", p.incHandler(-1))
 	r.HandleFunc("/", p.handleCounter)
 	p.b.GetWeb().RegisterWebName(r, "/counter", "Counter")
 }
 
+type CounterChangeReq struct {
+	UserName string `in:"path=user"`
+	Item     string `in:"path=item"`
+	Password string `in:"form=password"`
+	Delta    int    `in:"path=delta"`
+	Body     struct {
+		Message string `json:"message"`
+	} `in:"body=json"`
+}
+
 func (p *CounterPlugin) incHandler(delta int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userName, _ := url.QueryUnescape(chi.URLParam(r, "user"))
-		itemName, _ := url.QueryUnescape(chi.URLParam(r, "item"))
-		pass := r.FormValue("password")
-		if !p.b.CheckPassword("", pass) {
+		input := r.Context().Value(httpin.Input).(*CounterChangeReq)
+		if !p.b.CheckPassword("", input.Password) {
 			w.WriteHeader(401)
 			fmt.Fprintf(w, "error")
 			return
 		}
-		item, err := p.delta(userName, itemName, "", delta)
+		item, err := p.delta(input.UserName, input.Item, "", delta)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "error")
 			return
 		}
-		p.renderItem(userName, item).Render(r.Context(), w)
+		p.renderItem(input.UserName, item).Render(r.Context(), w)
 	}
 }
 
@@ -103,13 +115,11 @@ func (p *CounterPlugin) delta(userName, itemName, personalMessage string, delta 
 
 func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userName, _ := url.QueryUnescape(chi.URLParam(r, "user"))
-		itemName, _ := url.QueryUnescape(chi.URLParam(r, "item"))
-		delta, err := strconv.Atoi(chi.URLParam(r, "delta"))
-		if err != nil || delta == 0 {
-			delta = direction
+		input := r.Context().Value(httpin.Input).(*CounterChangeReq)
+		if input.Delta == 0 {
+			input.Delta = direction
 		} else {
-			delta = delta * direction
+			input.Delta = input.Delta * direction
 		}
 
 		secret, pass, ok := r.BasicAuth()
@@ -127,15 +137,12 @@ func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWri
 			return
 		}
 
-		body, _ := io.ReadAll(r.Body)
-		postData := map[string]string{}
-		err = json.Unmarshal(body, &postData)
 		personalMsg := ""
-		if inputMsg, ok := postData["message"]; ok {
-			personalMsg = fmt.Sprintf("\nMessage: %s", inputMsg)
+		if input.Body.Message != "" {
+			personalMsg = fmt.Sprintf("\nMessage: %s", input.Body.Message)
 		}
 
-		if _, err := p.delta(userName, itemName, personalMsg, delta*direction); err != nil {
+		if _, err := p.delta(input.UserName, input.Item, personalMsg, input.Delta*direction); err != nil {
 			log.Error().Err(err).Msg("error finding item")
 			w.WriteHeader(400)
 			j, _ := json.Marshal(struct {
