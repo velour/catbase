@@ -3,10 +3,9 @@ package fact
 import (
 	"embed"
 	"fmt"
+	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
-	"html/template"
 	"net/http"
-	"strings"
 )
 
 //go:embed *.html
@@ -15,26 +14,20 @@ var embeddedFS embed.FS
 // Register any web URLs desired
 func (p *FactoidPlugin) registerWeb() {
 	r := chi.NewRouter()
-	r.Post("/search", p.handleSearch)
-	r.HandleFunc("/req", p.serveQuery)
-	r.HandleFunc("/", p.serveQuery)
+	r.With(httpin.NewInput(SearchReq{})).
+		Post("/search", p.handleSearch)
+	r.Get("/", p.serveQuery)
 	p.b.GetWeb().RegisterWebName(r, "/factoid", "Factoid")
 }
 
-func linkify(text string) template.HTML {
-	parts := strings.Fields(text)
-	for i, word := range parts {
-		if strings.HasPrefix(word, "http") {
-			parts[i] = fmt.Sprintf("<a href=\"%s\">%s</a>", word, word)
-		}
-	}
-	return template.HTML(strings.Join(parts, " "))
+type SearchReq struct {
+	Query string `in:"query"`
 }
 
 func (p *FactoidPlugin) handleSearch(w http.ResponseWriter, r *http.Request) {
-	query := r.FormValue("query")
+	input := r.Context().Value(httpin.Input).(*SearchReq)
 
-	entries, err := getFacts(p.db, query, "")
+	entries, err := getFacts(p.db, input.Query, "")
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprint(w, err)
