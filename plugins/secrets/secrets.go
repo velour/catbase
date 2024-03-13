@@ -3,6 +3,7 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -31,9 +32,10 @@ func New(b bot.Bot) bot.Plugin {
 
 func (p *SecretsPlugin) registerWeb() {
 	r := chi.NewRouter()
-	r.HandleFunc("/add", p.handleRegister)
-	r.HandleFunc("/remove", p.handleRemove)
-	r.HandleFunc("/", p.handleIndex)
+	r.With(httpin.NewInput(RegisterReq{})).
+		Post("/add", p.handleRegister)
+	r.Delete("/remove", p.handleRemove)
+	r.Get("/", p.handleIndex)
 	p.b.GetWeb().RegisterWebName(r, "/secrets", "Secrets")
 }
 
@@ -71,14 +73,15 @@ func (p *SecretsPlugin) handleAll(w http.ResponseWriter, r *http.Request) {
 	p.sendKeys(w, r)
 }
 
+type RegisterReq struct {
+	Key   string `in:"form=key"`
+	Value string `in:"form=value"`
+}
+
 func (p *SecretsPlugin) handleRegister(w http.ResponseWriter, r *http.Request) {
-	if checkMethod(http.MethodPost, w, r) {
-		log.Debug().Msgf("failed post %s", r.Method)
-		return
-	}
+	input := r.Context().Value(httpin.Input).(*RegisterReq)
 	checkError := mkCheckError(w)
-	key, value := r.FormValue("key"), r.FormValue("value")
-	err := p.c.RegisterSecret(key, value)
+	err := p.c.RegisterSecret(input.Key, input.Value)
 	if checkError(err) {
 		return
 	}
@@ -86,9 +89,6 @@ func (p *SecretsPlugin) handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *SecretsPlugin) handleRemove(w http.ResponseWriter, r *http.Request) {
-	if checkMethod(http.MethodDelete, w, r) {
-		return
-	}
 	checkError := mkCheckError(w)
 	b, err := io.ReadAll(r.Body)
 	if checkError(err) {
