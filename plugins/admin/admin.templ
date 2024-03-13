@@ -24,17 +24,17 @@ templ (a *AdminPlugin) page() {
                 <button hx-put="/apppass/api" hx-target="#data" class="submit success button">New</button>
             </div>
         </div>
-        </form>
 
         <div class="grid-x">
             <div class="cell" id="data"></div>
         </div>
+        </form>
     </div>
 }
 
 templ (a *AdminPlugin) showPassword(entry PassEntry) {
-    <div><span>ID</span><span>{ fmt.Sprintf("%d", entry.ID) }</span></div>
-    <div><span>Password</span><span>{ entry.Secret }:{ entry.Pass }</span></div>
+    <div><span style="margin-right: 2em">ID</span><span>{ fmt.Sprintf(" %d", entry.ID) }</span></div>
+    <div><span style="margin-right: 2em">Password</span><span> { entry.Secret }:{ entry.Pass }</span></div>
 }
 
 templ (a *AdminPlugin) entries(items []PassEntry) {
@@ -51,7 +51,6 @@ templ (a *AdminPlugin) entries(items []PassEntry) {
                             hx-delete="/apppass/api"
                             hx-confirm={ fmt.Sprintf("Are you sure you want to delete %d?", entry.ID) }
                             hx-target="#data"
-                            hx-include="this,[name='password'],[name='secret']"
                             name="id" value={ fmt.Sprintf("%d", entry.ID) }>X</button>
                             { fmt.Sprintf("%d", entry.ID) }
                     </li>
