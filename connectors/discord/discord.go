@@ -116,6 +116,7 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 
 	embeds := []*discordgo.MessageEmbed{}
 	files := []*discordgo.File{}
+	var ref *discordgo.MessageReference
 
 	for _, arg := range args {
 		switch a := arg.(type) {
@@ -141,13 +142,20 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 				ContentType: a.ContentType(),
 				Reader:      bytes.NewBuffer(a.Data),
 			})
+		case bot.MessageReference:
+			ref = &discordgo.MessageReference{
+				MessageID: a.MessageID,
+				ChannelID: a.ChannelID,
+				GuildID:   a.GuildID,
+			}
 		}
 	}
 
 	data := &discordgo.MessageSend{
-		Content: message,
-		Embeds:  embeds,
-		Files:   files,
+		Content:   message,
+		Embeds:    embeds,
+		Files:     files,
+		Reference: ref,
 	}
 
 	log.Debug().
