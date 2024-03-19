@@ -45,9 +45,10 @@ func (p *LastPlugin) migrate() error {
 	_, err = tx.Exec(`create table if not exists last (
     	day integer,
         channel string not null,
-        ts int not null,
-    	who string not null,
-    	message string not null,
+        time int not null,
+    	nick string not null,
+    	body string not null,
+    	message_id string not null,
     	constraint last_key primary key (day, channel) on conflict replace
 	)`)
 	if err != nil {
@@ -134,8 +135,8 @@ func (p *LastPlugin) recordLast(r bot.Request) bool {
 	}
 
 	_, err := p.db.Exec(
-		`insert into last values (?, ?, ?, ?, ?)`,
-		day.Unix(), ch, time.Now().Unix(), who, r.Msg.Body)
+		`insert into last (day, channel, time, body, nick, message_id) values (?, ?, ?, ?, ?, ?)`,
+		day.Unix(), ch, time.Now().Unix(), r.Msg.Body, who, r.Msg.ID)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not record last.")
 	}
@@ -143,11 +144,13 @@ func (p *LastPlugin) recordLast(r bot.Request) bool {
 }
 
 type last struct {
-	Day     int64
-	TS      int64
-	Channel string
-	Who     string
-	Message string
+	ID        int64  `db:"id"`
+	Day       int64  `db:"day"`
+	Time      int64  `db:"time"`
+	Channel   string `db:"channel"`
+	Nick      string `db:"nick"`
+	Body      string `db:"body"`
+	MessageID string `db:"message_id"`
 }
 
 func (p *LastPlugin) yesterdaysLast(ch string) (last, error) {
@@ -189,6 +192,11 @@ func (p *LastPlugin) sayLast(c bot.Connector, chFrom, chTo string, force bool) {
 		}
 		return
 	}
-	msg := fmt.Sprintf(`%s killed the channel last night by saying "%s"`, l.Who, l.Message)
-	p.b.Send(c, bot.Message, chTo, msg)
+	msg := fmt.Sprintf(`%s killed the channel last night by saying "%s"`, l.Nick, l.Body)
+	guildID := p.c.Get("discord.guildid", "")
+	p.b.Send(c, bot.Message, chTo, msg, bot.MessageReference{
+		MessageID: l.MessageID,
+		ChannelID: l.Channel,
+		GuildID:   guildID,
+	})
 }

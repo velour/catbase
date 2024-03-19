@@ -63,6 +63,12 @@ type File struct {
 	mime        *mimetype.MIME
 }
 
+type MessageReference struct {
+	MessageID string `json:"message_id"`
+	ChannelID string `json:"channel_id,omitempty"`
+	GuildID   string `json:"guild_id,omitempty"`
+}
+
 func (f File) Mime() *mimetype.MIME {
 	if f.mime == nil {
 		f.mime = mimetype.Detect(f.Data)
