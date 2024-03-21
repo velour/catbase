@@ -192,7 +192,7 @@ func (p *LastPlugin) sayLast(c bot.Connector, chFrom, chTo string, force bool) {
 		}
 		return
 	}
-	msg := fmt.Sprintf(`%s killed the channel last night by saying "%s"`, l.Nick, l.Body)
+	msg := fmt.Sprintf(`%s killed the channel last night`, l.Nick)
 	guildID := p.c.Get("discord.guildid", "")
 	p.b.Send(c, bot.Message, chTo, msg, bot.MessageReference{
 		MessageID: l.MessageID,
