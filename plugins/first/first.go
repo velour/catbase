@@ -28,24 +28,26 @@ type FirstPlugin struct {
 }
 
 type FirstEntry struct {
-	id      int64
-	day     time.Time
-	time    time.Time
-	channel string
-	body    string
-	nick    string
-	saved   bool
+	id        int64
+	day       time.Time
+	time      time.Time
+	channel   string
+	body      string
+	nick      string
+	saved     bool
+	messageID string
 }
 
 // Insert or update the first entry
 func (fe *FirstEntry) save(db *sqlx.DB) error {
-	if _, err := db.Exec(`insert into first (day, time, channel, body, nick)
-		values (?, ?, ?, ?, ?)`,
+	if _, err := db.Exec(`insert into first (day, time, channel, body, nick, message_id)
+		values (?, ?, ?, ?, ?, ?)`,
 		fe.day.Unix(),
 		fe.time.Unix(),
 		fe.channel,
 		fe.body,
 		fe.nick,
+		fe.messageID,
 	); err != nil {
 		return err
 	}
@@ -76,7 +78,8 @@ func New(b bot.Bot) *FirstPlugin {
 			time integer,
 			channel string,
 			body string,
-			nick string
+			nick string,
+			message_id string
 		);`)
 	if err != nil {
 		log.Fatal().
@@ -105,9 +108,10 @@ func getLastFirst(db *sqlx.DB, channel string) (*FirstEntry, error) {
 	var timeEntered sql.NullInt64
 	var body sql.NullString
 	var nick sql.NullString
+	var message_id sql.NullString
 
 	err := db.QueryRow(`select
-		id, max(day), time, body, nick from first
+		id, max(day), time, body, nick, message_id from first
 		where channel = ?
 		limit 1;
 	`, channel).Scan(
@@ -116,6 +120,7 @@ func getLastFirst(db *sqlx.DB, channel string) (*FirstEntry, error) {
 		&timeEntered,
 		&body,
 		&nick,
+		&message_id,
 	)
 	switch {
 	case err == sql.ErrNoRows || !id.Valid:
@@ -128,13 +133,14 @@ func getLastFirst(db *sqlx.DB, channel string) (*FirstEntry, error) {
 	log.Debug().Msgf("id: %v day %v time %v body %v nick %v",
 		id, day, timeEntered, body, nick)
 	return &FirstEntry{
-		id:      id.Int64,
-		day:     time.Unix(day.Int64, 0),
-		time:    time.Unix(timeEntered.Int64, 0),
-		channel: channel,
-		body:    body.String,
-		nick:    nick.String,
-		saved:   true,
+		id:        id.Int64,
+		day:       time.Unix(day.Int64, 0),
+		time:      time.Unix(timeEntered.Int64, 0),
+		channel:   channel,
+		body:      body.String,
+		nick:      nick.String,
+		messageID: message_id.String,
+		saved:     true,
 	}, nil
 }
 
@@ -296,11 +302,12 @@ func (p *FirstPlugin) recordFirst(c bot.Connector, message msg.Message) {
 		Str("body", message.Body).
 		Msg("Recording first")
 	first := &FirstEntry{
-		day:     Midnight(time.Now()),
-		time:    time.Now(),
-		channel: message.Channel,
-		body:    message.Body,
-		nick:    message.User.Name,
+		day:       Midnight(time.Now()),
+		time:      time.Now(),
+		channel:   message.Channel,
+		body:      message.Body,
+		nick:      message.User.Name,
+		messageID: message.ID,
 	}
 	log.Info().Msgf("recordFirst: %+v", first.day)
 	err := first.save(p.db)
@@ -338,8 +345,13 @@ func (p *FirstPlugin) leaderboard(c bot.Connector, ch string) error {
 
 func (p *FirstPlugin) announceFirst(c bot.Connector, first *FirstEntry) {
 	ch := first.channel
-	p.bot.Send(c, bot.Message, ch, fmt.Sprintf("%s had first at %s with the message: \"%s\"",
-		first.nick, first.time.Format("15:04"), first.body))
+	guildID := p.config.Get("discord.guildid", "")
+	p.bot.Send(c, bot.Message, ch, fmt.Sprintf("%s had first at %s",
+		first.nick, first.time.Format("15:04")), bot.MessageReference{
+		MessageID: first.messageID,
+		ChannelID: first.channel,
+		GuildID:   guildID,
+	})
 }
 
 // Help responds to help requests. Every plugin must implement a help function.
