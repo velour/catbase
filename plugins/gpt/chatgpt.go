@@ -24,7 +24,7 @@ func (p *GPTPlugin) chatGPT(request string) (string, error) {
 		}
 	}
 	if p.chatCount > p.c.GetInt("gpt.maxchats", 10) {
-		p.setPrompt(p.c.Get("gpt3.lastprompt", p.getDefaultPrompt()))
+		p.setPrompt(p.c.Get("gpt.lastprompt", p.getDefaultPrompt()))
 		p.chatCount = 0
 	}
 	p.chatCount++
@@ -42,7 +42,8 @@ func (p *GPTPlugin) setPrompt(prompt string) error {
 		return err
 	}
 	session = client.NewChatSession(prompt)
-	err = p.c.Set("gpt3.lastprompt", prompt)
+	session.Model = p.c.Get("gpt.model", "gpt-3.5-turbo")
+	err = p.c.Set("gpt.lastprompt", prompt)
 	if err != nil {
 		return err
 	}
