@@ -3,8 +3,9 @@ package gpt
 import (
 	"context"
 	"fmt"
+
+	"github.com/andrewstuart/openai"
 )
-import "github.com/andrewstuart/openai"
 
 var session openai.ChatSession
 var client *openai.Client

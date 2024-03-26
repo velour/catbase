@@ -68,7 +68,7 @@ func ParseValues(r *regexp.Regexp, body string) RegexValues {
 
 func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.Message, args ...any) bool {
 	t := reflect.TypeOf(plugin).String()
-	for _, spec := range b.callbacks[t][evt] {
+	req := func(spec HandlerSpec) bool {
 		if spec.Regex.MatchString(message.Body) {
 			req := Request{
 				Conn:   conn,
@@ -80,6 +80,17 @@ func (b *bot) runCallback(conn Connector, plugin Plugin, evt Kind, message msg.M
 			if spec.Handler(req) {
 				return true
 			}
+		}
+		return false
+	}
+	for _, spec := range b.callbacks[t][Any] {
+		if req(spec) {
+			return true
+		}
+	}
+	for _, spec := range b.callbacks[t][evt] {
+		if req(spec) {
+			return true
 		}
 	}
 	return false
