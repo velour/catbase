@@ -19,6 +19,8 @@ import (
 const (
 	_ = iota
 
+	// Any will be picked up by the matcher as generic
+	Any
 	// Message any standard chat
 	Message
 	// Ephemeral sends a disappearing message to a user in chat

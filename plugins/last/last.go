@@ -73,7 +73,7 @@ func (p *LastPlugin) register() {
 			Handler:  p.whoKilledChannel,
 		},
 		{
-			Kind: bot.Message, IsCmd: false,
+			Kind: bot.Any, IsCmd: false,
 			Regex:    regexp.MustCompile(`.*`),
 			HelpText: "Last does secret stuff you don't need to know about.",
 			Handler:  p.recordLast,
@@ -192,7 +192,20 @@ func (p *LastPlugin) sayLast(c bot.Connector, chFrom, chTo string, force bool) {
 		}
 		return
 	}
-	msg := fmt.Sprintf(`%s killed the channel last night`, l.Nick)
+	timeOfDay := "last night"
+	hour := time.Unix(l.Time, 0).Hour()
+	if hour < 18 {
+		timeOfDay = "in the afternoon"
+	}
+	if hour < 12 {
+		timeOfDay = "in the morning"
+	}
+	log.Debug().
+		Str("timeOfDay", timeOfDay).
+		Int("hour", hour).
+		Int64("l.Time", l.Time).
+		Msgf("killed")
+	msg := fmt.Sprintf(`%s killed the channel %s`, l.Nick, timeOfDay)
 	guildID := p.c.Get("discord.guildid", "")
 	p.b.Send(c, bot.Message, chTo, msg, bot.MessageReference{
 		MessageID: l.MessageID,
