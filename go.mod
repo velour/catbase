@@ -7,7 +7,7 @@ toolchain go1.22.0
 require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
-	github.com/PuerkitoBio/goquery v1.8.1
+	github.com/PuerkitoBio/goquery v1.9.1
 	github.com/a-h/templ v0.2.543
 	github.com/andrewstuart/openai v0.28.0
 	github.com/bwmarrin/discordgo v0.26.1
@@ -47,7 +47,7 @@ require (
 	github.com/AlekSi/pointer v1.1.0 // indirect
 	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
 	github.com/andrewstuart/p v1.1.0 // indirect
-	github.com/andybalholm/cascadia v1.3.1 // indirect
+	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/antchfx/htmlquery v1.2.0 // indirect
 	github.com/antchfx/xmlquery v1.3.1 // indirect
 	github.com/antchfx/xpath v1.1.10 // indirect
