@@ -8,7 +8,7 @@ require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/PuerkitoBio/goquery v1.8.1
-	github.com/a-h/templ v0.2.543
+	github.com/a-h/templ v0.2.648
 	github.com/andrewstuart/openai v0.28.0
 	github.com/bwmarrin/discordgo v0.26.1
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
