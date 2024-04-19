@@ -93,7 +93,9 @@ func (d Discord) Send(kind bot.Kind, args ...any) (string, error) {
 		return d.sendMessage(args[0].(string), msg, false, args...)
 	case bot.Reaction:
 		msg := args[2].(msg.Message)
-		err := d.client.MessageReactionAdd(args[0].(string), msg.ID, args[1].(string))
+		snowflake := d.GetEmojySnowflake(args[1].(string))
+		log.Debug().Str("snowflake", snowflake).Msg("bot.Send")
+		err := d.client.MessageReactionAdd(args[0].(string), msg.ID, snowflake)
 		return args[1].(string), err
 	case bot.Delete:
 		ch := args[0].(string)
@@ -213,12 +215,21 @@ func (d *Discord) GetEmojiList(force bool) map[string]string {
 	return emojis
 }
 
-func (d *Discord) GetEmojySnowflake(name string) string {
+func (d *Discord) GetEmojyID(name string) string {
 	list := d.GetEmojiList(true)
 	for k, v := range list {
-		if name == v {
+		log.Debug().Str("k", k).Str("v", v).Str("name", name).Msg("emoj")
+		if strings.Contains(name, v) {
 			return k
 		}
+	}
+	return name
+}
+
+func (d *Discord) GetEmojySnowflake(name string) string {
+	id := d.GetEmojyID(name)
+	if id != name {
+		return name + ":" + id
 	}
 	return name
 }
@@ -374,7 +385,7 @@ func (d *Discord) UploadEmojy(emojy, path string) error {
 }
 
 func (d *Discord) DeleteEmojy(emojy string) error {
-	emojyID := d.GetEmojySnowflake(emojy)
+	emojyID := d.GetEmojyID(emojy)
 	return d.client.GuildEmojiDelete(d.guildID, emojyID)
 }
 
