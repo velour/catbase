@@ -4,7 +4,7 @@ package emojifyme
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -26,13 +26,14 @@ func New(b bot.Bot) *EmojifyMePlugin {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error generic emoji list")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error generic emoji list body")
 	}
 
 	type Emoji struct {
+		Emoji   string   `json:"emoji"`
 		Aliases []string `json:"aliases"`
 	}
 
@@ -45,8 +46,14 @@ func New(b bot.Bot) *EmojifyMePlugin {
 	emojiMap := map[string]string{}
 	for _, e := range emoji {
 		for _, alias := range e.Aliases {
-			emojiMap[alias] = alias
+			emojiMap[alias] = e.Emoji
 		}
+	}
+
+	emojy := b.GetEmojiList(true)
+	log.Debug().Interface("emojyList", emojy).Msg("startup")
+	for _, v := range emojy {
+		emojiMap[v] = v
 	}
 
 	ep := &EmojifyMePlugin{
@@ -54,7 +61,7 @@ func New(b bot.Bot) *EmojifyMePlugin {
 		GotBotEmoji: false,
 		Emoji:       emojiMap,
 	}
-	b.RegisterRegex(ep, bot.Message, regexp.MustCompile(`.*`), ep.message)
+	b.RegisterRegex(ep, bot.Any, regexp.MustCompile(`.*`), ep.message)
 	return ep
 }
 
@@ -95,7 +102,13 @@ func (p *EmojifyMePlugin) message(r bot.Request) bool {
 
 	if emojied > 0 && rand.Float64() <= p.Bot.Config().GetFloat64("Emojify.Chance", 0.02)*emojied {
 		for _, e := range emojys {
-			p.Bot.Send(c, bot.Reaction, message.Channel, e, message)
+			log.Debug().
+				Str("emojy", e).
+				Msgf("trying to react")
+			_, err := p.Bot.Send(c, bot.Reaction, message.Channel, e, message)
+			if err != nil {
+				log.Error().Msgf("emojy react error: %s", err)
+			}
 		}
 		return false
 	}
