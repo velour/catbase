@@ -214,7 +214,7 @@ func (p *FirstPlugin) register() {
 					fmt.Sprintf("Deleted first entry: '%s' and set a random timer for when first will happen next.", fe.body))
 				return true
 			}},
-		{Kind: bot.Message, IsCmd: false,
+		{Kind: bot.Any, IsCmd: false,
 			Regex: regexp.MustCompile(`.*`),
 			Handler: func(r bot.Request) bool {
 				if r.Msg.IsIM || !p.enabled || !p.enabled_channel(r) {
