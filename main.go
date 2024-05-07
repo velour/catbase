@@ -6,21 +6,17 @@ package main
 
 import (
 	"flag"
-	"github.com/velour/catbase/plugins"
-	"io"
-	"math/rand"
-	"os"
-	"time"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot/msg"
 	"github.com/velour/catbase/connectors/discord"
+	"github.com/velour/catbase/plugins"
+	"io"
+	"os"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"github.com/velour/catbase/connectors/irc"
-	"github.com/velour/catbase/connectors/slackapp"
 )
 
 var (
@@ -29,13 +25,11 @@ var (
 	initDB    = flag.Bool("init", false, "Initialize the configuration db")
 	prettyLog = flag.Bool("pretty", false, "Use pretty console logger")
 	debug     = flag.Bool("debug", false, "Turn on debug logging")
+	dbpath    = flag.String("db", "catbase.db", "Database file to load. (Defaults to catbase.db)")
+	kvSpace   = flag.String("kv", "catbase", "Namespace for the charm store")
 )
 
 func main() {
-	rand.Seed(time.Now().Unix())
-
-	var dbpath = flag.String("db", "catbase.db",
-		"Database file to load. (Defaults to catbase.db)")
 	flag.Parse() // parses the logging flags.
 
 	var output io.Writer = os.Stdout
@@ -49,7 +43,7 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	c := config.ReadConfig(*dbpath)
+	c := config.ReadConfig(*dbpath, *kvSpace)
 
 	if *key != "" && *val != "" {
 		c.Set(*key, *val)
@@ -68,8 +62,6 @@ func main() {
 	switch c.Get("type", "slackapp") {
 	case "irc":
 		client = irc.New(c)
-	case "slackapp":
-		client = slackapp.New(c)
 	case "discord":
 		client = discord.New(c)
 	default:

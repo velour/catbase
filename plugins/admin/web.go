@@ -186,15 +186,14 @@ func writeErr(ctx context.Context, w http.ResponseWriter, err error) {
 	renderError(err).Render(ctx, w)
 }
 
-type configEntry struct {
+type ConfigEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
 func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
-	var configEntries []configEntry
-	q := `select key, value from config`
-	err := p.db.Select(&configEntries, q)
+	var configEntries []ConfigEntry
+	keys, err := p.cfg.KV.Keys()
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -202,6 +201,22 @@ func (p *AdminPlugin) handleVars(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		fmt.Fprint(w, err)
 		return
+	}
+
+	for _, key := range keys {
+		value, err := p.cfg.KV.Get(key)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Msg("Error getting config entries.")
+			w.WriteHeader(500)
+			fmt.Fprint(w, err)
+			return
+		}
+		configEntries = append(configEntries, ConfigEntry{
+			Key:   key,
+			Value: value,
+		})
 	}
 
 	p.bot.GetWeb().Index("Variables", vars(configEntries)).Render(r.Context(), w)
