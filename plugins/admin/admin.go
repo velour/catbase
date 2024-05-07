@@ -420,6 +420,7 @@ func (p *AdminPlugin) setNick(r bot.Request) bool {
 		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "I can't seem to set a new nick.")
 		return true
 	}
+	p.cfg.Set("nick", nick)
 	p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("I shall now be known as %s.", nick))
 	return true
 }
