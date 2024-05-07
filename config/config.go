@@ -5,6 +5,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/velour/catbase/config/store"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,9 @@ import (
 // the database
 type Config struct {
 	*sqlx.DB
+
+	KV        *store.KV
+	namespace string
 
 	DBFile  string
 	secrets map[string]Secret
@@ -102,14 +106,12 @@ func (c *Config) GetString(key, fallback string) string {
 	if v, found := c.secrets[key]; found {
 		return v.Value
 	}
-	var configValue string
-	q := `select value from config where key=?`
-	err := c.DB.Get(&configValue, q, key)
+
+	value, err := c.KV.Get(key)
 	if err != nil {
-		log.Info().Msgf("WARN: Key %s is empty", key)
 		return fallback
 	}
-	return configValue
+	return value
 }
 
 func (c *Config) GetMap(key string, fallback map[string]string) map[string]string {
@@ -141,20 +143,7 @@ func (c *Config) GetArray(key string, fallback []string) []string {
 }
 
 func (c *Config) Unset(key string) error {
-	q := `delete from config where key=?`
-	tx, err := c.Begin()
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(q, key)
-	if err != nil {
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
+	return c.KV.Delete([]byte(key))
 }
 
 // Set changes the value for a configuration in the database
@@ -162,21 +151,7 @@ func (c *Config) Unset(key string) error {
 func (c *Config) Set(key, value string) error {
 	key = strings.ToLower(key)
 	value = strings.Trim(value, "`")
-	q := `insert into config (key,value) values (?, ?)
-			on conflict(key) do update set value=?;`
-	tx, err := c.Begin()
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(q, key, value, value)
-	if err != nil {
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
+	return c.KV.Set(key, value)
 }
 
 func (c *Config) RefreshSecrets() error {
@@ -246,19 +221,26 @@ func (c *Config) SetArray(key string, values []string) error {
 }
 
 // Readconfig loads the config data out of a JSON file located in cfile
-func ReadConfig(dbpath string) *Config {
+func ReadConfig(dbpath, namespace string) *Config {
 	if dbpath == "" {
 		dbpath = "catbase.db"
 	}
-	log.Info().Msgf("Using %s as database file.\n", dbpath)
+	log.Info().Msgf("Using %s as database file and %s charm namespace.\n", dbpath, namespace)
+
+	charmDB, err := store.New(namespace)
+	if err != nil {
+		log.Fatal().Err(err)
+	}
 
 	sqlDB, err := sqlx.Open("sqlite3", dbpath)
 	if err != nil {
 		log.Fatal().Err(err)
 	}
 	c := Config{
-		DBFile:  dbpath,
-		secrets: map[string]Secret{},
+		DBFile:    dbpath,
+		secrets:   map[string]Secret{},
+		KV:        charmDB,
+		namespace: namespace,
 	}
 	c.DB = sqlDB
 

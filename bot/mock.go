@@ -114,7 +114,7 @@ func (mb *MockBot) UploadEmojy(emojy, path string) error           { return nil 
 func (mb *MockBot) RegisterFilter(s string, f func(string) string) {}
 
 func NewMockBot() *MockBot {
-	cfg := config.ReadConfig(":memory:")
+	cfg := config.ReadConfig(":memory:", ":memory:")
 	b := MockBot{
 		Cfg:      cfg,
 		Messages: make([]string, 0),
