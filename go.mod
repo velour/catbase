@@ -29,7 +29,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/kevinburke/twilio-go v0.0.0-20200424172635-4f0b2357b852
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/mmcdole/gofeed v1.1.3
+	github.com/mmcdole/gofeed v1.3.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/nicklaw5/helix v1.25.0
 	github.com/olebedev/when v0.0.0-20190311101825-c3b538a97254
@@ -85,7 +85,7 @@ require (
 	github.com/kevinburke/rest v0.0.0-20200429221318-0d2892b400f8 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
+	github.com/mmcdole/goxpp v1.1.1-0.20240225020742-a0c311522b23 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
