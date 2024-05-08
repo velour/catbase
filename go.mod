@@ -12,7 +12,7 @@ require (
 	github.com/andrewstuart/openai v0.28.0
 	github.com/bwmarrin/discordgo v0.26.1
 	github.com/cdipaolo/goml v0.0.0-20190412180403-e1f51f713598
-	github.com/cenkalti/backoff/v4 v4.2.1
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
 	github.com/disintegration/imageorient v0.0.0-20180920195336-8147d86e83ec
