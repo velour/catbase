@@ -1,4 +1,4 @@
-package gpt
+package llm
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ import (
 const gpt3URL = "https://api.openai.com/v1/engines/%s/completions"
 const gpt3ModURL = "https://api.openai.com/v1/moderations"
 
-type GPTPlugin struct {
+type LLMPlugin struct {
 	b bot.Bot
 	c *config.Config
 	h bot.HandlerTable
@@ -27,8 +27,8 @@ type chatEntry struct {
 	Content string `json:"content"`
 }
 
-func New(b bot.Bot) *GPTPlugin {
-	p := &GPTPlugin{
+func New(b bot.Bot) *LLMPlugin {
+	p := &LLMPlugin{
 		b: b,
 		c: b.Config(),
 	}
@@ -36,7 +36,7 @@ func New(b bot.Bot) *GPTPlugin {
 	return p
 }
 
-func (p *GPTPlugin) register() {
+func (p *LLMPlugin) register() {
 	p.h = bot.HandlerTable{
 		{
 			Kind: bot.Message, IsCmd: true,
@@ -60,7 +60,7 @@ func (p *GPTPlugin) register() {
 	p.b.RegisterTable(p, p.h)
 }
 
-func (p *GPTPlugin) setPromptMessage(r bot.Request) bool {
+func (p *LLMPlugin) setPromptMessage(r bot.Request) bool {
 	prompt := r.Values["text"]
 	if err := p.setPrompt(prompt); err != nil {
 		resp := fmt.Sprintf("Error: %s", err)
@@ -70,7 +70,7 @@ func (p *GPTPlugin) setPromptMessage(r bot.Request) bool {
 	return true
 }
 
-func (p *GPTPlugin) chatMessage(r bot.Request) bool {
+func (p *LLMPlugin) chatMessage(r bot.Request) bool {
 	if slices.Contains(p.c.GetArray("gpt.silence", []string{}), r.Msg.Channel) {
 		log.Debug().Msgf("%s silenced", r.Msg.Channel)
 		return true
@@ -78,7 +78,7 @@ func (p *GPTPlugin) chatMessage(r bot.Request) bool {
 	return p.chatMessageForce(r)
 }
 
-func (p *GPTPlugin) chatMessageForce(r bot.Request) bool {
+func (p *LLMPlugin) chatMessageForce(r bot.Request) bool {
 	p.chatHistory = append(p.chatHistory, chatEntry{
 		Role:    "user",
 		Content: r.Values["text"],

@@ -1,4 +1,4 @@
-package gpt
+package llm
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 var session openai.ChatSession
 var client *openai.Client
 
-func (p *GPTPlugin) getClient() (*openai.Client, error) {
+func (p *LLMPlugin) getClient() (*openai.Client, error) {
 	token := p.c.Get("gpt.token", "")
 	if token == "" {
 		return nil, fmt.Errorf("no GPT token given")
@@ -18,7 +18,7 @@ func (p *GPTPlugin) getClient() (*openai.Client, error) {
 	return openai.NewClient(token)
 }
 
-func (p *GPTPlugin) chatGPT(request string) (string, error) {
+func (p *LLMPlugin) chatGPT(request string) (string, error) {
 	if client == nil {
 		if err := p.setPrompt(p.getDefaultPrompt()); err != nil {
 			return "", err
@@ -32,11 +32,11 @@ func (p *GPTPlugin) chatGPT(request string) (string, error) {
 	return session.Complete(context.Background(), request)
 }
 
-func (p *GPTPlugin) getDefaultPrompt() string {
+func (p *LLMPlugin) getDefaultPrompt() string {
 	return p.c.Get("gpt.prompt", "")
 }
 
-func (p *GPTPlugin) setPrompt(prompt string) error {
+func (p *LLMPlugin) setPrompt(prompt string) error {
 	var err error
 	client, err = p.getClient()
 	if err != nil {
