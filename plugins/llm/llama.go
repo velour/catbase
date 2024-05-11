@@ -11,16 +11,16 @@ import (
 )
 
 var InstanceNotFoundError = errors.New("instance not found")
-var empty = chatEntry{}
+var empty = llamaResponse{}
 
 func (g *LLMPlugin) llama() (chatEntry, error) {
-	llamaURL := g.c.Get("gpt.llamaurl", "")
-	if llamaURL == "" {
-		return empty, fmt.Errorf("could not find llama url")
+	llamaURL := g.c.GetArray("gpt.llamaurls", []string{})
+	if len(llamaURL) == 0 {
+		return chatEntry{}, fmt.Errorf("could not find llama url")
 	}
 	llamaModel := g.c.Get("gpt.llamamodel", "")
 	if llamaModel == "" {
-		return empty, fmt.Errorf("could not find llama model")
+		return chatEntry{}, fmt.Errorf("could not find llama model")
 	}
 
 	req := llamaRequest{
@@ -29,6 +29,19 @@ func (g *LLMPlugin) llama() (chatEntry, error) {
 		Stream:   false,
 	}
 
+	for _, u := range llamaURL {
+		llamaResp, err := mkRequest(u, req)
+		if err != nil {
+			continue
+		}
+
+		return llamaResp.Message, nil
+	}
+
+	return chatEntry{}, InstanceNotFoundError
+}
+
+func mkRequest(llamaURL string, req llamaRequest) (llamaResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return empty, fmt.Errorf("could not marshal llama request: %w", err)
@@ -50,7 +63,7 @@ func (g *LLMPlugin) llama() (chatEntry, error) {
 		return empty, fmt.Errorf("could not unmarshal llama response: %w, raw: %s", err, string(body))
 	}
 
-	return llamaResp.Message, nil
+	return llamaResp, nil
 }
 
 type llamaRequest struct {
