@@ -40,6 +40,12 @@ func (p *LLMPlugin) register() {
 	p.h = bot.HandlerTable{
 		{
 			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?is)^gpt-prompt: (?P<text>.*)`),
+			HelpText: "set the ChatGPT prompt",
+			Handler:  p.setPromptMessage,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^llm (?P<text>.*)`),
 			HelpText: "chat completion",
 			Handler:  p.chatMessageForce,
@@ -55,12 +61,6 @@ func (p *LLMPlugin) register() {
 			Regex:    regexp.MustCompile(`(?is)^got (?P<text>.*)`),
 			HelpText: "chat completion",
 			Handler:  p.chatMessageForce,
-		},
-		{
-			Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?is)^gpt-prompt: (?P<text>.*)`),
-			HelpText: "set the ChatGPT prompt",
-			Handler:  p.setPromptMessage,
 		},
 	}
 	p.b.RegisterTable(p, p.h)
@@ -89,6 +89,10 @@ func (p *LLMPlugin) chatMessageForce(r bot.Request) bool {
 		Role:    "user",
 		Content: r.Values["text"],
 	})
+	maxHist := p.c.GetInt("gpt.maxhist", 10)
+	if len(p.chatHistory) > maxHist {
+		p.chatHistory = p.chatHistory[len(p.chatHistory)-maxHist:]
+	}
 	chatResp, err := p.llama()
 	if err == nil {
 		p.chatHistory = append(p.chatHistory, chatResp)

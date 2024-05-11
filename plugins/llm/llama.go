@@ -23,9 +23,16 @@ func (g *LLMPlugin) llama() (chatEntry, error) {
 		return chatEntry{}, fmt.Errorf("could not find llama model")
 	}
 
+	prompt := g.c.Get("gpt.lastprompt", g.c.Get("gpt.prompt", ""))
+	hist := []chatEntry{{
+		Role:    "system",
+		Content: prompt,
+	}}
+	hist = append(hist, g.chatHistory...)
+
 	req := llamaRequest{
 		Model:    llamaModel,
-		Messages: g.chatHistory,
+		Messages: hist,
 		Stream:   false,
 	}
 
