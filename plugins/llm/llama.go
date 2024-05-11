@@ -37,6 +37,9 @@ func (g *LLMPlugin) llama() (chatEntry, error) {
 	}
 
 	for _, u := range llamaURL {
+		if err := g.healthCheck(u); err != nil {
+			continue
+		}
 		llamaResp, err := mkRequest(u, req)
 		if err != nil {
 			continue
@@ -46,6 +49,19 @@ func (g *LLMPlugin) llama() (chatEntry, error) {
 	}
 
 	return chatEntry{}, InstanceNotFoundError
+}
+
+func (p *LLMPlugin) healthCheck(llamaURL string) error {
+	timeout := p.c.GetInt("gpt.timeout", 1000)
+	req, _ := http.NewRequest("get", llamaURL, nil)
+	client := http.Client{
+		Timeout: time.Duration(timeout) * time.Millisecond,
+	}
+	_, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func mkRequest(llamaURL string, req llamaRequest) (llamaResponse, error) {
