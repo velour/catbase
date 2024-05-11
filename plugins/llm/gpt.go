@@ -40,6 +40,12 @@ func (p *LLMPlugin) register() {
 	p.h = bot.HandlerTable{
 		{
 			Kind: bot.Message, IsCmd: true,
+			Regex:    regexp.MustCompile(`(?is)^llm (?P<text>.*)`),
+			HelpText: "chat completion",
+			Handler:  p.chatMessageForce,
+		},
+		{
+			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^gpt (?P<text>.*)`),
 			HelpText: "chat completion",
 			Handler:  p.chatMessageForce,
