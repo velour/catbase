@@ -22,10 +22,10 @@ import (
 	"github.com/velour/catbase/plugins/giphy"
 	"github.com/velour/catbase/plugins/git"
 	"github.com/velour/catbase/plugins/goals"
-	"github.com/velour/catbase/plugins/gpt"
 	"github.com/velour/catbase/plugins/inventory"
 	"github.com/velour/catbase/plugins/last"
 	"github.com/velour/catbase/plugins/leftpad"
+	"github.com/velour/catbase/plugins/llm"
 	"github.com/velour/catbase/plugins/mayi"
 	"github.com/velour/catbase/plugins/meme"
 	"github.com/velour/catbase/plugins/nerdepedia"
@@ -101,7 +101,7 @@ func Register(b bot.Bot) {
 	b.AddPlugin(topic.New(b))
 	b.AddPlugin(talker.New(b))
 	b.AddPlugin(fact.New(b))
-	b.AddPlugin(gpt.New(b))
+	b.AddPlugin(llm.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(deadend.New(b))
 }

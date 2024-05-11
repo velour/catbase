@@ -1,4 +1,4 @@
-package gpt
+package llm
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 var InstanceNotFoundError = errors.New("instance not found")
 var empty = chatEntry{}
 
-func (g *GPTPlugin) llama() (chatEntry, error) {
+func (g *LLMPlugin) llama() (chatEntry, error) {
 	llamaURL := g.c.Get("gpt.llamaurl", "")
 	if llamaURL == "" {
 		return empty, fmt.Errorf("could not find llama url")
