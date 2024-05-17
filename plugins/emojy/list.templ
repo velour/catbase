@@ -1,35 +1,25 @@
 package emojy
 
 templ (p *EmojyPlugin) listTempl(emojy emojyMap) {
-    <div class="grid-container">
-        <div class="grid-x">
-            <div class="cell">
-                <h2>Emojy</h2>
-            </div>
-        </div>
-        <div class="grid-x">
-            <div class="cell">
-                @p.emojyNav()
-            </div>
-        </div>
-        <div class="grid-x grid-margin-x small-up-3 medium-up-6 large-up-8">
-            for _, v := range emojy {
-                for _, c := range v {
-                    <div class="cell">
-                    <div class="card"
-                        style="max-width: 100px">
-                      <img src={ c.URL }
-                            style="max-height: 100px"
-                            style="max-width: 100px"
-                            alt={ c.Emojy }
-                            />
-                      <div class="card-divider">
-                        { c.Emojy }
-                      </div>
-                    </div>
-                    </div>
-                }
+    <h1>Emojy</h1>
+
+    @p.emojyNav()
+
+    <div class="grid">
+        for _, v := range emojy {
+            for _, c := range v {
+                <article
+                    style="max-width: 100px">
+                  <img src={ c.URL }
+                        style="max-height: 100px"
+                        style="max-width: 100px"
+                        alt={ c.Emojy }
+                        />
+                  <footer>
+                    { c.Emojy }
+                  </footer>
+                </article>
             }
-        </div>
+        }
     </div>
 }

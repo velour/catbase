@@ -4,8 +4,23 @@ import "fmt"
 
 templ (w *Web) Header(title string) {
     <head>
-        <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/foundation-sites@6.8.1/dist/css/foundation.min.css" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
+        <style>
+        .navTitle {
+            text-style: none;
+            color: var(--pico-h1-color);
+        }
+        input:invalid {
+            border: 2px dashed red;
+        }
+        button {
+            padding: 5px;
+        }
+        </style>
         <meta charset="UTF-8" />
         if title != "" {
             <title>{ w.botName() } - { title }</title>
@@ -17,8 +32,6 @@ templ (w *Web) Header(title string) {
 
 templ (w *Web) Footer() {
     <script src="//unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
-    <script src="//cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <script src="//cdn.jsdelivr.net/npm/foundation-sites@6.8.1/dist/js/foundation.min.js"></script>
 }
 
 templ (w *Web) Index(title string, contents templ.Component) {
@@ -29,41 +42,42 @@ templ (w *Web) Index(title string, contents templ.Component) {
 
     @w.Nav(title)
 
-    if contents != nil {
-        @contents
-    }
+    <main class="container-fluid">
+        if contents != nil {
+            @contents
+        }
+    </main>
 
-    @w.Footer()
+    <footer>
+        @w.Footer()
+    </footer>
     </body>
     </html>
 }
 
 templ (w *Web) Nav(currentPage string) {
-
-    <div class="top-bar">
-        <div class="top-bar-left">
-            <ul class="menu">
-                <li><a style="color: black; font-weight: bold;" href="/">{ w.botName() }</a></li>
-                for _, item := range w.GetWebNavigation() {
-                    <li>
-                        if currentPage == item.Name {
-                            <a class="is-active" aria-current="page" href={ templ.URL(item.URL) }>{ item.Name }</a>
-                        } else {
-                            <a href={ templ.URL(item.URL) }>{ item.Name }</a>
-                        }
-                    </li>
+    <header>
+    <nav style="margin-right: 2em; margin-left: 2em">
+      <ul>
+        <li><strong><a href="/" class="navTitle">{ w.botName() }</a></strong></li>
+      </ul>
+      <ul>
+        for _, item := range w.GetWebNavigation() {
+            <li>
+                if currentPage == item.Name {
+                    <a class="is-active" aria-current="page" href={ templ.URL(item.URL) }>{ item.Name }</a>
+                } else {
+                    <a href={ templ.URL(item.URL) }>{ item.Name }</a>
                 }
-            </ul>
-        </div>
-    </div>
+            </li>
+        }
+      </ul>
+    </nav>
+    </header>
 }
 
 templ (w *Web) showStats() {
-    <div class="grid-container">
-    <div class="cell">
     <h2>Stats</h2>
-    </div>
-    <div class="cell">
 
     <table>
         <tr>
@@ -79,6 +93,4 @@ templ (w *Web) showStats() {
             <td>{ w.stats.Uptime() }</td>
         </tr>
     </table>
-    </div>
-    </div>
 }

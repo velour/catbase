@@ -25,7 +25,7 @@ func (s *SecretsPlugin) index() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"grid-container\"><form hx-post=\"/secrets/add\" hx-target=\"#data\"><div class=\"grid-x\"><h2>Secrets</h2></div><div class=\"grid-x\"><div class=\"cell auto\"><div class=\"input-group\"><span class=\"input-group-label\">Key</span> <input class=\"input-group-field\" placeholder=\"Key...\" name=\"key\"></div></div><div class=\"cell auto\"><div class=\"input-group\"><span class=\"input-group-label\">Value</span> <input class=\"input-group-field\" placeholder=\"Value...\" name=\"value\"><div class=\"input-group-button\"><button class=\"button primary\" type=\"submit\">Add Secret</button></div></div></div></div></form><div class=\"grid-x grid-margin-x\"><div id=\"data\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<h2>Secrets</h2><form hx-post=\"/secrets/add\" hx-target=\"#data\"><fieldset><label>Key <input class=\"input-group-field\" placeholder=\"Key...\" name=\"key\"></label> <label>Value <input class=\"input-group-field\" placeholder=\"Value...\" name=\"value\"></label></fieldset><button class=\"button primary\" type=\"submit\">Add Secret</button></form><div id=\"data\" style=\"margin-top: 2em\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -33,7 +33,7 @@ func (s *SecretsPlugin) index() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -57,7 +57,7 @@ func (s *SecretsPlugin) keysList() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<ul class=\"no-bullet\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<h2>Keys List</h2><ul class=\"no-bullet\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -85,7 +85,7 @@ func (s *SecretsPlugin) keysList() templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(key)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `plugins/secrets/secrets.templ`, Line: 48, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `plugins/secrets/secrets.templ`, Line: 36, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {

@@ -1,94 +1,80 @@
 package meme
 
 templ (p *MemePlugin) index(all webResps) {
-    <div class="grid-container">
-    <h2>Meme</h2>
+    <h2>New Meme</h2>
     <form>
-    <div class="grid-x grid-margin-x">
-        <div class="cell auto">
-            <input type="text" name="name" placeholder="Name..." />
-        </div>
-        <div class="cell auto">
-            <input type="text" name="url" placeholder="URL..." />
-        </div>
-        <div class="cell auto">
-            <textarea name="config">
-            </textarea>
-        </div>
-        <div class="cell small-2">
-            <button class="button"
-                hx-post="/meme/add"
-                hx-target="#newMemes"
-            >Save</button>
-        </div>
-    </div>
+        <input type="text" name="name" placeholder="Name..." />
+        <input type="text" name="url" placeholder="URL..." />
+        <textarea name="config">
+        </textarea>
+        <button class="button"
+            hx-post="/meme/add"
+            hx-target="#newMemes"
+        >Save</button>
     </form>
+
+    <h2>Current Memes</h2>
+
     <div id="newMemes">
     </div>
+    <div class="grid">
     for _, meme := range all {
+        <div>
         @p.Show(meme)
+        </div>
     }
     </div>
 }
 
 templ (p *MemePlugin) Show(meme webResp) {
-    <div class="grid-x grid-margin-x" id={ meme.Name }>
-        <div class="cell small-3">
-            <div class="card"
-                style="max-width: 200px">
-                <img
-                    class="thumbnail"
-                    style="max-height: 250px; max-width: 250px;"
-                    alt={ meme.Name }
-                    src={ meme.URL } />
-                <div class="card-divider">
-                    <p>{ meme.Name }</p>
-                </div>
-            </div>
-        </div>
-        <div class="cell small-7">
-            <pre>
-                { meme.Config }
-            </pre>
-        </div>
-        <div class="cell small-2">
-            <button class="button"
-                hx-get={ "/meme/edit/"+meme.Name }
-                hx-target={ "#"+meme.Name }
-                hx-swap="outerHTML"
-            >Edit</button>
-        </div>
-    </div>
+    <article id={ meme.Name }>
+        <header>
+        <img
+            class="thumbnail"
+            style="max-height: 250px; max-width: 250px;"
+            alt={ meme.Name }
+            src={ meme.URL } />
+            <p>{ meme.Name }</p>
+        </header>
+        <pre>
+            { meme.Config }
+        </pre>
+        <footer>
+        <button class="button"
+            hx-get={ "/meme/edit/"+meme.Name }
+            hx-target={ "#"+meme.Name }
+            hx-swap="outerHTML"
+        >Edit</button>
+        </footer>
+    </article>
 }
 
 templ (p *MemePlugin) Edit(meme webResp) {
     <form>
-    <div class="grid-x grid-margin-x" id={ meme.Name }>
-        <div class="cell-small-3">
-            <img
-                class="thumbnail"
-                style="max-height: 150px"
-                alt={ meme.Name }
-                src={ meme.URL } />
-        </div>
-        <div class="cell small-7">
-            <textarea name="config" rows="10">
-                { meme.Config }
-            </textarea>
-            <input type="text" name="url" value={ meme.URL } />
-        </div>
-        <div class="cell small-2">
-            <button class="button"
-                hx-put={ "/meme/save/"+meme.Name }
-                hx-target={ "#"+meme.Name }
-                hx-swap="outerHTML"
-            >Save</button>
-            <button class="button alert"
-                hx-delete={ "/meme/rm/"+meme.Name }
-                hx-target={ "#"+meme.Name }
-                hx-swap="outerHTML"
-            >Delete</button>
-        </div>
-    </div>
+        <article id={ meme.Name }>
+        <header>
+        <img
+            class="thumbnail"
+            style="max-height: 150px"
+            alt={ meme.Name }
+            src={ meme.URL } />
+       </header>
+        <textarea name="config" rows="10">
+            { meme.Config }
+        </textarea>
+        <input type="text" name="url" value={ meme.URL } />
+        <footer>
+        <button class="button"
+            hx-put={ "/meme/save/"+meme.Name }
+            hx-target={ "#"+meme.Name }
+            hx-swap="outerHTML"
+        >Save</button>
+        <button class="button alert"
+            hx-delete={ "/meme/rm/"+meme.Name }
+            hx-target={ "#"+meme.Name }
+            hx-swap="outerHTML"
+        >Delete</button>
+        </footer>
+        </article>
     </form>
 }

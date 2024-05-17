@@ -9,31 +9,26 @@ func urlFor(who, what, dir string) string {
 func (p *CounterPlugin) allItems() map[string][]Item {
     items, err := GetAllItemsByUser(p.db)
     if err != nil {
-        return map[string][]Item{"error": []Item{}}
+        return map[string][]Item{"error": {}}
     }
     return items
 }
 
 templ (p *CounterPlugin) index() {
-    <div class="grid-container">
-        <div class="grid-x">
-            <h2>Counter</h2>
-        </div>
-        <div class="grid-x">
-            <div class="input-group">
-              <span class="input-group-label">Password</span>
-              <input class="input-group-field" type="text" name="password" />
-            </div>
-        </div>
-        <table>
-            for user, items := range p.allItems() {
+    <h2>Counter</h2>
+    <label>Password
+        <input class="input-group-field" type="text" name="password" />
+    </label>
+    <table class="striped">
+        for user, items := range p.allItems() {
+            <thead>
                 <tr><th class="text-left" colspan="3">{ user }</th></tr>
-                for _, thing := range items {
-                    @p.renderItem(user, thing)
-                }
+            </thead>
+            for _, thing := range items {
+                @p.renderItem(user, thing)
             }
-        </table>
-    </div>
+        }
+    </table>
 }
 
 templ (p *CounterPlugin) renderItem(user string, item Item) {
