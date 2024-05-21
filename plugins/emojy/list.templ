@@ -1,25 +1,29 @@
 package emojy
 
-templ (p *EmojyPlugin) listTempl(emojy emojyMap) {
+templ (p *EmojyPlugin) listTempl(emojy []EmojyCount) {
     <h1>Emojy</h1>
 
     @p.emojyNav()
 
-    <div class="grid">
-        for _, v := range emojy {
-            for _, c := range v {
-                <article
-                    style="max-width: 100px">
-                  <img src={ c.URL }
-                        style="max-height: 100px"
-                        style="max-width: 100px"
-                        alt={ c.Emojy }
-                        />
-                  <footer>
-                    { c.Emojy }
-                  </footer>
-                </article>
-            }
-        }
+    <div class="row">
+    for _, e := range emojy {
+        <div class="col-xs">
+            <div class="box">@p.listItem(e)</div>
+        </div>
+    }
     </div>
+}
+
+templ (p *EmojyPlugin) listItem(e EmojyCount) {
+    <article
+        style="width: 100px">
+      <img src={ e.URL }
+            style="max-height: 100px"
+            style="max-width: 100px"
+            alt={ e.Emojy }
+            />
+      <footer>
+        { e.Emojy }
+      </footer>
+    </article>
 }

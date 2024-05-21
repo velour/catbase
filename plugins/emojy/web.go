@@ -43,7 +43,7 @@ func (p *EmojyPlugin) handleUploadForm(w http.ResponseWriter, r *http.Request) {
 
 func (p *EmojyPlugin) handleList(w http.ResponseWriter, r *http.Request) {
 	threshold := p.c.GetInt("emojy.statthreshold", 1)
-	emojy, err := p.allCounts(threshold)
+	emojy, err := p.allCountsFlat(threshold)
 	if err != nil {
 		fmt.Fprintf(w, "Error: %s", err)
 		return

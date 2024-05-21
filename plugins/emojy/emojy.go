@@ -207,6 +207,18 @@ func InvertEmojyList(emojy map[string]string) map[string]string {
 	return out
 }
 
+func (p *EmojyPlugin) allCountsFlat(threshold int) ([]EmojyCount, error) {
+	emoji, err := p.allCounts(threshold)
+	if err != nil {
+		return nil, err
+	}
+	output := []EmojyCount{}
+	for _, v := range emoji {
+		output = append(output, v...)
+	}
+	return output, nil
+}
+
 func (p *EmojyPlugin) allCounts(threshold int) (map[string][]EmojyCount, error) {
 	out := map[string][]EmojyCount{}
 	onServerList := InvertEmojyList(p.b.GetEmojiList(true))

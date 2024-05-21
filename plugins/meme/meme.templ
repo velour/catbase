@@ -17,26 +17,27 @@ templ (p *MemePlugin) index(all webResps) {
 
     <div id="newMemes">
     </div>
-    <div class="grid">
+
+   <div class="row">
     for _, meme := range all {
-        <div>
-        @p.Show(meme)
+       <div class="col-xs">
+            <div class="box">@p.Show(meme)</div>
         </div>
     }
     </div>
 }
 
 templ (p *MemePlugin) Show(meme webResp) {
-    <article id={ meme.Name }>
+    <article id={ meme.Name } style="width: 300px">
         <header>
         <img
             class="thumbnail"
-            style="max-height: 250px; max-width: 250px;"
+            style="max-height: 300px; max-width: 300px;"
             alt={ meme.Name }
             src={ meme.URL } />
             <p>{ meme.Name }</p>
         </header>
-        <pre>
+        <pre style="max-width: 300px; overflow: auto">
             { meme.Config }
         </pre>
         <footer>
@@ -50,12 +51,12 @@ templ (p *MemePlugin) Show(meme webResp) {
 }
 
 templ (p *MemePlugin) Edit(meme webResp) {
-    <form>
+    <form style="width: 300px">
         <article id={ meme.Name }>
         <header>
         <img
             class="thumbnail"
-            style="max-height: 150px"
+            style="max-height: 250px"
             alt={ meme.Name }
             src={ meme.URL } />
        </header>
