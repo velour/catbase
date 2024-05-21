@@ -25,7 +25,7 @@ func (w *Web) Header(title string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><style>\n        .navTitle {\n            text-style: none;\n            color: var(--pico-h1-color);\n        }\n        input:invalid {\n            border: 2px dashed red;\n        }\n        button {\n            padding: 5px;\n        }\n        </style><meta charset=\"UTF-8\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css\" type=\"text/css\"><style>\n        .navTitle {\n            text-style: none;\n            color: var(--pico-h1-color);\n        }\n        input:invalid {\n            border: 2px dashed red;\n        }\n        button {\n            padding: 5px;\n        }\n        </style><meta charset=\"UTF-8\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -37,7 +37,7 @@ func (w *Web) Header(title string) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(w.botName())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 25, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 26, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -50,7 +50,7 @@ func (w *Web) Header(title string) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 25, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 26, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -68,7 +68,7 @@ func (w *Web) Header(title string) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(w.botName())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 27, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 28, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -192,7 +192,7 @@ func (w *Web) Nav(currentPage string) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(w.botName())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 61, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 62, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -224,7 +224,7 @@ func (w *Web) Nav(currentPage string) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 67, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 68, Col: 101}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -251,7 +251,7 @@ func (w *Web) Nav(currentPage string) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 69, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 70, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -298,7 +298,7 @@ func (w *Web) showStats() templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", w.stats.MessagesRcv))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 84, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 85, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -311,7 +311,7 @@ func (w *Web) showStats() templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", w.stats.MessagesSent))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 88, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 89, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -324,7 +324,7 @@ func (w *Web) showStats() templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(w.stats.Uptime())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 92, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `bot/web/index.templ`, Line: 93, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
