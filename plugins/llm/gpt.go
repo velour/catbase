@@ -7,7 +7,6 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"regexp"
-	"slices"
 )
 
 const gpt3URL = "https://api.openai.com/v1/engines/%s/completions"
@@ -47,20 +46,20 @@ func (p *LLMPlugin) register() {
 		{
 			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^llm (?P<text>.*)`),
-			HelpText: "chat completion",
-			Handler:  p.chatMessageForce,
+			HelpText: "chat completion using first-available AI",
+			Handler:  p.chatMessage,
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?is)^gpt (?P<text>.*)`),
-			HelpText: "chat completion",
-			Handler:  p.chatMessageForce,
+			Regex:    regexp.MustCompile(`(?is)^gpt4 (?P<text>.*)`),
+			HelpText: "chat completion using OpenAI",
+			Handler:  p.gptMessage,
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^got (?P<text>.*)`),
 			HelpText: "chat completion",
-			Handler:  p.chatMessageForce,
+			Handler:  p.chatMessage,
 		},
 	}
 	p.b.RegisterTable(p, p.h)
@@ -77,14 +76,6 @@ func (p *LLMPlugin) setPromptMessage(r bot.Request) bool {
 }
 
 func (p *LLMPlugin) chatMessage(r bot.Request) bool {
-	if slices.Contains(p.c.GetArray("gpt.silence", []string{}), r.Msg.Channel) {
-		log.Debug().Msgf("%s silenced", r.Msg.Channel)
-		return true
-	}
-	return p.chatMessageForce(r)
-}
-
-func (p *LLMPlugin) chatMessageForce(r bot.Request) bool {
 	p.chatHistory = append(p.chatHistory, chatEntry{
 		Role:    "user",
 		Content: r.Values["text"],
@@ -103,6 +94,10 @@ func (p *LLMPlugin) chatMessageForce(r bot.Request) bool {
 	} else {
 		log.Info().Msgf("Llama is currently down")
 	}
+	return p.gptMessage(r)
+}
+
+func (p *LLMPlugin) gptMessage(r bot.Request) bool {
 	resp, err := p.chatGPT(r.Values["text"])
 	if err != nil {
 		resp = fmt.Sprintf("Error: %s", err)
