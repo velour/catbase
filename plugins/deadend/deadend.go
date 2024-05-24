@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-const defaultMessage = "I don't know how to respond to that. If you'd like to ask GPT, use the `gpt` command."
+const defaultMessage = "I don't know how to respond to that. If you'd like to ask an LLM, use the `llm` command."
 
 type DeadEndPlugin struct {
 	b bot.Bot
