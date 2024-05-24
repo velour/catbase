@@ -57,9 +57,9 @@ func (p *LLMPlugin) register() {
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
-			Regex:    regexp.MustCompile(`(?is)^got (?P<text>.*)`),
-			HelpText: "chat completion",
-			Handler:  p.chatMessage,
+			Regex:    regexp.MustCompile(`(?is)^llm-puke$`),
+			HelpText: "clear chat history",
+			Handler:  p.puke,
 		},
 	}
 	p.b.RegisterTable(p, p.h)
@@ -106,6 +106,13 @@ func (p *LLMPlugin) gptMessage(r bot.Request) bool {
 		Role:    "assistant",
 		Content: resp,
 	})
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
+	return true
+}
+
+func (p *LLMPlugin) puke(r bot.Request) bool {
+	resp := fmt.Sprintf("I just forgot %d lines of chat history.", len(p.chatHistory))
+	p.chatHistory = []chatEntry{}
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
 	return true
 }
