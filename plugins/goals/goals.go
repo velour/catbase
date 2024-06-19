@@ -173,7 +173,7 @@ func (p *GoalsPlugin) checkCompetition(c bot.Connector, ch, what, who string) {
 		return
 	}
 
-	count := 0
+	var count int64
 	for _, i := range items {
 		if i.Nick == who {
 			count = i.Count
@@ -336,7 +336,7 @@ func (p *GoalsPlugin) update(r bot.Request, u counter.Update) {
 
 var now = time.Now
 
-func (p *GoalsPlugin) calculateRemaining(i counter.Item, g *goal) int {
+func (p *GoalsPlugin) calculateRemaining(i counter.Item, g *goal) int64 {
 	today := float64(now().YearDay())
 	thisYear := time.Date(now().Year(), 0, 0, 0, 0, 0, 0, time.UTC)
 	nextYear := time.Date(now().Year()+1, 0, 0, 0, 0, 0, 0, time.UTC)
@@ -344,7 +344,7 @@ func (p *GoalsPlugin) calculateRemaining(i counter.Item, g *goal) int {
 
 	perc := today / days
 	shouldHave := float64(g.Amount) * perc
-	diff := int(shouldHave) - i.Count
+	diff := int64(shouldHave) - i.Count
 
 	log.Printf("Today is the %f-th day with %f days in the year", today, days)
 

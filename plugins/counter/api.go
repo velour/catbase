@@ -42,13 +42,13 @@ type CounterChangeReq struct {
 	UserName string `in:"path=user"`
 	Item     string `in:"path=item"`
 	Password string `in:"form=password"`
-	Delta    int    `in:"path=delta"`
+	Delta    int64  `in:"path=delta"`
 	Body     struct {
 		Message string `json:"message"`
 	} `in:"body=json"`
 }
 
-func (p *CounterPlugin) incHandler(delta int) http.HandlerFunc {
+func (p *CounterPlugin) incHandler(delta int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		input := r.Context().Value(httpin.Input).(*CounterChangeReq)
 		if !p.b.CheckPassword("", input.Password) {
@@ -66,7 +66,7 @@ func (p *CounterPlugin) incHandler(delta int) http.HandlerFunc {
 	}
 }
 
-func (p *CounterPlugin) delta(userName, itemName, personalMessage string, delta int) (Item, error) {
+func (p *CounterPlugin) delta(userName, itemName, personalMessage string, delta int64) (Item, error) {
 	// Try to find an ID if possible
 	id := ""
 	u, err := p.b.DefaultConnector().Profile(userName)
@@ -113,7 +113,7 @@ func (p *CounterPlugin) delta(userName, itemName, personalMessage string, delta 
 	return item, nil
 }
 
-func (p *CounterPlugin) mkIncrementByNAPI(direction int) func(w http.ResponseWriter, r *http.Request) {
+func (p *CounterPlugin) mkIncrementByNAPI(direction int64) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		input := r.Context().Value(httpin.Input).(*CounterChangeReq)
 		if input.Delta == 0 {
@@ -169,5 +169,5 @@ type Update struct {
 	// Counter Item
 	What string `json:"what"`
 	// Total counter amount
-	Amount int `json:"amount"`
+	Amount int64 `json:"amount"`
 }

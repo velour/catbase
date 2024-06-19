@@ -97,7 +97,7 @@ func (p *BeersPlugin) register() {
 			Regex: regexp.MustCompile(`(?i)^beers?\s?(?P<operator>(\+=|-=|=))\s?(?P<amount>\d+)$`),
 			Handler: func(r bot.Request) bool {
 				op := r.Values["operator"]
-				count, _ := strconv.Atoi(r.Values["amount"])
+				count, _ := strconv.ParseInt(r.Values["amount"], 10, 64)
 				nick := r.Msg.User.Name
 				id := r.Msg.User.ID
 
@@ -246,7 +246,7 @@ func getUserBeers(db *sqlx.DB, user, id, itemName string) counter.Item {
 	return booze
 }
 
-func (p *BeersPlugin) setBeers(r *bot.Request, user, id string, amount int) {
+func (p *BeersPlugin) setBeers(r *bot.Request, user, id string, amount int64) {
 	itemName := p.c.Get("beers.itemname", DEFAULT_ITEM)
 	ub := getUserBeers(p.db, user, id, itemName)
 	err := ub.Update(r, amount)
@@ -255,7 +255,7 @@ func (p *BeersPlugin) setBeers(r *bot.Request, user, id string, amount int) {
 	}
 }
 
-func (p *BeersPlugin) addBeers(r *bot.Request, user, id string, delta int) {
+func (p *BeersPlugin) addBeers(r *bot.Request, user, id string, delta int64) {
 	itemName := p.c.Get("beers.itemname", DEFAULT_ITEM)
 	ub := getUserBeers(p.db, user, id, itemName)
 	err := ub.UpdateDelta(r, delta)
@@ -264,7 +264,7 @@ func (p *BeersPlugin) addBeers(r *bot.Request, user, id string, delta int) {
 	}
 }
 
-func (p *BeersPlugin) getBeers(user, id string) int {
+func (p *BeersPlugin) getBeers(user, id string) int64 {
 	itemName := p.c.Get("beers.itemname", DEFAULT_ITEM)
 	ub := getUserBeers(p.db, user, id, itemName)
 	return ub.Count
