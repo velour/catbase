@@ -49,7 +49,7 @@ func (p *LLMPlugin) gemini(msg string) (chatEntry, error) {
 	ctx := context.Background()
 
 	cs.History = []*genai.Content{}
-	for _, h := range p.chatHistory {
+	for _, h := range p.getChatHistory() {
 		cs.History = append(cs.History, &genai.Content{
 			Parts: []genai.Part{
 				genai.Text(h.Content),

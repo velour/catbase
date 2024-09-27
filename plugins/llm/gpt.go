@@ -8,6 +8,7 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"regexp"
+	"time"
 )
 
 const gpt3URL = "https://api.openai.com/v1/engines/%s/completions"
@@ -25,8 +26,9 @@ type LLMPlugin struct {
 }
 
 type chatEntry struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string    `json:"role"`
+	Content string    `json:"content"`
+	TS      time.Time `json:"ts"`
 }
 
 func New(b bot.Bot) *LLMPlugin {
@@ -74,6 +76,35 @@ func (p *LLMPlugin) setPromptMessage(r bot.Request) bool {
 	return true
 }
 
+const defaultDuration = 15 * time.Minute
+
+func (p *LLMPlugin) getChatHistory() []chatEntry {
+	horizonTxt := p.c.Get("gemini.horizon", defaultDuration.String())
+	dur, err := time.ParseDuration(horizonTxt)
+	if err != nil {
+		dur = defaultDuration
+	}
+	output := []chatEntry{}
+	for _, e := range p.chatHistory {
+		if e.TS.After(time.Now().Add(-dur)) {
+			output = append(output, e)
+		}
+	}
+	return output
+}
+
+func (p *LLMPlugin) addChatHistoryUser(content string) {
+	p.addChatHistory(chatEntry{
+		Role:    "user",
+		Content: content,
+	})
+}
+
+func (p *LLMPlugin) addChatHistory(content chatEntry) {
+	content.TS = time.Now()
+	p.chatHistory = append(p.chatHistory, content)
+}
+
 func (p *LLMPlugin) geminiChatMessage(r bot.Request) bool {
 	if p.geminiClient == nil && p.geminiConnect() != nil {
 		log.Error().Msgf("Could not connect to Gemini")
@@ -85,8 +116,8 @@ func (p *LLMPlugin) geminiChatMessage(r bot.Request) bool {
 		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Problem with Gemini: %s", err))
 		return true
 	}
-	p.chatHistory = append(p.chatHistory, chatEntry{"User", r.Values["text"]})
-	p.chatHistory = append(p.chatHistory, chatResp)
+	p.addChatHistoryUser(r.Values["text"])
+	p.addChatHistory(chatResp)
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, chatResp.Content)
 	log.Info().Msgf("Successfully used Gemini")
 	return true
