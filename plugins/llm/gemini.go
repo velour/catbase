@@ -26,16 +26,22 @@ func (p *LLMPlugin) geminiConnect() error {
 
 func (p *LLMPlugin) gemini(msg string) (chatEntry, error) {
 	model := p.geminiClient.GenerativeModel("gemini-1.5-flash")
-	model.SetMaxOutputTokens(int32(p.c.GetInt("GEMINI_MAX_TOKENS", 100)))
-	model.SetTopP(float32(p.c.GetFloat64("GEMINI_TOP_P", 0.95)))
-	model.SetTopK(int32(p.c.GetInt("GEMINI_TOP_K", 20)))
-	model.SetTemperature(float32(p.c.GetFloat64("GEMINI_TEMP", 0.9)))
+	model.SetMaxOutputTokens(int32(p.c.GetInt("gemini.maxtokens", 100)))
+	model.SetTopP(float32(p.c.GetFloat64("gemini.topp", 0.95)))
+	model.SetTopK(int32(p.c.GetInt("gemini.topk", 20)))
+	model.SetTemperature(float32(p.c.GetFloat64("gemini.temp", 0.9)))
 
 	model.SafetySettings = []*genai.SafetySetting{
 		{genai.HarmCategoryHarassment, genai.HarmBlockNone},
 		{genai.HarmCategoryHateSpeech, genai.HarmBlockNone},
 		{genai.HarmCategorySexuallyExplicit, genai.HarmBlockNone},
 		{genai.HarmCategoryDangerousContent, genai.HarmBlockNone},
+	}
+
+	if prompt := p.c.Get("gemini.systemprompt", ""); prompt != "" {
+		model.SystemInstruction = &genai.Content{
+			Parts: []genai.Part{genai.Text(prompt)},
+		}
 	}
 
 	cs := model.StartChat()
