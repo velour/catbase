@@ -3,6 +3,7 @@ package llm
 import (
 	"errors"
 	"fmt"
+	"github.com/google/generative-ai-go/genai"
 	"github.com/rs/zerolog/log"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
@@ -19,6 +20,8 @@ type LLMPlugin struct {
 
 	chatCount   int
 	chatHistory []chatEntry
+
+	geminiClient *genai.Client
 }
 
 type chatEntry struct {
@@ -47,7 +50,7 @@ func (p *LLMPlugin) register() {
 			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^llm (?P<text>.*)`),
 			HelpText: "chat completion using first-available AI",
-			Handler:  p.chatMessage,
+			Handler:  p.geminiChatMessage,
 		},
 		{
 			Kind: bot.Message, IsCmd: true,
@@ -75,7 +78,25 @@ func (p *LLMPlugin) setPromptMessage(r bot.Request) bool {
 	return true
 }
 
-func (p *LLMPlugin) chatMessage(r bot.Request) bool {
+func (p *LLMPlugin) geminiChatMessage(r bot.Request) bool {
+	if p.geminiClient == nil && p.geminiConnect() != nil {
+		log.Error().Msgf("Could not connect to Gemini")
+		return p.gptMessage(r)
+	}
+	chatResp, err := p.gemini(r.Values["text"])
+	if err != nil {
+		log.Error().Err(err).Send()
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf("Problem with Gemini: %s", err))
+		return true
+	}
+	p.chatHistory = append(p.chatHistory, chatEntry{"User", r.Values["text"]})
+	p.chatHistory = append(p.chatHistory, chatResp)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, chatResp.Content)
+	log.Info().Msgf("Successfully used Gemini")
+	return true
+}
+
+func (p *LLMPlugin) ollamaChatMessage(r bot.Request) bool {
 	p.chatHistory = append(p.chatHistory, chatEntry{
 		Role:    "user",
 		Content: r.Values["text"],
@@ -92,7 +113,7 @@ func (p *LLMPlugin) chatMessage(r bot.Request) bool {
 	} else if !errors.Is(err, InstanceNotFoundError) {
 		log.Error().Err(err).Msgf("error contacting llama")
 	} else {
-		log.Info().Msgf("Llama is currently down")
+		log.Error().Msgf("llama is currently down")
 	}
 	return p.gptMessage(r)
 }
