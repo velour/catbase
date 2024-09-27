@@ -69,11 +69,7 @@ func (p *LLMPlugin) register() {
 }
 
 func (p *LLMPlugin) setPromptMessage(r bot.Request) bool {
-	prompt := r.Values["text"]
-	if err := p.setPrompt(prompt); err != nil {
-		resp := fmt.Sprintf("Error: %s", err)
-		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
-	}
+	p.c.Set("gemini.systemprompt", r.Values["text"])
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, fmt.Sprintf(`Okay. I set the prompt to: "%s"`, prompt))
 	return true
 }
