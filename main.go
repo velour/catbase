@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"github.com/velour/catbase/plugins"
+	"github.com/velour/catbase/plugins/talklikeapirate"
 	"io"
 	"math/rand"
 	"os"
@@ -71,7 +72,9 @@ func main() {
 	case "slackapp":
 		client = slackapp.New(c)
 	case "discord":
-		client = discord.New(c)
+		d := discord.New(c)
+		d.Pirate = talklikeapirate.New(c)
+		client = d
 	default:
 		log.Fatal().Msgf("Unknown connection type: %s", c.Get("type", "UNSET"))
 	}
