@@ -129,7 +129,7 @@ func (p *TLDRPlugin) betterTLDR(r bot.Request) bool {
 	ch := r.Msg.Channel
 	c, err := p.getClient()
 	if err != nil {
-		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Couldn't fetch an OpenAI client")
+		p.b.Send(r.Conn, bot.Message, r.Msg.Channel, "Couldn't fetch an AI client")
 		return true
 	}
 	promptConfig := p.c.Get(templateKey, defaultTemplate)
@@ -148,7 +148,7 @@ func (p *TLDRPlugin) betterTLDR(r bot.Request) bool {
 		backlog = str + backlog
 	}
 
-	model := c.GenerativeModel("gemini-1.5-flash")
+	model := c.GenerativeModel(p.c.Get("gemini.model", "gemini-1.5-flash"))
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{genai.Text(prompt.String())},
 	}

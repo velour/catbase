@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/velour/catbase/plugins/talklikeapirate"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,6 +34,8 @@ type Discord struct {
 	cmdHandlers    map[string]CmdHandler
 
 	guildID string
+
+	Pirate *talklikeapirate.TalkLikeAPiratePlugin
 }
 
 func New(config *config.Config) *Discord {
@@ -112,6 +115,14 @@ func (d Discord) Send(kind bot.Kind, args ...any) (string, error) {
 }
 
 func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...any) (string, error) {
+	var err error
+	if d.Pirate != nil {
+		message, err = d.Pirate.Filter(message)
+		if err != nil {
+			log.Error().Err(err).Msg("could not pirate message")
+		}
+	}
+
 	if meMessage && !strings.HasPrefix(message, "_") && !strings.HasSuffix(message, "_") {
 		message = "_" + message + "_"
 	}
@@ -167,7 +178,6 @@ func (d *Discord) sendMessage(channel, message string, meMessage bool, args ...a
 	maxLen := 2000
 	chunkSize := maxLen - 100
 	var st *discordgo.Message
-	var err error
 	if len(data.Content) > maxLen {
 		tmp := data.Content
 		data.Content = tmp[:chunkSize]
