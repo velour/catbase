@@ -11,9 +11,9 @@ import (
 	"google.golang.org/api/option"
 )
 
-// TalkLikeAPiratePlugin reimplements the send function
+// TalkLikeAPirateFilter reimplements the send function
 // with an AI intermediate.
-type TalkLikeAPiratePlugin struct {
+type TalkLikeAPirateFilter struct {
 	client *genai.Client
 	prompt string
 
@@ -21,15 +21,15 @@ type TalkLikeAPiratePlugin struct {
 	c *config.Config
 }
 
-func New(c *config.Config) *TalkLikeAPiratePlugin {
-	p := &TalkLikeAPiratePlugin{
+func NewFilter(c *config.Config) *TalkLikeAPirateFilter {
+	p := &TalkLikeAPirateFilter{
 		c: c,
 	}
 
 	return p
 }
 
-func (p *TalkLikeAPiratePlugin) Filter(input string) (string, error) {
+func (p *TalkLikeAPirateFilter) Filter(input string) (string, error) {
 	if !p.c.GetBool("talklikeapirate.enabled", false) {
 		return input, nil
 	}
@@ -69,7 +69,7 @@ func (p *TalkLikeAPiratePlugin) Filter(input string) (string, error) {
 	return completion, nil
 }
 
-func (p *TalkLikeAPiratePlugin) GetModel() (*genai.GenerativeModel, error) {
+func (p *TalkLikeAPirateFilter) GetModel() (*genai.GenerativeModel, error) {
 	model := p.client.GenerativeModel(p.c.Get("gemini.model", "gemini-1.5-flash"))
 	model.SetMaxOutputTokens(int32(p.c.GetInt("gemini.maxtokens", 100)))
 	model.SetTopP(float32(p.c.GetFloat64("gemini.topp", 0.95)))
@@ -94,7 +94,7 @@ func (p *TalkLikeAPiratePlugin) GetModel() (*genai.GenerativeModel, error) {
 	return model, nil
 }
 
-func (p *TalkLikeAPiratePlugin) getClient() (*genai.Client, error) {
+func (p *TalkLikeAPirateFilter) getClient() (*genai.Client, error) {
 	ctx := context.Background()
 	key := p.c.Get("GEMINI_API_KEY", "")
 	if key == "" {

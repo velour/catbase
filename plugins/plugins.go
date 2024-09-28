@@ -45,6 +45,7 @@ import (
 	"github.com/velour/catbase/plugins/sms"
 	"github.com/velour/catbase/plugins/stock"
 	"github.com/velour/catbase/plugins/talker"
+	"github.com/velour/catbase/plugins/talklikeapirate"
 	"github.com/velour/catbase/plugins/tappd"
 	"github.com/velour/catbase/plugins/tell"
 	"github.com/velour/catbase/plugins/tldr"
@@ -102,6 +103,7 @@ func Register(b bot.Bot) {
 	b.AddPlugin(talker.New(b))
 	b.AddPlugin(fact.New(b))
 	b.AddPlugin(llm.New(b))
+	b.AddPlugin(talklikeapirate.New(b))
 	// catches anything left, will always return true
 	b.AddPlugin(deadend.New(b))
 }

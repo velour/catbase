@@ -179,6 +179,10 @@ func (c *Config) Set(key, value string) error {
 	return nil
 }
 
+func (c *Config) SetBool(key string, value bool) error {
+	return c.Set(key, fmt.Sprintf("%v", value))
+}
+
 func (c *Config) RefreshSecrets() error {
 	q := `select key, value from secrets`
 	var secrets []Secret
