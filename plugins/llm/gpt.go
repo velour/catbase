@@ -8,6 +8,7 @@ import (
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -49,13 +50,19 @@ func (p *LLMPlugin) register() {
 			Handler:  p.setPromptMessage,
 		},
 		{
+			Kind: bot.Message, IsCmd: false,
+			Regex:    regexp.MustCompile(`(?is)^&(?P<text>.*)`),
+			HelpText: "chat completion using first-available AI",
+			Handler:  p.geminiChatMessage,
+		},
+		{
 			Kind: bot.Message, IsCmd: true,
 			Regex:    regexp.MustCompile(`(?is)^llm (?P<text>.*)`),
 			HelpText: "chat completion using first-available AI",
 			Handler:  p.geminiChatMessage,
 		},
 		{
-			Kind: bot.Message, IsCmd: true,
+			Kind: bot.Message, IsCmd: false,
 			Regex:    regexp.MustCompile(`(?is)^gpt4 (?P<text>.*)`),
 			HelpText: "chat completion using OpenAI",
 			Handler:  p.gptMessage,
@@ -65,6 +72,11 @@ func (p *LLMPlugin) register() {
 			Regex:    regexp.MustCompile(`(?is)^llm-puke$`),
 			HelpText: "clear chat history",
 			Handler:  p.puke,
+		},
+		{
+			Kind: bot.Help, IsCmd: false,
+			Regex:   regexp.MustCompile(`.*`),
+			Handler: p.help,
 		},
 	}
 	p.b.RegisterTable(p, p.h)
@@ -162,5 +174,18 @@ func (p *LLMPlugin) puke(r bot.Request) bool {
 	resp := fmt.Sprintf("I just forgot %d lines of chat history.", len(p.chatHistory))
 	p.chatHistory = []chatEntry{}
 	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, resp)
+	return true
+}
+
+func (p *LLMPlugin) help(r bot.Request) bool {
+	out := "Talk like a pirate commands:\n"
+	for _, h := range p.h {
+		if h.HelpText == "" {
+			continue
+		}
+		out += fmt.Sprintf("```%s```\t%s", h.Regex.String(), h.HelpText)
+	}
+	out = strings.TrimSpace(out)
+	p.b.Send(r.Conn, bot.Message, r.Msg.Channel, out)
 	return true
 }
