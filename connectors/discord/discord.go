@@ -35,7 +35,7 @@ type Discord struct {
 
 	guildID string
 
-	Pirate *talklikeapirate.TalkLikeAPiratePlugin
+	Pirate *talklikeapirate.TalkLikeAPirateFilter
 }
 
 func New(config *config.Config) *Discord {

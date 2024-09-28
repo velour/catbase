@@ -73,7 +73,7 @@ func main() {
 		client = slackapp.New(c)
 	case "discord":
 		d := discord.New(c)
-		d.Pirate = talklikeapirate.New(c)
+		d.Pirate = talklikeapirate.NewFilter(c)
 		client = d
 	default:
 		log.Fatal().Msgf("Unknown connection type: %s", c.Get("type", "UNSET"))
