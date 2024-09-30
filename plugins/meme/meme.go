@@ -370,8 +370,8 @@ func (p *MemePlugin) defaultFormatConfig() []memeText {
 	}
 ret:
 	return []memeText{
-		{XPerc: 0.5, YPerc: 0.1, Caps: true},
-		{XPerc: 0.5, YPerc: 0.9, Caps: true},
+		{XPerc: 0.5, YPerc: 0.05, Caps: true},
+		{XPerc: 0.5, YPerc: 0.95, Caps: true},
 	}
 }
 

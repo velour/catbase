@@ -2,6 +2,7 @@ package meme
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/ggicci/httpin"
 	"net/http"
@@ -89,7 +90,7 @@ func (p *MemePlugin) rmMeme(w http.ResponseWriter, r *http.Request) {
 }
 
 type SaveReq struct {
-	Name   string `in:"path=name"`
+	Name   string `in:"path=name;form=name"`
 	Config string `in:"form=config"`
 	URL    string `in:"form=url"`
 }
@@ -97,6 +98,14 @@ type SaveReq struct {
 func (p *MemePlugin) saveMeme(w http.ResponseWriter, r *http.Request) {
 	input := r.Context().Value(httpin.Input).(*SaveReq)
 	checkError := mkCheckError(w)
+
+	log.Debug().Interface("save input", input).Send()
+	if input.Name == "" {
+		checkError(errors.New("no name"))
+	}
+	if input.URL == "" {
+		checkError(errors.New("no URL"))
+	}
 
 	formats := p.c.GetMap("meme.memes", defaultFormats)
 	formats[input.Name] = input.URL
