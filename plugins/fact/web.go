@@ -21,7 +21,7 @@ func (p *FactoidPlugin) registerWeb() {
 }
 
 type SearchReq struct {
-	Query string `in:"query"`
+	Query string `in:"form=query"`
 }
 
 func (p *FactoidPlugin) handleSearch(w http.ResponseWriter, r *http.Request) {
