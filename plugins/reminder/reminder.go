@@ -393,7 +393,7 @@ func (p *ReminderPlugin) reminderer(c bot.Connector) {
 			p.bot.Send(c, bot.Message, reminder.channel, message)
 			smsPlugin := sms.New(p.bot)
 			if err := smsPlugin.Send(reminder.who, message); err != nil {
-				log.Error().Err(err).Msgf("could not send reminder")
+				//log.Error().Err(err).Msgf("could not send reminder")
 			}
 
 			if err := p.deleteReminder(reminder.id); err != nil {
