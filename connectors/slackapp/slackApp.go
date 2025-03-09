@@ -502,7 +502,12 @@ func (s *SlackApp) getChannel(id string) (*slack.Channel, error) {
 		Str("id", id).
 		Msg("Channel not known, requesting info")
 
-	ch, err := s.api.GetConversationInfo(id, false)
+	input := &slack.GetConversationInfoInput{
+		ChannelID:         id,
+		IncludeLocale:     false,
+		IncludeNumMembers: false,
+	}
+	ch, err := s.api.GetConversationInfo(input)
 	if err != nil {
 		return nil, err
 	}

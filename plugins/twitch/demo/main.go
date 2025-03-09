@@ -2,17 +2,29 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/nicklaw5/helix"
 	"io"
 	"log"
 	"net/http"
+	"os"
+)
+
+var (
+	secret = flag.String("secret", "", "Set client Secret Name")
+	cid    = flag.String("cid", "", "Set Client ID Name")
 )
 
 func main() {
+	flag.Parse()
+	if *secret == "" || *cid == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
 	client, err := helix.NewClient(&helix.Options{
-		ClientID:     "ptwtiuzl9tcrekpf3d26ey3hb7qsge",
-		ClientSecret: "rpa0w6qemjqp7sgrmidwi4k0kcah82",
+		ClientID:     *cid,
+		ClientSecret: *secret,
 	})
 	if err != nil {
 		log.Printf("Login error: %v", err)
