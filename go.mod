@@ -2,7 +2,7 @@ module github.com/velour/catbase
 
 go 1.23.0
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
@@ -33,7 +33,7 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/nicklaw5/helix v1.25.0
 	github.com/olebedev/when v1.1.0
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/slack-go/slack v0.16.0
 	github.com/stretchr/testify v1.10.0
 	github.com/trubitsyn/go-zero-width v1.0.1
