@@ -2,13 +2,13 @@ module github.com/velour/catbase
 
 go 1.23.0
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/PuerkitoBio/goquery v1.10.2
-	github.com/a-h/templ v0.3.833
+	github.com/a-h/templ v0.3.857
 	github.com/andrewstuart/openai v0.30.0
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/cdipaolo/goml v0.0.0-20220715001353-00e0c845ae1c
