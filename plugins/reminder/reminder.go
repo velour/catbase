@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chrissexton/catbaseduration"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 
@@ -129,9 +130,9 @@ func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 				who = from
 			}
 
-			dur, err := time.ParseDuration(parts[3])
+			dur, err := catbaseduration.ParseDuration(parts[3])
 			if err != nil {
-				p.bot.Send(c, bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
+				p.bot.Send(c, bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'. You can use yMd for year/month/day and Go durations otherwise.")
 				return true
 			}
 
@@ -239,7 +240,7 @@ func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 }
 
 func (p *ReminderPlugin) help(c bot.Connector, kind bot.Kind, message msg.Message, args ...any) bool {
-	p.bot.Send(c, bot.Message, message.Channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration")
+	p.bot.Send(c, bot.Message, message.Channel, "Pester someone with a reminder. Try \"remind <user> in <duration> message\".\n\nUnsure about duration syntax? Check https://golang.org/pkg/time/#ParseDuration\n\nYou can also use y/M/d for year/month/day. Months count as 30 days.")
 	return true
 }
 

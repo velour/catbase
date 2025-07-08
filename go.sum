@@ -57,6 +57,8 @@ github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyY
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
+github.com/chrissexton/catbaseduration v0.0.0-20250708212955-5c359509ebb9 h1:PCM2kv+CXB8spBYyzbIFCtINwg7Oq9njFPqVTPNsx7c=
+github.com/chrissexton/catbaseduration v0.0.0-20250708212955-5c359509ebb9/go.mod h1:nznifg4rNbqWJsguDfEq0JLt18nxP8VVfiWsbVRCB6Y=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff h1:+TEqaP0eO1unI7XHHFeMDhsxhLDIb0x8KYuZbqbAmxA=
 github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff/go.mod h1:QCRjR0b4qiJiNjuP7RFM89bh4UExGJalcWmYeSvlnRc=
 github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035 h1:3+eJGFTbUgOMDCpa8PTmJABs1Z3EDHRrcz6d3oXfZm0=

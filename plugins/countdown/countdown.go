@@ -75,7 +75,7 @@ func logError(err error, msg string) {
 	if err == nil {
 		return
 	}
-	log.Error().Err(err).Msgf(msg)
+	log.Error().Err(err).Str("msg", msg).Msgf("countdown error")
 }
 
 func (p *CountdownPlugin) nyeCountdown(i int) {

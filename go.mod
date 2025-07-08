@@ -1,8 +1,6 @@
 module github.com/velour/catbase
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.24.0
 
 require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
@@ -13,6 +11,7 @@ require (
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/cdipaolo/goml v0.0.0-20220715001353-00e0c845ae1c
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/chrissexton/catbaseduration v0.0.0-20250708212955-5c359509ebb9
 	github.com/chrissexton/leftpad v0.0.0-20181207133115-1e93189d2fff
 	github.com/chrissexton/sentiment v0.0.0-20190927141846-d69c422ba035
 	github.com/disintegration/imageorient v0.0.0-20180920195336-8147d86e83ec
