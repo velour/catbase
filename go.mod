@@ -19,7 +19,7 @@ require (
 	github.com/forPelevin/gomoji v1.3.0
 	github.com/gabriel-vasile/mimetype v1.4.8
 	github.com/ggicci/httpin v0.19.0
-	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-chi/httprate v0.14.1
 	github.com/gocolly/colly v1.2.0
 	github.com/google/generative-ai-go v0.19.0
