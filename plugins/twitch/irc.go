@@ -74,7 +74,7 @@ func (i *IRC) serve(server, user, pass string, wait chan bool, disconnect func()
 func (i *IRC) handleMsg(msg irc.Msg) {
 	switch msg.Cmd {
 	case irc.ERROR:
-		log.Info().Msgf("Received error: " + msg.Raw)
+		log.Info().Str("raw", msg.Raw).Msgf("Received error")
 
 	case irc.PING:
 		i.client.Out <- irc.Msg{Cmd: irc.PONG}

@@ -205,7 +205,7 @@ func (i *Irc) handleMsg(msg irc.Msg) {
 
 	switch msg.Cmd {
 	case irc.ERROR:
-		log.Info().Msgf("Received error: " + msg.Raw)
+		log.Info().Str("raw", msg.Raw).Msg("IRC ERROR")
 
 	case irc.PING:
 		i.Client.Out <- irc.Msg{Cmd: irc.PONG}
