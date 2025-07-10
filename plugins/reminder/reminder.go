@@ -96,7 +96,7 @@ func (p *ReminderPlugin) snooze(r bot.Request) bool {
 		return true
 	}
 	durationTxt := replaceDuration(p.when, r.Values["duration"])
-	dur, err := time.ParseDuration(durationTxt)
+	dur, err := catbaseduration.ParseDuration(durationTxt)
 	if err != nil {
 		p.bot.Send(r.Conn, bot.Message, r.Msg.Channel, "Whoa, cowboy. I can't parse that time duration.")
 		return true
@@ -157,7 +157,7 @@ func (p *ReminderPlugin) message(c bot.Connector, kind bot.Kind, message msg.Mes
 			} else if operator == "every" && strings.ToLower(parts[4]) == "for" {
 				//batch add, especially for reminding msherms to buy a kit
 				//remind who every dur for dur2 blah
-				dur2, err := time.ParseDuration(parts[5])
+				dur2, err := catbaseduration.ParseDuration(parts[5])
 				if err != nil {
 					log.Error().Err(err)
 					p.bot.Send(c, bot.Message, channel, "Easy cowboy, not sure I can parse that duration. Try something like '1.5h' or '2h45m'.")
