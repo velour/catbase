@@ -6,7 +6,7 @@ require (
 	code.chrissexton.org/cws/getaoc v0.0.0-20231202052842-1b2a337b799d
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/PuerkitoBio/goquery v1.10.2
-	github.com/a-h/templ v0.3.833
+	github.com/a-h/templ v0.3.924
 	github.com/andrewstuart/openai v0.30.0
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/cdipaolo/goml v0.0.0-20220715001353-00e0c845ae1c
@@ -37,7 +37,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/trubitsyn/go-zero-width v1.0.1
 	github.com/velour/velour v0.0.0-20160303155839-8e090e68d158
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.37.0
 	google.golang.org/api v0.224.0
 	gopkg.in/go-playground/webhooks.v5 v5.17.0
 )
@@ -121,11 +121,11 @@ require (
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/image v0.25.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
