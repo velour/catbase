@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/chrissexton/sentiment"
+	"code.chrissexton.org/cws/sentiment"
 
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/bot/msg"

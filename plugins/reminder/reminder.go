@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chrissexton/catbaseduration"
+	"code.chrissexton.org/cws/catbaseduration"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 

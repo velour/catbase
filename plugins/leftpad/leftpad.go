@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/chrissexton/leftpad"
+	"code.chrissexton.org/cws/leftpad"
 	"github.com/velour/catbase/bot"
 	"github.com/velour/catbase/config"
 )
